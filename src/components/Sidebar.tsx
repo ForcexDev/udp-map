@@ -1,5 +1,5 @@
 
-import { useState, FC } from 'react';
+import { useState, useRef, useEffect, FC } from 'react';
 import { CATEGORIES, CAMPUSES } from '../config/constants';
 import { CategoryId, ChatMessage, User, Faculty } from '../config/types';
 import { X, Send, MessageSquare, MapPin, LogOut, Globe } from 'lucide-react';
@@ -56,7 +56,18 @@ const Sidebar: FC<SidebarProps> = ({
 }) => {
   const [tab, setTab] = useState<'settings' | 'chat'>('settings');
   const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const i = t[lang];
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (tab === 'chat') {
+      scrollToBottom();
+    }
+  }, [chatMessages, tab]);
 
   if (!isOpen) return null;
 
@@ -120,6 +131,7 @@ const Sidebar: FC<SidebarProps> = ({
                   </div>
                 ))
               )}
+              <div ref={messagesEndRef} />
             </div>
           ) : (
             <div className="space-y-10 pb-12">
@@ -172,7 +184,7 @@ const Sidebar: FC<SidebarProps> = ({
                     onClick={() => lang !== 'es' && onToggleLang()}
                     className={`flex-1 py-3 rounded-[14px] text-[11px] font-black tracking-wide transition-all flex items-center justify-center gap-2 ${lang === 'es' ? 'bg-white text-zinc-900 shadow-sm border border-zinc-100' : 'text-zinc-400'}`}
                   >
-                    🇪🇸 {i.spanish}
+                    🇨🇱 {i.spanish}
                   </button>
                   <button
                     onClick={() => lang !== 'en' && onToggleLang()}

@@ -1,5 +1,5 @@
 
-import { useState, useMemo, useRef, useCallback, FC } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, FC } from 'react';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { CAMPUSES, CATEGORIES, FACULTIES } from '../config/constants';
@@ -19,7 +19,7 @@ import { detectLang, t } from '../i18n';
 import { Cpu } from 'lucide-react';
 
 const App: FC = () => {
-  const { user, login, logout } = useUserSession();
+  const { user, loading, needsProfileSetup, pendingSession, login, completeProfile, logout } = useUserSession();
   const {
     posts,
     chatMessages,
@@ -27,8 +27,10 @@ const App: FC = () => {
     handleVote,
     handleTogglePin,
     handleDeletePost,
-    lastNewPostTitle
-  } = usePosts();
+    lastNewPostTitle,
+    loadChat,
+    addLocalMessage
+  } = usePosts(user);
 
   const [currentCampusId, setCurrentCampusId] = useState(CAMPUSES[0].id);
   const [activeFacultyId, setActiveFacultyId] = useState<string>('global');
@@ -43,6 +45,13 @@ const App: FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('udp_onboarding_done'));
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lang, setLang] = useState(() => detectLang());
+
+  // Load chat messages when active faculty changes
+  useEffect(() => {
+    if (activeFacultyId) {
+      loadChat(activeFacultyId);
+    }
+  }, [activeFacultyId, loadChat]);
 
   const toggleLang = useCallback(() => {
     setLang(prev => {
@@ -124,6 +133,7 @@ const App: FC = () => {
       const botMsg = {
         userId: 'bot',
         userName: 'UDP Bot',
+        userRole: 'bot',
         text: advice,
         timestamp: Date.now(),
         facultyId: activeFacultyId
@@ -150,6 +160,25 @@ const App: FC = () => {
       alert(`${t('errSave', lang)} ${err.message || t('errConnection', lang)}`);
     } finally { setIsAuditing(false); }
   }, []);
+
+  if (loading) return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#050505]">
+      <div className="w-16 h-16 border-4 border-zinc-800 border-t-[#D41F2D] rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!user && needsProfileSetup && pendingSession) {
+    return (
+      <Login
+        onLogin={login}
+        lang={lang}
+        showProfileSetup={true}
+        pendingEmail={pendingSession.user.email || ''}
+        pendingName={pendingSession.user.user_metadata?.full_name || pendingSession.user.user_metadata?.name || ''}
+        onCompleteProfile={completeProfile}
+      />
+    );
+  }
 
   if (!user) return <Login onLogin={login} lang={lang} />;
   if (showOnboarding) return <Onboarding onComplete={() => setShowOnboarding(false)} lang={lang} />;

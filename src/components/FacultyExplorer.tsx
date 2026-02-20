@@ -1,4 +1,4 @@
-import { FC, useMemo } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { Post, User, Faculty } from '../config/types';
 import { CATEGORIES, APP_CONFIG } from '../config/constants';
 import { timeAgo } from '../utils/mapUtils';
@@ -24,6 +24,7 @@ const FacultyExplorer: FC<FacultyExplorerProps> = ({
     onVote,
     onClose
 }) => {
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const facultyPosts = useMemo(() => {
         return posts.filter(p => p.facultyId === faculty.id);
     }, [posts, faculty.id]);
@@ -90,12 +91,13 @@ const FacultyExplorer: FC<FacultyExplorerProps> = ({
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
                         {facultyPosts.map(post => {
                             const cat = CATEGORIES.find(c => c.id === post.categoryId) || CATEGORIES[CATEGORIES.length - 1];
                             const userVote = userVotes[post.id];
                             const ageInDays = (Date.now() - post.createdAt) / (1000 * 60 * 60 * 24);
                             const isOld = ageInDays >= APP_CONFIG.FADE_DAYS;
+                            const isGuest = user.role === 'guest';
 
                             return (
                                 <div
@@ -103,13 +105,17 @@ const FacultyExplorer: FC<FacultyExplorerProps> = ({
                                     className="bg-white rounded-2xl overflow-hidden border border-zinc-100 shadow-sm transition-all active:scale-[0.98]"
                                     style={{ opacity: post.isPinned ? 1 : (isOld ? 0.6 : 1) }}
                                 >
+                                    {/* ... rest of UI ... */}
                                     {/* Post Image or Category Banner */}
                                     {post.image ? (
-                                        <div className="w-full h-28 sm:h-32 overflow-hidden bg-zinc-100">
+                                        <div className="w-full h-28 sm:h-32 overflow-hidden bg-zinc-100 group relative cursor-pointer" onClick={() => setSelectedImage(post.image)}>
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors z-10 flex items-center justify-center">
+                                                <ImageIcon size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
+                                            </div>
                                             <img
                                                 src={post.image}
                                                 alt={post.title}
-                                                className="w-full h-full object-cover"
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                 loading="lazy"
                                             />
                                         </div>
@@ -152,22 +158,24 @@ const FacultyExplorer: FC<FacultyExplorerProps> = ({
                                         <div className="flex items-center justify-between pt-2 border-t border-zinc-50">
                                             <div className="flex gap-0.5">
                                                 <button
-                                                    onClick={() => onVote(post.id, 'up')}
-                                                    disabled={!!userVote}
-                                                    className={`flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all ${userVote === 'up'
+                                                    onClick={() => !isGuest && onVote(post.id, 'up')}
+                                                    disabled={!!userVote || isGuest}
+                                                    title={isGuest ? t('markerGuestVote', lang) : ''}
+                                                    className={`flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all ${isGuest ? 'text-zinc-300 cursor-not-allowed' : userVote === 'up'
                                                         ? 'bg-emerald-50 text-emerald-600'
-                                                        : userVote ? 'text-zinc-200' : 'text-zinc-500 active:bg-emerald-50 active:text-emerald-600'
+                                                        : userVote ? 'text-zinc-200 cursor-default' : 'text-zinc-500 hover:bg-emerald-50 hover:text-emerald-600 active:scale-95'
                                                         }`}
                                                 >
                                                     <ThumbsUp size={10} strokeWidth={2.5} />
                                                     {post.votesUp}
                                                 </button>
                                                 <button
-                                                    onClick={() => onVote(post.id, 'down')}
-                                                    disabled={!!userVote}
-                                                    className={`flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all ${userVote === 'down'
+                                                    onClick={() => !isGuest && onVote(post.id, 'down')}
+                                                    disabled={!!userVote || isGuest}
+                                                    title={isGuest ? t('markerGuestVote', lang) : ''}
+                                                    className={`flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-extrabold transition-all ${isGuest ? 'text-zinc-300 cursor-not-allowed' : userVote === 'down'
                                                         ? 'bg-red-50 text-red-500'
-                                                        : userVote ? 'text-zinc-200' : 'text-zinc-400 active:bg-red-50 active:text-red-500'
+                                                        : userVote ? 'text-zinc-200 cursor-default' : 'text-zinc-500 hover:bg-red-50 hover:text-red-500 active:scale-95'
                                                         }`}
                                                 >
                                                     <ThumbsDown size={10} strokeWidth={2.5} />
@@ -191,6 +199,27 @@ const FacultyExplorer: FC<FacultyExplorerProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* FULLSCREEN IMAGE MODAL */}
+            {selectedImage && (
+                <div
+                    className="fixed inset-0 z-[3000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <button
+                        className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-all backdrop-blur-md"
+                        onClick={() => setSelectedImage(null)}
+                    >
+                        <X size={28} />
+                    </button>
+                    <img
+                        src={selectedImage}
+                        alt="Zoomed"
+                        className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 };

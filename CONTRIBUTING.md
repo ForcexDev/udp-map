@@ -24,6 +24,18 @@ src/
 └── i18n.ts         → Internacionalización (Español/Inglés)
 ```
 
+## Autenticación
+
+Este proyecto usa **Supabase Auth con Google Provider**. El flujo es:
+
+1. El usuario hace clic en "Iniciar con Google"
+2. Supabase redirige a Google → el usuario acepta → vuelve a la app
+3. Supabase crea una sesión autenticada (`auth.uid()`)
+4. El perfil se crea/actualiza en la tabla `profiles` con el UUID de Supabase Auth
+5. Row Level Security (RLS) protege los datos por usuario
+
+> **Nota**: Google OAuth se configura en el **Supabase Dashboard** (Authentication → Providers → Google), no como variable de entorno.
+
 ## Guías de Estilo
 
 ### Código
@@ -46,7 +58,33 @@ src/
 ### Variables de Entorno
 - **Nunca** subas `.env.local` — contiene API keys reales
 - `.env.example` es la plantilla — mantenla actualizada si agregas nuevas variables
-- Las variables con prefijo `VITE_` se exponen al frontend
+- Las variables con prefijo `VITE_` se exponen al frontend (es normal y seguro)
+- La seguridad de datos la maneja **Supabase RLS**, no las keys
+
+### Seguridad (RLS)
+El proyecto usa Row Level Security en Supabase para proteger datos:
+
+| Tabla | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| `profiles` | Todos | Solo tu perfil | Solo tu perfil | — |
+| `posts` | Todos | Como tú mismo | Votos (todos) | Solo tus posts |
+| `chat` | Todos | Como tú mismo | — | — |
+
+## Despliegue y Web App (Vercel)
+
+El proyecto está configurado para desplegarse automáticamente en Vercel:
+
+1. Las variables de entorno (`GEMINI_API_KEY`, etc.) se configuran en el **Dashboard de Vercel**, no en el código.
+2. El repositorio es público, pero las claves están protegidas.
+
+## App Móvil (PWA)
+
+El proyecto es una **Progressive Web App (PWA)**. Esto permite:
+- "Instalar" la web como una app en Android/iOS desde el navegador.
+- Funcionar offline (cacheo básico).
+- Recibir notificaciones push (vía Web Push API).
+
+Para generar una versión de Play Store (.apk), usamos **Bubblewrap** o **Capacitor**.
 
 ## Proceso de Pull Request
 

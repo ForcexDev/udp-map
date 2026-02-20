@@ -143,6 +143,6 @@ export const APP_CONFIG = {
 };
 
 export const ADMIN_EMAILS = [
-  'admin.demo@mail.udp.cl',
+  'ezequiel.morales@mail.udp.cl',
   // Add admin emails here
 ];

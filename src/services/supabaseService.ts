@@ -15,7 +15,7 @@ export const getProfile = async (id: string) => {
         .from('profiles')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
     return { data, error };
 };
 
@@ -59,6 +59,17 @@ export const deletePost = async (id: string) => {
         .from('posts')
         .delete()
         .eq('id', id);
+    return { error };
+};
+
+// Secure voting via RPC (bypasses restrictive UPDATE policy)
+export const voteOnPost = async (postId: string, votesUp: number, votesDown: number, reports: number) => {
+    const { error } = await supabase.rpc('vote_on_post', {
+        post_id: postId,
+        new_votes_up: votesUp,
+        new_votes_down: votesDown,
+        new_reports: reports
+    });
     return { error };
 };
 

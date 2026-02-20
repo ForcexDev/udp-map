@@ -25,7 +25,7 @@ UDP Map permite a estudiantes, funcionarios e invitados crear **pines geolocaliz
 | 🗺️ **Mapa Interactivo** | Mapa basado en Leaflet con 3 campus y zonas por facultad |
 | 📌 **Pines en Tiempo Real** | Crea, vota y elimina reportes geolocalizados |
 | 🤖 **Moderación con IA** | Google Gemini audita los posts antes de publicarse |
-| 🔐 **Login con Google** | OAuth con roles (Admin / Estudiante / Invitado) |
+| 🔐 **Login con Google** | Supabase Auth con roles (Admin / Estudiante / Invitado) |
 | 🌐 **Bilingüe** | Interfaz completa en Español e Inglés con detección automática |
 | 💬 **Chat por Facultad** | Chat en tiempo real con bot de IA integrado |
 | 📊 **Explorador de Facultad** | Navega los reportes de cada facultad con estadísticas |
@@ -38,8 +38,7 @@ UDP Map permite a estudiantes, funcionarios e invitados crear **pines geolocaliz
 ### Requisitos
 
 - [Node.js](https://nodejs.org/) v18+
-- Un proyecto en [Supabase](https://supabase.com)
-- Un proyecto en [Google Cloud](https://console.cloud.google.com) (para OAuth)
+- Un proyecto en [Supabase](https://supabase.com) con Google Auth configurado
 - Una [API Key de Gemini](https://aistudio.google.com/apikey)
 
 ### Instalación
@@ -92,9 +91,11 @@ udp-map/
 | Variable | Descripción | ¿Expuesta al frontend? |
 |---|---|---|
 | `GEMINI_API_KEY` | API key de Google Gemini para auditoría de posts | ❌ Solo servidor |
-| `VITE_GOOGLE_CLIENT_ID` | Client ID de Google OAuth | ✅ Sí |
 | `VITE_SUPABASE_URL` | URL del proyecto Supabase | ✅ Sí |
 | `VITE_SUPABASE_ANON_KEY` | Clave pública/anónima de Supabase | ✅ Sí |
+
+> [!NOTE]
+> Google OAuth se configura directamente en **Supabase Dashboard → Authentication → Providers → Google**, no como variable de entorno.
 
 > [!IMPORTANT]
 > **Nunca subas `.env.local`** — ya está en `.gitignore`.
@@ -106,8 +107,9 @@ udp-map/
 
 - **Frontend:** React 19 + TypeScript + Vite
 - **Mapa:** Leaflet + React Leaflet
-- **Backend:** Supabase (Postgres + Realtime + Storage)
-- **Autenticación:** Google OAuth 2.0
+- **Backend:** Supabase (Postgres + Realtime + Storage + Auth)
+- **Autenticación:** Supabase Auth con Google Provider
+- **Seguridad:** Row Level Security (RLS) en Supabase
 - **IA:** Google Gemini (moderación de contenido)
 - **Iconos:** Lucide React
 - **Estilos:** Tailwind CSS + CSS personalizado
