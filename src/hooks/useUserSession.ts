@@ -48,81 +48,57 @@ export const useUserSession = () => {
                     role
                 };
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('[Auth] getProfile threw:', err);
+            // Si fue puramente un timeout, usamos un nombre temporal para no bloquearlo
+            if (err?.message?.includes('timed out')) {
+                return {
+                    id: authUser.id,
+                    email,
+                    name: fallbackName + ' (Temporal)',
+                    isAdmin: role === 'admin',
+                    role
+                };
+            }
         }
 
-        // Si falla o no existe el perfil, por defecto usamos un fallback rápido para no bloquear
-        return {
-            id: authUser.id,
-            email,
-            name: fallbackName,
-            isAdmin: role === 'admin',
-            role
-        };
+        // Si terminó bien pero no tiene perfil en la BD, es un usuario nuevo: pide el nombre
+        return null;
     }, []);
 
     useEffect(() => {
         let mounted = true;
         console.log('[Auth] Effect mounted. Starting session checks...');
 
-        const initSession = async () => {
-            try {
-                console.log('[Auth] Calling getSession()');
-                const { data: { session }, error } = await withTimeout(
-                    supabase.auth.getSession(),
-                    3000,
-                    'getSession'
-                );
-
-                if (!mounted) return;
-
-                console.log('[Auth] getSession result:', { hasSession: !!session, error: error?.message });
-
-                if (session) {
-                    const userData = await buildUserFromSession(session);
-                    if (!mounted) return;
-
-                    if (userData) {
-                        setUser(userData);
-                    } else {
-                        setPendingSession(session);
-                        setNeedsProfileSetup(true);
-                    }
-                }
-            } catch (err) {
-                console.error('[Auth] initSession error:', err);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-
-        initSession();
-
+        // Inicia el proceso de escucha de Auth V2
+        // onAuthStateChange se dispara casi inmediatamente en carga inicial con 'INITIAL_SESSION'
+        // o con 'SIGNED_IN'. Si se dispara rápido, nos ahorramos el getSession().
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('[Auth] onAuthStateChange:', event);
             if (!mounted) return;
 
-            if (event === 'INITIAL_SESSION') return;
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                if (session) {
+                    try {
+                        const userData = await buildUserFromSession(session);
+                        if (!mounted) return;
 
-            if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
-                try {
-                    const userData = await buildUserFromSession(session);
-                    if (!mounted) return;
-
-                    if (userData) {
-                        setUser(userData);
-                        setNeedsProfileSetup(false);
-                        setPendingSession(null);
-                    } else {
-                        setPendingSession(session);
-                        setNeedsProfileSetup(true);
+                        if (userData) {
+                            setUser(userData);
+                            setNeedsProfileSetup(false);
+                            setPendingSession(null);
+                        } else {
+                            setPendingSession(session);
+                            setNeedsProfileSetup(true);
+                        }
+                    } catch (err) {
+                        console.error('[Auth] onAuthStateChange error:', err);
                     }
-                } catch (err) {
-                    console.error('[Auth] onAuthStateChange error:', err);
-                } finally {
-                    if (mounted) setLoading(false);
+                } else {
+                    // No session initially
+                    setUser(null);
                 }
+                if (mounted) setLoading(false);
             } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setPendingSession(null);
@@ -131,6 +107,46 @@ export const useUserSession = () => {
             }
         });
 
+        // Hacemos el getSession manual solo como respaldo si el listener falla o tarda,
+        // pero con un timeout muy agresivo (1.5s).
+        const initSessionFallback = async () => {
+            try {
+                const { data: { session } } = await withTimeout(
+                    supabase.auth.getSession(),
+                    1500,
+                    'getSession fallback'
+                );
+
+                if (!mounted) return;
+
+                if (session && loading) {
+                    console.log('[Auth] Fallback getSession succeeded');
+                    const userData = await buildUserFromSession(session);
+                    if (!mounted) return;
+
+                    if (userData) {
+                        setUser(userData);
+                        setNeedsProfileSetup(false);
+                    } else {
+                        setPendingSession(session);
+                        setNeedsProfileSetup(true);
+                    }
+                    setLoading(false);
+                }
+            } catch (err) {
+                // Es normal que de timeout si onAuthStateChange ya resolvió el trabajo
+                console.log('[Auth] Fallback getSession skipped or timed out:', (err as Error).message);
+            }
+        };
+
+        // Darle un respiro al event loop para ver si onAuthStateChange salta primero
+        setTimeout(() => {
+            if (mounted && loading) {
+                initSessionFallback();
+            }
+        }, 100);
+
+        // Timeout absoluto de seguridad total
         const safetyTimeout = setTimeout(() => {
             if (mounted && loading) {
                 console.warn('[Auth] Safety timeout forced loading=false. Supabase took too long.');
@@ -144,7 +160,7 @@ export const useUserSession = () => {
             subscription.unsubscribe();
             clearTimeout(safetyTimeout);
         };
-    }, [buildUserFromSession]);
+    }, [buildUserFromSession, loading]);
 
     const login = useCallback(async () => {
         await supabase.auth.signInWithOAuth({
