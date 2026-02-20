@@ -1,4 +1,4 @@
-import { useState, FC } from 'react';
+import { useState, useRef, FC } from 'react';
 import { User, UserRole } from '../config/types';
 import { ShieldCheck, Loader2, ArrowRight, User as UserIcon, Check, AlertCircle, Eye } from 'lucide-react';
 import { ADMIN_EMAILS } from '../config/constants';
@@ -16,6 +16,7 @@ interface LoginProps {
 
 const Login: FC<LoginProps> = ({ onLogin, lang, showProfileSetup, pendingEmail, pendingName, onCompleteProfile }) => {
   const [isConnecting, setIsConnecting] = useState(false);
+  const connectLock = useRef(false);
   const [error, setError] = useState('');
   const [customName, setCustomName] = useState(pendingName || '');
 
@@ -26,19 +27,24 @@ const Login: FC<LoginProps> = ({ onLogin, lang, showProfileSetup, pendingEmail, 
   };
 
   const handleGoogleLogin = async () => {
+    if (connectLock.current) return;
+    connectLock.current = true;
     setIsConnecting(true);
     setError('');
     try {
       await onLogin();
+      // We don't unlock here because onLogin redirects the page. Unlocking could cause a race condition before redirect.
     } catch (err) {
       console.error('Login Error:', err);
       setError(t('loginGoogleError', lang));
       setIsConnecting(false);
+      connectLock.current = false;
     }
   };
 
   const handleFinishProfile = async () => {
-    if (!customName.trim() || !onCompleteProfile) return;
+    if (!customName.trim() || !onCompleteProfile || connectLock.current) return;
+    connectLock.current = true;
     setIsConnecting(true);
     try {
       await onCompleteProfile(customName);
@@ -46,6 +52,7 @@ const Login: FC<LoginProps> = ({ onLogin, lang, showProfileSetup, pendingEmail, 
       console.error("Error upserting profile:", err);
     } finally {
       setIsConnecting(false);
+      connectLock.current = false;
     }
   };
 
