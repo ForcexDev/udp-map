@@ -15,7 +15,14 @@ export const useUserSession = () => {
     const [loading, setLoading] = useState(true);
     const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
     const [pendingSession, setPendingSession] = useState<Session | null>(null);
-    const didInit = useRef(false);
+
+    // Helper to race a promise against a timeout
+    const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+        return Promise.race([
+            promise,
+            new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+        ]);
+    };
 
     // Build User object from Supabase session
     const buildUserFromSession = useCallback(async (session: Session): Promise<User | null> => {
@@ -25,8 +32,12 @@ export const useUserSession = () => {
         const fallbackName = authUser.user_metadata?.full_name || authUser.user_metadata?.name || email.split('@')[0];
 
         try {
-            const { data: profile, error } = await getProfile(authUser.id);
-            console.log('[Auth] getProfile result:', { profile, error: error?.message });
+            const { data: profile, error } = await withTimeout(
+                getProfile(authUser.id),
+                3500,
+                'getProfile'
+            );
+            console.log('[Auth] getProfile result:', { profile: !!profile, error: error?.message });
 
             if (profile && profile.name) {
                 return {
@@ -41,29 +52,36 @@ export const useUserSession = () => {
             console.error('[Auth] getProfile threw:', err);
         }
 
-        // No profile yet — needs setup
-        return null;
+        // Si falla o no existe el perfil, por defecto usamos un fallback rápido para no bloquear
+        return {
+            id: authUser.id,
+            email,
+            name: fallbackName,
+            isAdmin: role === 'admin',
+            role
+        };
     }, []);
 
     useEffect(() => {
-        // Prevent double-init in StrictMode
-        if (didInit.current) return;
-        didInit.current = true;
-
-        console.log('[Auth] Initializing session...');
+        let mounted = true;
+        console.log('[Auth] Effect mounted. Starting session checks...');
 
         const initSession = async () => {
             try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                console.log('[Auth] getSession result:', {
-                    hasSession: !!session,
-                    email: session?.user?.email,
-                    error: error?.message
-                });
+                console.log('[Auth] Calling getSession()');
+                const { data: { session }, error } = await withTimeout(
+                    supabase.auth.getSession(),
+                    3000,
+                    'getSession'
+                );
+
+                if (!mounted) return;
+
+                console.log('[Auth] getSession result:', { hasSession: !!session, error: error?.message });
 
                 if (session) {
                     const userData = await buildUserFromSession(session);
-                    console.log('[Auth] buildUser result:', userData ? 'has profile' : 'needs setup');
+                    if (!mounted) return;
 
                     if (userData) {
                         setUser(userData);
@@ -75,23 +93,23 @@ export const useUserSession = () => {
             } catch (err) {
                 console.error('[Auth] initSession error:', err);
             } finally {
-                console.log('[Auth] Setting loading=false');
-                setLoading(false);
+                if (mounted) setLoading(false);
             }
         };
 
         initSession();
 
-        // Listen for auth changes (login, logout, token refresh)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('[Auth] onAuthStateChange:', event);
+            if (!mounted) return;
 
-            // Skip initial — handled by initSession above
             if (event === 'INITIAL_SESSION') return;
 
             if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
                 try {
                     const userData = await buildUserFromSession(session);
+                    if (!mounted) return;
+
                     if (userData) {
                         setUser(userData);
                         setNeedsProfileSetup(false);
@@ -101,9 +119,10 @@ export const useUserSession = () => {
                         setNeedsProfileSetup(true);
                     }
                 } catch (err) {
-                    console.error('[Auth] onAuthStateChange handler error:', err);
+                    console.error('[Auth] onAuthStateChange error:', err);
+                } finally {
+                    if (mounted) setLoading(false);
                 }
-                setLoading(false);
             } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setPendingSession(null);
@@ -112,15 +131,18 @@ export const useUserSession = () => {
             }
         });
 
-        // Safety timeout — if nothing resolves in 5s, stop loading
-        const timeout = setTimeout(() => {
-            console.warn('[Auth] Safety timeout — forcing loading=false');
-            setLoading(false);
+        const safetyTimeout = setTimeout(() => {
+            if (mounted && loading) {
+                console.warn('[Auth] Safety timeout forced loading=false. Supabase took too long.');
+                setLoading(false);
+            }
         }, 5000);
 
         return () => {
+            console.log('[Auth] Effect sweeping up (unmounted)');
+            mounted = false;
             subscription.unsubscribe();
-            clearTimeout(timeout);
+            clearTimeout(safetyTimeout);
         };
     }, [buildUserFromSession]);
 
