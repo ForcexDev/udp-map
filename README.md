@@ -105,14 +105,14 @@ udp-map/
 
 ## 🛠️ Stack Tecnológico
 
-- **Frontend:** React 19 + TypeScript + Vite
-- **Mapa:** Leaflet + React Leaflet
-- **Backend:** Supabase (Postgres + Realtime + Storage + Auth)
-- **Autenticación:** Supabase Auth con Google Provider
-- **Seguridad:** Row Level Security (RLS) en Supabase
-- **IA:** Google Gemini (moderación de contenido)
-- **Iconos:** Lucide React
-- **Estilos:** Tailwind CSS + CSS personalizado
+- **Frontend:** React 19 + TypeScript + Vite.
+- **Mapa:** Leaflet + React Leaflet.
+- **Backend:** Supabase (Postgres + Realtime + Storage + Auth).
+- **Autenticación:** Supabase Auth con Google Provider.
+- **Seguridad:** Row Level Security (RLS) en Supabase.
+- **IA:** Google Gemini (moderación de contenido).
+- **Iconos:** Lucide React.
+- **Estilos:** Tailwind CSS + CSS personalizado.
 
 ---
 
