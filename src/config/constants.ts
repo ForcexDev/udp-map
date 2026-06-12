@@ -1,7 +1,15 @@
 
-import { Category, Campus, Faculty } from './types';
+import { Category, Campus, Faculty, User } from './types';
 
 export const UDP_RED = '#D41F2D';
+
+export const ANONYMOUS_USER: User = {
+  id: '__anonymous__',
+  email: '',
+  name: 'Visitante',
+  isAdmin: false,
+  role: 'guest',
+};
 
 export const CAMPUSES: Campus[] = [
   { id: 'ejercito', name: 'Campus Ejército', coords: [-33.4535, -70.6625] },
@@ -21,6 +29,9 @@ export const FACULTIES: Faculty[] = [
     polygon: [
       [-33.4512, -70.6655], [-33.4512, -70.6648],
       [-33.4518, -70.6648], [-33.4518, -70.6655]
+    ],
+    careers: [
+      { name: 'Recursos de Información y Documentación', nameEn: 'Library & Information Science' },
     ]
   },
   {
@@ -33,6 +44,13 @@ export const FACULTIES: Faculty[] = [
     polygon: [
       [-33.3650, -70.6405], [-33.3650, -70.6385],
       [-33.3665, -70.6385], [-33.3665, -70.6405]
+    ],
+    careers: [
+      { name: 'Ingeniería Comercial', nameEn: 'Commercial Engineering' },
+      { name: 'Economía', nameEn: 'Economics' },
+      { name: 'Administración de Empresas', nameEn: 'Business Administration' },
+      { name: 'Contador Auditor', nameEn: 'Accounting & Auditing' },
+      { name: 'Gestión Comercial y Marketing', nameEn: 'Business Management & Marketing' },
     ]
   },
   {
@@ -45,6 +63,9 @@ export const FACULTIES: Faculty[] = [
     polygon: [
       [-33.4505, -70.6675], [-33.4505, -70.6668],
       [-33.4511, -70.6668], [-33.4511, -70.6675]
+    ],
+    careers: [
+      { name: 'Derecho', nameEn: 'Law' },
     ]
   },
   {
@@ -57,6 +78,12 @@ export const FACULTIES: Faculty[] = [
     polygon: [
       [-33.4525, -70.6678], [-33.4525, -70.6670],
       [-33.4532, -70.6670], [-33.4532, -70.6678]
+    ],
+    careers: [
+      { name: 'Arquitectura', nameEn: 'Architecture' },
+      { name: 'Arte', nameEn: 'Fine Arts' },
+      { name: 'Diseño', nameEn: 'Design' },
+      { name: 'Diseño Gráfico', nameEn: 'Graphic Design' },
     ]
   },
   {
@@ -69,6 +96,9 @@ export const FACULTIES: Faculty[] = [
     polygon: [
       [-33.4504, -70.6626], [-33.4504, -70.6620],
       [-33.4509, -70.6620], [-33.4509, -70.6626]
+    ],
+    careers: [
+      { name: 'Psicología', nameEn: 'Psychology' },
     ]
   },
   {
@@ -81,6 +111,13 @@ export const FACULTIES: Faculty[] = [
     polygon: [
       [-33.4523, -70.6614], [-33.4523, -70.6607],
       [-33.4530, -70.6607], [-33.4530, -70.6614]
+    ],
+    careers: [
+      { name: 'Ingeniería Civil', nameEn: 'Civil Engineering' },
+      { name: 'Ingeniería Civil Informática', nameEn: 'Computer Science Engineering' },
+      { name: 'Ingeniería Civil Industrial', nameEn: 'Industrial Engineering' },
+      { name: 'Construcción Civil', nameEn: 'Civil Construction' },
+      { name: 'Ingeniería en Computación e Informática', nameEn: 'Computing & IT Engineering' },
     ]
   },
   {
@@ -93,6 +130,13 @@ export const FACULTIES: Faculty[] = [
     polygon: [
       [-33.4485, -70.6618], [-33.4485, -70.6612],
       [-33.4491, -70.6612], [-33.4491, -70.6618]
+    ],
+    careers: [
+      { name: 'Medicina', nameEn: 'Medicine' },
+      { name: 'Enfermería', nameEn: 'Nursing' },
+      { name: 'Obstetricia y Puericultura', nameEn: 'Obstetrics & Midwifery' },
+      { name: 'Fonoaudiología', nameEn: 'Speech Therapy' },
+      { name: 'Terapia Ocupacional', nameEn: 'Occupational Therapy' },
     ]
   },
   {
@@ -105,6 +149,13 @@ export const FACULTIES: Faculty[] = [
     polygon: [
       [-33.4500, -70.6620], [-33.4500, -70.6615],
       [-33.4504, -70.6615], [-33.4504, -70.6620]
+    ],
+    careers: [
+      { name: 'Periodismo', nameEn: 'Journalism' },
+      { name: 'Publicidad', nameEn: 'Advertising' },
+      { name: 'Cine', nameEn: 'Film Studies' },
+      { name: 'Literatura Creativa', nameEn: 'Creative Writing' },
+      { name: 'Comunicación Audiovisual', nameEn: 'Audiovisual Communication' },
     ]
   },
   {
@@ -117,6 +168,12 @@ export const FACULTIES: Faculty[] = [
     polygon: [
       [-33.4500, -70.6605], [-33.4500, -70.6600],
       [-33.4504, -70.6600], [-33.4504, -70.6605]
+    ],
+    careers: [
+      { name: 'Odontología', nameEn: 'Dentistry' },
+      { name: 'Kinesiología', nameEn: 'Physical Therapy' },
+      { name: 'Nutrición y Dietética', nameEn: 'Nutrition & Dietetics' },
+      { name: 'Tecnología Médica', nameEn: 'Medical Technology' },
     ]
   }
 

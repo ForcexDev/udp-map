@@ -16,6 +16,8 @@ const translations = {
     loginError: { es: 'Error de acceso', en: 'Access error' },
     loginGoogleError: { es: 'Error al conectar con Google. Reintenta.', en: 'Error connecting to Google. Retry.' },
     loginGoogleFail: { es: 'No se pudo iniciar sesión con Google.', en: 'Could not sign in with Google.' },
+    loginSkip: { es: 'Explorar sin registrarse', en: 'Explore without signing in' },
+    loginSkipNote: { es: 'Solo verás facultades y sus carreras', en: 'You\'ll only see faculties and their programs' },
     profileTitle: { es: 'Tu Identidad', en: 'Your Identity' },
     profileSubtitle: { es: 'Personaliza tu perfil udp', en: 'Customize your UDP profile' },
     profileAlias: { es: 'Alias en el mapa', en: 'Map alias' },
@@ -86,6 +88,13 @@ const translations = {
     explorerEmpty: { es: 'Sin reportes aún', en: 'No reports yet' },
     explorerBeFirst: { es: 'Sé el primero en reportar algo en', en: 'Be the first to report something in' },
     explorerCloseHint: { es: 'Cierra y usa el botón + en el mapa.', en: 'Close and use the + button on the map.' },
+    explorerCareers: { es: 'Carreras', en: 'Programs' },
+    explorerCareersDesc: { es: 'Regístrate para ver los reportes y pines en tiempo real', en: 'Sign in to see real-time reports and pins' },
+    explorerLoginCta: { es: 'Registrarse con Google', en: 'Sign in with Google' },
+
+    // ── Anonymous Banner ──
+    anonBannerText: { es: 'Regístrate para ver pines, votar y chatear', en: 'Sign in to see pins, vote and chat' },
+    anonBannerBtn: { es: 'Iniciar sesión', en: 'Sign in' },
 
     // ── App / Toast / Audit ──
     toastNewPin: { es: '📍 Nuevo pin:', en: '📍 New pin:' },

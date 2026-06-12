@@ -1,12 +1,13 @@
 import { useState, useRef, FC } from 'react';
 import { User, UserRole } from '../config/types';
-import { ShieldCheck, Loader2, ArrowRight, User as UserIcon, Check, AlertCircle, Eye } from 'lucide-react';
+import { ShieldCheck, Loader2, ArrowRight, User as UserIcon, Check, AlertCircle, Eye, ChevronRight } from 'lucide-react';
 import { ADMIN_EMAILS } from '../config/constants';
 import { Lang, t } from '../i18n';
 
 interface LoginProps {
   onLogin: () => void;
   lang: Lang;
+  onContinueAsGuest?: () => void;
   /** If true, show profile-setup step instead of initial login */
   showProfileSetup?: boolean;
   pendingEmail?: string;
@@ -14,7 +15,7 @@ interface LoginProps {
   onCompleteProfile?: (name: string) => void;
 }
 
-const Login: FC<LoginProps> = ({ onLogin, lang, showProfileSetup, pendingEmail, pendingName, onCompleteProfile }) => {
+const Login: FC<LoginProps> = ({ onLogin, lang, onContinueAsGuest, showProfileSetup, pendingEmail, pendingName, onCompleteProfile }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const connectLock = useRef(false);
   const [error, setError] = useState('');
@@ -205,6 +206,28 @@ const Login: FC<LoginProps> = ({ onLogin, lang, showProfileSetup, pendingEmail, 
           </div>
 
           <p className="text-[10px] text-zinc-600 font-bold mt-6">{t('loginFooter', lang)}</p>
+
+          {/* Skip login option */}
+          {onContinueAsGuest && (
+            <div className="mt-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-zinc-800" />
+                <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">o</span>
+                <div className="flex-1 h-px bg-zinc-800" />
+              </div>
+              <button
+                onClick={onContinueAsGuest}
+                className="group w-full h-14 bg-zinc-900/60 border border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-zinc-200 font-bold rounded-[20px] flex items-center justify-center gap-3 transition-all duration-300 active:scale-[0.97]"
+              >
+                <Eye size={16} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                <div className="flex flex-col items-start">
+                  <span className="text-[13px] font-extrabold leading-none">{t('loginSkip', lang)}</span>
+                  <span className="text-[9px] text-zinc-600 group-hover:text-zinc-500 font-bold mt-0.5">{t('loginSkipNote', lang)}</span>
+                </div>
+                <ChevronRight size={14} className="ml-auto opacity-30 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all" />
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="mt-10 p-5 bg-red-500/5 border border-red-500/20 rounded-[24px] flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
