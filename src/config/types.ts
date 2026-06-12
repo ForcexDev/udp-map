@@ -43,6 +43,11 @@ export interface Campus {
   coords: [number, number];
 }
 
+export interface Career {
+  name: string;
+  nameEn: string;
+}
+
 export interface Faculty {
   id: string;
   name: string;
@@ -51,6 +56,7 @@ export interface Faculty {
   campusId: string;
   image?: string;
   polygon?: [number, number][];
+  careers?: Career[];
 }
 
 export interface ChatMessage {

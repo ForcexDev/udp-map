@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { User, Faculty } from '../../config/types';
-import { MessageSquare, Navigation, Plus, MapPin, Check, ShieldAlert, Layers } from 'lucide-react';
+import { MessageSquare, Navigation, Plus, MapPin, Check, ShieldAlert, LogIn } from 'lucide-react';
 import { Lang, t, facName } from '../../i18n';
 
 interface MapHUDProps {
@@ -10,12 +10,14 @@ interface MapHUDProps {
     campusFaculties: Faculty[];
     activeFacultyId: string;
     isPlacingMode: boolean;
+    isAnonymous?: boolean;
     onSidebarOpen: () => void;
     onFacultySelect: (fac: Faculty) => void;
     onLocateUser: () => void;
     onStartPlacing: () => void;
     onCancelPlacement: () => void;
     onConfirmPlacement: () => void;
+    onLogin?: () => void;
 }
 
 const MapHUD: FC<MapHUDProps> = ({
@@ -25,12 +27,14 @@ const MapHUD: FC<MapHUDProps> = ({
     campusFaculties,
     activeFacultyId,
     isPlacingMode,
+    isAnonymous = false,
     onSidebarOpen,
     onFacultySelect,
     onLocateUser,
     onStartPlacing,
     onCancelPlacement,
-    onConfirmPlacement
+    onConfirmPlacement,
+    onLogin
 }) => {
     return (
         <>
@@ -72,10 +76,13 @@ const MapHUD: FC<MapHUDProps> = ({
                         </div>
 
                         <button
-                            onClick={onSidebarOpen}
-                            className="w-12 h-12 glass-hud rounded-2xl premium-shadow flex items-center justify-center border border-white/50 pointer-events-auto transition-transform active:scale-90"
+                            onClick={isAnonymous ? onLogin : onSidebarOpen}
+                            className={`w-12 h-12 rounded-2xl premium-shadow flex items-center justify-center border transition-transform active:scale-90 ${isAnonymous ? 'bg-[#D41F2D] border-red-700' : 'glass-hud border-white/50'}`}
                         >
-                            <MessageSquare size={20} className="text-zinc-700" strokeWidth={2.5} />
+                            {isAnonymous
+                                ? <LogIn size={20} className="text-white" strokeWidth={2.5} />
+                                : <MessageSquare size={20} className="text-zinc-700" strokeWidth={2.5} />
+                            }
                         </button>
                     </div>
 
@@ -141,6 +148,29 @@ const MapHUD: FC<MapHUDProps> = ({
                     </div>
                 )
             }
+
+            {/* ANONYMOUS BOTTOM BANNER */}
+            {isAnonymous && !isPlacingMode && (
+                <div className="absolute bottom-8 left-5 right-5 z-[1001] pointer-events-auto">
+                    <button
+                        onClick={onLogin}
+                        className="w-full glass-hud border border-white/50 rounded-[22px] premium-shadow px-5 py-4 flex items-center gap-4 active:scale-[0.98] transition-transform"
+                    >
+                        <div className="w-10 h-10 bg-[#D41F2D] rounded-xl flex items-center justify-center shrink-0">
+                            <LogIn size={18} className="text-white" strokeWidth={2.5} />
+                        </div>
+                        <div className="flex flex-col items-start text-left">
+                            <span className="text-[12px] font-black text-zinc-900 leading-tight">{t('anonBannerText', lang)}</span>
+                            <span className="text-[10px] font-extrabold text-[#D41F2D] uppercase tracking-wider mt-0.5">{t('anonBannerBtn', lang)}</span>
+                        </div>
+                        <div className="ml-auto w-8 h-8 bg-zinc-100 rounded-xl flex items-center justify-center shrink-0">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" className="text-zinc-500">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                        </div>
+                    </button>
+                </div>
+            )}
 
             {/* PLACEMENT CONFIRMATION */}
             {
