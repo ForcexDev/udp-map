@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback, FC } from 'react';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { CAMPUSES, CATEGORIES, FACULTIES } from '../config/constants';
+import { CAMPUSES, CATEGORIES, FACULTIES, ANONYMOUS_USER } from '../config/constants';
 import { Post, User, CategoryId, Faculty } from '../config/types';
 import Login from '../components/Login';
 import Sidebar from '../components/Sidebar';
@@ -20,6 +20,12 @@ import { Cpu } from 'lucide-react';
 
 const App: FC = () => {
   const { user, loading, needsProfileSetup, pendingSession, login, completeProfile, logout } = useUserSession();
+  const [continueAsGuest, setContinueAsGuest] = useState(false);
+
+  // Effective user: real authenticated user OR anonymous placeholder
+  const isAnonymous = !user && continueAsGuest;
+  const effectiveUser: User | null = user ?? (continueAsGuest ? ANONYMOUS_USER : null);
+
   const {
     posts,
     chatMessages,
@@ -63,6 +69,7 @@ const App: FC = () => {
 
   const handleLogout = useCallback(() => {
     logout();
+    setContinueAsGuest(false);
     localStorage.removeItem('udp_onboarding_done');
   }, [logout]);
 
@@ -80,8 +87,9 @@ const App: FC = () => {
   const campusFaculties = useMemo(() => FACULTIES.filter(f => f.campusId === currentCampusId || f.id === 'global'), [currentCampusId]);
 
   const filteredPosts = useMemo(() => {
+    if (isAnonymous) return []; // Anonymous users see no pins
     return posts.filter(p => activeCategories.includes(p.categoryId) && (activeFacultyId === 'global' || p.facultyId === activeFacultyId));
-  }, [posts, activeCategories, activeFacultyId]);
+  }, [posts, activeCategories, activeFacultyId, isAnonymous]);
 
   const locateUser = useCallback(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -114,7 +122,7 @@ const App: FC = () => {
 
 
 
-  const handleTogglePinWrapped = useCallback((postId: string) => handleTogglePin(postId, !!user?.isAdmin), [handleTogglePin, user]);
+  const handleTogglePinWrapped = useCallback((postId: string) => handleTogglePin(postId, !!effectiveUser?.isAdmin), [handleTogglePin, effectiveUser]);
 
   const handleSendMessage = useCallback(async (text: string) => {
     if (!text.trim() || !user) return;
@@ -180,8 +188,16 @@ const App: FC = () => {
     );
   }
 
-  if (!user) return <Login onLogin={login} lang={lang} />;
-  if (showOnboarding) return <Onboarding onComplete={() => setShowOnboarding(false)} lang={lang} />;
+  if (!effectiveUser) return (
+    <Login
+      onLogin={login}
+      lang={lang}
+      onContinueAsGuest={() => setContinueAsGuest(true)}
+    />
+  );
+
+  // Skip onboarding for anonymous users
+  if (!isAnonymous && showOnboarding) return <Onboarding onComplete={() => setShowOnboarding(false)} lang={lang} />;
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-white select-none antialiased">
@@ -191,7 +207,7 @@ const App: FC = () => {
       )}
 
       <MapView
-        user={user}
+        user={effectiveUser}
         lang={lang}
         filteredPosts={filteredPosts}
         userVotes={userVotes}
@@ -199,6 +215,7 @@ const App: FC = () => {
         campusFaculties={campusFaculties}
         activeFacultyId={activeFacultyId}
         isPlacingMode={isPlacingMode}
+        isAnonymous={isAnonymous}
         userLocation={userLocation}
         mapRef={mapRef}
         onVote={handleVote}
@@ -211,13 +228,15 @@ const App: FC = () => {
         onCancelPlacement={cancelPlacement}
         onConfirmPlacement={confirmPlacement}
         onExploreFaculty={(fac) => setExplorerFaculty(fac)}
+        onLogin={login}
       />
 
+      {!isAnonymous && (
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onLogout={handleLogout}
-        user={user}
+        user={effectiveUser}
         activeFaculty={campusFaculties.find(f => f.id === activeFacultyId) || campusFaculties[0]}
         chatMessages={chatMessages.filter(m => m.facultyId === activeFacultyId)}
         onSendMessage={handleSendMessage}
@@ -228,10 +247,11 @@ const App: FC = () => {
         lang={lang}
         onToggleLang={toggleLang}
       />
+      )}
 
       {showAddModal && pendingCoords && (
         <AddPostModal
-          user={user}
+          user={effectiveUser}
           coords={pendingCoords}
           facultyId={activeFacultyId}
           lang={lang}
@@ -264,11 +284,13 @@ const App: FC = () => {
         <FacultyExplorer
           faculty={explorerFaculty}
           posts={posts}
-          user={user}
+          user={effectiveUser}
           lang={lang}
           userVotes={userVotes}
           onVote={handleVote}
           onClose={() => setExplorerFaculty(null)}
+          isAnonymous={isAnonymous}
+          onLogin={login}
         />
       )}
     </div>

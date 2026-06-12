@@ -17,6 +17,7 @@ interface MapViewProps {
     campusFaculties: Faculty[];
     activeFacultyId: string;
     isPlacingMode: boolean;
+    isAnonymous?: boolean;
     userLocation: [number, number] | null;
     mapRef: MutableRefObject<L.Map | null>;
     onVote: (postId: string, type: 'up' | 'down') => void;
@@ -29,6 +30,7 @@ interface MapViewProps {
     onCancelPlacement: () => void;
     onConfirmPlacement: () => void;
     onExploreFaculty: (faculty: Faculty) => void;
+    onLogin?: () => void;
 }
 
 const MapView: FC<MapViewProps> = ({
@@ -40,6 +42,7 @@ const MapView: FC<MapViewProps> = ({
     campusFaculties,
     activeFacultyId,
     isPlacingMode,
+    isAnonymous = false,
     userLocation,
     mapRef,
     onVote,
@@ -51,7 +54,8 @@ const MapView: FC<MapViewProps> = ({
     onStartPlacing,
     onCancelPlacement,
     onConfirmPlacement,
-    onExploreFaculty
+    onExploreFaculty,
+    onLogin
 }) => {
     return (
         <div className="w-full h-full relative overflow-hidden">
@@ -129,12 +133,14 @@ const MapView: FC<MapViewProps> = ({
                 campusFaculties={campusFaculties}
                 activeFacultyId={activeFacultyId}
                 isPlacingMode={isPlacingMode}
+                isAnonymous={isAnonymous}
                 onSidebarOpen={onSidebarOpen}
                 onFacultySelect={onFacultySelect}
                 onLocateUser={onLocateUser}
                 onStartPlacing={onStartPlacing}
                 onCancelPlacement={onCancelPlacement}
                 onConfirmPlacement={onConfirmPlacement}
+                onLogin={onLogin}
             />
         </div>
     );
