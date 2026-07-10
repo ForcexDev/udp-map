@@ -1,0 +1,351 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Paleta institucional UDP (rojo Pantone 201C aprox.) */
+  --color-udp-50: #fdf2f4;
+  --color-udp-100: #fbe5e9;
+  --color-udp-200: #f6ccd5;
+  --color-udp-300: #efa3b3;
+  --color-udp-400: #e4708b;
+  --color-udp-500: #d34467;
+  --color-udp-600: #b92e50;
+  --color-udp-700: #9d2235;
+  --color-udp-800: #831f31;
+  --color-udp-900: #701d2e;
+  --color-udp-950: #3e0b15;
+}
+
+/* ── Variables globales ─────────────────────────────────── */
+:root {
+  --udp-red: #D41F2D;
+  --udp-red-dark: #b11a25;
+  --udp-red-glow: rgba(212, 31, 45, 0.35);
+  --sidebar-width: 380px;
+}
+
+/* ── Base ────────────────────────────────────────────────── */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Glass Effects ──────────────────────────────────────── */
+.glass-hud {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .glass-hud {
+  background: rgba(23, 23, 23, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-premium {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+
+/* ── Shadows ────────────────────────────────────────────── */
+.premium-shadow {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.12), 0 2px 8px -2px rgba(0, 0, 0, 0.06);
+}
+
+.dark .premium-shadow {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), 0 2px 8px -2px rgba(0, 0, 0, 0.3);
+}
+
+.red-shadow {
+  box-shadow: 0 12px 28px -6px rgba(212, 31, 45, 0.35);
+}
+
+.shadow-3xl {
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Animations ─────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes marker-drop {
+  0% { transform: translateY(-30px) scale(0.5); opacity: 0; }
+  60% { transform: translateY(4px) scale(1.05); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(200%); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-out-right {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes slide-in-bottom {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes reticle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes reticle-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.25; }
+  50% { transform: scale(1.6); opacity: 0; }
+}
+
+.animate-shimmer { animation: shimmer 2.5s infinite linear; }
+.animate-scan { animation: scan 2s ease-in-out infinite; }
+.animate-fade-up { animation: fade-up 0.5s ease-out both; }
+.animate-fade-in { animation: fade-in 0.3s ease-out both; }
+.animate-scale-in { animation: scale-in 0.3s ease-out both; }
+.animate-slide-in-right { animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-in-bottom { animation: slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.reticle-float { animation: reticle-float 2s ease-in-out infinite; }
+.reticle-pulse-ring { animation: reticle-pulse 2s ease-in-out infinite; }
+
+/* ── Map Marker Styles ──────────────────────────────────── */
+/* ⚠️ MapLibre posiciona el marcador vía `style.transform` (translate).
+   NUNCA usar transform/translate/rotate/scale (ni transiciones sobre
+   ellos) en .pin-marker: se componen con ese translate y el marcador
+   "salta" lejos del cursor. Efectos de hover solo con filter/shadow. */
+.pin-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--pin-color, #9d2235);
+  border: 2px solid white;
+  box-shadow:
+    0 3px 8px rgb(0 0 0 / 0.22),
+    0 1px 3px rgb(0 0 0 / 0.12);
+  cursor: pointer;
+  transition: opacity 300ms ease, filter 150ms ease, box-shadow 150ms ease;
+}
+.pin-marker:hover {
+  filter: brightness(1.1) saturate(1.1);
+  box-shadow:
+    0 5px 16px rgb(0 0 0 / 0.3),
+    0 2px 4px rgb(0 0 0 / 0.15);
+}
+.pin-marker--selected {
+  outline: 3px solid var(--color-udp-400);
+  outline-offset: 1px;
+  box-shadow:
+    0 4px 12px rgb(0 0 0 / 0.25),
+    0 0 0 4px rgba(212, 31, 45, 0.12);
+}
+.pin-marker--fading {
+  /* El filtro de opacidad se multiplica con la opacidad inline que pone JS, 
+     creando un "respiro" suave que simula desvanecimiento constante */
+  animation: pin-breathe 2s ease-in-out infinite;
+}
+
+/* El pseudo-elemento crea la onda expansiva (sonar) suave sin interferir con MapLibre */
+.pin-marker--fading::after {
+  content: '';
+  position: absolute;
+  inset: -2px; /* para compensar el borde blanco */
+  border-radius: 50%;
+  border: 2px solid var(--pin-color, #9d2235);
+  z-index: -1;
+  pointer-events: none;
+  animation: pin-sonar 1.5s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+@keyframes pin-breathe {
+  0%, 100% { filter: opacity(1); }
+  50% { filter: opacity(0.5); }
+}
+
+@keyframes pin-sonar {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.pin-marker svg {
+  width: 13px;
+  height: 13px;
+  fill: white;
+  pointer-events: none;
+}
+
+/* (Faculty cards removed — replaced by search bar in MapPage) */
+
+/* ── User Location Pulse ────────────────────────────────── */
+.user-location-dot {
+  position: relative;
+}
+
+.user-location-dot::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%) scale(0.8);
+  border-radius: 50%;
+  background: var(--udp-red);
+  opacity: 0.3;
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Sidebar ────────────────────────────────────────────── */
+.sidebar-overlay {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.sidebar-panel {
+  animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Scrollbar Utilities ────────────────────────────────── */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Bottom Nav (premium) ───────────────────────────────── */
+.bottom-nav-link {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: rgb(115 115 115);
+  transition: color 0.2s ease;
+  text-decoration: none;
+}
+
+.bottom-nav-link:hover {
+  color: rgb(64 64 64);
+}
+
+.dark .bottom-nav-link {
+  color: rgb(163 163 163);
+}
+
+.dark .bottom-nav-link:hover {
+  color: rgb(212 212 212);
+}
+
+.bottom-nav-link.active {
+  color: var(--udp-red);
+}
+
+.bottom-nav-link.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 3px;
+  background: var(--udp-red);
+  border-radius: 0 0 3px 3px;
+}
+
+/* ── Placement Reticle ──────────────────────────────────── */
+.reticle-float {
+  animation: reticle-float 2s ease-in-out infinite;
+}
+
+.reticle-pulse-ring {
+  animation: reticle-pulse 2s ease-in-out infinite;
+}
+
+/* ── Attribution ────────────────────────────────────────── */
+.leaflet-control-attribution,
+.maplibregl-ctrl-attrib {
+  font-size: 8px !important;
+  opacity: 0.5;
+}
+
+.maplibregl-map {
+  font: inherit;
+}
+
+/* ── Dark Mode Map Filter ──
+   Invertimos el mapa claro (que sí tiene POIs) para simular el modo oscuro,
+   dejando intactos los marcadores (que no son parte del canvas). */
+.dark .maplibregl-canvas {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.92);
+}
+
+
+/* ── Safe areas ─────────────────────────────────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
