@@ -1,0 +1,355 @@
+import { supabase, PHOTOS_BUCKET } from '@/shared/lib/supabase'
+import type { Pin, PinComment, PinType } from '@/shared/types/database'
+import type { Bounds } from '@/shared/utils/geo'
+import { isInBounds } from '@/shared/utils/geo'
+import { expiresAtFromTtl } from '@/shared/utils/expiry'
+import { categoryById } from '@/shared/data/campusData'
+import { facultyIdAt } from '@/shared/data/facultyPerimeters'
+import type { PinFilters } from '@/shared/stores/filterStore'
+import { compressImage, photoStoragePath } from './photos'
+import { demoDb, demoAddPhotos, demoRecountVotes } from './demoStore'
+
+export interface CreatePinInput {
+  type: PinType
+  title: string
+  description: string | null
+  categoryId: string | null
+  facultyId: string | null
+  lat: number
+  lng: number
+  userId: string
+  userName: string
+  isOfficial?: boolean
+}
+
+const nowIso = () => new Date().toISOString()
+
+function isLivePin(p: Pin, now = Date.now()): boolean {
+  if (p.is_permanent || !p.expires_at) return true
+  return new Date(p.expires_at).getTime() > now
+}
+
+// ── Lectura paginada/filtrada por bounds (plan §7: no traer todo) ──
+
+export async function fetchPins(bounds: Bounds | null, filters: PinFilters): Promise<Pin[]> {
+  if (!supabase) {
+    return demoDb.pins.filter(
+      (p) =>
+        isLivePin(p) &&
+        filters.types.includes(p.type) &&
+        (!filters.categoryId || p.category_id === filters.categoryId) &&
+        (!filters.facultyId || p.faculty_id === filters.facultyId) &&
+        (!bounds || isInBounds(p, bounds)),
+    )
+  }
+
+  let query = supabase
+    .from('pins')
+    .select('*, pin_photos(*), profiles!pins_creator_id_fkey(name)')
+    .in('type', filters.types)
+    .or(`is_permanent.eq.true,expires_at.gt.${nowIso()}`)
+    .order('created_at', { ascending: false })
+    .limit(300)
+
+  if (bounds) {
+    query = query
+      .gte('lat', bounds.south)
+      .lte('lat', bounds.north)
+      .gte('lng', bounds.west)
+      .lte('lng', bounds.east)
+  }
+  if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
+  if (filters.facultyId) query = query.eq('faculty_id', filters.facultyId)
+
+  try {
+    const { data, error } = await query
+    if (error) {
+      console.error('Error fetching pins from Supabase:', error)
+      return []
+    }
+    
+    type PinRow = Pin & { profiles?: { name: string | null } | null | { name: string | null }[] }
+    return (data ?? []).map((row) => {
+      const { profiles, ...p } = row as PinRow
+      const creatorName = Array.isArray(profiles) ? profiles[0]?.name : profiles?.name
+      
+      return {
+        ...p,
+        creator_name: creatorName ?? null,
+      }
+    }) as Pin[]
+  } catch (err) {
+    console.error('Unexpected error fetching pins:', err)
+    return []
+  }
+}
+
+// ── Creación con N fotos (compresión + manejo de error + UUID) ──
+
+export async function createPin(input: CreatePinInput, photos: File[]): Promise<Pin> {
+  const category = input.categoryId ? categoryById(input.categoryId) : undefined
+  const isPlace = input.type === 'place'
+  const expires_at = isPlace ? null : expiresAtFromTtl(category?.ttl_hours ?? 24)
+  // Cluster automático por perímetro: si el usuario no eligió facultad y el
+  // pin cae dentro de un perímetro trazado (hoy solo Ingeniería), se asigna solo.
+  const facultyId = input.facultyId !== undefined ? input.facultyId : facultyIdAt(input.lat, input.lng)
+
+  if (!supabase) {
+    const pin: Pin = {
+      id: crypto.randomUUID(),
+      type: input.type,
+      title: input.title,
+      description: input.description,
+      category_id: input.categoryId,
+      faculty_id: facultyId,
+      lat: input.lat,
+      lng: input.lng,
+      floor: null,
+      building: null,
+      creator_id: input.userId,
+      votes_up: 0,
+      votes_down: 0,
+      reports: 0,
+      is_permanent: isPlace,
+      expires_at,
+      starts_at: null,
+      ends_at: null,
+      is_official: input.isOfficial ?? false,
+      created_at: nowIso(),
+      pin_photos: [],
+    }
+    demoDb.pins.unshift(pin)
+    demoAddPhotos(pin.id, photos)
+    return pin
+  }
+
+  const { data, error } = await supabase
+    .from('pins')
+    .insert({
+      type: input.type,
+      title: input.title,
+      description: input.description,
+      category_id: input.categoryId,
+      faculty_id: facultyId,
+      lat: input.lat,
+      lng: input.lng,
+      creator_id: input.userId,
+      is_permanent: isPlace,
+      expires_at,
+      is_official: input.isOfficial ?? false,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  const pin = data as Pin
+
+  // Subida de N fotos; si una falla, el pin queda creado y se reporta el error
+  for (const file of photos) {
+    const { blob, width, height } = await compressImage(file)
+    const path = photoStoragePath(input.userId)
+    const { error: upErr } = await supabase.storage
+      .from(PHOTOS_BUCKET)
+      .upload(path, blob, { contentType: 'image/jpeg' })
+    if (upErr) throw upErr
+    const { data: pub } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path)
+    const { error: photoErr } = await supabase
+      .from('pin_photos')
+      .insert({ pin_id: pin.id, url: pub.publicUrl, width, height })
+    if (photoErr) throw photoErr
+  }
+  return pin
+}
+
+export async function updatePin(pinId: string, input: Partial<CreatePinInput>): Promise<void> {
+  if (!supabase) {
+    const pin = demoDb.pins.find((p) => p.id === pinId)
+    if (pin) {
+      if (input.title !== undefined) pin.title = input.title
+      if (input.description !== undefined) pin.description = input.description
+      if (input.categoryId !== undefined) pin.category_id = input.categoryId
+      if (input.facultyId !== undefined) pin.faculty_id = input.facultyId
+      if (input.type !== undefined) pin.type = input.type
+      if (input.isOfficial !== undefined) pin.is_official = input.isOfficial
+    }
+    return
+  }
+  const { error } = await supabase
+    .from('pins')
+    .update({
+      title: input.title,
+      description: input.description,
+      category_id: input.categoryId,
+      faculty_id: input.facultyId,
+      type: input.type,
+      ...(input.isOfficial !== undefined ? { is_official: input.isOfficial } : {})
+    })
+    .eq('id', pinId)
+  if (error) throw error
+}
+
+// ── Borrado (dueño o mod/admin vía RLS) + limpieza de Storage ──
+
+export async function deletePin(pin: Pin): Promise<void> {
+  if (!supabase) {
+    demoDb.pins = demoDb.pins.filter((p) => p.id !== pin.id)
+    demoDb.comments.delete(pin.id)
+    demoDb.votes.delete(pin.id)
+    return
+  }
+  // Borrar archivos del Storage ANTES del row (evita fugas, plan §0 auditoría)
+  const paths = (pin.pin_photos ?? [])
+    .map((ph) => ph.url.split(`/${PHOTOS_BUCKET}/`)[1])
+    .filter((p): p is string => Boolean(p))
+  if (paths.length > 0) await supabase.storage.from(PHOTOS_BUCKET).remove(paths)
+  const { error } = await supabase.from('pins').delete().eq('id', pin.id)
+  if (error) throw error
+}
+
+// ── Votos: RPC atómico (1 voto por usuario, reemplaza localStorage v1) ──
+
+export async function votePin(pinId: string, value: 1 | -1, userId: string): Promise<void> {
+  if (!supabase) {
+    const pin = demoDb.pins.find((p) => p.id === pinId)
+    if (!pin) return
+    const votes = demoDb.votes.get(pinId) ?? new Map<string, 1 | -1>()
+    votes.set(userId, value)
+    demoDb.votes.set(pinId, votes)
+    demoRecountVotes(pin)
+    return
+  }
+  const { error } = await supabase.rpc('vote_pin', { p_pin: pinId, p_value: value })
+  if (error) throw error
+}
+
+// ── Permanente (solo admin, RPC security definer) ──
+
+export async function makePermanent(pinId: string): Promise<void> {
+  if (!supabase) {
+    const pin = demoDb.pins.find((p) => p.id === pinId)
+    if (pin) {
+      pin.is_permanent = true
+      pin.expires_at = null
+    }
+    return
+  }
+  const { error } = await supabase.rpc('set_pin_permanent', { p_pin: pinId })
+  if (error) throw error
+}
+
+// ── Reubicación (moderador/admin) ──
+
+export async function updatePinLocation(pinId: string, lat: number, lng: number): Promise<void> {
+  const facultyId = facultyIdAt(lat, lng)
+  if (!supabase) {
+    const pin = demoDb.pins.find((p) => p.id === pinId)
+    if (pin) {
+      pin.lat = lat
+      pin.lng = lng
+      pin.faculty_id = facultyId
+    }
+    return
+  }
+  const { error } = await supabase
+    .from('pins')
+    .update({ lat, lng, faculty_id: facultyId })
+    .eq('id', pinId)
+  if (error) throw error
+}
+
+// ── Favoritos ──
+
+export async function fetchFavoriteIds(userId: string): Promise<string[]> {
+  if (!supabase) {
+    return [...demoDb.favorites]
+      .filter((k) => k.startsWith(`${userId}:`))
+      .map((k) => k.split(':')[1])
+  }
+  const { data, error } = await supabase.from('favorites').select('pin_id').eq('user_id', userId)
+  if (error) throw error
+  return (data ?? []).map((r) => r.pin_id as string)
+}
+
+export async function toggleFavorite(pinId: string, userId: string, next: boolean): Promise<void> {
+  if (!supabase) {
+    const key = `${userId}:${pinId}`
+    if (next) demoDb.favorites.add(key)
+    else demoDb.favorites.delete(key)
+    return
+  }
+  if (next) {
+    const { error } = await supabase.from('favorites').insert({ pin_id: pinId, user_id: userId })
+    if (error) throw error
+  } else {
+    const { error } = await supabase
+      .from('favorites')
+      .delete()
+      .eq('pin_id', pinId)
+      .eq('user_id', userId)
+    if (error) throw error
+  }
+}
+
+// ── Comentarios paginados ──
+
+export const COMMENTS_PAGE_SIZE = 20
+
+export async function fetchComments(pinId: string, before?: string): Promise<PinComment[]> {
+  if (!supabase) {
+    const all = demoDb.comments.get(pinId) ?? []
+    return [...all].sort((a, b) => a.created_at.localeCompare(b.created_at))
+  }
+  let query = supabase
+    .from('pin_comments')
+    .select('*, profiles(name)')
+    .eq('pin_id', pinId)
+    .order('created_at', { ascending: false })
+    .limit(COMMENTS_PAGE_SIZE)
+  if (before) query = query.lt('created_at', before)
+  const { data, error } = await query
+  if (error) throw error
+  type Row = PinComment & { profiles: { name: string | null } | null }
+  return ((data ?? []) as Row[])
+    .map(({ profiles, ...c }) => ({ ...c, author_name: profiles?.name ?? null }))
+    .reverse()
+}
+
+export async function addComment(
+  pinId: string,
+  body: string,
+  userId: string,
+  userName: string,
+): Promise<PinComment> {
+  if (!supabase) {
+    const comment: PinComment = {
+      id: crypto.randomUUID(),
+      pin_id: pinId,
+      author_id: userId,
+      author_name: userName,
+      body,
+      created_at: nowIso(),
+    }
+    const list = demoDb.comments.get(pinId) ?? []
+    demoDb.comments.set(pinId, [...list, comment])
+    return comment
+  }
+  const { data, error } = await supabase
+    .from('pin_comments')
+    .insert({ pin_id: pinId, author_id: userId, body })
+    .select()
+    .single()
+  if (error) throw error
+  return { ...(data as PinComment), author_name: userName }
+}
+
+export async function deleteComment(commentId: string, pinId: string): Promise<void> {
+  if (!supabase) {
+    const list = demoDb.comments.get(pinId) ?? []
+    demoDb.comments.set(pinId, list.filter(c => c.id !== commentId))
+    return
+  }
+  const { error } = await supabase
+    .from('pin_comments')
+    .delete()
+    .eq('id', commentId)
+  if (error) throw error
+}
