@@ -1,8 +1,0 @@
-{
-  "name": "UDPmap",
-  "description": "Una plataforma interactiva para la comunidad de la Universidad Diego Portales donde los estudiantes pueden compartir y descubrir datos útiles en los campus, desde enchufes hasta los mejores baños.",
-  "requestFramePermissions": [
-    "camera",
-    "geolocation"
-  ]
-}
