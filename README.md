@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📍 UDP Map v2
+# 📍 UDP Map
 
 **Mapa colaborativo de pines, reportes y utilidades para la Universidad Diego Portales**
 
