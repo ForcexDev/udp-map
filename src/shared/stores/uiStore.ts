@@ -18,6 +18,10 @@ interface UIState {
   openLoginModal: () => void
   closeLoginModal: () => void
 
+  tutorialOpen: boolean
+  openTutorial: () => void
+  closeTutorial: () => void
+
   createModalOpen: boolean
   pinToEdit: string | null
   openCreateModal: (pinId?: string) => void
@@ -90,6 +94,13 @@ export const useUIStore = create<UIState>((set, get) => {
     loginModalOpen: false,
     openLoginModal: () => set({ loginModalOpen: true }),
     closeLoginModal: () => set({ loginModalOpen: false }),
+
+    tutorialOpen: localStorage.getItem('udpmap.tutorial') !== 'true',
+    openTutorial: () => set({ tutorialOpen: true }),
+    closeTutorial: () => {
+      localStorage.setItem('udpmap.tutorial', 'true')
+      set({ tutorialOpen: false })
+    },
 
     createModalOpen: false,
     pinToEdit: null,

@@ -501,6 +501,8 @@ Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
 - Menú del casino + precios del día · Marketplace (apuntes/libros) · Buscar compañeros por ramo ·
   Horario de clases + "dónde está mi próxima sala" · Calendario académico oficial · Chat directo ·
   Pines colaborativos con varias fotos de distintos usuarios.
+- **Perfiles Públicos:** Al hacer clic en el nombre de un usuario en un pin o comentario, desplegar su perfil (karma, likes, rol, foto).
+- **Distintivos de Moderación:** Badges e indicadores visuales junto al nombre para moderadores y administradores en pines y comentarios.
 
 ---
 
