@@ -4,7 +4,7 @@ import { MapView } from './MapView'
 import '@/shared/lib/i18n'
 
 // Mock maplibre-gl
-const mockMapEvents = new Map<string, Function[]>()
+const mockMapEvents = new Map<string, (() => void)[]>()
 
 const mockMapInstance = {
   on: vi.fn((_event, cb) => {

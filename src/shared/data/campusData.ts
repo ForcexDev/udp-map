@@ -7,8 +7,8 @@ import { FACULTY_PERIMETERS } from './facultyPerimeters'
 // el MODO DEMO (sin Supabase) y sirve de fuente para el seed.
 
 export const CAMPUSES: Campus[] = [
-  { id: 'ejercito', name: 'Campus Ejército', lat: -33.45129, lng: -70.66103 },
-  { id: 'republica', name: 'Campus República', lat: -33.44961, lng: -70.66442 },
+  { id: 'ejercito', name: 'Campus Centro', lat: -33.45129, lng: -70.66103 },
+  { id: 'republica', name: 'Campus República', lat: -33.449695, lng: -70.667732 },
   { id: 'huechuraba', name: 'Campus Huechuraba', lat: -33.39337, lng: -70.61283 },
 ]
 

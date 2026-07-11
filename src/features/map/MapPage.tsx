@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2 } from 'lucide-react'
+import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useGuard } from '@/features/auth/useGuard'
@@ -58,12 +58,23 @@ export function MapPage() {
   const openSidebar = useSidebarStore((s) => s.open)
   const queryClient = useQueryClient()
 
+  const handleSelectCampus = (id: string) => {
+    setCampusId(id)
+    const campus = CAMPUSES.find((c) => c.id === id)
+    if (campus) {
+      window.dispatchEvent(
+        new CustomEvent('faculty-flyto', { detail: { lat: campus.lat, lng: campus.lng } })
+      )
+    }
+  }
+
   const userLocation = useUserLocation()
   const [route, setRoute] = useState<WalkingRoute | null>(null)
 
   // Faculty search state
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [campusDropdownOpen, setCampusDropdownOpen] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
 
   const selectedPin = pins.find((p) => p.id === selectedPinId) ?? null
@@ -367,29 +378,77 @@ export function MapPage() {
         </div>
       )}
 
-      {/* ── 2D / 3D Selector ───────────────────────────── */}
+      {/* ── HUD Controls (Campus + 2D/3D Selectors) ───────────────────────────── */}
       {!pickingLocation && !movingPinId && !selectedPin && !selectedFacultyId && (
-        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-1 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800 transition-all duration-300">
-          <button
-            onClick={() => setViewMode('2d')}
-            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
-              viewMode === '2d'
-                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
-                : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
-          >
-            2D
-          </button>
-          <button
-            onClick={() => setViewMode('3d')}
-            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
-              viewMode === '3d'
-                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
-                : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
-          >
-            3D
-          </button>
+        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-2 transition-all duration-300">
+          {/* Campus Selector Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setCampusDropdownOpen(!campusDropdownOpen)}
+              className="flex items-center gap-2 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800 text-[11px] font-black uppercase tracking-wider text-neutral-800 dark:text-neutral-200 transition-all duration-200 active:scale-95 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800"
+            >
+              <span>Sede: {campusId === 'ejercito' ? 'Centro' : campusId === 'republica' ? 'República' : 'Huechuraba'}</span>
+              <ChevronDown size={14} className={`transition-transform duration-200 ${campusDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {campusDropdownOpen && (
+              <>
+                {/* Backdrop to close when clicking outside */}
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setCampusDropdownOpen(false)}
+                />
+                
+                {/* Pop up menu (above the button) */}
+                <div className="absolute bottom-full mb-2 right-0 z-50 w-44 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md p-1.5 rounded-2xl shadow-2xl border border-neutral-100 dark:border-neutral-800 flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  {CAMPUSES.map((c) => {
+                    const displayName = c.id === 'ejercito' ? 'Centro' : c.id === 'republica' ? 'República' : 'Huechuraba'
+                    const isActive = campusId === c.id
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => {
+                          handleSelectCampus(c.id)
+                          setCampusDropdownOpen(false)
+                        }}
+                        className={`w-full text-left px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                          isActive
+                            ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md'
+                            : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/50 hover:text-neutral-900 dark:hover:text-white'
+                        }`}
+                      >
+                        {displayName}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 2D / 3D Selector */}
+          <div className="flex items-center gap-1 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-1 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800">
+            <button
+              onClick={() => setViewMode('2d')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+                viewMode === '2d'
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
+                  : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+              }`}
+            >
+              2D
+            </button>
+            <button
+              onClick={() => setViewMode('3d')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+                viewMode === '3d'
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
+                  : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+              }`}
+            >
+              3D
+            </button>
+          </div>
         </div>
       )}
 
