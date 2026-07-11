@@ -27,7 +27,7 @@ async function fetchProfile(userId: string): Promise<{ role: Role; name: string 
   if (!supabase) return { role: 'guest', name: null }
   const { data } = await supabase.from('profiles').select('role, name').eq('id', userId).single()
   
-  let role = (data?.role as Role | undefined) ?? 'student'
+  const role = (data?.role as Role | undefined) ?? 'student'
   let name = data?.name as string | undefined
 
   // Auto-format full uppercase names (like Google Auth defaults)
