@@ -8,6 +8,8 @@ import { useGuard } from '@/features/auth/useGuard'
 import { usePins } from '@/features/pins/usePins'
 import { PinDetail } from '@/features/pins/PinDetail'
 import { CreatePinModal } from '@/features/pins/CreatePinModal'
+import { TutorialModal } from './TutorialModal'
+import { ProfileSetupModal } from '@/features/auth/ProfileSetupModal'
 import { updatePinLocation } from '@/features/pins/api'
 import { CAMPUSES, FACULTIES, DEMO_FLOOR_PLANS } from '@/shared/data/campusData'
 import { formatDistance, type LatLng } from '@/shared/utils/geo'
@@ -364,6 +366,8 @@ export function MapPage() {
       )}
       <FacultyDetail />
       <CreatePinModal />
+      <TutorialModal />
+      <ProfileSetupModal />
     </div>
   )
 }
