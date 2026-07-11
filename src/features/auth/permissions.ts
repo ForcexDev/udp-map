@@ -40,7 +40,7 @@ const MIN_ROLE: Record<Action, Role> = {
   'pin.vote': 'student',
   'pin.favorite': 'student',
   'pin.delete.own': 'student',
-  'pin.makePermanent': 'moderator',
+  'pin.makePermanent': 'admin',
   'pin.moderate': 'moderator',
   'pin.update.location': 'moderator',
   'event.rsvp': 'student',
