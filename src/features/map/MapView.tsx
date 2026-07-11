@@ -93,7 +93,7 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       // (impide además que se pidan tiles fuera de la zona).
       maxBounds: BOUNDARY_MAX_BOUNDS,
       minZoom: BOUNDARY_MIN_ZOOM,
-      attributionControl: { compact: true },
+      attributionControl: false,
       maxPitch: show3D ? 85 : 0,
       minPitch: 0,
       pitch: show3D ? 45 : 0,
@@ -108,6 +108,7 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       // cerca del medio del mapa, usando en su lugar rotación puramente lineal.
       aroundCenter: false,
     } as unknown as maplibregl.MapOptions)
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left')
     // No native controls — our custom FABs handle navigation/geolocation
 
     if (!show3D && map.touchPitch) {
@@ -342,6 +343,21 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       marker.setLngLat([pin.lng, pin.lat])
     }
   }, [pins, selectedPinId])
+
+  // ── Centrado automático de Pin ──
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !selectedPinId) return
+    const pin = pins.find((p) => p.id === selectedPinId)
+    if (pin) {
+      map.flyTo({
+        center: [pin.lng, pin.lat],
+        zoom: 18,
+        duration: 800
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPinId])
 
   // ── Marcador del usuario (punto azul) ──
   useEffect(() => {

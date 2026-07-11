@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { PinBadges } from './PinBadges'
 import { CommentSection } from './CommentSection'
 import { usePinActions } from './usePinActions'
+import { DraggableBottomSheet } from '@/shared/ui/DraggableBottomSheet'
 
 interface PinDetailProps {
   pin: Pin
@@ -58,10 +59,12 @@ export function PinDetail({ pin, isFavorite }: PinDetailProps) {
 
   return (
     <>
-      <aside
-        aria-label={pin.title}
-        className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 max-h-[60dvh] sm:max-h-[calc(100dvh-6rem)] overflow-y-auto no-scrollbar rounded-t-[22px] glass-hud shadow-3xl p-5 animate-slide-in-bottom sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-96 sm:rounded-[22px]"
+      <DraggableBottomSheet
+        isOpen={true}
+        onClose={() => selectPin(null)}
+        ariaLabel={pin.title}
       >
+      <div className="flex flex-col px-5 pb-6 pt-1">
       <div className="mb-2 flex items-start justify-between gap-3">
         <h2 className="text-base font-semibold leading-tight">{pin.title}</h2>
         <button
@@ -215,7 +218,8 @@ export function PinDetail({ pin, isFavorite }: PinDetailProps) {
 
       <hr className="my-3 border-neutral-200 dark:border-neutral-800" />
       <CommentSection pinId={pin.id} />
-    </aside>
+      </div>
+      </DraggableBottomSheet>
 
     <ConfirmDialog
       open={showDeleteConfirm}
