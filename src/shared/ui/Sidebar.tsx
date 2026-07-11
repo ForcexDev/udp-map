@@ -2,21 +2,21 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router-dom'
 import {
-  X, MapPin, Moon, Sun, LogOut, Search,
-  CalendarDays, MessagesSquare, UserRound, Globe, HelpCircle, Monitor
+  X, MapPin, LogOut, Search,
+  CalendarDays, MessagesSquare, UserRound, Globe, HelpCircle
 } from 'lucide-react'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { setLanguage } from '@/shared/lib/i18n'
 import { CAMPUSES, FACULTIES } from '@/shared/data/campusData'
+import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher'
 
 export function Sidebar() {
   const { t, i18n } = useTranslation()
   const isOpen = useSidebarStore((s) => s.isOpen)
   const close = useSidebarStore((s) => s.close)
-  const theme = useUIStore((s) => s.theme)
-  const setTheme = useUIStore((s) => s.setTheme)
+
   const setCampusId = useUIStore((s) => s.setCampusId)
   const openLoginModal = useUIStore((s) => s.openLoginModal)
   const openTutorial = useUIStore((s) => s.openTutorial)
@@ -225,37 +225,7 @@ export function Sidebar() {
                 <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em] mb-4">
                   {t('common.theme')}
                 </h4>
-                <div className="flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl">
-                  {(['light', 'dark', 'system'] as const).map((tMode) => {
-                    const isActive = theme === tMode
-                    let label = ''
-                    let Icon = Sun
-                    if (tMode === 'light') {
-                      label = t('sidebar.themeLight', 'Claro')
-                      Icon = Sun
-                    } else if (tMode === 'dark') {
-                      label = t('sidebar.themeDark', 'Oscuro')
-                      Icon = Moon
-                    } else {
-                      label = t('sidebar.themeSystem', 'Sistema')
-                      Icon = Monitor
-                    }
-
-                    return (
-                      <button
-                        key={tMode}
-                        onClick={() => setTheme(tMode)}
-                        className={`flex-1 py-2.5 rounded-[14px] text-[11px] font-black tracking-wide transition-all flex items-center justify-center gap-2 ${
-                          isActive
-                            ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
-                            : 'text-neutral-400 dark:text-neutral-500'
-                        }`}
-                      >
-                        <Icon size={14} /> {label}
-                      </button>
-                    )
-                  })}
-                </div>
+                <ThemeSwitcher />
               </section>
 
               {/* Tutorial */}
