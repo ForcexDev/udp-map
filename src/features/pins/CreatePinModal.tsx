@@ -234,7 +234,7 @@ export function CreatePinModal() {
                 <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.photos')}</label>
                 <div className="flex flex-col gap-4">
                   {photos.length > 0 && (
-                    <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 no-scrollbar -mx-6 px-6 sm:mx-0 sm:px-0">
+                    <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 -mx-6 px-6 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-2 sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-700 sm:[&::-webkit-scrollbar-thumb]:rounded-full hover:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:hover:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-600">
                       {photos.map((file, i) => (
                         <div 
                           key={i} 
