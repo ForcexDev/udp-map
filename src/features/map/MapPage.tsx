@@ -169,8 +169,9 @@ export function MapPage() {
       let currentLoc: LatLng | null = null
       try {
         currentLoc = await requestLocation()
-      } catch (err: any) {
-        if (err.message === 'PERMISSION_DENIED') {
+      } catch (err) {
+        const error = err as Error
+        if (error.message === 'PERMISSION_DENIED') {
           showToast('Debes activar la ubicación en tu dispositivo o navegador.')
         } else {
           showToast('No se pudo obtener tu ubicación.')
@@ -196,7 +197,7 @@ export function MapPage() {
       try {
         const r = await getWalkingRoute(origin, { lat: routeTarget.lat, lng: routeTarget.lng }, accessibleRoute)
         if (!cancelled) setRoute(r)
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           setRoute(null)
           showToast(t('pin.routeError'))
@@ -209,7 +210,7 @@ export function MapPage() {
     return () => {
       cancelled = true
     }
-  }, [routeTarget, accessibleRoute, campusId, showToast, t, requestLocation])
+  }, [routeTarget, accessibleRoute, campusId, showToast, t, requestLocation, setRouteTarget])
 
   const movePin = useMutation({
     mutationFn: ({ lat, lng }: { lat: number; lng: number }) => {
