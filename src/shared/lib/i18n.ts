@@ -94,6 +94,9 @@ const es = {
       categories: 'Categorías Activas',
       darkMode: 'Modo Oscuro',
       lightMode: 'Modo Claro',
+      themeLight: 'Claro',
+      themeDark: 'Oscuro',
+      themeSystem: 'Sistema',
     },
     map: { campus: 'Campus' },
     events: {
@@ -229,6 +232,9 @@ const en = {
       categories: 'Active Categories',
       darkMode: 'Dark Mode',
       lightMode: 'Light Mode',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      themeSystem: 'System',
     },
     map: { campus: 'Campus' },
     events: {
