@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown } from 'lucide-react'
@@ -18,17 +18,53 @@ import { FacultyDetail } from './FacultyDetail'
 import { FiltersPanel } from './FiltersPanel'
 import { IndoorPanel } from './IndoorPanel'
 import { getWalkingRoute, type WalkingRoute } from './routing'
+import { isLocationOutOfBounds } from './campusBoundary'
 
-function useUserLocation(): LatLng | null {
+function useUserLocation() {
   const [loc, setLoc] = useState<LatLng | null>(null)
+  const [isTracking, setIsTracking] = useState(false)
+  const watchIdRef = useRef<number | null>(null)
+
+  const requestLocation = useCallback(async () => {
+    if (watchIdRef.current !== null && loc) return loc
+
+    return new Promise<LatLng | null>((resolve, reject) => {
+      const watchId = navigator.geolocation?.watchPosition(
+        (pos) => {
+          const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          setLoc(newLoc)
+          setIsTracking(true)
+          resolve(newLoc)
+        },
+        (err) => {
+          setLoc(null)
+          setIsTracking(false)
+          if (err.code === err.PERMISSION_DENIED) {
+            reject(new Error('PERMISSION_DENIED'))
+          } else {
+            reject(new Error('LOCATION_ERROR'))
+          }
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      )
+      
+      if (watchId !== undefined) {
+        watchIdRef.current = watchId
+      } else {
+        reject(new Error('NO_GEOLOCATION'))
+      }
+    })
+  }, [loc])
+
   useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => setLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setLoc(null),
-      { enableHighAccuracy: true, timeout: 8000 },
-    )
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation?.clearWatch(watchIdRef.current)
+      }
+    }
   }, [])
-  return loc
+
+  return { loc, isTracking, requestLocation }
 }
 
 export function MapPage() {
@@ -68,7 +104,7 @@ export function MapPage() {
     }
   }
 
-  const userLocation = useUserLocation()
+  const { loc: userLocation, isTracking, requestLocation } = useUserLocation()
   const [route, setRoute] = useState<WalkingRoute | null>(null)
 
   // Faculty search state
@@ -85,12 +121,17 @@ export function MapPage() {
 
   // Filter faculties for search dropdown
   const filteredFaculties = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
+    const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    const q = normalize(searchQuery.trim())
     const all = FACULTIES
     if (!q) return all
+    
     return all.filter((f) => {
       const name = i18n.language === 'en' ? f.name_en : f.name
-      return name.toLowerCase().includes(q)
+      const campus = CAMPUSES.find((c) => c.id === f.campus_id)
+      const campusName = campus ? campus.name : ''
+      
+      return normalize(name).includes(q) || normalize(campusName).includes(q)
     })
   }, [searchQuery, i18n.language])
 
@@ -117,27 +158,58 @@ export function MapPage() {
 
   // Calcular ruta
   useEffect(() => {
+    let cancelled = false
+
     if (!routeTarget) {
       setRoute(null)
       return
     }
-    const campus = CAMPUSES.find((c) => c.id === campusId) ?? CAMPUSES[0]
-    const origin = userLocation ?? { lat: campus.lat, lng: campus.lng }
-    let cancelled = false
-    getWalkingRoute(origin, { lat: routeTarget.lat, lng: routeTarget.lng }, accessibleRoute)
-      .then((r) => {
+
+    const calculate = async () => {
+      let currentLoc: LatLng | null = null
+      try {
+        currentLoc = await requestLocation()
+      } catch (err: any) {
+        if (err.message === 'PERMISSION_DENIED') {
+          showToast('Debes activar la ubicación en tu dispositivo o navegador.')
+        } else {
+          showToast('No se pudo obtener tu ubicación.')
+        }
+        setRouteTarget(null)
+        return
+      }
+      
+      if (cancelled) return
+
+      const campus = CAMPUSES.find((c) => c.id === campusId) ?? CAMPUSES[0]
+      let origin = { lat: campus.lat, lng: campus.lng }
+
+      if (currentLoc) {
+        if (isLocationOutOfBounds(currentLoc.lat, currentLoc.lng)) {
+          showToast(t('map.outOfBounds', 'Estás demasiado lejos del campus para trazar una ruta a pie.'))
+          setRouteTarget(null)
+          return
+        }
+        origin = currentLoc
+      }
+      
+      try {
+        const r = await getWalkingRoute(origin, { lat: routeTarget.lat, lng: routeTarget.lng }, accessibleRoute)
         if (!cancelled) setRoute(r)
-      })
-      .catch(() => {
+      } catch (err) {
         if (!cancelled) {
           setRoute(null)
           showToast(t('pin.routeError'))
         }
-      })
+      }
+    }
+
+    calculate()
+
     return () => {
       cancelled = true
     }
-  }, [routeTarget, accessibleRoute, userLocation, campusId, showToast, t])
+  }, [routeTarget, accessibleRoute, campusId, showToast, t, requestLocation])
 
   const movePin = useMutation({
     mutationFn: ({ lat, lng }: { lat: number; lng: number }) => {
@@ -159,7 +231,14 @@ export function MapPage() {
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <MapView pins={pins} route={route} floorPlan={floorPlan} userLocation={userLocation} />
+      <MapView 
+        pins={pins} 
+        route={route} 
+        floorPlan={floorPlan} 
+        userLocation={userLocation} 
+        isTrackingLocation={isTracking}
+        onRequestLocation={requestLocation}
+      />
 
       {/* ── TOP HUD ─────────────────────────────────────── */}
       {!pickingLocation && !movingPinId && (
@@ -366,7 +445,7 @@ export function MapPage() {
       )}
 
       {/* ── FAB: Create pin ───────────────────────────── */}
-      {!pickingLocation && !movingPinId && !selectedPin && !selectedFacultyId && (
+      {!pickingLocation && !movingPinId && !selectedPin && !selectedFacultyId && !routeTarget && (
         <div className="absolute bottom-[4.5rem] right-4 z-30">
           <button
             onClick={onCreateClick}
@@ -379,7 +458,7 @@ export function MapPage() {
       )}
 
       {/* ── HUD Controls (Campus + 2D/3D Selectors) ───────────────────────────── */}
-      {!pickingLocation && !movingPinId && !selectedPin && !selectedFacultyId && (
+      {!pickingLocation && !movingPinId && !selectedPin && !selectedFacultyId && !routeTarget && (
         <div className="absolute bottom-4 right-4 z-30 flex items-center gap-2 transition-all duration-300">
           {/* Campus Selector Dropdown */}
           <div className="relative">
@@ -453,7 +532,7 @@ export function MapPage() {
       )}
 
       {selectedPin && (
-        <PinDetail pin={selectedPin} isFavorite={favoriteIds.has(selectedPin.id)} />
+        <PinDetail pin={selectedPin} isFavorite={favoriteIds.has(selectedPin.id)} userLocation={userLocation} />
       )}
       <FacultyDetail />
       <CreatePinModal />
