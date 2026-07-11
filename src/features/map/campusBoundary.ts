@@ -19,7 +19,7 @@ const M_PER_DEG_LAT = 110_540
 const mPerDegLng = (lat: number) => 111_320 * Math.cos((lat * Math.PI) / 180)
 
 /** Margen (en metros) que se agrega alrededor del punto más externo. */
-const MARGIN_M = 3000
+const MARGIN_M = 5000
 
 /** Rectángulo mínimo (con margen) que envuelve todas las facultades/campus. */
 export const BOUNDARY_RECT = (() => {
@@ -58,11 +58,15 @@ export const BOUNDARY_MAX_BOUNDS: LngLatBoundsLike = [
   [BOUNDARY_RECT.east, BOUNDARY_RECT.north],
 ]
 
+export function isLocationOutOfBounds(lat: number, lng: number): boolean {
+  return lat < BOUNDARY_RECT.south || lat > BOUNDARY_RECT.north || lng < BOUNDARY_RECT.west || lng > BOUNDARY_RECT.east
+}
+
 /**
  * Zoom mínimo: no permitir alejar más allá de ver el rectángulo completo.
  * `maxBounds` ya impide mostrar el exterior; este valor es un piso de seguridad.
  */
-export const BOUNDARY_MIN_ZOOM = 12.5
+export const BOUNDARY_MIN_ZOOM = 11.0
 
 /** Anillo del rectángulo (lng/lat). `clockwise` para usarlo como agujero. */
 function rectRing(clockwise = false): [number, number][] {

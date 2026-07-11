@@ -12,13 +12,15 @@ import { PinBadges } from './PinBadges'
 import { CommentSection } from './CommentSection'
 import { usePinActions } from './usePinActions'
 import { DraggableBottomSheet } from '@/shared/ui/DraggableBottomSheet'
+import { BOUNDARY_RECT } from '@/features/map/campusBoundary'
 
 interface PinDetailProps {
   pin: Pin
   isFavorite: boolean
+  userLocation?: { lat: number; lng: number } | null
 }
 
-export function PinDetail({ pin, isFavorite }: PinDetailProps) {
+export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const { t } = useTranslation()
   const guard = useGuard()
   const user = useAuthStore((s) => s.user)
@@ -55,6 +57,19 @@ export function PinDetail({ pin, isFavorite }: PinDetailProps) {
 
   const onDelete = () => {
     setShowDeleteConfirm(true)
+  }
+
+  const isOutOfArea = userLocation 
+    ? userLocation.lat < BOUNDARY_RECT.south || userLocation.lat > BOUNDARY_RECT.north || userLocation.lng < BOUNDARY_RECT.west || userLocation.lng > BOUNDARY_RECT.east
+    : false
+
+  const onDirectionsClick = () => {
+    if (isOutOfArea) {
+      useUIStore.getState().showToast(t('map.outOfBounds', 'Estás demasiado lejos del campus para trazar una ruta a pie.'))
+    } else {
+      setRouteTarget(pin.id)
+      selectPin(null)
+    }
   }
 
   return (
@@ -164,8 +179,8 @@ export function PinDetail({ pin, isFavorite }: PinDetailProps) {
           <Star size={15} fill={isFavorite ? 'currentColor' : 'none'} />
         </button>
         <button
-          onClick={() => setRouteTarget(pin.id)}
-          className="flex items-center gap-1 rounded-lg bg-udp-700 px-2.5 py-1.5 text-sm text-white hover:bg-udp-800"
+          onClick={onDirectionsClick}
+          className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm ${isOutOfArea ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed dark:bg-neutral-800' : 'bg-udp-700 text-white hover:bg-udp-800'}`}
         >
           <Navigation size={15} /> {t('pin.directions')}
         </button>

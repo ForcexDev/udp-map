@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Locate, LocateFixed } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Pin } from '@/shared/types/database'
@@ -9,7 +10,7 @@ import { expiryState } from '@/shared/utils/expiry'
 import { publishBounds } from '@/features/pins/usePins'
 import { MAP_STYLE_LIGHT, MAP_STYLE_DARK, DEFAULT_ZOOM } from './mapConfig'
 import { addFacultyLayers } from './facultyLayers'
-import { addBoundaryMask, BOUNDARY_MAX_BOUNDS, BOUNDARY_MIN_ZOOM } from './campusBoundary'
+import { addBoundaryMask, BOUNDARY_MAX_BOUNDS, BOUNDARY_MIN_ZOOM, isLocationOutOfBounds } from './campusBoundary'
 import type { WalkingRoute } from './routing'
 
 interface MapViewProps {
@@ -17,6 +18,8 @@ interface MapViewProps {
   route: WalkingRoute | null
   floorPlan: FloorPlan | null
   userLocation?: { lat: number; lng: number } | null
+  isTrackingLocation?: boolean
+  onRequestLocation?: () => Promise<{ lat: number; lng: number } | null>
 }
 
 function markerColor(pin: Pin): string {
@@ -64,7 +67,7 @@ export function getMapCenter(): { lat: number; lng: number } | null {
   return { lat: c.lat, lng: c.lng }
 }
 
-export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) {
+export function MapView({ pins, route, floorPlan, userLocation, isTrackingLocation, onRequestLocation }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
@@ -399,6 +402,14 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       if (map.getLayer('route-line')) map.removeLayer('route-line')
       if (map.getSource('route')) map.removeSource('route')
       if (!route) return
+
+      if (route.coordinates.length > 0) {
+        const bounds = route.coordinates.reduce((b, coord) => {
+          return b.extend([coord[0], coord[1]])
+        }, new maplibregl.LngLatBounds(route.coordinates[0] as [number, number], route.coordinates[0] as [number, number]))
+        map.fitBounds(bounds, { padding: { top: 120, bottom: 180, left: 50, right: 50 }, duration: 1000 })
+      }
+
       map.addSource('route', {
         type: 'geojson',
         data: {
@@ -480,11 +491,43 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" aria-label="Mapa del campus" />
 
+      {/* Location button */}
+      <button
+        onClick={async () => {
+          if (onRequestLocation) {
+             try {
+               const loc = await onRequestLocation()
+               if (loc) {
+                  if (isLocationOutOfBounds(loc.lat, loc.lng)) {
+                     useUIStore.getState().showToast('Estás fuera del área del mapa')
+                  } else {
+                     mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 18, duration: 1000 })
+                  }
+               }
+             } catch (err: any) {
+               if (err.message === 'PERMISSION_DENIED') {
+                 useUIStore.getState().showToast('Debes activar la ubicación en tu navegador para centrar el mapa.')
+               } else {
+                 useUIStore.getState().showToast('No se pudo obtener tu ubicación.')
+               }
+             }
+          }
+        }}
+        aria-label="Centrar en mi ubicación"
+        className="absolute right-3 top-[72px] sm:right-5 sm:top-[80px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95"
+      >
+        {isTrackingLocation ? (
+          <LocateFixed size={20} className="text-[#D41F2D]" />
+        ) : (
+          <Locate size={20} className="text-neutral-700 dark:text-neutral-300" />
+        )}
+      </button>
+
       {/* Compass button */}
       <button
         onClick={handleResetOrientation}
         aria-label="Restaurar orientación al Norte"
-        className={`absolute right-3 top-[72px] sm:right-5 sm:top-[80px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 ${isDefaultOrientation ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        className={`absolute right-3 top-[120px] sm:right-5 sm:top-[128px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 ${isDefaultOrientation ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
       >
         <svg
