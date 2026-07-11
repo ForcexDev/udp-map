@@ -26,6 +26,12 @@ export function ProfileSetupModal() {
     return CAREERS.filter(c => c.faculty_id === facultyId)
   }, [facultyId])
 
+  // Only show faculties that actually have careers assigned
+  const academicFaculties = useMemo(() => {
+    const validIds = new Set(CAREERS.map(c => c.faculty_id))
+    return FACULTIES.filter(f => validIds.has(f.id))
+  }, [])
+
   const handleSave = async () => {
     if (!facultyId || (!career && availableCareers.length > 0)) return
     setLoading(true)
@@ -75,7 +81,7 @@ export function ProfileSetupModal() {
             className="w-full p-3 rounded-[14px] bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-sm font-medium focus:outline-none focus:border-[#D41F2D] transition-colors"
           >
             <option value="" disabled>{t('auth.selectFaculty', 'Selecciona tu facultad')}</option>
-            {FACULTIES.map(f => (
+            {academicFaculties.map(f => (
               <option key={f.id} value={f.id}>
                 {i18n.language === 'en' ? f.name_en : f.name}
               </option>

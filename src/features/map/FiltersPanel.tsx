@@ -43,8 +43,8 @@ export function FiltersPanel() {
           {t('filters.title')}
         </button>
       ) : (
-        <div className="glass-hud w-72 rounded-[22px] p-5 shadow-3xl animate-scale-in">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="glass-hud w-72 max-h-[calc(100dvh-220px)] sm:max-h-[calc(100dvh-120px)] overflow-y-auto rounded-[22px] p-5 shadow-3xl animate-scale-in [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-600 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="mb-4 flex items-center justify-between shrink-0">
             <h2 className="text-sm font-black tracking-tight">{t('filters.title')}</h2>
             <button
               onClick={() => setOpen(false)}
