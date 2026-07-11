@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SlidersHorizontal, Star, X } from 'lucide-react'
 import { useFilterStore } from '@/shared/stores/filterStore'
@@ -16,7 +16,20 @@ export function FiltersPanel() {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [facultyDropdownOpen, setFacultyDropdownOpen] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
   const guard = useGuard()
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (open && panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [open])
   const {
     types,
     categoryId,
@@ -32,7 +45,7 @@ export function FiltersPanel() {
   const reportCategories = CATEGORIES.filter((c) => c.kind === 'report')
 
   return (
-    <div className="pointer-events-auto absolute left-3 top-[72px] z-20 sm:top-[80px]">
+    <div ref={panelRef} className="pointer-events-auto absolute left-3 top-[72px] z-20 sm:top-[80px]">
       {!open ? (
         <button
           onClick={() => setOpen(true)}
