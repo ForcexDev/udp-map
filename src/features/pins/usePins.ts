@@ -28,7 +28,7 @@ function useMapBounds(): Bounds | null {
 
 export function usePins() {
   const queryClient = useQueryClient()
-  const bounds = useMapBounds()
+  useMapBounds()
   const types = useFilterStore((s) => s.types)
   const categoryId = useFilterStore((s) => s.categoryId)
   const facultyId = useFilterStore((s) => s.facultyId)
