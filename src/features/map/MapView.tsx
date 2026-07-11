@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Pin } from '@/shared/types/database'
@@ -56,10 +56,15 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
   const viewMode = useUIStore((s) => s.viewMode)
   const mapStyleUrl = theme === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
 
+  const [bearing, setBearing] = useState(0)
+  const [pitch, setPitch] = useState(0)
+
   // ── Instancia del mapa (una sola vez) ──
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
     const campus = CAMPUSES.find((c) => c.id === useUIStore.getState().campusId) ?? CAMPUSES[0]
+    const initialViewMode = useUIStore.getState().viewMode
+    const show3D = initialViewMode === '3d'
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: mapStyleUrl,
@@ -70,15 +75,55 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       maxBounds: BOUNDARY_MAX_BOUNDS,
       minZoom: BOUNDARY_MIN_ZOOM,
       attributionControl: { compact: true },
+      maxPitch: show3D ? 85 : 0,
+      minPitch: 0,
+      pitch: show3D ? 45 : 0,
     })
     // No native controls — our custom FABs handle navigation/geolocation
+
+    if (!show3D && map.touchPitch) {
+      map.touchPitch.disable()
+    }
 
     const emitBounds = () => {
       const b = map.getBounds()
       publishBounds({ west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() })
     }
-    map.on('load', emitBounds)
+    const updateOrientation = () => {
+      const currentBearing = map.getBearing()
+      const currentPitch = map.getPitch()
+      setBearing(currentBearing)
+      setPitch(currentPitch)
+
+      // Si estamos en modo 2D y la inclinación llegó a 0, bloqueamos los límites y ocultamos los edificios
+      if (useUIStore.getState().viewMode === '2d' && currentPitch === 0) {
+        map.setMaxPitch(0)
+        map.setMinPitch(0)
+        
+        const style = map.getStyle()
+        if (style && style.layers) {
+          style.layers.forEach((l) => {
+            if (l.type === 'fill-extrusion') {
+              try {
+                if (map.getLayoutProperty(l.id, 'visibility') !== 'none') {
+                  map.setLayoutProperty(l.id, 'visibility', 'none')
+                }
+              } catch (err) {
+                // Ignorar si el estilo está en transición/carga
+              }
+            }
+          })
+        }
+      }
+    }
+
+    map.on('load', () => {
+      emitBounds()
+      updateOrientation()
+    })
     map.on('moveend', emitBounds)
+    map.on('rotate', updateOrientation)
+    map.on('pitch', updateOrientation)
 
     map.on('style.load', () => {
       addFacultyLayers(map)
@@ -86,12 +131,18 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
 
       // Apply initial 2D/3D visibility
       const show3D = useUIStore.getState().viewMode === '3d'
-      const layers = map.getStyle().layers ?? []
-      layers.forEach((l) => {
-        if (l.type === 'fill-extrusion') {
-          map.setLayoutProperty(l.id, 'visibility', show3D ? 'visible' : 'none')
-        }
-      })
+      const style = map.getStyle()
+      if (style && style.layers) {
+        style.layers.forEach((l) => {
+          if (l.type === 'fill-extrusion') {
+            try {
+              map.setLayoutProperty(l.id, 'visibility', show3D ? 'visible' : 'none')
+            } catch (err) {
+              // Ignorar si no está lista la propiedad de la capa
+            }
+          }
+        })
+      }
 
       // Re-attach any custom markers that were detached by the style change
       const markers = markersRef.current
@@ -170,6 +221,8 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
     const markers = markersRef.current
     return () => {
       window.removeEventListener('faculty-flyto', onFacultyFlyTo)
+      map.off('rotate', updateOrientation)
+      map.off('pitch', updateOrientation)
       map.remove()
       mapRef.current = null
       _mapInstance = null
@@ -200,17 +253,62 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const apply3D = () => {
-      const show3D = viewMode === '3d'
-      const layers = map.getStyle().layers ?? []
-      layers.forEach((l) => {
-        if (l.type === 'fill-extrusion') {
-          map.setLayoutProperty(l.id, 'visibility', show3D ? 'visible' : 'none')
+    const show3D = viewMode === '3d'
+
+    if (show3D) {
+      map.setMaxPitch(85)
+      map.setMinPitch(0)
+      if (map.touchPitch) map.touchPitch.enable()
+
+      const apply3D = () => {
+        const style = map.getStyle()
+        if (style && style.layers) {
+          style.layers.forEach((l) => {
+            if (l.type === 'fill-extrusion') {
+              try {
+                if (map.getLayoutProperty(l.id, 'visibility') !== 'visible') {
+                  map.setLayoutProperty(l.id, 'visibility', 'visible')
+                }
+              } catch (err) {
+                // Ignorar
+              }
+            }
+          })
         }
-      })
+      }
+      if (map.isStyleLoaded()) apply3D()
+      else map.once('style.load', apply3D)
+
+      if (map.getPitch() === 0) {
+        map.easeTo({ pitch: 45, duration: 800 })
+      }
+    } else {
+      if (map.touchPitch) map.touchPitch.disable()
+
+      if (map.getPitch() === 0) {
+        map.setMaxPitch(0)
+        map.setMinPitch(0)
+        const style = map.getStyle()
+        if (style && style.layers) {
+          style.layers.forEach((l) => {
+            if (l.type === 'fill-extrusion') {
+              try {
+                if (map.getLayoutProperty(l.id, 'visibility') !== 'none') {
+                  map.setLayoutProperty(l.id, 'visibility', 'none')
+                }
+              } catch (err) {
+                // Ignorar
+              }
+            }
+          })
+        }
+      } else {
+        // Liberar límites de pitch para permitir la animación de regreso a 2D
+        map.setMaxPitch(85)
+        map.setMinPitch(0)
+        map.easeTo({ pitch: 0, duration: 800 })
+      }
     }
-    if (map.isStyleLoaded()) apply3D()
-    else map.once('style.load', apply3D)
   }, [viewMode])
 
   // ── Marcadores: diff contra el estado actual ──
@@ -367,5 +465,47 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
     else map.once('style.load', apply)
   }, [floorPlan, mapStyleUrl])
 
-  return <div ref={containerRef} className="h-full w-full" aria-label="Mapa del campus" />
+  const isDefaultOrientation = Math.abs(bearing) < 0.1 && Math.abs(pitch) < 0.1
+
+  const handleResetOrientation = () => {
+    const map = mapRef.current
+    if (map) {
+      map.easeTo({
+        bearing: 0,
+        pitch: 0,
+        duration: 800,
+      })
+    }
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" aria-label="Mapa del campus" />
+      
+      {/* Compass button */}
+      <button
+        onClick={handleResetOrientation}
+        aria-label="Restaurar orientación al Norte"
+        className={`absolute right-3 top-[72px] sm:right-5 sm:top-[80px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 ${
+          isDefaultOrientation ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="24"
+          height="24"
+          style={{
+            transform: `rotate(${-bearing}deg)`,
+            transition: 'transform 100ms ease-out',
+          }}
+          className="w-6.5 h-6.5 select-none pointer-events-none"
+        >
+          {/* North needle (Red) */}
+          <path d="M12 3L16 12H8L12 3Z" fill="#D41F2D" />
+          {/* South needle (Grey/Light Grey) */}
+          <path d="M12 21L8 12H16L12 21Z" fill="#A3A3A3" className="dark:fill-neutral-400" />
+        </svg>
+      </button>
+    </div>
+  )
 }
