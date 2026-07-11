@@ -59,6 +59,9 @@ interface UIState {
   toast: string | null
   showToast: (msg: string) => void
   clearToast: () => void
+
+  viewMode: '2d' | '3d'
+  setViewMode: (mode: '2d' | '3d') => void
 }
 
 function initialTheme(): Theme {
@@ -145,6 +148,9 @@ export const useUIStore = create<UIState>((set) => {
       toastTimer = setTimeout(() => set({ toast: null }), 3500)
     },
     clearToast: () => set({ toast: null }),
+
+    viewMode: '2d',
+    setViewMode: (mode) => set({ viewMode: mode }),
   }
 })
 

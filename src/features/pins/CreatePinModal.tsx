@@ -228,6 +228,17 @@ export function CreatePinModal() {
               </div>
             </div>
 
+            {/* Description */}
+            <div className="space-y-6">
+              <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.description')}</label>
+              <textarea
+                rows={3}
+                {...form.register('description')}
+                placeholder={t('pin.descriptionPlaceholder')}
+                className="w-full bg-neutral-50/70 dark:bg-neutral-800/70 border border-neutral-100 dark:border-neutral-700 rounded-3xl px-6 py-5 text-sm font-bold text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-300 dark:placeholder:text-neutral-600 outline-none focus:ring-4 focus:ring-red-500/10 transition-all resize-none shadow-sm"
+              />
+            </div>
+
             {/* Photos (Only when creating) */}
             {!editingPin && (
               <div className="space-y-6">
@@ -279,6 +290,68 @@ export function CreatePinModal() {
                 </div>
               </div>
             )}
+
+            {/* Faculty */}
+            <div className="space-y-6 relative">
+              <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.faculty')}</label>
+              <button
+                type="button"
+                onClick={() => setFacultyDropdownOpen(!facultyDropdownOpen)}
+                className="w-full bg-neutral-50/70 dark:bg-neutral-800/70 border border-neutral-100 dark:border-neutral-700 rounded-2xl px-6 py-4 text-sm font-bold text-neutral-800 dark:text-neutral-200 outline-none focus:ring-4 focus:ring-red-500/10 transition-all shadow-sm flex items-center justify-between"
+              >
+                <span className="truncate">
+                  {form.watch('facultyId')
+                    ? FACULTIES.find(f => f.id === form.watch('facultyId'))?.name ?? t('pin.facultyNone')
+                    : t('pin.facultyNone')}
+                </span>
+                <svg 
+                  className={`w-5 h-5 ml-2 transition-transform text-neutral-400 ${facultyDropdownOpen ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {facultyDropdownOpen && (
+                <div className="absolute top-[88px] left-0 right-0 z-[4000] rounded-2xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xl overflow-hidden animate-scale-in">
+                  <div className="max-h-56 overflow-y-auto p-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-thumb]:rounded-full">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        form.setValue('facultyId', null, { shouldValidate: true })
+                        setFacultyDropdownOpen(false)
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-colors ${
+                        !form.watch('facultyId')
+                          ? 'bg-red-50 dark:bg-red-900/10 text-[#D41F2D] font-bold' 
+                          : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                      }`}
+                    >
+                      {t('pin.facultyNone')}
+                    </button>
+                    {FACULTIES.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          form.setValue('facultyId', f.id, { shouldValidate: true })
+                          setFacultyDropdownOpen(false)
+                        }}
+                        className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-colors ${
+                          form.watch('facultyId') === f.id
+                            ? 'bg-red-50 dark:bg-red-900/10 text-[#D41F2D] font-bold' 
+                            : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                        }`}
+                      >
+                        {f.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Category */}
             <div className="space-y-6">
@@ -358,68 +431,6 @@ export function CreatePinModal() {
                 </div>
               </div>
 
-            {/* Faculty */}
-            <div className="space-y-6 relative">
-              <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.faculty')}</label>
-              <button
-                type="button"
-                onClick={() => setFacultyDropdownOpen(!facultyDropdownOpen)}
-                className="w-full bg-neutral-50/70 dark:bg-neutral-800/70 border border-neutral-100 dark:border-neutral-700 rounded-2xl px-6 py-4 text-sm font-bold text-neutral-800 dark:text-neutral-200 outline-none focus:ring-4 focus:ring-red-500/10 transition-all shadow-sm flex items-center justify-between"
-              >
-                <span className="truncate">
-                  {form.watch('facultyId')
-                    ? FACULTIES.find(f => f.id === form.watch('facultyId'))?.name ?? t('pin.facultyNone')
-                    : t('pin.facultyNone')}
-                </span>
-                <svg 
-                  className={`w-5 h-5 ml-2 transition-transform text-neutral-400 ${facultyDropdownOpen ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {facultyDropdownOpen && (
-                <div className="absolute top-[88px] left-0 right-0 z-[4000] rounded-2xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xl overflow-hidden animate-scale-in">
-                  <div className="max-h-56 overflow-y-auto p-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-thumb]:rounded-full">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        form.setValue('facultyId', null, { shouldValidate: true })
-                        setFacultyDropdownOpen(false)
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-colors ${
-                        !form.watch('facultyId')
-                          ? 'bg-red-50 dark:bg-red-900/10 text-[#D41F2D] font-bold' 
-                          : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                      }`}
-                    >
-                      {t('pin.facultyNone')}
-                    </button>
-                    {FACULTIES.map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => {
-                          form.setValue('facultyId', f.id, { shouldValidate: true })
-                          setFacultyDropdownOpen(false)
-                        }}
-                        className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-colors ${
-                          form.watch('facultyId') === f.id
-                            ? 'bg-red-50 dark:bg-red-900/10 text-[#D41F2D] font-bold' 
-                            : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                        }`}
-                      >
-                        {f.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Coordinates */}
             {!editingPin && draftLocation && (
               <div className="space-y-6">
@@ -432,17 +443,6 @@ export function CreatePinModal() {
                 </div>
               </div>
             )}
-
-            {/* Description */}
-            <div className="space-y-6">
-              <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.description')}</label>
-              <textarea
-                rows={3}
-                {...form.register('description')}
-                placeholder={t('pin.descriptionPlaceholder')}
-                className="w-full bg-neutral-50/70 dark:bg-neutral-800/70 border border-neutral-100 dark:border-neutral-700 rounded-3xl px-6 py-5 text-sm font-bold text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-300 dark:placeholder:text-neutral-600 outline-none focus:ring-4 focus:ring-red-500/10 transition-all resize-none shadow-sm"
-              />
-            </div>
 
             {/* Admin Toggle: isOfficial */}
             {can(role, 'pin.moderate') && (
