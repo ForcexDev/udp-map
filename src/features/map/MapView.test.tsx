@@ -50,6 +50,7 @@ const mockMapInstance = {
   easeTo: vi.fn(),
   flyTo: vi.fn(),
   remove: vi.fn(),
+  addControl: vi.fn(),
   touchPitch: {
     enable: vi.fn(),
     disable: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock('maplibre-gl', () => {
   return {
     default: {
       Map: vi.fn(() => mockMapInstance),
+      AttributionControl: vi.fn(),
       Marker: vi.fn(() => ({
         setLngLat: vi.fn().mockReturnThis(),
         addTo: vi.fn().mockReturnThis(),
