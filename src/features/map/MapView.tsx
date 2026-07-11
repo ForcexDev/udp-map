@@ -107,7 +107,7 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       // Desactiva el modo "Orbital" que gira respecto al centro y se vuelve inestable
       // cerca del medio del mapa, usando en su lugar rotación puramente lineal.
       aroundCenter: false,
-    } as any)
+    } as unknown as maplibregl.MapOptions)
     // No native controls — our custom FABs handle navigation/geolocation
 
     if (!show3D && map.touchPitch) {
