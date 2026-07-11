@@ -79,7 +79,7 @@ function applyTheme(theme: Theme) {
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined
 
-export const useUIStore = create<UIState>((set, get) => {
+export const useUIStore = create<UIState>((set) => {
   const theme = initialTheme()
   applyTheme(theme)
   return {
