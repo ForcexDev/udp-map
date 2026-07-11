@@ -8,14 +8,18 @@ import '@/styles/index.css'
 import { useAuthStore } from '@/features/auth/authStore'
 import { App } from './App'
 
+import { GoogleOAuthProvider } from '@react-oauth/google'
+
 useAuthStore.getState().init()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </GoogleOAuthProvider>
   </StrictMode>,
 )
