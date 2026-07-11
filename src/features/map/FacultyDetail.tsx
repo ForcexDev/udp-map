@@ -4,6 +4,7 @@ import { useUIStore } from '@/shared/stores/uiStore'
 import { FACULTIES } from '@/shared/data/campusData'
 import { usePins } from '@/features/pins/usePins'
 import { categoryById } from '@/shared/data/campusData'
+import { DraggableBottomSheet } from '@/shared/ui/DraggableBottomSheet'
 
 export function FacultyDetail() {
   const { t } = useTranslation()
@@ -20,7 +21,13 @@ export function FacultyDetail() {
   const facultyPins = pins.filter((p) => p.faculty_id === selectedFacultyId)
 
   return (
-    <aside className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 max-h-[70dvh] flex flex-col rounded-t-[22px] glass-hud shadow-3xl animate-slide-in-bottom sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[400px] sm:rounded-[22px] overflow-hidden">
+    <DraggableBottomSheet
+      isOpen={true}
+      onClose={() => selectFaculty(null)}
+      ariaLabel={faculty.name}
+      className="!p-0"
+    >
+      <div className="flex flex-col h-full w-full">
       {/* Cover Image */}
       {faculty.image && (
         <div className="relative h-32 w-full shrink-0">
@@ -94,6 +101,7 @@ export function FacultyDetail() {
           </div>
         )}
       </div>
-    </aside>
+      </div>
+    </DraggableBottomSheet>
   )
 }
