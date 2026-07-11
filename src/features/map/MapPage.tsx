@@ -57,6 +57,16 @@ export function MapPage() {
   const openSidebar = useSidebarStore((s) => s.open)
   const queryClient = useQueryClient()
 
+  const handleSelectCampus = (id: string) => {
+    setCampusId(id)
+    const campus = CAMPUSES.find((c) => c.id === id)
+    if (campus) {
+      window.dispatchEvent(
+        new CustomEvent('faculty-flyto', { detail: { lat: campus.lat, lng: campus.lng } })
+      )
+    }
+  }
+
   const userLocation = useUserLocation()
   const [route, setRoute] = useState<WalkingRoute | null>(null)
 
@@ -363,29 +373,53 @@ export function MapPage() {
         </div>
       )}
 
-      {/* ── 2D / 3D Selector ───────────────────────────── */}
+      {/* ── HUD Controls (Campus + 2D/3D Selectors) ───────────────────────────── */}
       {!pickingLocation && !movingPinId && !selectedPin && !selectedFacultyId && (
-        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-1 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800 transition-all duration-300">
-          <button
-            onClick={() => setViewMode('2d')}
-            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
-              viewMode === '2d'
-                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
-                : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
-          >
-            2D
-          </button>
-          <button
-            onClick={() => setViewMode('3d')}
-            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
-              viewMode === '3d'
-                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
-                : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
-            }`}
-          >
-            3D
-          </button>
+        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-2 transition-all duration-300">
+          {/* Campus Selector */}
+          <div className="flex items-center gap-1 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-1 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800">
+            {CAMPUSES.map((c) => {
+              const displayName = c.id === 'ejercito' ? 'Centro' : c.id === 'republica' ? 'República' : 'Huechuraba'
+              const isActive = campusId === c.id
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => handleSelectCampus(c.id)}
+                  className={`px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+                    isActive
+                      ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
+                      : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                  }`}
+                >
+                  {displayName}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* 2D / 3D Selector */}
+          <div className="flex items-center gap-1 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-1 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800">
+            <button
+              onClick={() => setViewMode('2d')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+                viewMode === '2d'
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
+                  : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+              }`}
+            >
+              2D
+            </button>
+            <button
+              onClick={() => setViewMode('3d')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+                viewMode === '3d'
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
+                  : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+              }`}
+            >
+              3D
+            </button>
+          </div>
         </div>
       )}
 

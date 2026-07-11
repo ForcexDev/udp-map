@@ -97,7 +97,17 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       maxPitch: show3D ? 85 : 0,
       minPitch: 0,
       pitch: show3D ? 45 : 0,
-    })
+      dragPan: {
+        deceleration: 2800, // Detiene el deslizamiento más rápido (default: 2500)
+        maxSpeed: 650,    // Reduce la velocidad máxima al deslizar (default: 1400)
+        linearity: 0.15,   // Reduce la sensibilidad y momentum inicial (default: 0.3)
+      },
+      // Hace la rotación con mouse/arrastre más lenta y controlada (default: 0.8)
+      rotateDegreesPerPixelMoved: 0.25,
+      // Desactiva el modo "Orbital" que gira respecto al centro y se vuelve inestable
+      // cerca del medio del mapa, usando en su lugar rotación puramente lineal.
+      aroundCenter: false,
+    } as any)
     // No native controls — our custom FABs handle navigation/geolocation
 
     if (!show3D && map.touchPitch) {
@@ -149,10 +159,10 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
     // Eventos de interacción con el perímetro (registrados una sola vez)
     map.on('click', 'faculty-perimeter-fill', (e) => {
       if (!e.features || e.features.length === 0) return
-      
+
       const clickedFacultyIds = e.features.map(f => f.properties?.faculty_id).filter(Boolean)
       if (clickedFacultyIds.length === 0) return
-      
+
       if (clickedFacultyIds.length === 1) {
         useUIStore.getState().selectFaculty(clickedFacultyIds[0])
         return
@@ -163,7 +173,7 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       const clickLng = e.lngLat.lng
       let bestMatch = clickedFacultyIds[0]
       let minDistance = Infinity
-      
+
       for (const id of clickedFacultyIds) {
         const faculty = FACULTIES.find(f => f.id === id)
         if (faculty) {
@@ -174,7 +184,7 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
           }
         }
       }
-      
+
       useUIStore.getState().selectFaculty(bestMatch)
     })
 
@@ -313,13 +323,13 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
           .setLngLat([pin.lng, pin.lat])
         markers.set(pin.id, marker)
       }
-      
+
       const el = marker.getElement()
       // Re-add marker if it was detached from the DOM by a map.setStyle() operation
       if (!el.parentNode) {
         marker.addTo(map)
       }
-      
+
       // Render SVG icon inside the marker
       const svgPath = markerSvgPath(pin)
       el.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16"><path d="${svgPath}" fill="white"/></svg>`
@@ -349,11 +359,11 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
     if (!userMarkerRef.current) {
       const el = document.createElement('div')
       el.className = 'w-4 h-4 bg-[#D41F2D] border-2 border-white rounded-full shadow-[0_0_10px_rgba(212,31,45,0.8)] relative'
-      
+
       const pulse = document.createElement('div')
       pulse.className = 'absolute inset-0 bg-[#D41F2D] rounded-full animate-ping opacity-75'
       el.appendChild(pulse)
-      
+
       userMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([userLocation.lng, userLocation.lat])
         .addTo(map)
@@ -453,14 +463,13 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" aria-label="Mapa del campus" />
-      
+
       {/* Compass button */}
       <button
         onClick={handleResetOrientation}
         aria-label="Restaurar orientación al Norte"
-        className={`absolute right-3 top-[72px] sm:right-5 sm:top-[80px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 ${
-          isDefaultOrientation ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
+        className={`absolute right-3 top-[72px] sm:right-5 sm:top-[80px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 ${isDefaultOrientation ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
       >
         <svg
           viewBox="0 0 24 24"
