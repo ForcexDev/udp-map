@@ -4,3 +4,4 @@
 - Nuevo botón de ubicación (GPS)
 - Mejoras en el buscador de facultades
 - Múltiples correcciones menores y optimizaciones
+- Prueba Modal Celular
