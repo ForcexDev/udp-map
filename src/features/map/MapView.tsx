@@ -53,6 +53,7 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
   const campusId = useUIStore((s) => s.campusId)
   const selectedPinId = useUIStore((s) => s.selectedPinId)
   const theme = useUIStore((s) => s.theme)
+  const viewMode = useUIStore((s) => s.viewMode)
   const mapStyleUrl = theme === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
 
   // ── Instancia del mapa (una sola vez) ──
@@ -82,6 +83,15 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
     map.on('style.load', () => {
       addFacultyLayers(map)
       addBoundaryMask(map, useUIStore.getState().theme === 'dark')
+
+      // Apply initial 2D/3D visibility
+      const show3D = useUIStore.getState().viewMode === '3d'
+      const layers = map.getStyle().layers ?? []
+      layers.forEach((l) => {
+        if (l.type === 'fill-extrusion') {
+          map.setLayoutProperty(l.id, 'visibility', show3D ? 'visible' : 'none')
+        }
+      })
 
       // Re-attach any custom markers that were detached by the style change
       const markers = markersRef.current
@@ -185,6 +195,23 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
     const campus = CAMPUSES.find((c) => c.id === campusId)
     if (map && campus) map.flyTo({ center: [campus.lng, campus.lat], zoom: DEFAULT_ZOOM })
   }, [campusId])
+
+  // ── Cambio de modo 2D/3D ──
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const apply3D = () => {
+      const show3D = viewMode === '3d'
+      const layers = map.getStyle().layers ?? []
+      layers.forEach((l) => {
+        if (l.type === 'fill-extrusion') {
+          map.setLayoutProperty(l.id, 'visibility', show3D ? 'visible' : 'none')
+        }
+      })
+    }
+    if (map.isStyleLoaded()) apply3D()
+    else map.once('style.load', apply3D)
+  }, [viewMode])
 
   // ── Marcadores: diff contra el estado actual ──
   useEffect(() => {
