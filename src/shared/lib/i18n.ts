@@ -90,6 +90,7 @@ const es = {
     sidebar: {
       settings: 'Ajustes',
       community: 'Comunidad',
+      places: 'Lugares',
       campus: 'Sede Universitaria',
       categories: 'Categorías Activas',
       darkMode: 'Modo Oscuro',
@@ -228,6 +229,7 @@ const en = {
     sidebar: {
       settings: 'Settings',
       community: 'Community',
+      places: 'Places',
       campus: 'Campus',
       categories: 'Active Categories',
       darkMode: 'Dark Mode',
