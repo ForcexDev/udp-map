@@ -52,6 +52,8 @@ export function MapPage() {
   const setCampusId = useUIStore((s) => s.setCampusId)
   const showToast = useUIStore((s) => s.showToast)
   const selectedFacultyId = useUIStore((s) => s.selectedFacultyId)
+  const viewMode = useUIStore((s) => s.viewMode)
+  const setViewMode = useUIStore((s) => s.setViewMode)
   const openSidebar = useSidebarStore((s) => s.open)
   const queryClient = useQueryClient()
 
@@ -357,6 +359,32 @@ export function MapPage() {
             className="w-12 h-12 bg-[#D41F2D] text-white rounded-full red-shadow flex items-center justify-center transition-transform active:scale-90"
           >
             <Plus size={28} strokeWidth={3} />
+          </button>
+        </div>
+      )}
+
+      {/* ── 2D / 3D Selector ───────────────────────────── */}
+      {!pickingLocation && !movingPinId && !selectedPin && !selectedFacultyId && (
+        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-1 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800 transition-all duration-300">
+          <button
+            onClick={() => setViewMode('2d')}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+              viewMode === '2d'
+                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
+                : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+            }`}
+          >
+            2D
+          </button>
+          <button
+            onClick={() => setViewMode('3d')}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+              viewMode === '3d'
+                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
+                : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+            }`}
+          >
+            3D
           </button>
         </div>
       )}
