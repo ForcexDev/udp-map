@@ -1,11 +1,15 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { UserRound, Calendar, ThumbsUp, MapPin, MoreHorizontal } from 'lucide-react'
+import { UserRound, MapPin, LogOut, Share2 } from 'lucide-react'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { Button } from '@/shared/ui/Button'
 import { fetchPins } from '@/features/pins/api'
 import { FACULTIES, categoryById } from '@/shared/data/campusData'
+import type { Pin } from '@/shared/types/database'
+import { EditProfileModal } from './EditProfileModal'
 
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
@@ -13,27 +17,41 @@ function timeAgo(dateStr: string): string {
   if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`
   if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`
   const days = Math.floor(diff / 86400)
-  if (days < 365) return `hace ${days} días`
-  return `hace ${Math.floor(days / 365)} años`
+  if (days < 365) return days === 1 ? 'hace 1 día' : `hace ${days} días`
+  const years = Math.floor(days / 365)
+  return years === 1 ? 'hace 1 año' : `hace ${years} años`
 }
 
-function memberSince(dateStr?: string): string {
-  if (!dateStr) return ''
+function memberSince(dateStr: string | null | undefined, lang: string): string {
+  if (!dateStr) return '—'
   const d = new Date(dateStr)
-  return d.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
+  const s = d.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-CL', {
+    month: 'short',
+    year: 'numeric',
+  })
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 function handleFromEmail(email: string): string {
   return '@' + email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_')
 }
 
+const ROLE_COLORS: Record<string, string> = {
+  admin: 'text-[#D41F2D]',
+  moderator: 'text-blue-600 dark:text-blue-400',
+  student: 'text-emerald-600 dark:text-emerald-400',
+}
+
 export function ProfilePage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const signOut = useAuthStore((s) => s.signOut)
   const openLoginModal = useUIStore((s) => s.openLoginModal)
   const selectPin = useUIStore((s) => s.selectPin)
+  const showToast = useUIStore((s) => s.showToast)
+  const [editOpen, setEditOpen] = useState(false)
 
   const allPins = useQuery({
     queryKey: ['pins', null, ['place', 'event', 'report'], null, null],
@@ -63,170 +81,208 @@ export function ProfilePage() {
   }
 
   const myPins = (allPins.data ?? []).filter((p) => p.creator_id === user.id)
+  const myFaculty = user.faculty_id ? FACULTIES.find((f) => f.id === user.faculty_id) : null
+
+  const openOnMap = (pin: Pin) => {
+    selectPin(pin.id)
+    navigate('/mapa')
+    // Esperar el montaje del mapa antes de volar a la ubicación del pin
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent('faculty-flyto', { detail: { lat: pin.lat, lng: pin.lng } })
+      )
+    }, 400)
+  }
+
+  const sharePin = async (pin: Pin) => {
+    const url = window.location.origin
+    const text = `${pin.title} — UDP Map`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: pin.title, text, url })
+      } else {
+        await navigator.clipboard.writeText(`${text}\n${url}`)
+        showToast(t('profile.linkCopied'))
+      }
+    } catch {
+      // Compartir cancelado por el usuario
+    }
+  }
+
+  const datums: { label: string; value: string; className?: string }[] = [
+    { label: t('profile.reports'), value: String(myPins.length) },
+    { label: t('profile.memberSince'), value: memberSince(user.createdAt, i18n.language) },
+    { label: t('profile.role'), value: t(`profile.roles.${role}`), className: ROLE_COLORS[role] },
+  ]
+  if (myFaculty) {
+    datums.push({
+      label: t('profile.faculty'),
+      value: i18n.language === 'en' ? myFaculty.name_en : myFaculty.name,
+    })
+  }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-white dark:bg-neutral-950">
+    <div className="h-full overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
+      <div className="mx-auto w-full max-w-xl md:max-w-3xl px-4">
 
-      {/* ── Header ── */}
-      <div className="px-4 pt-6 pb-4">
-        {/* Avatar + Name row */}
-        <div className="flex items-center gap-4 mb-4">
-          <div className="relative flex-shrink-0">
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">
-                <UserRound size={32} className="text-neutral-500 dark:text-neutral-400" />
-              </div>
-            )}
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-neutral-900 dark:text-white leading-tight truncate">
-              {user.name}
-            </h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
-              {handleFromEmail(user.email)}
-            </p>
-            <span className={`inline-block mt-1.5 text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full ${
-              role === 'admin'
-                ? 'bg-[#D41F2D]/10 text-[#D41F2D]'
-                : role === 'moderator'
-                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                : role === 'student'
-                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
-            }`}>
-              {t(`profile.roles.${role}`)}
-            </span>
-          </div>
-        </div>
-
-        {/* Edit Profile button */}
-        <button
-          className="w-full py-2.5 border border-neutral-300 dark:border-neutral-700 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors uppercase tracking-wide"
-          onClick={() => {/* TODO: open edit profile */}}
-        >
-          Editar perfil
-        </button>
-
-        {/* Meta info */}
-        <div className="flex items-center gap-4 mt-4">
-          <div className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
-            <Calendar size={14} className="flex-shrink-0" />
-            <span>Miembro desde {memberSince(new Date().toISOString())}</span>
-          </div>
-        </div>
-
-
-        <div className="mt-1.5">
-          <span className="text-sm font-semibold text-neutral-900 dark:text-white">{myPins.length}</span>
-          <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-1">
-            {myPins.length === 1 ? 'Reporte' : 'Reportes'}
-          </span>
-        </div>
-      </div>
-
-      {/* ── Tabs / Section header ── */}
-      <div className="border-b border-neutral-200 dark:border-neutral-800">
-        <div className="flex">
-          <button className="flex-1 py-3 text-sm font-bold text-[#D41F2D] border-b-2 border-[#D41F2D]">
-            Reportes
+        {/* ── Barra superior ── */}
+        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pt-4 pb-3 md:pt-6">
+          <h1 className="text-[15px] font-semibold tracking-wide text-neutral-900 dark:text-white">
+            {t('profile.title')}
+          </h1>
+          <button
+            onClick={() => void signOut()}
+            className="flex items-center gap-1.5 text-[13px] font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+          >
+            <LogOut size={14} />
+            {t('auth.signOut')}
           </button>
         </div>
-      </div>
 
-      {/* ── Pin list ── */}
-      <div className="flex-1">
+        {/* ── Perfil ── */}
+        <div className="flex items-center gap-4 py-5">
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt={user.name}
+              className="w-[60px] h-[60px] rounded-full object-cover border border-neutral-200 dark:border-neutral-800 flex-shrink-0"
+            />
+          ) : (
+            <div className="w-[60px] h-[60px] rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 grid place-items-center text-2xl font-bold text-neutral-400 flex-shrink-0">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[21px] font-bold leading-tight text-neutral-900 dark:text-white truncate">
+              {user.name}
+            </h2>
+            <p className="font-mono text-[13px] text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
+              {handleFromEmail(user.email)}
+            </p>
+          </div>
+          <button
+            onClick={() => setEditOpen(true)}
+            className="flex-shrink-0 border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white font-semibold text-[13px] px-3.5 py-2 rounded-[10px] hover:border-[#D41F2D] transition-colors"
+          >
+            {t('profile.editProfile')}
+          </button>
+        </div>
+
+        {/* ── Datos de cuenta ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-[10px] border border-neutral-200 dark:border-neutral-800 bg-neutral-200 dark:bg-neutral-800 overflow-hidden mb-5">
+          {datums.map((d) => (
+            <div key={d.label} className="bg-white dark:bg-neutral-900 px-3.5 py-3 min-w-0">
+              <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-neutral-500 dark:text-neutral-400">
+                {d.label}
+              </div>
+              <div
+                className={`text-[15px] font-semibold mt-1 truncate ${d.className ?? 'text-neutral-900 dark:text-white'}`}
+                title={d.value}
+              >
+                {d.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Historial de reportes ── */}
+        <div className="flex items-baseline justify-between mb-2.5">
+          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-neutral-500 dark:text-neutral-400">
+            {t('profile.history')}
+          </span>
+          <span className="font-mono text-[11px] text-neutral-500 dark:text-neutral-400">
+            {t('profile.total', { n: myPins.length })}
+          </span>
+        </div>
+
         {allPins.isLoading ? (
           <div className="flex items-center justify-center py-16">
             <div className="w-6 h-6 border-2 border-[#D41F2D] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : myPins.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-8 text-center gap-3">
+          <div className="flex flex-col items-center justify-center py-16 px-8 text-center gap-3 rounded-[10px] border border-dashed border-neutral-200 dark:border-neutral-800 mb-6">
             <div className="w-14 h-14 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
               <MapPin size={24} className="text-neutral-400" />
             </div>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Aún no has creado ningún reporte.
-            </p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t('profile.noReports')}</p>
           </div>
         ) : (
-          <ul>
+          <ul className="grid gap-3.5 md:grid-cols-2 pb-6">
             {myPins.map((pin) => {
               const category = pin.category_id ? categoryById(pin.category_id) : null
-              const faculty = pin.faculty_id ? FACULTIES.find((f) => f.id === pin.faculty_id) : null
+              const faculty = pin.faculty_id
+                ? FACULTIES.find((f) => f.id === pin.faculty_id)
+                : null
+              const facultyName = faculty
+                ? i18n.language === 'en' ? faculty.name_en : faculty.name
+                : null
               const photo = pin.pin_photos?.[0]
 
               return (
-                <li key={pin.id} className="border-b border-neutral-100 dark:border-neutral-800 last:border-0">
-                  <button
-                    onClick={() => selectPin(pin.id)}
-                    className="w-full text-left px-4 py-4 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors active:bg-neutral-100 dark:active:bg-neutral-800"
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Icon */}
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ backgroundColor: category?.color ?? '#64748b' }}
-                      >
-                        <ThumbsUp size={18} className="text-white" />
-                      </div>
-
-                      {/* Content */}
+                <li key={pin.id}>
+                  <article className="rounded-[10px] border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden h-full flex flex-col">
+                    {/* Cabecera */}
+                    <div className="flex items-start gap-2.5 px-3.5 pt-3.5">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <span className="font-bold text-sm text-neutral-900 dark:text-white leading-snug">
-                              {pin.title}
-                            </span>
-                            {' '}
-                            <span className="text-neutral-400 dark:text-neutral-500 text-xs">
-                              · {timeAgo(pin.created_at)}
-                            </span>
-                          </div>
-                          <button
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex-shrink-0 p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 rounded-full"
-                          >
-                            <MoreHorizontal size={18} />
-                          </button>
-                        </div>
-
-                        {pin.description && (
-                          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300 line-clamp-2 leading-snug">
-                            {pin.description}
-                          </p>
-                        )}
-
-                        {/* Map thumbnail */}
-                        {photo ? (
-                          <div className="mt-2.5 rounded-xl overflow-hidden border border-neutral-100 dark:border-neutral-800">
-                            <img
-                              src={photo.url}
-                              alt={pin.title}
-                              className="w-full h-36 object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="mt-2.5 rounded-xl overflow-hidden border border-neutral-100 dark:border-neutral-800 h-28 bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-                            <MapPin size={20} className="text-neutral-300 dark:text-neutral-600" />
-                          </div>
-                        )}
-
-                        {/* Location */}
-                        {faculty && (
-                          <div className="mt-2 flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-                            <MapPin size={11} className="flex-shrink-0" />
-                            <span>{faculty.name}</span>
-                          </div>
-                        )}
+                        <h3 className="text-[15px] font-bold text-neutral-900 dark:text-white truncate">
+                          {pin.title}
+                        </h3>
+                        <p className="font-mono text-[11.5px] text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
+                          {timeAgo(pin.created_at)}
+                          {facultyName ? ` · ${facultyName}` : ''}
+                        </p>
                       </div>
+                      {category && (
+                        <span
+                          className="flex-shrink-0 mt-1 w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: category.color }}
+                          title={category.name}
+                        />
+                      )}
                     </div>
-                  </button>
+
+                    {/* Descripción */}
+                    {pin.description && (
+                      <p className="px-3.5 pt-2 pb-3 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300 line-clamp-3">
+                        {pin.description}
+                      </p>
+                    )}
+
+                    {/* Foto / ubicación */}
+                    <div className="relative mt-auto border-y border-neutral-200 dark:border-neutral-800 h-40 bg-neutral-100 dark:bg-neutral-800">
+                      {photo ? (
+                        <img src={photo.url} alt={pin.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full grid place-items-center">
+                          <MapPin size={22} className="text-neutral-300 dark:text-neutral-600" />
+                        </div>
+                      )}
+                      {facultyName && (
+                        <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 bg-neutral-950/85 text-white text-xs font-semibold px-2.5 py-1.5 rounded-[10px] max-w-[85%]">
+                          <MapPin size={11} className="flex-shrink-0" />
+                          <span className="truncate">{facultyName}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Acciones */}
+                    <div className="flex px-3.5">
+                      <button
+                        onClick={() => openOnMap(pin)}
+                        className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-[#D41F2D] transition-colors py-3 pr-4"
+                      >
+                        <MapPin size={14} />
+                        {t('profile.viewOnMap')}
+                      </button>
+                      <button
+                        onClick={() => void sharePin(pin)}
+                        className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-[#D41F2D] transition-colors py-3 pr-4"
+                      >
+                        <Share2 size={14} />
+                        {t('profile.share')}
+                      </button>
+                    </div>
+                  </article>
                 </li>
               )
             })}
@@ -234,20 +290,7 @@ export function ProfilePage() {
         )}
       </div>
 
-      {/* ── Footer: role badge + sign out ── */}
-      <div className="px-4 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#D41F2D]/10 text-[#D41F2D] uppercase tracking-wide">
-            {t(`profile.roles.${role}`)}
-          </span>
-        </div>
-        <button
-          onClick={() => void signOut()}
-          className="text-sm font-medium text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
-        >
-          {t('auth.signOut')}
-        </button>
-      </div>
+      <EditProfileModal open={editOpen} onOpenChange={setEditOpen} />
     </div>
   )
 }

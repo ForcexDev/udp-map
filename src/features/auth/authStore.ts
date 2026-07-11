@@ -11,6 +11,7 @@ export interface AuthUser {
   avatarUrl: string | null
   faculty_id?: string | null
   career?: string | null
+  createdAt?: string | null
 }
 
 interface AuthState {
@@ -22,14 +23,14 @@ interface AuthState {
   signInWithIdToken: (idToken: string) => Promise<void>
   signInDemo: (role: 'student' | 'admin') => void
   signOut: () => Promise<void>
-  updateProfile: (facultyId: string, career: string) => Promise<void>
+  updateProfile: (facultyId: string, career: string, name?: string) => Promise<void>
 }
 
 const DEMO_KEY = 'udpmap.demoRole'
 
-async function fetchProfile(userId: string): Promise<{ role: Role; name: string | null; faculty_id: string | null; career: string | null }> {
-  if (!supabase) return { role: 'guest', name: null, faculty_id: null, career: null }
-  const { data } = await supabase.from('profiles').select('role, name, faculty_id, career').eq('id', userId).single()
+async function fetchProfile(userId: string): Promise<{ role: Role; name: string | null; faculty_id: string | null; career: string | null; created_at: string | null }> {
+  if (!supabase) return { role: 'guest', name: null, faculty_id: null, career: null, created_at: null }
+  const { data } = await supabase.from('profiles').select('role, name, faculty_id, career, created_at').eq('id', userId).single()
   
   const role = (data?.role as Role | undefined) ?? 'student'
   let name = data?.name as string | undefined
@@ -47,8 +48,19 @@ async function fetchProfile(userId: string): Promise<{ role: Role; name: string 
 
   const faculty_id = data?.faculty_id as string | undefined ?? null
   const career = data?.career as string | undefined ?? null
+  const created_at = data?.created_at as string | undefined ?? null
 
-  return { role, name: name ?? null, faculty_id, career }
+  return { role, name: name ?? null, faculty_id, career, created_at }
+}
+
+/** Fecha "miembro desde" persistente para el modo demo (sin Supabase) */
+function demoSince(): string {
+  let v = localStorage.getItem('udpmap.demoSince')
+  if (!v) {
+    v = new Date().toISOString()
+    localStorage.setItem('udpmap.demoSince', v)
+  }
+  return v
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -69,6 +81,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             avatarUrl: null,
             faculty_id: 'ingenieria',
             career: 'Ingeniería Civil Informática',
+            createdAt: demoSince(),
           },
           role: demoRole,
           loading: false,
@@ -98,10 +111,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         career: undefined,
       }
       set({ user, loading: false })
-      void fetchProfile(su.id).then(({ role, name, faculty_id, career }) => {
+      void fetchProfile(su.id).then(({ role, name, faculty_id, career, created_at }) => {
         set((state) => ({
           role,
-          user: state.user ? { ...state.user, name: name || state.user.name, faculty_id, career } : null
+          user: state.user ? { ...state.user, name: name || state.user.name, faculty_id, career, createdAt: created_at } : null
         }))
       })
     })
@@ -139,6 +152,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         avatarUrl: null,
         faculty_id: 'ingenieria',
         career: 'Ingeniería Civil Informática',
+        createdAt: demoSince(),
       },
       role,
       loading: false,
@@ -151,13 +165,20 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null, role: 'guest', loading: false })
   },
 
-  updateProfile: async (facultyId, career) => {
+  updateProfile: async (facultyId, career, name) => {
     const { user } = useAuthStore.getState()
-    if (!user || !supabase) return
-    
-    await supabase.from('profiles').update({ faculty_id: facultyId, career }).eq('id', user.id)
+    if (!user) return
+
+    const trimmedName = name?.trim()
+    if (supabase) {
+      const payload: Record<string, string> = { faculty_id: facultyId, career }
+      if (trimmedName) payload.name = trimmedName
+      await supabase.from('profiles').update(payload).eq('id', user.id)
+    }
     set((state) => ({
-      user: state.user ? { ...state.user, faculty_id: facultyId, career } : null
+      user: state.user
+        ? { ...state.user, faculty_id: facultyId, career, name: trimmedName || state.user.name }
+        : null
     }))
   },
 }))
