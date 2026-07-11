@@ -504,8 +504,9 @@ export function MapView({ pins, route, floorPlan, userLocation, isTrackingLocati
                      mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 18, duration: 1000 })
                   }
                }
-             } catch (err: any) {
-               if (err.message === 'PERMISSION_DENIED') {
+             } catch (err) {
+               const error = err as Error
+               if (error.message === 'PERMISSION_DENIED') {
                  useUIStore.getState().showToast('Debes activar la ubicación en tu navegador para centrar el mapa.')
                } else {
                  useUIStore.getState().showToast('No se pudo obtener tu ubicación.')
