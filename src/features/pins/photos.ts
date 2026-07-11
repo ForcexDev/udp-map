@@ -1,4 +1,4 @@
-export const MAX_PHOTO_BYTES = 5 * 1024 * 1024
+export const MAX_PHOTO_BYTES = 20 * 1024 * 1024
 export const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 export const MAX_PHOTOS_PER_PIN = 5
 export const COMPRESS_MAX_DIM = 1200
