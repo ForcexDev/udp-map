@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type Theme = 'light' | 'dark'
+export type Theme = 'light' | 'dark' | 'system'
 
 interface DraftLocation {
   lat: number
@@ -9,7 +9,7 @@ interface DraftLocation {
 
 interface UIState {
   theme: Theme
-  toggleTheme: () => void
+  setTheme: (theme: Theme) => void
 
   campusId: string
   setCampusId: (id: string) => void
@@ -63,12 +63,17 @@ interface UIState {
 
 function initialTheme(): Theme {
   const stored = localStorage.getItem('udpmap.theme')
-  if (stored === 'light' || stored === 'dark') return stored
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
+  return 'system'
 }
 
 function applyTheme(theme: Theme) {
-  document.documentElement.classList.toggle('dark', theme === 'dark')
+  if (theme === 'system') {
+    const isDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
+    document.documentElement.classList.toggle('dark', isDark)
+  } else {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }
   localStorage.setItem('udpmap.theme', theme)
 }
 
@@ -79,8 +84,7 @@ export const useUIStore = create<UIState>((set, get) => {
   applyTheme(theme)
   return {
     theme,
-    toggleTheme: () => {
-      const next: Theme = get().theme === 'dark' ? 'light' : 'dark'
+    setTheme: (next) => {
       applyTheme(next)
       set({ theme: next })
     },
@@ -143,3 +147,14 @@ export const useUIStore = create<UIState>((set, get) => {
     clearToast: () => set({ toast: null }),
   }
 })
+
+// Escuchar cambios del esquema de colores a nivel de sistema operativo
+if (typeof window !== 'undefined' && window.matchMedia) {
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const handler = () => {
+    if (useUIStore.getState().theme === 'system') {
+      applyTheme('system')
+    }
+  }
+  mediaQuery.addEventListener('change', handler)
+}
