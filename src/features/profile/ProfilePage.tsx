@@ -7,7 +7,7 @@ import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { fetchFavoriteIds, fetchPins } from '@/features/pins/api'
 import { PinBadges } from '@/features/pins/PinBadges'
-import { supabase } from '@/shared/lib/supabase'
+
 
 export function ProfilePage() {
   const { t } = useTranslation()
