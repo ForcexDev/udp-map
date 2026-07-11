@@ -10,16 +10,27 @@ const MODES: { value: Theme; Icon: typeof Sun; labelKey: string }[] = [
 
 /**
  * Selector de tema (Claro / Oscuro / Sistema).
- * Responsive: en móvil muestra solo íconos en un óvalo compacto;
- * en pantallas ≥ sm muestra ícono + label como segmented control.
+ * No responsivo (siempre muestra ícono + texto).
+ * Con animación de deslizamiento (sliding) suave y fluida.
  */
 export function ThemeSwitcher() {
   const { t } = useTranslation()
   const theme = useUIStore((s) => s.theme)
   const setTheme = useUIStore((s) => s.setTheme)
 
+  const activeIndex = Math.max(0, MODES.findIndex((m) => m.value === theme))
+
   return (
-    <div className="flex p-1 sm:p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full sm:rounded-2xl w-fit sm:w-full">
+    <div className="relative flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl w-full select-none">
+      {/* Indicador de fondo deslizante */}
+      <div
+        className="absolute top-1.5 bottom-1.5 left-1.5 bg-white dark:bg-neutral-700 rounded-[14px] shadow-sm transition-transform duration-300 ease-out pointer-events-none"
+        style={{
+          width: 'calc((100% - 12px) / 3)',
+          transform: `translateX(${activeIndex * 100}%)`,
+        }}
+      />
+
       {MODES.map(({ value, Icon, labelKey }) => {
         const isActive = theme === value
         return (
@@ -28,18 +39,18 @@ export function ThemeSwitcher() {
             onClick={() => setTheme(value)}
             aria-label={t(labelKey)}
             className={`
-              w-9 h-9 sm:flex-1 sm:w-auto sm:h-auto sm:py-2.5
-              rounded-full sm:rounded-[14px]
+              relative z-10 flex-1 py-2.5
+              rounded-[14px]
               flex items-center justify-center gap-2
-              text-[11px] font-black tracking-wide transition-all
+              text-[11px] font-black tracking-wide transition-colors duration-300
               ${isActive
-                ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm'
+                ? 'text-neutral-900 dark:text-white'
                 : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
               }
             `}
           >
-            <Icon size={16} strokeWidth={2} className="sm:w-3.5 sm:h-3.5" />
-            <span className="hidden sm:inline">{t(labelKey)}</span>
+            <Icon size={14} strokeWidth={2.5} className="flex-shrink-0" />
+            <span>{t(labelKey)}</span>
           </button>
         )
       })}
