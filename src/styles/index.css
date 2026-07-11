@@ -85,80 +85,193 @@ body {
 
 /* ── Animations ─────────────────────────────────────────── */
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(2.5); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
 }
 
 @keyframes marker-drop {
-  0% { transform: translateY(-30px) scale(0.5); opacity: 0; }
-  60% { transform: translateY(4px) scale(1.05); opacity: 1; }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
+  0% {
+    transform: translateY(-30px) scale(0.5);
+    opacity: 0;
+  }
+
+  60% {
+    transform: translateY(4px) scale(1.05);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 @keyframes scan {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(200%); }
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(200%);
+  }
 }
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slide-in-right {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
 
 @keyframes slide-out-right {
-  from { transform: translateX(0); }
-  to { transform: translateX(100%); }
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes slide-in-bottom {
-  from { opacity: 0; transform: translateY(100%); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes reticle-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 @keyframes reticle-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.25; }
-  50% { transform: scale(1.6); opacity: 0; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.25;
+  }
+
+  50% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
 }
 
-.animate-shimmer { animation: shimmer 2.5s infinite linear; }
-.animate-scan { animation: scan 2s ease-in-out infinite; }
-.animate-fade-up { animation: fade-up 0.5s ease-out both; }
-.animate-fade-in { animation: fade-in 0.3s ease-out both; }
-.animate-scale-in { animation: scale-in 0.3s ease-out both; }
-.animate-slide-in-right { animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-slide-in-bottom { animation: slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.reticle-float { animation: reticle-float 2s ease-in-out infinite; }
-.reticle-pulse-ring { animation: reticle-pulse 2s ease-in-out infinite; }
+.animate-shimmer {
+  animation: shimmer 2.5s infinite linear;
+}
+
+.animate-scan {
+  animation: scan 2s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-in-bottom {
+  animation: slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.reticle-float {
+  animation: reticle-float 2s ease-in-out infinite;
+}
+
+.reticle-pulse-ring {
+  animation: reticle-pulse 2s ease-in-out infinite;
+}
 
 /* ── Map Marker Styles ──────────────────────────────────── */
 /* ⚠️ MapLibre posiciona el marcador vía `style.transform` (translate).
@@ -180,12 +293,14 @@ body {
   cursor: pointer;
   transition: opacity 300ms ease, filter 150ms ease, box-shadow 150ms ease;
 }
+
 .pin-marker:hover {
   filter: brightness(1.1) saturate(1.1);
   box-shadow:
     0 5px 16px rgb(0 0 0 / 0.3),
     0 2px 4px rgb(0 0 0 / 0.15);
 }
+
 .pin-marker--selected {
   outline: 3px solid var(--color-udp-400);
   outline-offset: 1px;
@@ -193,6 +308,7 @@ body {
     0 4px 12px rgb(0 0 0 / 0.25),
     0 0 0 4px rgba(212, 31, 45, 0.12);
 }
+
 .pin-marker--fading {
   /* El filtro de opacidad se multiplica con la opacidad inline que pone JS, 
      creando un "respiro" suave que simula desvanecimiento constante */
@@ -203,7 +319,8 @@ body {
 .pin-marker--fading::after {
   content: '';
   position: absolute;
-  inset: -2px; /* para compensar el borde blanco */
+  inset: -2px;
+  /* para compensar el borde blanco */
   border-radius: 50%;
   border: 2px solid var(--pin-color, #9d2235);
   z-index: -1;
@@ -212,13 +329,27 @@ body {
 }
 
 @keyframes pin-breathe {
-  0%, 100% { filter: opacity(1); }
-  50% { filter: opacity(0.5); }
+
+  0%,
+  100% {
+    filter: opacity(1);
+  }
+
+  50% {
+    filter: opacity(0.5);
+  }
 }
 
 @keyframes pin-sonar {
-  0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(1.8); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
 }
 
 .pin-marker svg {
@@ -226,7 +357,7 @@ body {
   height: 13px;
   fill: white;
   pointer-events: none;
-  transform: translateX(-0.3px) translateY(-0.5px);
+  transform: translateX(-0.25px) translateY(-0.4px);
 }
 
 /* (Faculty cards removed — replaced by search bar in MapPage) */
@@ -264,6 +395,7 @@ body {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -346,6 +478,7 @@ body {
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
   .mb-safe {
     margin-bottom: env(safe-area-inset-bottom, 0px);
   }
