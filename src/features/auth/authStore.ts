@@ -17,6 +17,7 @@ interface AuthState {
   loading: boolean
   init: () => void
   signInWithGoogle: () => Promise<void>
+  signInWithIdToken: (idToken: string) => Promise<void>
   signInDemo: (role: 'student' | 'admin') => void
   signOut: () => Promise<void>
 }
@@ -105,6 +106,17 @@ export const useAuthStore = create<AuthState>((set) => ({
         queryParams: { hd: 'mail.udp.cl', prompt: 'select_account' },
       },
     })
+  },
+
+  signInWithIdToken: async (idToken: string) => {
+    if (!supabase) return
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token: idToken,
+    })
+    if (error) {
+      console.error('Error in Google ID Token sign in:', error.message)
+    }
   },
 
   signInDemo: (role) => {
