@@ -35,27 +35,26 @@ Este documento rastrea el progreso exacto de las funcionalidades definidas en el
 **Meta:** crear y ver pines `place` y `report` con fotos, comentarios y votos; expiración; permanente por admin; indoor y ruteo.
 
 ### Dev C (Lead motor de pines)
-- [ ] UI crear/editar pin (react-hook-form + zod).
+- [x] UI crear/editar pin (react-hook-form + zod).
 - [ ] Subida de N fotos (compresión + manejo de error + UUID).
-- [ ] Comentarios por pin en tiempo real (paginados).
-- [ ] Votos vía RPC `vote_pin`.
-- [ ] Eliminar pin propio.
-- [ ] Lógica de Favoritos.
-- [ ] Estados de desvanecimiento visual por `expires_at`.
-- [ ] Badge visual de "permanente".
+- [x] Comentarios por pin en tiempo real (paginados).
+- [x] Votos vía RPC `vote_pin`.
+- [x] Eliminar pin propio.
+- [x] Lógica de Favoritos.
+- [x] Estados de desvanecimiento visual por `expires_at`.
+- [x] Badge visual de "permanente".
 
 ### Dev B (Backend)
-- [ ] Tablas `pin_photos`, `pin_comments`, `pin_votes`, `favorites`, `floor_plans` + RLS.
-- [ ] RPC de base de datos para `vote_pin`.
-- [ ] Expiración (Tarea CRON `pg_cron` + Edge Function `expire-pins` para Storage).
-- [ ] Realtime de pines y comentarios.
-- [ ] Policy de permanente (solo admin) y de crear `place` (solo mod/admin).
+- [x] Tablas `pin_photos`, `pin_comments`, `pin_votes`, `favorites` + RLS.
+- [x] RPC de base de datos para `vote_pin`.
+- [x] Expiración (Tarea CRON `pg_cron` + Edge Function `expire-pins` para Storage).
+- [x] Realtime de pines y comentarios.
+- [x] Policy de permanente (solo admin) y de crear `place` (solo mod/admin).
 
 ### Dev A (Mapa Avanzado)
-- [ ] Planos indoor (selector edificio/piso, GeoJSON).
-- [ ] Ruteo peatonal ("cómo llegar" + rutas accesibles).
-- [ ] Filtros combinados (facultad + categoría + tipo + favoritos).
-- [ ] Capas (toggles) por tipo de pin.
+- [x] Ruteo peatonal ("cómo llegar" + rutas accesibles).
+- [x] Filtros combinados (facultad + categoría + tipo + favoritos).
+- [x] Capas (toggles) por tipo de pin.
 
 ---
 
@@ -74,3 +73,10 @@ Este documento rastrea el progreso exacto de las funcionalidades definidas en el
 - [ ] Web Push (Notificaciones push reales por interacciones).
 - [ ] Cola de moderación para administradores.
 - [ ] Despliegue, Accesibilidad AA final y modo oscuro optimizado.
+
+---
+
+## 🗺️ Sprint 5 — Planos Indoor (Sem 9+)
+*Aún no iniciado. Pospuesto por complejidad.*
+- [ ] Tablas `floor_plans` + RLS.
+- [ ] Planos indoor (selector edificio/piso, renderizado GeoJSON en el mapa).
