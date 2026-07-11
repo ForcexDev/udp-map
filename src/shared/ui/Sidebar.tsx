@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router-dom'
 import {
-  X, MapPin, LogOut, Search,
+  X, LogOut, Search,
   CalendarDays, MessagesSquare, UserRound, Globe, HelpCircle
 } from 'lucide-react'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
@@ -159,8 +159,8 @@ export function Sidebar() {
                           onClick={() => handleSelectFaculty(f)}
                           className="w-full flex items-center gap-3 p-3 rounded-[14px] text-left transition-all border border-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:border-neutral-200 dark:hover:border-neutral-700 active:scale-[0.98]"
                         >
-                          <div className="w-9 h-9 rounded-xl bg-[#D41F2D]/8 dark:bg-[#D41F2D]/15 flex items-center justify-center flex-shrink-0">
-                            <MapPin size={16} className="text-[#D41F2D]" strokeWidth={2.5} />
+                          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+                            <img src="/udp-shield.png" alt="Escudo UDP" className="w-full h-full object-contain dark:invert opacity-90" />
                           </div>
                           <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 leading-tight">
                             {i18n.language === 'en' ? f.name_en : f.name}
