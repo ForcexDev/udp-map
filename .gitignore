@@ -9,3 +9,5 @@ dev-dist
 coverage
 supabase/.temp
 supabase/.branches
+.agents
+skills-lock.json
