@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router-dom'
 import {
   X, MapPin, Moon, Sun, LogOut, Search,
-  CalendarDays, MessagesSquare, UserRound, Globe,
+  CalendarDays, MessagesSquare, UserRound, Globe, HelpCircle
 } from 'lucide-react'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -19,6 +19,7 @@ export function Sidebar() {
   const toggleTheme = useUIStore((s) => s.toggleTheme)
   const setCampusId = useUIStore((s) => s.setCampusId)
   const openLoginModal = useUIStore((s) => s.openLoginModal)
+  const openTutorial = useUIStore((s) => s.openTutorial)
   const user = useAuthStore((s) => s.user)
   const signOut = useAuthStore((s) => s.signOut)
 
@@ -231,6 +232,25 @@ export function Sidebar() {
                   {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                   <span className="text-sm">
                     {theme === 'dark' ? t('sidebar.lightMode') : t('sidebar.darkMode')}
+                  </span>
+                </button>
+              </section>
+
+              {/* Tutorial */}
+              <section>
+                <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em] mb-4">
+                  {t('sidebar.help', 'Ayuda')}
+                </h4>
+                <button
+                  onClick={() => {
+                    openTutorial()
+                    close()
+                  }}
+                  className="w-full p-4 rounded-[18px] bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 flex items-center gap-3 font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 active:scale-[0.98] transition-all"
+                >
+                  <HelpCircle size={18} />
+                  <span className="text-sm">
+                    {t('sidebar.showTutorial', 'Ver tutorial')}
                   </span>
                 </button>
               </section>

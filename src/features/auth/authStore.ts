@@ -9,6 +9,8 @@ export interface AuthUser {
   email: string
   name: string
   avatarUrl: string | null
+  faculty_id?: string | null
+  career?: string | null
 }
 
 interface AuthState {
@@ -20,13 +22,14 @@ interface AuthState {
   signInWithIdToken: (idToken: string) => Promise<void>
   signInDemo: (role: 'student' | 'admin') => void
   signOut: () => Promise<void>
+  updateProfile: (facultyId: string, career: string) => Promise<void>
 }
 
 const DEMO_KEY = 'udpmap.demoRole'
 
-async function fetchProfile(userId: string): Promise<{ role: Role; name: string | null }> {
-  if (!supabase) return { role: 'guest', name: null }
-  const { data } = await supabase.from('profiles').select('role, name').eq('id', userId).single()
+async function fetchProfile(userId: string): Promise<{ role: Role; name: string | null; faculty_id: string | null; career: string | null }> {
+  if (!supabase) return { role: 'guest', name: null, faculty_id: null, career: null }
+  const { data } = await supabase.from('profiles').select('role, name, faculty_id, career').eq('id', userId).single()
   
   const role = (data?.role as Role | undefined) ?? 'student'
   let name = data?.name as string | undefined
@@ -42,7 +45,10 @@ async function fetchProfile(userId: string): Promise<{ role: Role; name: string 
     }
   }
 
-  return { role, name: name ?? null }
+  const faculty_id = data?.faculty_id as string | undefined ?? null
+  const career = data?.career as string | undefined ?? null
+
+  return { role, name: name ?? null, faculty_id, career }
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -61,6 +67,8 @@ export const useAuthStore = create<AuthState>((set) => ({
             email: `${demoRole}@mail.udp.cl`,
             name: demoRole === 'admin' ? 'Admin Demo' : 'Estudiante Demo',
             avatarUrl: null,
+            faculty_id: 'ingenieria',
+            career: 'Ingeniería Civil Informática',
           },
           role: demoRole,
           loading: false,
@@ -86,12 +94,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         email: su.email,
         name: (su.user_metadata?.full_name as string | undefined) ?? su.email.split('@')[0],
         avatarUrl: (su.user_metadata?.avatar_url as string | undefined) ?? null,
+        faculty_id: undefined,
+        career: undefined,
       }
       set({ user, loading: false })
-      void fetchProfile(su.id).then(({ role, name }) => {
+      void fetchProfile(su.id).then(({ role, name, faculty_id, career }) => {
         set((state) => ({
           role,
-          user: state.user ? { ...state.user, name: name || state.user.name } : null
+          user: state.user ? { ...state.user, name: name || state.user.name, faculty_id, career } : null
         }))
       })
     })
@@ -127,6 +137,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         email: `${role}@mail.udp.cl`,
         name: role === 'admin' ? 'Admin Demo' : 'Estudiante Demo',
         avatarUrl: null,
+        faculty_id: 'ingenieria',
+        career: 'Ingeniería Civil Informática',
       },
       role,
       loading: false,
@@ -137,6 +149,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem(DEMO_KEY)
     if (supabase) await supabase.auth.signOut()
     set({ user: null, role: 'guest', loading: false })
+  },
+
+  updateProfile: async (facultyId, career) => {
+    const { user } = useAuthStore.getState()
+    if (!user || !supabase) return
+    
+    await supabase.from('profiles').update({ faculty_id: facultyId, career }).eq('id', user.id)
+    set((state) => ({
+      user: state.user ? { ...state.user, faculty_id: facultyId, career } : null
+    }))
   },
 }))
 
