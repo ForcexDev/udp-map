@@ -1,4 +1,4 @@
-import { motion, useAnimation } from 'framer-motion'
+import { motion } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import { useEffect, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
