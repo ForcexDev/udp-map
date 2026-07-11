@@ -90,10 +90,14 @@ const es = {
     sidebar: {
       settings: 'Ajustes',
       community: 'Comunidad',
+      places: 'Lugares',
       campus: 'Sede Universitaria',
       categories: 'Categorías Activas',
       darkMode: 'Modo Oscuro',
       lightMode: 'Modo Claro',
+      themeLight: 'Claro',
+      themeDark: 'Oscuro',
+      themeSystem: 'Sistema',
     },
     map: { campus: 'Campus' },
     events: {
@@ -225,10 +229,14 @@ const en = {
     sidebar: {
       settings: 'Settings',
       community: 'Community',
+      places: 'Places',
       campus: 'Campus',
       categories: 'Active Categories',
       darkMode: 'Dark Mode',
       lightMode: 'Light Mode',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      themeSystem: 'System',
     },
     map: { campus: 'Campus' },
     events: {
