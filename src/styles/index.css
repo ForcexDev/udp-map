@@ -226,6 +226,7 @@ body {
   height: 13px;
   fill: white;
   pointer-events: none;
+  transform: translateX(-0.3px) translateY(-0.5px);
 }
 
 /* (Faculty cards removed — replaced by search bar in MapPage) */
