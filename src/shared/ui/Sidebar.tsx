@@ -68,16 +68,15 @@ export function Sidebar() {
         <div className="p-6 pt-10 sm:p-8 sm:pt-12">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shadow-xl shadow-red-500/20 bg-black">
-                <img 
-                  src="/logo.png" 
-                  alt="Inside Labs" 
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <h2 className="text-xl font-black text-neutral-900 dark:text-white tracking-tight">
-                UDP Map
+              <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight mt-1">
+                {t('nav.map', 'Mapa')}
               </h2>
+              <div className="w-[2px] h-7 rounded-full bg-neutral-200 dark:bg-neutral-700"></div>
+              <img 
+                src="/udp-logo-full.png" 
+                alt="Universidad Diego Portales" 
+                className="h-8 w-auto object-contain"
+              />
             </div>
             <button
               onClick={close}
