@@ -55,7 +55,7 @@ export function DraggableBottomSheet({
   const expandedY = 0
   const compactY = maxSheetHeight - compactSheetHeight
 
-  const handleDragEnd = (_event: any, info: PanInfo) => {
+  const handleDragEnd = (_event: unknown, info: PanInfo) => {
     const velocityThreshold = 200
     const offsetThreshold = 80
     const velocityY = info.velocity.y
