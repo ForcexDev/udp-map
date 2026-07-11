@@ -1,4 +1,4 @@
-# Estado de Sprints — UDP Map v2
+# Estado de Sprints — UDP Map v0.1
 
 Este documento rastrea el progreso exacto de las funcionalidades definidas en el `PLAN.md` original, al pie de la letra.
 
