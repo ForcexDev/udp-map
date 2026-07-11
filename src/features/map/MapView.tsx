@@ -37,6 +37,25 @@ function markerSvgPath(pin: Pin): string {
 // Module-level map reference for external access
 let _mapInstance: maplibregl.Map | null = null
 
+// maplibre never lands an animated pitch on an exact 0 — treat "close enough" as flat
+const PITCH_EPSILON = 0.01
+
+function setBuildingsVisible(map: maplibregl.Map, visible: boolean) {
+  const style = map.getStyle()
+  if (!style?.layers) return
+  const target = visible ? 'visible' : 'none'
+  for (const l of style.layers) {
+    if (l.type !== 'fill-extrusion') continue
+    try {
+      if (map.getLayoutProperty(l.id, 'visibility') !== target) {
+        map.setLayoutProperty(l.id, 'visibility', target)
+      }
+    } catch {
+      // Ignorar si el estilo está en transición/carga
+    }
+  }
+}
+
 /** Returns the current map center coordinates, or null if map isn't ready */
 // eslint-disable-next-line react-refresh/only-export-components
 export function getMapCenter(): { lat: number; lng: number } | null {
@@ -96,24 +115,10 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       setPitch(currentPitch)
 
       // Si estamos en modo 2D y la inclinación llegó a 0, bloqueamos los límites y ocultamos los edificios
-      if (useUIStore.getState().viewMode === '2d' && currentPitch === 0) {
+      if (useUIStore.getState().viewMode === '2d' && currentPitch < PITCH_EPSILON) {
         map.setMaxPitch(0)
         map.setMinPitch(0)
-        
-        const style = map.getStyle()
-        if (style && style.layers) {
-          style.layers.forEach((l) => {
-            if (l.type === 'fill-extrusion') {
-              try {
-                if (map.getLayoutProperty(l.id, 'visibility') !== 'none') {
-                  map.setLayoutProperty(l.id, 'visibility', 'none')
-                }
-              } catch (err) {
-                // Ignorar si el estilo está en transición/carga
-              }
-            }
-          })
-        }
+        setBuildingsVisible(map, false)
       }
     }
 
@@ -130,19 +135,7 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       addBoundaryMask(map, useUIStore.getState().theme === 'dark')
 
       // Apply initial 2D/3D visibility
-      const show3D = useUIStore.getState().viewMode === '3d'
-      const style = map.getStyle()
-      if (style && style.layers) {
-        style.layers.forEach((l) => {
-          if (l.type === 'fill-extrusion') {
-            try {
-              map.setLayoutProperty(l.id, 'visibility', show3D ? 'visible' : 'none')
-            } catch (err) {
-              // Ignorar si no está lista la propiedad de la capa
-            }
-          }
-        })
-      }
+      setBuildingsVisible(map, useUIStore.getState().viewMode === '3d')
 
       // Re-attach any custom markers that were detached by the style change
       const markers = markersRef.current
@@ -250,9 +243,16 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
   }, [campusId])
 
   // ── Cambio de modo 2D/3D ──
+  const isFirstViewModeRunRef = useRef(true)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    // El estado inicial ya lo aplica el efecto de creación del mapa (constructor + 'style.load');
+    // evitamos repetir el mismo trabajo apenas se monta el componente.
+    if (isFirstViewModeRunRef.current) {
+      isFirstViewModeRunRef.current = false
+      return
+    }
     const show3D = viewMode === '3d'
 
     if (show3D) {
@@ -260,48 +260,20 @@ export function MapView({ pins, route, floorPlan, userLocation }: MapViewProps) 
       map.setMinPitch(0)
       if (map.touchPitch) map.touchPitch.enable()
 
-      const apply3D = () => {
-        const style = map.getStyle()
-        if (style && style.layers) {
-          style.layers.forEach((l) => {
-            if (l.type === 'fill-extrusion') {
-              try {
-                if (map.getLayoutProperty(l.id, 'visibility') !== 'visible') {
-                  map.setLayoutProperty(l.id, 'visibility', 'visible')
-                }
-              } catch (err) {
-                // Ignorar
-              }
-            }
-          })
-        }
-      }
+      const apply3D = () => setBuildingsVisible(map, true)
       if (map.isStyleLoaded()) apply3D()
       else map.once('style.load', apply3D)
 
-      if (map.getPitch() === 0) {
+      if (map.getPitch() < PITCH_EPSILON) {
         map.easeTo({ pitch: 45, duration: 800 })
       }
     } else {
       if (map.touchPitch) map.touchPitch.disable()
 
-      if (map.getPitch() === 0) {
+      if (map.getPitch() < PITCH_EPSILON) {
         map.setMaxPitch(0)
         map.setMinPitch(0)
-        const style = map.getStyle()
-        if (style && style.layers) {
-          style.layers.forEach((l) => {
-            if (l.type === 'fill-extrusion') {
-              try {
-                if (map.getLayoutProperty(l.id, 'visibility') !== 'none') {
-                  map.setLayoutProperty(l.id, 'visibility', 'none')
-                }
-              } catch (err) {
-                // Ignorar
-              }
-            }
-          })
-        }
+        setBuildingsVisible(map, false)
       } else {
         // Liberar límites de pitch para permitir la animación de regreso a 2D
         map.setMaxPitch(85)
