@@ -1,4 +1,4 @@
-# 📍 UDP Map v2 — Documento Maestro de Reestructuración
+# 📍 UDP Map v0.1 — Documento Maestro de Reestructuración
 
 > **Documento self-contained.** Contiene TODO lo necesario para reconstruir la app desde cero:
 > estado actual del repo, visión, modelo de datos, permisos, arquitectura, decisiones técnicas y
