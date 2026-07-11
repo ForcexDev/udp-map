@@ -427,6 +427,7 @@ Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
 | **S2 — Pines (3 tipos)** | 3–4 | Crear/ver `place`/`report` con **fotos + comentarios + votos**, expiración, permanente por admin, indoor, ruteo, filtros |
 | **S3 — Eventos & Foro** | 5–6 | Pin `event` con RSVP anclado al mapa; foro con hilos/comentarios/anuncios; moderación IA en backend |
 | **S4 — Social & Launch** | 7–8 | Perfil, karma, insignias, leaderboard, push, cola de moderación, pulido y deploy |
+| **S5 — Planos Indoor** | 9+ | Tablas `floor_plans`, selector edificio/piso, GeoJSON renderizado en mapa (pospuesto por complejidad) |
 
 ---
 
@@ -446,8 +447,8 @@ Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
 **Meta:** crear y ver pines `place` y `report` con **fotos, comentarios y votos**; temporalidad; permanente por admin; indoor y ruteo.
 
 - **Dev C (lead motor de pines):** UI **crear/editar pin** (react-hook-form + zod) con **subida de N fotos** (compresión + manejo de error + UUID); **comentarios** por pin en tiempo real (paginados); **votos** vía RPC `vote_pin`; eliminar propio; favoritos; estados de **desvanecimiento** por `expires_at`; badge de **permanente**.
-- **Dev B:** tablas `pin_photos`, `pin_comments`, `pin_votes`, `favorites`, `floor_plans` + RLS; **RPC `vote_pin`**; **expiración** (`pg_cron` + Edge Function `expire-pins` que también borra archivos del Storage); Realtime de pines y comentarios; policy de **permanente** (solo admin) y de **crear `place`** (solo mod/admin).
-- **Dev A:** **planos indoor** (selector edificio/piso, GeoJSON, pin al lugar exacto); **ruteo peatonal** ("cómo llegar" + rutas accesibles); **filtros combinados** (facultad + categoría + tipo + favoritos) y **capas por tipo**.
+- **Dev B:** tablas `pin_photos`, `pin_comments`, `pin_votes`, `favorites` + RLS; **RPC `vote_pin`**; **expiración** (`pg_cron` + Edge Function `expire-pins` que también borra archivos del Storage); Realtime de pines y comentarios; policy de **permanente** (solo admin) y de **crear `place`** (solo mod/admin).
+- **Dev A:** **ruteo peatonal** ("cómo llegar" + rutas accesibles); **filtros combinados** (facultad + categoría + tipo + favoritos) y **capas por tipo**.
 
 **DoD S2:** un estudiante crea un `report` con fotos, recibe comentarios y votos; el pin se desvanece/expira; un admin lo hace permanente o crea un `place`; se filtra por tipo y se traza la ruta; guest solo mira.
 
@@ -470,6 +471,10 @@ Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
 - **Transversal:** hardening RLS, e2e críticos, docs de usuario, revisión de free tiers.
 
 **DoD S4:** perfil con karma e insignias; leaderboard; push OK (incl. comentarios en pines); moderadores gestionan reportes; **app en producción**.
+
+### 🗺️ Sprint 5 — Planos Indoor (Sem 9+)
+**Meta:** renderizado de planos internos de facultades.
+- **Dev A / Dev B:** tablas `floor_plans` + RLS; planos indoor (selector edificio/piso, GeoJSON). Pospuesto a fase posterior por alta complejidad de datos geoespaciales.
 
 ---
 

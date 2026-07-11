@@ -69,20 +69,64 @@ export const FACULTIES: Faculty[] = [
 ]
 
 export const CAREERS: { faculty_id: string; name: string; name_en: string }[] = [
-  { faculty_id: 'ingenieria', name: 'Ingeniería Civil Informática', name_en: 'Computer Science Engineering' },
-  { faculty_id: 'ingenieria', name: 'Ingeniería Civil Industrial', name_en: 'Industrial Engineering' },
-  { faculty_id: 'ingenieria', name: 'Ingeniería Civil en Obras Civiles', name_en: 'Civil Engineering' },
-  { faculty_id: 'derecho', name: 'Derecho', name_en: 'Law' },
-  { faculty_id: 'psicologia', name: 'Psicología', name_en: 'Psychology' },
-  { faculty_id: 'medicina', name: 'Medicina', name_en: 'Medicine' },
+  // Administración y Economía (ID: economia)
+  { faculty_id: 'economia', name: 'Administración Pública', name_en: 'Public Administration' },
+  { faculty_id: 'economia', name: 'Bachillerato en Administración y Economía', name_en: 'Baccalaureate in Administration and Economics' },
+  { faculty_id: 'economia', name: 'Contador Auditor - Contador Público', name_en: 'Auditing and Public Accounting' },
+  { faculty_id: 'economia', name: 'Ingeniería Comercial', name_en: 'Business Engineering' },
+  { faculty_id: 'economia', name: 'Ingeniería en Control de Gestión', name_en: 'Management Control Engineering' },
+
+  // Ciencias Sociales y Humanidades (ID: ciencias-sociales)
+  { faculty_id: 'ciencias-sociales', name: 'Administración Pública', name_en: 'Public Administration' },
+  { faculty_id: 'ciencias-sociales', name: 'Antropología', name_en: 'Anthropology' },
+  { faculty_id: 'ciencias-sociales', name: 'Bachillerato en Ciencias Sociales y Humanidades', name_en: 'Baccalaureate in Social Sciences and Humanities' },
+  { faculty_id: 'ciencias-sociales', name: 'Ciencia Política', name_en: 'Political Science' },
+  { faculty_id: 'ciencias-sociales', name: 'Licenciatura en Historia', name_en: 'Bachelor in History' },
+  { faculty_id: 'ciencias-sociales', name: 'Sociología', name_en: 'Sociology' },
+
+  // Arquitectura, Arte y Diseño (ID: arquitectura)
   { faculty_id: 'arquitectura', name: 'Arquitectura', name_en: 'Architecture' },
+  { faculty_id: 'arquitectura', name: 'Artes Visuales', name_en: 'Visual Arts' },
   { faculty_id: 'arquitectura', name: 'Diseño', name_en: 'Design' },
+
+  // Comunicación y Letras (ID: comunicacion)
+  { faculty_id: 'comunicacion', name: 'Cine de Animación', name_en: 'Animation Cinema' },
+  { faculty_id: 'comunicacion', name: 'Cine y Realización Audiovisual', name_en: 'Cinema and Audiovisual Production' },
+  { faculty_id: 'comunicacion', name: 'Literatura Creativa', name_en: 'Creative Literature' },
   { faculty_id: 'comunicacion', name: 'Periodismo', name_en: 'Journalism' },
   { faculty_id: 'comunicacion', name: 'Publicidad', name_en: 'Advertising' },
-  { faculty_id: 'ciencias-sociales', name: 'Sociología', name_en: 'Sociology' },
+
+  // Derecho (ID: derecho)
+  { faculty_id: 'derecho', name: 'Derecho', name_en: 'Law' },
+
+  // Salud y Odontología (ID: salud)
+  { faculty_id: 'salud', name: 'Enfermería', name_en: 'Nursing' },
+  { faculty_id: 'salud', name: 'Kinesiología', name_en: 'Kinesiology' },
+  { faculty_id: 'salud', name: 'Obstetricia y Neonatología', name_en: 'Obstetrics and Neonatology' },
+  { faculty_id: 'salud', name: 'Odontología', name_en: 'Dentistry' },
+  { faculty_id: 'salud', name: 'Tecnología Médica', name_en: 'Medical Technology' },
+
+  // Ingeniería y Ciencias (ID: ingenieria)
+  { faculty_id: 'ingenieria', name: 'Ingeniería Civil en Ciencia de Datos e Inteligencia Artificial', name_en: 'Data Science and AI Engineering' },
+  { faculty_id: 'ingenieria', name: 'Ingeniería Civil en Informática y Telecomunicaciones', name_en: 'IT and Telecommunications Engineering' },
+  { faculty_id: 'ingenieria', name: 'Ingeniería Civil en Obras Civiles', name_en: 'Civil Engineering' },
+  { faculty_id: 'ingenieria', name: 'Ingeniería Civil Industrial', name_en: 'Industrial Engineering' },
+  { faculty_id: 'ingenieria', name: 'Ingeniería Civil Plan Común', name_en: 'Common Core Engineering' },
+
+  // Medicina (ID: medicina)
+  { faculty_id: 'medicina', name: 'Medicina', name_en: 'Medicine' },
+
+  // Educación (ID: educacion)
+  { faculty_id: 'educacion', name: 'Pedagogía en Educación Diferencial con mención en Desarrollo Cognitivo', name_en: 'Special Education in Cognitive Development' },
   { faculty_id: 'educacion', name: 'Pedagogía en Educación General Básica', name_en: 'Primary Education' },
-  { faculty_id: 'economia', name: 'Ingeniería Comercial', name_en: 'Business Engineering' },
-  { faculty_id: 'economia', name: 'Contador Auditor', name_en: 'Accounting and Auditing' },
+  { faculty_id: 'educacion', name: 'Pedagogía en Educación Parvularia', name_en: 'Early Childhood Education' },
+  { faculty_id: 'educacion', name: 'Pedagogía en Historia y Ciencias Sociales', name_en: 'History and Social Sciences Education' },
+  { faculty_id: 'educacion', name: 'Pedagogía en Inglés', name_en: 'English Education' },
+  { faculty_id: 'educacion', name: 'Pedagogía en Lengua Castellana y Comunicación', name_en: 'Spanish Language and Communication Education' },
+  { faculty_id: 'educacion', name: 'Pedagogía Media en Matemática', name_en: 'High School Mathematics Education' },
+
+  // Psicología (ID: psicologia)
+  { faculty_id: 'psicologia', name: 'Psicología', name_en: 'Psychology' },
 ]
 
 export const PLACE_COLOR = '#9d2235'
