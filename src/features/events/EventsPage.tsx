@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { usePins } from '@/features/pins/usePins'
 import { useUserRSVPs, useSetRSVP } from './useEvents'
+import { useGuard } from '@/features/auth/useGuard'
 import { EventCalendar } from './EventCalendar'
 
 import type { Pin } from '@/shared/types/database'
@@ -13,6 +14,7 @@ export function EventsPage() {
   const navigate = useNavigate()
   const startPickingLocation = useUIStore((s) => s.startPickingLocation)
   const selectPin = useUIStore((s) => s.selectPin)
+  const guard = useGuard()
   
   const { pins, isLoading, error } = usePins()
   const { data: userRSVPs = [] } = useUserRSVPs()
@@ -21,6 +23,7 @@ export function EventsPage() {
   const events = pins.filter((p) => p.type === 'event')
 
   const handleCreateEvent = () => {
+    if (!guard('pin.create.event')) return
     // Start the map selection workflow
     startPickingLocation()
     navigate('/mapa')
