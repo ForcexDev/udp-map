@@ -69,11 +69,11 @@ Este documento rastrea el progreso exacto de las funcionalidades definidas en el
 
 ## 📅 Sprint 3 — Eventos & Foro (Sem 5–6)
 
-*Aún no iniciado.*
+*En desarrollo.*
 
 - [x] Eventos (RSVP, creación anclada, oficial/estudiantil).
 - [x] Capa de eventos en el mapa y en calendario.
-- [ ] Foro con hilos por facultad (upvotes, tags, tablón de anuncios).
+- [x] Foro con hilos por facultad (upvotes, tags, tablón de anuncios).
 - [ ] Moderación IA en Edge Function (Gemini + Groq).
 
 ---
