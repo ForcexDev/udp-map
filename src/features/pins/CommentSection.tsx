@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Send, Trash2 } from 'lucide-react'
+import { Send, Trash2, User } from 'lucide-react'
 import { useComments } from './useComments'
 import { useGuard } from '@/features/auth/useGuard'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -30,7 +30,7 @@ export function CommentSection({ pinId }: { pinId: string }) {
 
   return (
     <section aria-label={t('comments.title')}>
-      <h3 className="mb-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+      <h3 className="mb-3 text-[17px] font-bold text-neutral-900 dark:text-neutral-100">
         {t('comments.title')} ({comments.length})
       </h3>
 
@@ -39,33 +39,57 @@ export function CommentSection({ pinId }: { pinId: string }) {
       ) : comments.length === 0 ? (
         <p className="my-3 text-sm text-neutral-500">{t('comments.empty')}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul 
+          className="flex max-h-[260px] flex-col overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:hover:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-thumb]:rounded-full"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           {comments.map((c) => {
             const rel = relativeTime(c.created_at)
-            const canDelete = (user && user.id === c.author_id) || can(role, 'pin.moderate')
+            const isMe = user && user.id === c.author_id
+            const canDelete = isMe || can(role, 'pin.moderate')
             
+            // Si es el usuario actual, usamos su foto de Google (avatarUrl local).
+            // Si es otro, generamos un avatar bonito con sus iniciales.
+            const avatarSrc = isMe && user?.avatarUrl
+              ? user.avatarUrl
+              : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  c.author_name ?? 'U'
+                )}&background=F3F4F6&color=374151&bold=true`
+
             return (
-              <li key={c.id} className="rounded-lg bg-neutral-100 p-2.5 dark:bg-neutral-800 group relative">
-                <div className="mb-0.5 flex items-baseline justify-between gap-2">
-                  <span className="text-xs font-semibold text-udp-700 dark:text-udp-300">
+              <li key={c.id} className="group relative flex gap-3 border-b border-neutral-100 py-3 last:border-0 dark:border-neutral-800">
+                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400">
+                  <img
+                    src={avatarSrc}
+                    alt={c.author_name ?? ''}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                
+                <div className="flex flex-1 flex-col relative">
+                  <span className="pr-6 text-[14.5px] font-bold leading-tight text-neutral-900 dark:text-neutral-100">
                     {c.author_name ?? t('auth.guest')}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-neutral-500">
-                      {t(`time.${AGO_KEY[rel.unit]}`, { n: rel.value })}
-                    </span>
-                    {canDelete && (
-                      <button
-                        onClick={() => setCommentToDelete(c.id)}
-                        className="text-neutral-400 hover:text-red-500 transition-colors"
-                        aria-label={t('common.delete', 'Eliminar')}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
+                  
+                  <p className="pr-6 text-[14px] leading-snug text-neutral-800 dark:text-neutral-200 break-words">
+                    {c.body}
+                  </p>
+                  
+                  <span className="mt-0.5 text-[11.5px] text-neutral-500">
+                    {t(`time.${AGO_KEY[rel.unit]}`, { n: rel.value })}
+                  </span>
+
+                  {canDelete && (
+                    <button
+                      onClick={() => setCommentToDelete(c.id)}
+                      className="absolute right-0 top-0 p-1 -mr-1 -mt-1 text-[#9d2235]/70 transition-colors hover:text-[#9d2235]"
+                      aria-label={t('common.delete', 'Eliminar')}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
-                <p className="text-sm break-words pr-4">{c.body}</p>
               </li>
             )
           })}

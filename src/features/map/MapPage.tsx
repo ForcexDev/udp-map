@@ -248,7 +248,7 @@ export function MapPage() {
           <div className="flex items-center justify-between gap-2.5 w-full pointer-events-auto" ref={searchRef}>
             {/* Search Input */}
             <div className="flex-1 w-full relative md:max-w-md">
-              <div className="glass-hud h-12 rounded-full premium-shadow flex items-center gap-2.5 px-3.5 w-full">
+              <div className="glass-hud h-10 rounded-full premium-shadow flex items-center gap-2 px-3.5 w-full">
                 <Search size={18} className="text-neutral-400 flex-shrink-0" strokeWidth={2} />
                 <input
                   type="text"
@@ -314,21 +314,22 @@ export function MapPage() {
             {/* Sidebar Button */}
             <button
               onClick={openSidebar}
-              className="w-12 h-12 rounded-full glass-hud premium-shadow flex items-center justify-center transition-transform active:scale-90 flex-shrink-0"
+              className="w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-transform active:scale-90 flex-shrink-0"
               aria-label={t('sidebar.settings')}
             >
-              <Menu size={20} className="text-neutral-700 dark:text-neutral-300" strokeWidth={2.5} />
+              <Menu size={18} className="text-neutral-700 dark:text-neutral-300" strokeWidth={2.5} />
             </button>
+          </div>
+          
+          <div className="pointer-events-auto self-start mt-1">
+            <FiltersPanel />
           </div>
         </div>
       )}
 
-      {/* Filters Panel — hide during pin placement */}
+      {/* Indoor Panel — hide during pin placement */}
       {!pickingLocation && !movingPinId && (
-        <>
-          <FiltersPanel />
-          <IndoorPanel />
-        </>
+        <IndoorPanel />
       )}
 
       {/* ── PLACEMENT MODE ──────────────────────────────── */}
