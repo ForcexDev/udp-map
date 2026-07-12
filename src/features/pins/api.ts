@@ -91,7 +91,10 @@ export async function fetchPins(bounds: Bounds | null, filters: PinFilters): Pro
 export async function createPin(input: CreatePinInput, photos: File[]): Promise<Pin> {
   const category = input.categoryId ? categoryById(input.categoryId) : undefined
   const isPlace = input.type === 'place'
-  const expires_at = isPlace ? null : expiresAtFromTtl(category?.ttl_hours ?? 24)
+  let expires_at = isPlace ? null : expiresAtFromTtl(category?.ttl_hours ?? 24)
+  if (input.type === 'event' && input.endsAt) {
+    expires_at = input.endsAt
+  }
   // Cluster automático por perímetro: si el usuario no eligió facultad y el
   // pin cae dentro de un perímetro trazado (hoy solo Ingeniería), se asigna solo.
   const facultyId = input.facultyId !== undefined ? input.facultyId : facultyIdAt(input.lat, input.lng)
@@ -175,7 +178,10 @@ export async function updatePin(pinId: string, input: Partial<CreatePinInput>): 
       if (input.type !== undefined) pin.type = input.type
       if (input.isOfficial !== undefined) pin.is_official = input.isOfficial
       if (input.startsAt !== undefined) pin.starts_at = input.startsAt
-      if (input.endsAt !== undefined) pin.ends_at = input.endsAt
+      if (input.endsAt !== undefined) {
+        pin.ends_at = input.endsAt
+        if (pin.type === 'event') pin.expires_at = input.endsAt
+      }
     }
     return
   }
@@ -189,6 +195,7 @@ export async function updatePin(pinId: string, input: Partial<CreatePinInput>): 
       type: input.type,
       starts_at: input.startsAt,
       ends_at: input.endsAt,
+      ...(input.endsAt !== undefined ? { expires_at: input.endsAt } : {}),
       ...(input.isOfficial !== undefined ? { is_official: input.isOfficial } : {})
     })
     .eq('id', pinId)

@@ -42,26 +42,27 @@ export function EventCalendar({ events, userRSVPs, onRSVPChange, onSelectEvent }
 
   // Check if a day has events
   const getEventsForDay = (day: number) => {
+    const targetStart = new Date(year, month, day).getTime()
+    const targetEnd = targetStart + 24 * 60 * 60 * 1000 - 1
+
     return events.filter((e) => {
       if (!e.starts_at) return false
-      const eDate = new Date(e.starts_at)
-      return (
-        eDate.getDate() === day &&
-        eDate.getMonth() === month &&
-        eDate.getFullYear() === year
-      )
+      const eStart = new Date(e.starts_at).getTime()
+      const eEnd = e.ends_at ? new Date(e.ends_at).getTime() : eStart
+      
+      return eStart <= targetEnd && eEnd >= targetStart
     })
   }
 
   const selectedDayEvents = selectedDate
     ? events.filter((e) => {
         if (!e.starts_at) return false
-        const eDate = new Date(e.starts_at)
-        return (
-          eDate.getDate() === selectedDate.getDate() &&
-          eDate.getMonth() === selectedDate.getMonth() &&
-          eDate.getFullYear() === selectedDate.getFullYear()
-        )
+        const targetStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime()
+        const targetEnd = targetStart + 24 * 60 * 60 * 1000 - 1
+        const eStart = new Date(e.starts_at).getTime()
+        const eEnd = e.ends_at ? new Date(e.ends_at).getTime() : eStart
+        
+        return eStart <= targetEnd && eEnd >= targetStart
       })
     : events
 
@@ -185,16 +186,14 @@ export function EventCalendar({ events, userRSVPs, onRSVPChange, onSelectEvent }
               return (
                 <div
                   key={event.id}
-                  className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow"
+                  onClick={() => onSelectEvent(event)}
+                  className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <button
-                      onClick={() => onSelectEvent(event)}
-                      className="text-left font-bold text-[15px] leading-snug text-neutral-900 dark:text-white hover:text-[#D41F2D] transition-colors flex items-start gap-2.5"
-                    >
+                    <div className="text-left font-bold text-[15px] leading-snug text-neutral-900 dark:text-white group-hover:text-[#D41F2D] transition-colors flex items-start gap-2.5">
                       <Icon size={16} className="mt-0.5 shrink-0" style={{ color: cat?.color }} />
                       <span>{event.title}</span>
-                    </button>
+                    </div>
                     {event.is_official && (
                       <span className="bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0">
                         {t('events.official', 'Oficial')}
@@ -223,7 +222,10 @@ export function EventCalendar({ events, userRSVPs, onRSVPChange, onSelectEvent }
                   {/* RSVP buttons */}
                   <div className="flex gap-2 mt-1 border-t border-neutral-100 dark:border-neutral-800 pt-3">
                     <button
-                      onClick={() => onRSVPChange(event.id, userStatus === 'going' ? null : 'going')}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onRSVPChange(event.id, userStatus === 'going' ? null : 'going')
+                      }}
                       className={`flex-1 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                         userStatus === 'going'
                           ? 'bg-[#D41F2D] text-white shadow-sm'
@@ -234,7 +236,10 @@ export function EventCalendar({ events, userRSVPs, onRSVPChange, onSelectEvent }
                       {t('events.rsvpGoing', 'Asistiré')}
                     </button>
                     <button
-                      onClick={() => onRSVPChange(event.id, userStatus === 'interested' ? null : 'interested')}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onRSVPChange(event.id, userStatus === 'interested' ? null : 'interested')
+                      }}
                       className={`flex-1 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                         userStatus === 'interested'
                           ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm'

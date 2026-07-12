@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Share2,
+  Calendar,
 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Pin } from '@/shared/types/database'
@@ -51,6 +52,21 @@ const FAVORITE_CIRCLE_INACTIVE =
 
 const ACTION_CHIP =
   'flex whitespace-nowrap shrink-0 items-center gap-1.5 rounded-full border border-neutral-300 dark:border-neutral-600 px-3 py-1.5 text-[13px] font-semibold text-neutral-700 dark:text-neutral-200 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800'
+
+function formatEventDate(startsAt: string, endsAt: string) {
+  const d1 = new Date(startsAt)
+  const d2 = new Date(endsAt)
+  const isSameDay = d1.toDateString() === d2.toDateString()
+  
+  const dateOpts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
+  const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+  
+  if (isSameDay) {
+    return `${d1.toLocaleDateString('es-CL', dateOpts)}, ${d1.toLocaleTimeString('es-CL', timeOpts)} - ${d2.toLocaleTimeString('es-CL', timeOpts)}`
+  } else {
+    return `${d1.toLocaleDateString('es-CL', dateOpts)} ${d1.toLocaleTimeString('es-CL', timeOpts)} - ${d2.toLocaleDateString('es-CL', dateOpts)} ${d2.toLocaleTimeString('es-CL', timeOpts)}`
+  }
+}
 
 export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const { t } = useTranslation()
@@ -280,6 +296,15 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                 >
                   <ThumbsDown size={15} strokeWidth={2.5} /> {pin.votes_down}
                 </button>
+              </div>
+            )}
+            
+            {pin.type === 'event' && pin.starts_at && pin.ends_at && (
+              <div className="flex flex-1 items-center gap-1.5 px-3 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 h-9 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                <Calendar size={14} className="text-neutral-500" />
+                <span className="truncate">
+                  {formatEventDate(pin.starts_at, pin.ends_at)}
+                </span>
               </div>
             )}
             <button
