@@ -89,17 +89,20 @@ export function ProfilePage() {
   }
 
   const sharePin = async (pin: Pin) => {
-    const url = window.location.origin
+    const url = `${window.location.origin}/mapa?pin=${pin.id}`
     const text = `${pin.title} — UDP Map`
     try {
       if (navigator.share) {
         await navigator.share({ title: pin.title, text, url })
       } else {
-        await navigator.clipboard.writeText(`${text}\n${url}`)
-        showToast(t('profile.linkCopied'))
+        await navigator.clipboard.writeText(url)
+        showToast(t('profile.linkCopied', 'Enlace copiado al portapapeles'))
       }
-    } catch {
-      // Compartir cancelado por el usuario
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        navigator.clipboard.writeText(url)
+        showToast(t('profile.linkCopied', 'Enlace copiado al portapapeles'))
+      }
     }
   }
 

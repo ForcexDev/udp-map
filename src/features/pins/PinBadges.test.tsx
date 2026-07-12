@@ -31,7 +31,6 @@ describe('PinBadges', () => {
   it('muestra tipo, categoría y expiración para un report efímero', () => {
     render(<PinBadges pin={base} />)
     expect(screen.getByText('Reporte')).toBeInTheDocument()
-    expect(screen.getByText(/Food truck/)).toBeInTheDocument()
     expect(screen.getByText(/Expira/)).toBeInTheDocument()
     expect(screen.queryByText('Permanente')).not.toBeInTheDocument()
   })

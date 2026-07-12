@@ -147,6 +147,33 @@ export function MapPage() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  // Deep link handler para ?pin= y ?faculty=
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const pinParam = params.get('pin')
+    const facultyParam = params.get('faculty')
+    let matched = false
+
+    if (pinParam && pins.length > 0) {
+      const exists = pins.find((p) => p.id === pinParam)
+      if (exists && selectedPinId !== pinParam) {
+        selectPin(pinParam)
+        matched = true
+      }
+    } else if (facultyParam) {
+      const exists = FACULTIES.find((f) => f.id === facultyParam)
+      if (exists) {
+        useUIStore.getState().selectFaculty(facultyParam)
+        matched = true
+      }
+    }
+
+    if (matched) {
+      // Limpiamos la URL para evitar re-selecciones si el usuario lo cierra manualmente
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [pins, selectedPinId, selectPin])
+
   const handleSelectFaculty = (faculty: typeof FACULTIES[0]) => {
     setCampusId(faculty.campus_id)
     // Dispatch custom event for MapView to flyTo faculty coordinates

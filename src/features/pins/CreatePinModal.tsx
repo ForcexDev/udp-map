@@ -16,14 +16,47 @@ import { createPin, updatePin } from './api'
 import { validatePhoto, MAX_PHOTOS_PER_PIN } from './photos'
 
 const pinSchema = z.object({
-  type: z.enum(['report', 'place']),
+  type: z.enum(['report', 'place', 'event']),
   title: z.string().trim().min(3).max(80),
   description: z.string().trim().max(500).optional().or(z.literal('')),
   categoryId: z.string().nullable(),
   facultyId: z.string().nullable(),
   isOfficial: z.boolean().optional(),
+  startsAt: z.string().optional().or(z.literal('')),
+  endsAt: z.string().optional().or(z.literal('')),
+}).superRefine((data, ctx) => {
+  if (data.type === 'event') {
+    if (!data.startsAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La fecha de inicio es requerida',
+        path: ['startsAt'],
+      })
+    }
+    if (!data.endsAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La fecha de término es requerida',
+        path: ['endsAt'],
+      })
+    }
+    if (data.startsAt && data.endsAt && new Date(data.endsAt) <= new Date(data.startsAt)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'La fecha de término debe ser posterior a la de inicio',
+        path: ['endsAt'],
+      })
+    }
+  }
 })
 export type PinFormValues = z.infer<typeof pinSchema>
+
+const toLocalDatetimeString = (dateStr: string) => {
+  const date = new Date(dateStr)
+  const tzoffset = date.getTimezoneOffset() * 60000
+  const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16)
+  return localISOTime
+}
 
 export function CreatePinModal() {
   const { t, i18n } = useTranslation()
@@ -44,6 +77,7 @@ export function CreatePinModal() {
   const editingPin = pinToEdit ? pinsData.flatMap(d => d[1] ?? []).find(p => p.id === pinToEdit) : null
 
   const reportCategories = CATEGORIES.filter((c) => c.kind === 'report')
+  const eventCategories = CATEGORIES.filter((c) => c.kind === 'event')
   const canCreatePlace = can(role, 'pin.create.place')
 
   const form = useForm<PinFormValues>({
@@ -55,30 +89,56 @@ export function CreatePinModal() {
       categoryId: reportCategories[0]?.id ?? null,
       facultyId: null,
       isOfficial: false,
+      startsAt: '',
+      endsAt: '',
     },
   })
   
   const type = form.watch('type')
   const title = form.watch('title')
 
+  // Switch category list and defaults when type changes
+  useEffect(() => {
+    const currentCategory = CATEGORIES.find((c) => c.id === form.getValues('categoryId'))
+    if (type === 'event') {
+      if (!currentCategory || currentCategory.kind !== 'event') {
+        form.setValue('categoryId', eventCategories[0]?.id ?? null)
+      }
+    } else if (type === 'report') {
+      if (!currentCategory || currentCategory.kind !== 'report') {
+        form.setValue('categoryId', reportCategories[0]?.id ?? null)
+      }
+    } else if (type === 'place') {
+      form.setValue('categoryId', null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type])
+
   // Detección automática de facultad por perímetro o popular formulario si es modo edición
   useEffect(() => {
     if (open) {
       if (editingPin) {
-        form.setValue('type', editingPin.type as 'report' | 'place')
+        form.setValue('type', editingPin.type as 'report' | 'place' | 'event')
         form.setValue('title', editingPin.title)
         form.setValue('description', editingPin.description ?? '')
         form.setValue('categoryId', editingPin.category_id)
         form.setValue('facultyId', editingPin.faculty_id)
         form.setValue('isOfficial', editingPin.is_official)
+        form.setValue('startsAt', editingPin.starts_at ? toLocalDatetimeString(editingPin.starts_at) : '')
+        form.setValue('endsAt', editingPin.ends_at ? toLocalDatetimeString(editingPin.ends_at) : '')
       } else if (draftLocation) {
         form.setValue('facultyId', facultyIdAt(draftLocation.lat, draftLocation.lng))
+        form.setValue('startsAt', '')
+        form.setValue('endsAt', '')
       }
     }
   }, [open, draftLocation, form, editingPin])
 
   const create = useMutation({
     mutationFn: async (values: PinFormValues) => {
+      const startsAtIso = values.type === 'event' && values.startsAt ? new Date(values.startsAt).toISOString() : null
+      const endsAtIso = values.type === 'event' && values.endsAt ? new Date(values.endsAt).toISOString() : null
+
       if (editingPin) {
         await updatePin(editingPin.id, {
           title: values.title,
@@ -87,6 +147,8 @@ export function CreatePinModal() {
           facultyId: values.facultyId,
           type: values.type as PinType,
           isOfficial: values.isOfficial,
+          startsAt: startsAtIso,
+          endsAt: endsAtIso,
         })
         return
       }
@@ -104,6 +166,8 @@ export function CreatePinModal() {
           userId: user.id,
           userName: user.name,
           isOfficial: values.isOfficial,
+          startsAt: startsAtIso,
+          endsAt: endsAtIso,
         },
         photos,
       )
@@ -142,6 +206,10 @@ export function CreatePinModal() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const availableTypes: ('report' | 'place' | 'event')[] = ['report', 'event']
+  if (canCreatePlace) {
+    availableTypes.push('place')
+  }
   const detectedFac = FACULTIES.find(f => f.id === form.watch('facultyId'))
   const facultyName = detectedFac ? (i18n.language === 'en' ? detectedFac.name_en : detectedFac.name) : t('pin.facultyNone')
 
@@ -184,9 +252,9 @@ export function CreatePinModal() {
             className="flex-1 overflow-y-auto px-6 sm:px-8 pt-8 pb-32 sm:py-10 space-y-10 sm:space-y-12 no-scrollbar"
           >
             {/* Type selector */}
-            {canCreatePlace && (
+            {availableTypes.length > 1 && (
               <div className="flex gap-2 p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl" role="radiogroup">
-                {(['report', 'place'] as const).map((v) => (
+                {availableTypes.map((v) => (
                   <label
                     key={v}
                     className={`flex-1 py-2.5 rounded-[14px] text-[11px] font-black tracking-widest uppercase transition-all cursor-pointer text-center ${
@@ -196,7 +264,7 @@ export function CreatePinModal() {
                     }`}
                   >
                     <input type="radio" value={v} className="sr-only" {...form.register('type')} />
-                    {v === 'report' ? t('pin.typeReport') : t('pin.typePlace')}
+                    {v === 'report' ? t('pin.typeReport') : v === 'place' ? t('pin.typePlace') : t('pin.typeEvent')}
                   </label>
                 ))}
               </div>
@@ -352,84 +420,115 @@ export function CreatePinModal() {
                 </div>
               )}
             </div>
-
-            {/* Category */}
-            <div className="space-y-6">
+            {type !== 'place' && (
+              <div className="space-y-6">
                 <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.category')}</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <Controller
                     name="categoryId"
                     control={form.control}
-                    render={({ field }) => (
-                      <>
-                        {can(role, 'pin.moderate') && (
-                          <button
-                            type="button"
-                            onClick={() => field.onChange(null)}
-                            className={`flex flex-col items-center gap-3 p-4 rounded-[24px] border-2 transition-all ${
-                              field.value === null
-                                ? 'shadow-lg scale-[1.02] border-[#D41F2D] bg-[#D41F2D]/5 dark:bg-[#D41F2D]/10'
-                                : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
-                            }`}
-                          >
-                            <div className="w-11 h-11 rounded-[16px] flex items-center justify-center shrink-0 transition-all text-[#D41F2D] shadow-sm bg-white dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700">
-                              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                              </svg>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-[12px] font-black text-neutral-900 dark:text-white leading-tight">
-                                Entrada
-                              </div>
-                            </div>
-                          </button>
-                        )}
-                        {reportCategories.map(c => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => field.onChange(c.id)}
-                            className={`flex flex-col items-center gap-3 p-4 rounded-[24px] border-2 transition-all ${
-                              field.value === c.id
-                                ? 'shadow-lg scale-[1.02]'
-                                : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
-                            }`}
-                            style={field.value === c.id ? { 
-                              borderColor: c.color, 
-                              backgroundColor: `color-mix(in srgb, ${c.color} 10%, transparent)` 
-                            } : {}}
-                          >
-                            <div
-                              className={`w-11 h-11 rounded-[16px] flex items-center justify-center shrink-0 transition-all ${
-                                field.value === c.id 
-                                  ? 'text-white shadow-lg' 
-                                  : 'bg-white dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-100 dark:border-neutral-700'
+                    render={({ field }) => {
+                      const activeCategories = CATEGORIES.filter((c) => c.kind === (type === 'event' ? 'event' : 'report'))
+                      return (
+                        <>
+                          {can(role, 'pin.moderate') && (
+                            <button
+                              type="button"
+                              onClick={() => field.onChange(null)}
+                              className={`flex flex-col items-center gap-3 p-4 rounded-[24px] border-2 transition-all ${
+                                field.value === null
+                                  ? 'shadow-lg scale-[1.02] border-[#D41F2D] bg-[#D41F2D]/5 dark:bg-[#D41F2D]/10'
+                                  : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
                               }`}
-                              style={field.value === c.id ? { backgroundColor: c.color } : {}}
                             >
-                              {c.svgPath ? (
+                              <div className="w-11 h-11 rounded-[16px] flex items-center justify-center shrink-0 transition-all text-[#D41F2D] shadow-sm bg-white dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700">
                                 <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                                  <path d={c.svgPath} />
+                                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                                 </svg>
-                              ) : (
-                                <span className="text-lg">{c.emoji}</span>
-                              )}
-                            </div>
-                            <span 
-                              className={`text-[9px] font-black uppercase tracking-widest text-center leading-none ${
-                                field.value !== c.id && 'text-neutral-500 dark:text-neutral-400'
+                              </div>
+                              <div className="text-center">
+                                <div className="text-[12px] font-black text-neutral-900 dark:text-white leading-tight">
+                                  Entrada
+                                </div>
+                              </div>
+                            </button>
+                          )}
+                          {activeCategories.map(c => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => field.onChange(c.id)}
+                              className={`flex flex-col items-center gap-3 p-4 rounded-[24px] border-2 transition-all ${
+                                field.value === c.id
+                                  ? 'shadow-lg scale-[1.02]'
+                                  : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
                               }`}
-                              style={field.value === c.id ? { color: c.color } : {}}
+                              style={field.value === c.id ? { 
+                                borderColor: c.color, 
+                                backgroundColor: `color-mix(in srgb, ${c.color} 10%, transparent)` 
+                              } : {}}
                             >
-                              {c.name}
-                            </span>
-                          </button>
-                        ))}
-                      </>
-                    )}
+                              <div
+                                className={`w-11 h-11 rounded-[16px] flex items-center justify-center shrink-0 transition-all ${
+                                  field.value === c.id 
+                                    ? 'text-white shadow-lg' 
+                                    : 'bg-white dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-100 dark:border-neutral-700'
+                                }`}
+                                style={field.value === c.id ? { backgroundColor: c.color } : {}}
+                              >
+                                {c.svgPath ? (
+                                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                                    <path d={c.svgPath} />
+                                  </svg>
+                                ) : (
+                                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                                )}
+                              </div>
+                              <span 
+                                className={`text-[9px] font-black uppercase tracking-widest text-center leading-none ${
+                                  field.value !== c.id && 'text-neutral-500 dark:text-neutral-400'
+                                }`}
+                                style={field.value === c.id ? { color: c.color } : {}}
+                              >
+                                {c.name}
+                              </span>
+                            </button>
+                          ))}
+                        </>
+                      )
+                    }}
                   />
                 </div>
               </div>
+            )}
+
+            {/* Event Dates */}
+            {type === 'event' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">Fecha de Inicio</label>
+                  <input
+                    type="datetime-local"
+                    {...form.register('startsAt')}
+                    className="w-full bg-neutral-50/70 dark:bg-neutral-800/70 border border-neutral-100 dark:border-neutral-700 rounded-2xl px-6 py-4 text-sm font-bold text-neutral-800 dark:text-neutral-200 outline-none focus:ring-4 focus:ring-red-500/10 transition-all shadow-sm"
+                  />
+                  {form.formState.errors.startsAt && (
+                    <p className="text-xs font-bold text-[#D41F2D] mt-1 ml-1">{form.formState.errors.startsAt.message}</p>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">Fecha de Término</label>
+                  <input
+                    type="datetime-local"
+                    {...form.register('endsAt')}
+                    className="w-full bg-neutral-50/70 dark:bg-neutral-800/70 border border-neutral-100 dark:border-neutral-700 rounded-2xl px-6 py-4 text-sm font-bold text-neutral-800 dark:text-neutral-200 outline-none focus:ring-4 focus:ring-red-500/10 transition-all shadow-sm"
+                  />
+                  {form.formState.errors.endsAt && (
+                    <p className="text-xs font-bold text-[#D41F2D] mt-1 ml-1">{form.formState.errors.endsAt.message}</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Coordinates */}
             {!editingPin && draftLocation && (
