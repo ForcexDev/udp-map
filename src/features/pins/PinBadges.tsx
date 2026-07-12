@@ -28,53 +28,65 @@ export function PinBadges({ pin }: { pin: Pin }) {
     n: value,
   })
 
+  const badges = []
+
+  // Tipo
+  badges.push(
+    <div key="type" className="flex items-center gap-1">
+      <TypeIcon size={14} className="text-neutral-500" />
+      <span>{typeLabel}</span>
+    </div>
+  )
+
+  // Permanente o expiración
+  if (pin.is_permanent) {
+    badges.push(
+      <div key="perm" className="flex items-center gap-1">
+        <Lock size={14} className="text-emerald-600" />
+        <span className="text-emerald-700 dark:text-emerald-400">{t('pin.permanent', 'Permanente')}</span>
+      </div>
+    )
+  } else if (pin.type !== 'event' && expiry.remainingMs !== null && pin.expires_at) {
+    badges.push(
+      <div key="exp" className="flex items-center gap-1">
+        <Clock size={14} className={expiry.status === 'fading' ? 'text-amber-500' : 'text-neutral-500'} />
+        <span className={expiry.status === 'fading' ? 'text-amber-600 dark:text-amber-400' : ''}>
+          {t('pin.expiresIn', { defaultValue: 'Expira en {{when}}', when: whenText })}
+        </span>
+      </div>
+    )
+  }
+
+  // Quién lo añadió
+  if (pin.is_official) {
+    badges.push(
+      <div key="off" className="flex items-center gap-1">
+        <BadgeCheck size={14} className="text-blue-500" />
+        <span className="text-neutral-700 dark:text-neutral-300">
+          {t('pin.addedBy', 'Añadido por:')}{' '}
+          <span className="text-[#D41F2D] font-bold">Administración UDP</span>
+        </span>
+      </div>
+    )
+  } else {
+    badges.push(
+      <div key="user" className="flex items-center gap-1">
+        <User size={14} className="text-neutral-400" />
+        <span className="text-neutral-500">Estudiante UDP</span>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold text-neutral-600 dark:text-neutral-400">
-      {/* Tipo */}
-      <div className="flex items-center gap-1">
-        <TypeIcon size={14} className="text-neutral-500" />
-        <span>{typeLabel}</span>
-      </div>
-
-      <span className="text-neutral-300 dark:text-neutral-700">|</span>
-
-      {/* Permanente o expiración */}
-      {pin.is_permanent ? (
-        <div className="flex items-center gap-1">
-          <Lock size={14} className="text-emerald-600" />
-          <span className="text-emerald-700 dark:text-emerald-400">{t('pin.permanent', 'Permanente')}</span>
+      {badges.map((badge, idx) => (
+        <div key={badge.key} className="flex items-center gap-2">
+          {badge}
+          {idx < badges.length - 1 && (
+            <span className="text-neutral-300 dark:text-neutral-700">|</span>
+          )}
         </div>
-      ) : expiry.remainingMs !== null && pin.expires_at ? (
-        <div className="flex items-center gap-1">
-          <Clock size={14} className={expiry.status === 'fading' ? 'text-amber-500' : 'text-neutral-500'} />
-          <span className={expiry.status === 'fading' ? 'text-amber-600 dark:text-amber-400' : ''}>
-            {t('pin.expiresIn', { defaultValue: 'Expira en {{when}}', when: whenText })}
-          </span>
-        </div>
-      ) : null}
-
-      <span className="text-neutral-300 dark:text-neutral-700">|</span>
-
-      {/* Quién lo añadió */}
-      {pin.is_official ? (
-        <div className="flex items-center gap-1">
-          <BadgeCheck size={14} className="text-blue-500" />
-          <span>
-            {t('pin.addedBy', 'Añadido por')}:{' '}
-            <span className="text-blue-600 dark:text-blue-400">
-              {t('pin.officialAdmin', 'Administración UDP')}
-            </span>
-          </span>
-        </div>
-      ) : pin.creator_name ? (
-        <div className="flex items-center gap-1">
-          <User size={14} className="text-neutral-500" />
-          <span>
-            {t('pin.addedBy', 'Añadido por')}:{' '}
-            <span className="text-neutral-900 dark:text-neutral-200">{pin.creator_name}</span>
-          </span>
-        </div>
-      ) : null}
+      ))}
     </div>
   )
 }
