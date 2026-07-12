@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useDragControls } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import { useEffect, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
@@ -18,7 +18,9 @@ export function DraggableBottomSheet({
   className = '',
   ariaLabel,
 }: DraggableBottomSheetProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
+  const isDesktop = typeof window !== 'undefined' ? window.innerWidth >= 640 : false
+  const [isExpanded, setIsExpanded] = useState(isDesktop)
+  const dragControls = useDragControls()
 
   // Get the parent container's height instead of window to avoid bottom nav bar overlap,
   // but use window.innerHeight as an initial fallback to prevent full-screen flash on first render.
@@ -26,53 +28,60 @@ export function DraggableBottomSheet({
   const [compactSheetHeight, setCompactSheetHeight] = useState(() => typeof window !== 'undefined' ? window.innerHeight * 0.35 : 0)
   const containerRef = useRef<HTMLElement>(null)
 
+  const [sheetHeight, setSheetHeight] = useState(0)
+  const innerRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     const updateDimensions = () => {
-      // Use parent if available, otherwise fallback to window
       const parent = containerRef.current?.parentElement
       const h = parent ? parent.clientHeight : window.innerHeight
-      const topOffset = 72 // space for search bar
+      const topOffset = 72
       setMaxSheetHeight(h - topOffset)
-      setCompactSheetHeight(h * 0.35) // 35% of container
+      setCompactSheetHeight(h * 0.35)
     }
     
     updateDimensions()
     
-    const observer = new ResizeObserver(updateDimensions)
+    const parentObserver = new ResizeObserver(updateDimensions)
     if (containerRef.current?.parentElement) {
-      observer.observe(containerRef.current.parentElement)
+      parentObserver.observe(containerRef.current.parentElement)
     }
-    
-    // Fallback resize listener for window
     window.addEventListener('resize', updateDimensions)
+    
     return () => {
-      observer.disconnect()
+      parentObserver.disconnect()
       window.removeEventListener('resize', updateDimensions)
     }
   }, [])
+
+  // Measure the actual height of the sheet to avoid empty space
+  useEffect(() => {
+    if (!innerRef.current) return
+    const sheetObserver = new ResizeObserver((entries) => {
+      setSheetHeight(entries[0].borderBoxSize[0]?.blockSize || entries[0].contentRect.height)
+    })
+    sheetObserver.observe(innerRef.current)
+    return () => sheetObserver.disconnect()
+  }, [])
   
-  // y values for framer motion (0 means fully expanded to maxSheetHeight)
   const expandedY = 0
-  const compactY = maxSheetHeight - compactSheetHeight
+  const compactY = Math.max(0, (sheetHeight || maxSheetHeight) - compactSheetHeight)
 
   const handleDragEnd = (_event: unknown, info: PanInfo) => {
     const velocityThreshold = 200
     const offsetThreshold = 80
-    const velocityY = info.velocity.y
-    const offsetY = info.offset.y
-
-    if (velocityY < -velocityThreshold || offsetY < -offsetThreshold) {
-      // Dragged up
-      setIsExpanded(true)
-    } else if (velocityY > velocityThreshold || offsetY > offsetThreshold) {
-      // Dragged down
+    
+    if (info.velocity.y > velocityThreshold || info.offset.y > offsetThreshold) {
       if (isExpanded) {
         setIsExpanded(false)
       } else {
         onClose()
       }
+    } else if (info.velocity.y < -velocityThreshold || info.offset.y < -offsetThreshold) {
+      setIsExpanded(true)
+    } else {
+      setIsExpanded(info.offset.y < 0)
     }
-    // If no threshold is met, Framer Motion automatically snaps back to the current 'animate' state
   }
 
   if (!isOpen) return null
@@ -85,35 +94,42 @@ export function DraggableBottomSheet({
       initial="hidden"
       animate={isExpanded ? 'expanded' : 'compact'}
       variants={{
-        hidden: { y: maxSheetHeight || 1000 },
+        hidden: { y: (sheetHeight || maxSheetHeight) + 100 },
         compact: { y: compactY || 500 },
         expanded: { y: expandedY }
       }}
       transition={{ type: 'spring', damping: 28, stiffness: 300, mass: 0.8, bounce: 0 }}
       drag="y"
-      dragConstraints={{ top: expandedY, bottom: maxSheetHeight }}
+      dragControls={dragControls}
+      dragListener={false}
+      dragConstraints={{ top: expandedY, bottom: compactY > 0 ? compactY + 100 : 100 }}
       dragElastic={0.15}
       dragMomentum={false}
       onDragEnd={handleDragEnd}
       style={{
-        height: maxSheetHeight || '100%',
+        height: 'auto',
+        maxHeight: maxSheetHeight || '100%',
         touchAction: !isExpanded ? 'none' : 'auto'
       }}
     >
-      <div className="pointer-events-auto w-full h-full flex flex-col rounded-t-[32px] glass-hud shadow-[0_-8px_32px_rgba(0,0,0,0.15)] sm:rounded-[32px] overflow-hidden">
+      <div 
+        ref={innerRef}
+        className="pointer-events-auto w-full flex flex-col rounded-t-[32px] glass-hud shadow-[0_-8px_32px_rgba(0,0,0,0.15)] sm:rounded-[32px] overflow-hidden max-h-full"
+      >
         {/* Drag Handle */}
         <div 
           className="w-full flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
+          onPointerDown={(e) => dragControls.start(e)}
         >
-          <div className="w-12 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+          <div className="w-12 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600 pointer-events-none" />
         </div>
 
         {/* Content wrapper */}
         <div 
-          className={`flex-1 no-scrollbar ${!isExpanded ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`}
+          className={`flex-1 no-scrollbar ${(!isExpanded && !isDesktop) ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`}
           onPointerDown={(e) => {
-            // If expanded, allow scrolling without dragging the sheet from the content
-            if (isExpanded) {
+            // Allow scrolling without dragging the sheet if expanded or on desktop
+            if (isExpanded || isDesktop) {
               e.stopPropagation()
             }
           }}

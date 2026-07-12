@@ -46,7 +46,7 @@ export function FiltersPanel() {
   const reportCategories = CATEGORIES.filter((c) => c.kind === 'report')
 
   return (
-    <div ref={panelRef} className="pointer-events-auto absolute left-3 top-[72px] z-20 sm:top-[80px]">
+    <div ref={panelRef} className="pointer-events-auto relative z-20">
       {!open ? (
         <button
           onClick={() => {
@@ -54,9 +54,9 @@ export function FiltersPanel() {
             useUIStore.getState().selectPin(null)
           }}
           aria-label={t('filters.title')}
-          className="glass-hud flex items-center gap-1.5 rounded-full px-3.5 py-2.5 text-sm font-semibold premium-shadow active:scale-95 transition-transform"
+          className="glass-hud flex h-10 items-center gap-1.5 rounded-full px-4 text-[14px] font-semibold premium-shadow active:scale-95 transition-transform"
         >
-          <SlidersHorizontal size={16} />
+          <SlidersHorizontal size={15} />
           {t('filters.title')}
         </button>
       ) : (

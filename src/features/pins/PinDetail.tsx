@@ -1,7 +1,23 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lock, Navigation, Star, ThumbsDown, ThumbsUp, Trash2, X, Layers, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Lock,
+  Navigation,
+  MapPin,
+  Star,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  X,
+  Layers,
+  Pencil,
+  Move,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Pin } from '@/shared/types/database'
+import { supabase } from '@/shared/lib/supabase'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useGuard } from '@/features/auth/useGuard'
@@ -20,6 +36,21 @@ interface PinDetailProps {
   userLocation?: { lat: number; lng: number } | null
 }
 
+// Grupo unido para útil / no útil (un solo control dividido, no dos píldoras
+// sueltas) y un botón circular solo-ícono para favorito. Menos formas
+// compitiendo entre sí = más limpio.
+const VOTE_SEGMENT =
+  'flex flex-1 items-center justify-center gap-1.5 py-2 text-[14px] font-bold transition-colors'
+const VOTE_INACTIVE = 'text-neutral-500 hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800'
+const LIKE_ACTIVE = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+const DISLIKE_ACTIVE = 'bg-red-50 text-[#D41F2D] dark:bg-red-950/30 dark:text-red-400'
+const FAVORITE_CIRCLE_ACTIVE = 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30'
+const FAVORITE_CIRCLE_INACTIVE =
+  'border-neutral-300 text-neutral-500 hover:bg-neutral-50 dark:border-neutral-600 dark:text-neutral-400 dark:hover:bg-neutral-800'
+
+const ACTION_CHIP =
+  'flex whitespace-nowrap shrink-0 items-center gap-1.5 rounded-full border border-neutral-300 dark:border-neutral-600 px-3 py-1.5 text-[13px] font-semibold text-neutral-700 dark:text-neutral-200 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800'
+
 export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const { t } = useTranslation()
   const guard = useGuard()
@@ -34,6 +65,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
 
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [photoIndex, setPhotoIndex] = useState(0)
 
   const faculty = FACULTIES.find((f) => f.id === pin.faculty_id)
   const isOwner = user !== null && pin.creator_id === user.id
@@ -45,8 +77,28 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
     pin.type === 'place' && DEMO_FLOOR_PLANS.some((fp) => fp.faculty_id === pin.faculty_id)
   const photos = pin.pin_photos ?? []
 
+  const queryClient = useQueryClient()
+  const { data: userVote = 0 } = useQuery({
+    queryKey: ['pin_vote', pin.id, user?.id],
+    queryFn: async () => {
+      if (!supabase || !user) return 0
+      const { data } = await supabase
+        .from('pin_votes')
+        .select('value')
+        .eq('pin_id', pin.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      return data?.value ?? 0
+    },
+    enabled: !!user && !!supabase,
+  })
+
   const onVote = (value: 1 | -1) => {
     if (!guard('pin.vote')) return
+
+    // Optimistic UI Update
+    queryClient.setQueryData(['pin_vote', pin.id, user?.id], value)
+
     vote.mutate({ pinId: pin.id, value })
   }
 
@@ -59,13 +111,24 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
     setShowDeleteConfirm(true)
   }
 
-  const isOutOfArea = userLocation 
-    ? userLocation.lat < BOUNDARY_RECT.south || userLocation.lat > BOUNDARY_RECT.north || userLocation.lng < BOUNDARY_RECT.west || userLocation.lng > BOUNDARY_RECT.east
+  const onPhotoScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    if (el.clientWidth === 0) return
+    setPhotoIndex(Math.round(el.scrollLeft / el.clientWidth))
+  }
+
+  const isOutOfArea = userLocation
+    ? userLocation.lat < BOUNDARY_RECT.south ||
+    userLocation.lat > BOUNDARY_RECT.north ||
+    userLocation.lng < BOUNDARY_RECT.west ||
+    userLocation.lng > BOUNDARY_RECT.east
     : false
 
   const onDirectionsClick = () => {
     if (isOutOfArea) {
-      useUIStore.getState().showToast(t('map.outOfBounds', 'Estás demasiado lejos del campus para trazar una ruta a pie.'))
+      useUIStore
+        .getState()
+        .showToast(t('map.outOfBounds', 'Estás demasiado lejos del campus para trazar una ruta a pie.'))
     } else {
       setRouteTarget(pin.id)
       selectPin(null)
@@ -74,196 +137,223 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
 
   return (
     <>
-      <DraggableBottomSheet
-        isOpen={true}
-        onClose={() => selectPin(null)}
-        ariaLabel={pin.title}
-      >
-      <div className="flex flex-col px-5 pb-6 pt-1">
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <h2 className="text-base font-semibold leading-tight">{pin.title}</h2>
-        <button
-          onClick={() => selectPin(null)}
-          aria-label={t('common.close')}
-          className="rounded-full p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-        >
-          <X size={18} />
-        </button>
-      </div>
-
-      <PinBadges pin={pin} />
-
-      {faculty && <p className="mt-2 text-[11px] font-black uppercase tracking-[0.1em] text-[#D41F2D]">{faculty.name}</p>}
-      
-      {pin.is_official ? (
-        <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500 font-medium">
-          Añadido por <span className="text-emerald-600 dark:text-emerald-400 font-bold">Administración UDP</span>
-        </p>
-      ) : pin.creator_name ? (
-        <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500 font-medium">
-          Añadido por <span className="text-neutral-600 dark:text-neutral-300 font-bold">{pin.creator_name}</span>
-        </p>
-      ) : null}
-
-      {pin.description && <p className="mt-2 text-sm font-medium text-neutral-700 dark:text-neutral-200">{pin.description}</p>}
-
-      {photos.length > 0 && (
-        <div className="relative mt-4 group">
-          {photos.length > 1 && (
-            <>
-              <button 
-                onClick={(e) => { e.stopPropagation(); document.getElementById('pin-photos-scroll')?.scrollBy({ left: -250, behavior: 'smooth' })}}
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/50 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block shadow-lg"
-                aria-label="Anterior foto"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); document.getElementById('pin-photos-scroll')?.scrollBy({ left: 250, behavior: 'smooth' })}}
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1.5 rounded-full bg-black/50 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block shadow-lg"
-                aria-label="Siguiente foto"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </>
-          )}
-          <div 
-            id="pin-photos-scroll"
-            className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 no-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0"
-          >
-            {photos.map((ph) => (
-              <img
-                key={ph.id}
-                src={ph.url}
-                alt=""
-                loading="lazy"
-                onClick={() => setSelectedPhoto(ph.url)}
-                className={`flex-none shrink-0 snap-center rounded-[20px] object-cover cursor-pointer shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] border border-neutral-100 dark:border-neutral-800 transition-transform hover:scale-[1.02] ${
-                  photos.length === 1 ? 'w-full aspect-[4/3] sm:aspect-video' : 'w-[80%] sm:w-[65%] aspect-[4/3]'
-                }`}
-              />
-            ))}
+      <DraggableBottomSheet isOpen={true} onClose={() => selectPin(null)} ariaLabel={pin.title}>
+        <div className="flex flex-col px-5 pb-6 pt-4">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <h2 className="text-[26px] font-black tracking-tight leading-none text-neutral-900 dark:text-white">
+              {pin.title}
+            </h2>
+            <button
+              onClick={() => selectPin(null)}
+              aria-label={t('common.close', 'Cerrar')}
+              className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 shrink-0"
+            >
+              <X size={20} />
+            </button>
           </div>
-        </div>
-      )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {pin.type !== 'event' && (
-          <>
+          <PinBadges pin={pin} />
+
+          {faculty && (
+            <div className="mt-2 flex items-center gap-1.5 text-[12.5px] font-bold uppercase tracking-wide text-[#9d2235] dark:text-red-400">
+              <MapPin size={13} />
+              <span>{faculty.name}</span>
+            </div>
+          )}
+
+          {pin.description && (
+            <div className="mt-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 p-3">
+              <h3 className="mb-1 text-[12px] font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                {t('pin.description', 'Descripción')}
+              </h3>
+              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+                {pin.description}
+              </p>
+            </div>
+          )}
+
+          {/* Fotos, debajo de la descripción */}
+          {photos.length > 0 && (
+            <div className="group relative mt-4 h-[220px] overflow-hidden rounded-xl sm:h-[260px]">
+              {photos.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      document.getElementById('pin-photos-scroll')?.scrollBy({ left: -250, behavior: 'smooth' })
+                    }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 hidden rounded-full bg-black/50 p-2 text-white opacity-0 shadow-lg backdrop-blur-md transition-opacity group-hover:opacity-100 sm:block"
+                    aria-label={t('pin.prevPhoto', 'Foto anterior')}
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      document.getElementById('pin-photos-scroll')?.scrollBy({ left: 250, behavior: 'smooth' })
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 hidden rounded-full bg-black/50 p-2 text-white opacity-0 shadow-lg backdrop-blur-md transition-opacity group-hover:opacity-100 sm:block"
+                    aria-label={t('pin.nextPhoto', 'Foto siguiente')}
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+
+                  {/* Contador de fotos */}
+                  <div className="absolute right-3 top-3 z-10 rounded-full bg-black/50 px-2.5 py-1 text-[12px] font-semibold text-white backdrop-blur-md">
+                    {photoIndex + 1} / {photos.length}
+                  </div>
+
+                  {/* Indicadores (puntos) */}
+                  <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
+                    {photos.map((ph, i) => (
+                      <span
+                        key={ph.id}
+                        className={`h-1.5 rounded-full transition-all ${i === photoIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'
+                          }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              <div
+                id="pin-photos-scroll"
+                onScroll={onPhotoScroll}
+                className="flex h-full w-full overflow-x-auto snap-x snap-mandatory no-scrollbar bg-neutral-100 dark:bg-neutral-900"
+              >
+                {photos.map((ph) => (
+                  <img
+                    key={ph.id}
+                    src={ph.url}
+                    alt=""
+                    loading="lazy"
+                    onClick={() => setSelectedPhoto(ph.url)}
+                    className="h-full w-full flex-none shrink-0 snap-center object-cover cursor-pointer"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 flex items-center gap-2">
+            {pin.type !== 'event' && (
+              <div
+                role="group"
+                aria-label={t('pin.voteGroup', 'Votar si es útil')}
+                className="flex flex-1 items-stretch overflow-hidden rounded-full border border-neutral-200 dark:border-neutral-700 h-9"
+              >
+                <button
+                  onClick={() => onVote(1)}
+                  aria-label={t('pin.useful', 'Útil')}
+                  aria-pressed={userVote === 1}
+                  className={`${VOTE_SEGMENT} ${userVote === 1 ? LIKE_ACTIVE : VOTE_INACTIVE}`}
+                >
+                  <ThumbsUp size={15} strokeWidth={2.5} /> {pin.votes_up}
+                </button>
+                <div className="w-px bg-neutral-200 dark:bg-neutral-700" />
+                <button
+                  onClick={() => onVote(-1)}
+                  aria-label={t('pin.notUseful', 'No útil')}
+                  aria-pressed={userVote === -1}
+                  className={`${VOTE_SEGMENT} ${userVote === -1 ? DISLIKE_ACTIVE : VOTE_INACTIVE}`}
+                >
+                  <ThumbsDown size={15} strokeWidth={2.5} /> {pin.votes_down}
+                </button>
+              </div>
+            )}
             <button
-              onClick={() => onVote(1)}
-              aria-label={t('pin.useful')}
-              className="flex items-center gap-1 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-sm hover:bg-emerald-100 dark:bg-neutral-800 dark:hover:bg-emerald-900"
+              onClick={onFavorite}
+              aria-label={t('pin.favorite', 'Favorito')}
+              aria-pressed={isFavorite}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${isFavorite ? FAVORITE_CIRCLE_ACTIVE : FAVORITE_CIRCLE_INACTIVE
+                }`}
             >
-              <ThumbsUp size={15} /> {pin.votes_up}
+              <Star size={16} fill={isFavorite ? '#F5B400' : 'none'} strokeWidth={isFavorite ? 1.5 : 2} />
             </button>
-            <button
-              onClick={() => onVote(-1)}
-              aria-label={t('pin.notUseful')}
-              className="flex items-center gap-1 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-sm hover:bg-red-100 dark:bg-neutral-800 dark:hover:bg-red-900"
-            >
-              <ThumbsDown size={15} /> {pin.votes_down}
-            </button>
-          </>
-        )}
-        <button
-          onClick={onFavorite}
-          aria-label={t('pin.favorite')}
-          aria-pressed={isFavorite}
-          className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm ${
-            isFavorite
-              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200'
-              : 'bg-neutral-100 hover:bg-amber-100 dark:bg-neutral-800'
-          }`}
-        >
-          <Star size={15} fill={isFavorite ? 'currentColor' : 'none'} />
-        </button>
-        <button
-          onClick={onDirectionsClick}
-          className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm ${isOutOfArea ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed dark:bg-neutral-800' : 'bg-udp-700 text-white hover:bg-udp-800'}`}
-        >
-          <Navigation size={15} /> {t('pin.directions')}
-        </button>
-        {hasIndoor && (
+          </div>
+
           <button
-            onClick={() => setIndoor(pin.faculty_id)}
-            className="flex items-center gap-1 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-sm hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+            onClick={onDirectionsClick}
+            className={`mt-3 flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-[14px] font-bold shadow-sm transition-all active:scale-[0.98] ${isOutOfArea
+                ? 'cursor-not-allowed bg-neutral-200 text-neutral-400 dark:bg-neutral-800'
+                : 'bg-[#9d2235] text-white hover:bg-[#701d2e]'
+              }`}
           >
-            <Layers size={15} /> {t('indoor.title')}
+            <Navigation size={15} strokeWidth={2.5} /> {t('pin.directions', 'Cómo llegar')}
           </button>
-        )}
-      </div>
 
-      {(canDelete || canPromote || canEdit) && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {canEdit && (
-            <button
-              onClick={() => openCreateModal(pin.id)}
-              className="flex items-center gap-1 rounded-lg border border-neutral-300 dark:border-neutral-700 px-2.5 py-1.5 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-            >
-              <Navigation size={14} className="rotate-90" /> {t('pin.edit', 'Editar')}
-            </button>
+          {(canDelete || canPromote || canEdit || hasIndoor) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {hasIndoor && (
+                <button onClick={() => setIndoor(pin.faculty_id)} className={ACTION_CHIP}>
+                  <Layers size={14} /> {t('indoor.title', 'Interior')}
+                </button>
+              )}
+              {canEdit && (
+                <button onClick={() => openCreateModal(pin.id)} className={ACTION_CHIP}>
+                  <Pencil size={14} /> {t('pin.edit', 'Editar')}
+                </button>
+              )}
+              {canMove && (
+                <button onClick={() => startMovingPin(pin.id)} className={ACTION_CHIP}>
+                  <Move size={14} /> {t('pin.move', 'Mover')}
+                </button>
+              )}
+              {canPromote && (
+                <button onClick={() => promote.mutate(pin.id)} className={ACTION_CHIP}>
+                  <Lock size={14} /> {t('pin.makePermanent', 'Hacer permanente')}
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  onClick={onDelete}
+                  className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#D41F2D] px-3 py-1.5 text-[13px] font-semibold text-[#D41F2D] transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
+                >
+                  <Trash2 size={14} /> {t('pin.delete', 'Eliminar pin')}
+                </button>
+              )}
+            </div>
           )}
-          {canPromote && (
-            <button
-              onClick={() => promote.mutate(pin.id)}
-              className="flex items-center gap-1 rounded-lg border border-emerald-300 px-2.5 py-1.5 text-sm text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950"
-            >
-              <Lock size={14} /> {t('pin.makePermanent')}
-            </button>
-          )}
-          {canMove && (
-            <button
-              onClick={() => startMovingPin(pin.id)}
-              className="flex items-center gap-1 rounded-lg border border-blue-300 px-2.5 py-1.5 text-sm text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 dark:hover:bg-blue-950"
-            >
-              <Navigation size={14} /> {t('pin.move', 'Mover')}
-            </button>
-          )}
-          {canDelete && (
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-1 rounded-lg border border-red-300 px-2.5 py-1.5 text-sm text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-            >
-              <Trash2 size={14} /> {t('pin.delete')}
-            </button>
-          )}
+
+          <hr className="my-4 border-neutral-200 dark:border-neutral-800" />
+          <CommentSection pinId={pin.id} />
         </div>
-      )}
-
-      <hr className="my-3 border-neutral-200 dark:border-neutral-800" />
-      <CommentSection pinId={pin.id} />
-      </div>
       </DraggableBottomSheet>
 
-    <ConfirmDialog
-      open={showDeleteConfirm}
-      onOpenChange={setShowDeleteConfirm}
-      title={t('pin.confirmDeleteTitle', '¿Eliminar este pin?')}
-      description={t('pin.confirmDeleteDesc', 'Sus fotos y comentarios se borrarán también. Esta acción no se puede deshacer.')}
-      confirmText={t('common.delete', 'Eliminar')}
-      onConfirm={() => remove.mutate(pin)}
-    />
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={t('pin.confirmDeleteTitle', '¿Eliminar este pin?')}
+        description={t(
+          'pin.confirmDeleteDesc',
+          'Sus fotos y comentarios se borrarán también. Esta acción no se puede deshacer.',
+        )}
+        confirmText={t('common.delete', 'Eliminar')}
+        onConfirm={() => remove.mutate(pin)}
+      />
 
-    {selectedPhoto && (
-      <div 
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 animate-fade-in"
-        onClick={() => setSelectedPhoto(null)}
-      >
-        <button 
-          className="absolute right-4 top-4 rounded-full bg-neutral-800/50 p-2 text-white hover:bg-neutral-700/80 backdrop-blur-md"
-          onClick={(e) => { e.stopPropagation(); setSelectedPhoto(null); }}
+      {selectedPhoto && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 animate-fade-in"
+          onClick={() => setSelectedPhoto(null)}
         >
-          <X size={24} />
-        </button>
-        <img 
-          src={selectedPhoto} 
-          alt="Vista ampliada" 
-          className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl" 
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
-    )}
+          <button
+            className="absolute right-4 top-4 rounded-full bg-neutral-800/50 p-2 text-white backdrop-blur-md hover:bg-neutral-700/80"
+            onClick={(e) => {
+              e.stopPropagation()
+              setSelectedPhoto(null)
+            }}
+            aria-label={t('common.close', 'Cerrar')}
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={selectedPhoto}
+            alt={t('pin.expandedPhoto', 'Vista ampliada')}
+            className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </>
   )
 }
