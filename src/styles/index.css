@@ -506,3 +506,13 @@ body {
     margin-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
+
+/* ── Utilities ──────────────────────────────────────────── */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}

@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Lock, BadgeCheck, Clock, User, Flag, MapPin } from 'lucide-react'
+import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import type { Pin } from '@/shared/types/database'
 import { expiryState } from '@/shared/utils/expiry'
 import { relativeTime } from '@/shared/utils/datetime'
@@ -12,6 +14,7 @@ const UNIT_FALLBACK = { minute: 'min', hour: 'h', day: 'd' } as const
 
 export function PinBadges({ pin }: { pin: Pin }) {
   const { t } = useTranslation()
+  const [profileId, setProfileId] = useState<string | null>(null)
   const expiry = expiryState(pin.expires_at, pin.is_permanent)
   const { unit, value } = relativeTime(pin.expires_at ?? '')
 
@@ -70,23 +73,26 @@ export function PinBadges({ pin }: { pin: Pin }) {
     )
   } else {
     badges.push(
-      <div key="user" className="flex items-center gap-1">
+      <button key="user" onClick={() => pin.creator_id && setProfileId(pin.creator_id)} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
         <User size={14} className="text-neutral-400" />
-        <span className="text-neutral-500">Estudiante UDP</span>
-      </div>
+        <span className="text-neutral-500 hover:underline">{pin.creator_name || 'Estudiante UDP'}</span>
+      </button>
     )
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold text-neutral-600 dark:text-neutral-400">
-      {badges.map((badge, idx) => (
-        <div key={badge.key} className="flex items-center gap-2">
-          {badge}
-          {idx < badges.length - 1 && (
-            <span className="text-neutral-300 dark:text-neutral-700">|</span>
-          )}
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold text-neutral-600 dark:text-neutral-400">
+        {badges.map((badge, idx) => (
+          <div key={badge.key} className="flex items-center gap-2">
+            {badge}
+            {idx < badges.length - 1 && (
+              <span className="text-neutral-300 dark:text-neutral-700">|</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <PublicProfileModal userId={profileId} onClose={() => setProfileId(null)} />
+    </>
   )
 }

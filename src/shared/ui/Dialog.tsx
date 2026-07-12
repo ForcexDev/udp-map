@@ -10,16 +10,17 @@ interface DialogProps {
   description?: string
   children: ReactNode
   hideClose?: boolean
+  contentClassName?: string
 }
 
-export function Dialog({ open, onOpenChange, title, description, children, hideClose }: DialogProps) {
+export function Dialog({ open, onOpenChange, title, description, children, hideClose, contentClassName }: DialogProps) {
   const { t } = useTranslation()
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
         <RadixDialog.Content
-          className="fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[24px] glass-hud p-6 premium-shadow animate-scale-in"
+          className={`fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[24px] glass-hud p-6 premium-shadow animate-scale-in ${contentClassName || ''}`}
           aria-describedby={description ? undefined : ''}
           onInteractOutside={(e) => {
             if (hideClose) e.preventDefault()
@@ -28,7 +29,7 @@ export function Dialog({ open, onOpenChange, title, description, children, hideC
             if (hideClose) e.preventDefault()
           }}
         >
-          <div className="mb-3 flex items-start justify-between gap-4">
+          <div className="mb-3 flex items-start justify-between gap-4 shrink-0">
             <RadixDialog.Title className="text-lg font-semibold">{title}</RadixDialog.Title>
             {!hideClose && (
               <RadixDialog.Close
@@ -40,7 +41,7 @@ export function Dialog({ open, onOpenChange, title, description, children, hideC
             )}
           </div>
           {description && (
-            <RadixDialog.Description className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
+            <RadixDialog.Description className="mb-4 text-sm text-neutral-600 dark:text-neutral-400 shrink-0">
               {description}
             </RadixDialog.Description>
           )}

@@ -8,6 +8,7 @@ import { can } from '@/features/auth/permissions'
 import { relativeTime } from '@/shared/utils/datetime'
 import { Spinner } from '@/shared/ui/Spinner'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
+import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 
 const AGO_KEY = { minute: 'agoMinutes', hour: 'agoHours', day: 'agoDays' } as const
 
@@ -19,6 +20,7 @@ export function CommentSection({ pinId }: { pinId: string }) {
   const role = useAuthStore((s) => s.role)
   const [body, setBody] = useState('')
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null)
+  const [profileId, setProfileId] = useState<string | null>(null)
 
   const submit = () => {
     const text = body.trim()
@@ -68,9 +70,12 @@ export function CommentSection({ pinId }: { pinId: string }) {
                 </div>
                 
                 <div className="flex flex-1 flex-col relative">
-                  <span className="pr-6 text-[14.5px] font-bold leading-tight text-neutral-900 dark:text-neutral-100">
+                  <button
+                    onClick={() => c.author_id && setProfileId(c.author_id)}
+                    className="pr-6 text-left text-[14.5px] font-bold leading-tight text-neutral-900 dark:text-neutral-100 hover:underline"
+                  >
                     {c.author_name ?? t('auth.guest')}
-                  </span>
+                  </button>
                   
                   <p className="pr-6 text-[14px] leading-snug text-neutral-800 dark:text-neutral-200 break-words">
                     {c.body}
@@ -128,6 +133,8 @@ export function CommentSection({ pinId }: { pinId: string }) {
         confirmText={t('common.delete', 'Eliminar')}
         onConfirm={() => commentToDelete && remove.mutate(commentToDelete)}
       />
+
+      <PublicProfileModal userId={profileId} onClose={() => setProfileId(null)} />
     </section>
   )
 }

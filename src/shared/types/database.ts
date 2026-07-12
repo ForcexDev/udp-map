@@ -130,3 +130,34 @@ export interface EventRsvp {
   status: 'going' | 'interested'
 }
 
+export interface ForumThread {
+  id: string
+  faculty_id: string | null
+  author_id: string
+  title: string
+  content: string
+  tags: string[]
+  votes_up: number
+  votes_down: number
+  is_pinned: boolean
+  created_at: string
+  updated_at: string
+  author_name?: string | null
+}
+
+export interface ForumComment {
+  id: string
+  thread_id: string
+  parent_comment_id: string | null
+  author_id: string
+  content: string
+  created_at: string
+  author_name?: string | null
+}
+
+export interface ForumVote {
+  thread_id: string
+  user_id: string
+  value: 1 | -1
+}
+
