@@ -275,7 +275,7 @@ export function MapPage() {
           {/* Top Bar: Search + Sidebar */}
           <div className="flex items-center justify-between gap-2.5 w-full pointer-events-auto" ref={searchRef}>
             {/* Search Input */}
-            <div className="flex-1 w-full relative md:max-w-md">
+            <div className="flex-1 w-full relative md:max-w-md z-40">
               <div className="glass-hud h-10 rounded-full premium-shadow flex items-center gap-2 px-3.5 w-full">
                 <Search size={18} className="text-neutral-400 flex-shrink-0" strokeWidth={2} />
                 <input
