@@ -195,7 +195,7 @@ export async function updatePin(pinId: string, input: Partial<CreatePinInput>): 
       type: input.type,
       starts_at: input.startsAt,
       ends_at: input.endsAt,
-      ...(input.endsAt !== undefined ? { expires_at: input.endsAt } : {}),
+      ...(input.type === 'event' && input.endsAt !== undefined ? { expires_at: input.endsAt } : {}),
       ...(input.isOfficial !== undefined ? { is_official: input.isOfficial } : {})
     })
     .eq('id', pinId)
