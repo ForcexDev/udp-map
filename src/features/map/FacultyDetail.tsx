@@ -3,7 +3,6 @@ import { X } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { FACULTIES } from '@/shared/data/campusData'
 import { usePins } from '@/features/pins/usePins'
-import { categoryById } from '@/shared/data/campusData'
 import { DraggableBottomSheet } from '@/shared/ui/DraggableBottomSheet'
 
 export function FacultyDetail() {
@@ -18,7 +17,7 @@ export function FacultyDetail() {
   const faculty = FACULTIES.find((f) => f.id === selectedFacultyId)
   if (!faculty) return null
 
-  const facultyPins = pins.filter((p) => p.faculty_id === selectedFacultyId)
+  const facultyPins = pins.filter((p) => p.faculty_id === selectedFacultyId && p.type !== 'place')
 
   return (
     <DraggableBottomSheet
@@ -65,7 +64,6 @@ export function FacultyDetail() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {facultyPins.map((pin) => {
               const photo = pin.pin_photos?.[0]
-              const cat = categoryById(pin.category_id)
               
               return (
                 <button
@@ -80,13 +78,6 @@ export function FacultyDetail() {
                     </>
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-udp-300)] to-[var(--color-udp-500)] opacity-20" />
-                  )}
-                  
-                  {/* Categoría Emoji Badge */}
-                  {cat && (
-                    <div className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-xs shadow-sm">
-                      {cat.emoji}
-                    </div>
                   )}
 
                   {/* Título en la parte inferior */}

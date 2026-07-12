@@ -20,6 +20,8 @@ export interface CreatePinInput {
   userId: string
   userName: string
   isOfficial?: boolean
+  startsAt?: string | null
+  endsAt?: string | null
 }
 
 const nowIso = () => new Date().toISOString()
@@ -112,8 +114,8 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
       reports: 0,
       is_permanent: isPlace,
       expires_at,
-      starts_at: null,
-      ends_at: null,
+      starts_at: input.startsAt ?? null,
+      ends_at: input.endsAt ?? null,
       is_official: input.isOfficial ?? false,
       created_at: nowIso(),
       pin_photos: [],
@@ -136,6 +138,8 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
       creator_id: input.userId,
       is_permanent: isPlace,
       expires_at,
+      starts_at: input.startsAt,
+      ends_at: input.endsAt,
       is_official: input.isOfficial ?? false,
     })
     .select()
@@ -170,6 +174,8 @@ export async function updatePin(pinId: string, input: Partial<CreatePinInput>): 
       if (input.facultyId !== undefined) pin.faculty_id = input.facultyId
       if (input.type !== undefined) pin.type = input.type
       if (input.isOfficial !== undefined) pin.is_official = input.isOfficial
+      if (input.startsAt !== undefined) pin.starts_at = input.startsAt
+      if (input.endsAt !== undefined) pin.ends_at = input.endsAt
     }
     return
   }
@@ -181,6 +187,8 @@ export async function updatePin(pinId: string, input: Partial<CreatePinInput>): 
       category_id: input.categoryId,
       faculty_id: input.facultyId,
       type: input.type,
+      starts_at: input.startsAt,
+      ends_at: input.endsAt,
       ...(input.isOfficial !== undefined ? { is_official: input.isOfficial } : {})
     })
     .eq('id', pinId)

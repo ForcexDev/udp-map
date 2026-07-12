@@ -14,6 +14,7 @@ import {
   Move,
   ChevronLeft,
   ChevronRight,
+  Share2,
 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Pin } from '@/shared/types/database'
@@ -132,6 +133,27 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
     } else {
       setRouteTarget(pin.id)
       selectPin(null)
+    }
+  }
+  const handleShare = async () => {
+    const url = `${window.location.origin}/mapa?pin=${pin.id}`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: pin.title,
+          text: pin.description ?? undefined,
+          url: url
+        })
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          navigator.clipboard.writeText(url)
+          useUIStore.getState().showToast(t('common.copied', 'Enlace copiado al portapapeles'))
+        }
+      }
+    } else {
+      navigator.clipboard.writeText(url)
+      useUIStore.getState().showToast(t('common.copied', 'Enlace copiado al portapapeles'))
     }
   }
 
@@ -268,6 +290,13 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                 }`}
             >
               <Star size={16} fill={isFavorite ? '#F5B400' : 'none'} strokeWidth={isFavorite ? 1.5 : 2} />
+            </button>
+            <button
+              onClick={handleShare}
+              aria-label={t('pin.share', 'Compartir')}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors ${FAVORITE_CIRCLE_INACTIVE}`}
+            >
+              <Share2 size={16} strokeWidth={2} />
             </button>
           </div>
 

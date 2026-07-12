@@ -123,3 +123,10 @@ export interface FloorPlan {
   bounds: [[number, number], [number, number]] | null
   image_overlay: string | null
 }
+
+export interface EventRsvp {
+  pin_id: string
+  user_id: string
+  status: 'going' | 'interested'
+}
+
