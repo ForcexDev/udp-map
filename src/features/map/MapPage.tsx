@@ -5,6 +5,7 @@ import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown } fr
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useGuard } from '@/features/auth/useGuard'
+import { AnimatePresence } from 'framer-motion'
 import { usePins } from '@/features/pins/usePins'
 import { PinDetail } from '@/features/pins/PinDetail'
 import { CreatePinModal } from '@/features/pins/CreatePinModal'
@@ -533,10 +534,14 @@ export function MapPage() {
         </div>
       )}
 
-      {selectedPin && (
-        <PinDetail pin={selectedPin} isFavorite={favoriteIds.has(selectedPin.id)} userLocation={userLocation} />
-      )}
-      <FacultyDetail />
+      <AnimatePresence>
+        {selectedPin && (
+          <PinDetail key="pin-detail" pin={selectedPin} isFavorite={favoriteIds.has(selectedPin.id)} userLocation={userLocation} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        <FacultyDetail key="faculty-detail" />
+      </AnimatePresence>
       <CreatePinModal />
       <TutorialModal />
       <ProfileSetupModal />

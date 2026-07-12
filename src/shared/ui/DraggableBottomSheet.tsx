@@ -93,16 +93,17 @@ export function DraggableBottomSheet({
       className={`pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[400px] ${className}`}
       initial="hidden"
       animate={isExpanded ? 'expanded' : 'compact'}
+      exit="hidden"
       variants={{
         hidden: { y: (sheetHeight || maxSheetHeight) + 100 },
         compact: { y: compactY || 500 },
         expanded: { y: expandedY }
       }}
-      transition={{ type: 'spring', damping: 28, stiffness: 300, mass: 0.8, bounce: 0 }}
+      transition={{ type: 'tween', ease: [0.25, 1, 0.5, 1], duration: 0.4 }}
       drag="y"
       dragControls={dragControls}
       dragListener={false}
-      dragConstraints={{ top: expandedY, bottom: compactY > 0 ? compactY + 100 : 100 }}
+      dragConstraints={{ top: expandedY, bottom: compactY > 0 ? compactY + 800 : 800 }}
       dragElastic={0.15}
       dragMomentum={false}
       onDragEnd={handleDragEnd}
