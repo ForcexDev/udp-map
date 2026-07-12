@@ -86,12 +86,6 @@ export function ProfilePage() {
   const openOnMap = (pin: Pin) => {
     selectPin(pin.id)
     navigate('/mapa')
-    // Esperar el montaje del mapa antes de volar a la ubicación del pin
-    setTimeout(() => {
-      window.dispatchEvent(
-        new CustomEvent('faculty-flyto', { detail: { lat: pin.lat, lng: pin.lng } })
-      )
-    }, 400)
   }
 
   const sharePin = async (pin: Pin) => {
@@ -140,29 +134,31 @@ export function ProfilePage() {
         </div>
 
         {/* ── Perfil ── */}
-        <div className="flex items-center gap-4 py-5">
-          {user.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt={user.name}
-              className="w-[60px] h-[60px] rounded-full object-cover border border-neutral-200 dark:border-neutral-800 flex-shrink-0"
-            />
-          ) : (
-            <div className="w-[60px] h-[60px] rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 grid place-items-center text-2xl font-bold text-neutral-400 flex-shrink-0">
-              {user.name.charAt(0).toUpperCase()}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 py-5">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                className="w-[64px] h-[64px] sm:w-[80px] sm:h-[80px] rounded-full object-cover border border-neutral-200 dark:border-neutral-800 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-[64px] h-[64px] sm:w-[80px] sm:h-[80px] rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 grid place-items-center text-2xl font-bold text-neutral-400 flex-shrink-0">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[21px] font-bold leading-tight text-neutral-900 dark:text-white break-words">
+                {user.name}
+              </h2>
+              <p className="font-mono text-[13px] text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
+                {handleFromEmail(user.email)}
+              </p>
             </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[21px] font-bold leading-tight text-neutral-900 dark:text-white truncate">
-              {user.name}
-            </h2>
-            <p className="font-mono text-[13px] text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
-              {handleFromEmail(user.email)}
-            </p>
           </div>
           <button
             onClick={() => setEditOpen(true)}
-            className="flex-shrink-0 border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white font-semibold text-[13px] px-3.5 py-2 rounded-[10px] hover:border-[#D41F2D] transition-colors"
+            className="w-full sm:w-auto flex-shrink-0 border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white font-semibold text-[13px] px-3.5 py-2 rounded-[10px] hover:border-[#D41F2D] transition-colors"
           >
             {t('profile.editProfile')}
           </button>
@@ -176,7 +172,7 @@ export function ProfilePage() {
                 {d.label}
               </div>
               <div
-                className={`text-[15px] font-semibold mt-1 truncate ${d.className ?? 'text-neutral-900 dark:text-white'}`}
+                className={`text-[15px] font-semibold mt-1 ${d.className ?? 'text-neutral-900 dark:text-white'}`}
                 title={d.value}
               >
                 {d.value}
@@ -224,10 +220,10 @@ export function ProfilePage() {
                     {/* Cabecera */}
                     <div className="flex items-start gap-2.5 px-3.5 pt-3.5">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-[15px] font-bold text-neutral-900 dark:text-white truncate">
+                        <h3 className="text-[15px] font-bold text-neutral-900 dark:text-white break-words">
                           {pin.title}
                         </h3>
-                        <p className="font-mono text-[11.5px] text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
+                        <p className="font-mono text-[11.5px] text-neutral-500 dark:text-neutral-400 mt-0.5 break-words">
                           {timeAgo(pin.created_at)}
                           {facultyName ? ` · ${facultyName}` : ''}
                         </p>
@@ -260,7 +256,7 @@ export function ProfilePage() {
                       {facultyName && (
                         <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 bg-neutral-950/85 text-white text-xs font-semibold px-2.5 py-1.5 rounded-[10px] max-w-[85%]">
                           <MapPin size={11} className="flex-shrink-0" />
-                          <span className="truncate">{facultyName}</span>
+                          <span className="truncate min-w-0">{facultyName}</span>
                         </span>
                       )}
                     </div>

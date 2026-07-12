@@ -87,11 +87,24 @@ export function MapView({ pins, route, floorPlan, userLocation, isTrackingLocati
     const campus = CAMPUSES.find((c) => c.id === useUIStore.getState().campusId) ?? CAMPUSES[0]
     const initialViewMode = useUIStore.getState().viewMode
     const show3D = initialViewMode === '3d'
+    
+    const currentPinId = useUIStore.getState().selectedPinId
+    let initialCenter: [number, number] = [campus.lng, campus.lat]
+    let initialZoom = DEFAULT_ZOOM
+    
+    if (currentPinId) {
+      const pin = pins.find(p => p.id === currentPinId)
+      if (pin) {
+         initialCenter = [pin.lng, pin.lat]
+         initialZoom = 18
+      }
+    }
+
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: mapStyleUrl,
-      center: [campus.lng, campus.lat],
-      zoom: DEFAULT_ZOOM,
+      center: initialCenter,
+      zoom: initialZoom,
       // Límite circular: no panear ni alejar fuera del área de la U
       // (impide además que se pidan tiles fuera de la zona).
       maxBounds: BOUNDARY_MAX_BOUNDS,

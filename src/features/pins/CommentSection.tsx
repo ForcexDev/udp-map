@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Send, Trash2, User } from 'lucide-react'
+import { Send, Trash2 } from 'lucide-react'
 import { useComments } from './useComments'
 import { useGuard } from '@/features/auth/useGuard'
 import { useAuthStore } from '@/features/auth/authStore'
