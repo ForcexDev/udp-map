@@ -39,10 +39,10 @@ export function EventsPage() {
     <div className="h-full overflow-y-auto bg-neutral-50 dark:bg-neutral-950 pb-16">
       <div className="mx-auto w-full max-w-6xl px-4 pt-6">
         {/* Header section */}
-        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-4 mb-6">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 dark:border-neutral-800 pb-4 mb-6">
+          <div className="pr-2">
             <h1 className="text-2xl font-black text-neutral-900 dark:text-white">
-              {t('events.title')}
+              {t('events.title', 'Eventos')}
             </h1>
             <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
               Descubre y asiste a las actividades de los campus UDP
@@ -50,10 +50,10 @@ export function EventsPage() {
           </div>
           <button
             onClick={handleCreateEvent}
-            className="flex items-center gap-1.5 bg-[#D41F2D] text-white hover:bg-[#b11a25] font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer"
+            className="flex items-center justify-center sm:justify-start shrink-0 gap-1.5 bg-[#D41F2D] text-white hover:bg-[#b11a25] font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer w-full sm:w-auto"
           >
             <Plus size={16} />
-            {t('events.createEvent')}
+            {t('events.createEvent', 'Crear Evento')}
           </button>
         </div>
 

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { X } from 'lucide-react'
+import { X, Share2 } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { FACULTIES } from '@/shared/data/campusData'
 import { usePins } from '@/features/pins/usePins'
@@ -10,6 +10,7 @@ export function FacultyDetail() {
   const selectedFacultyId = useUIStore((s) => s.selectedFacultyId)
   const selectFaculty = useUIStore((s) => s.selectFaculty)
   const selectPin = useUIStore((s) => s.selectPin)
+  const showToast = useUIStore((s) => s.showToast)
   const { pins } = usePins()
 
   if (!selectedFacultyId) return null
@@ -18,6 +19,24 @@ export function FacultyDetail() {
   if (!faculty) return null
 
   const facultyPins = pins.filter((p) => p.faculty_id === selectedFacultyId && p.type !== 'place')
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/mapa?faculty=${faculty.id}`
+    const text = `${faculty.name} — UDP Map`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: faculty.name, text, url })
+      } else {
+        await navigator.clipboard.writeText(url)
+        showToast(t('common.copied', 'Enlace copiado al portapapeles'))
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        navigator.clipboard.writeText(url)
+        showToast(t('common.copied', 'Enlace copiado al portapapeles'))
+      }
+    }
+  }
 
   return (
     <DraggableBottomSheet
@@ -37,7 +56,7 @@ export function FacultyDetail() {
 
       {/* Header Info */}
       <div className="relative flex shrink-0 items-start justify-between p-5 pb-3">
-        <div className="flex flex-col gap-1 pr-8">
+        <div className="flex flex-col gap-1 pr-16">
           <h2 className="text-xl font-bold leading-tight drop-shadow-sm">
             {faculty.name}
           </h2>
@@ -45,13 +64,22 @@ export function FacultyDetail() {
             {facultyPins.length} {facultyPins.length === 1 ? 'post' : 'posts'}
           </p>
         </div>
-        <button
-          onClick={() => selectFaculty(null)}
-          aria-label={t('common.close')}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 transition-colors backdrop-blur-sm"
-        >
-          <X size={20} />
-        </button>
+        <div className="absolute right-4 top-4 flex items-center gap-2">
+          <button
+            onClick={handleShare}
+            aria-label={t('common.share', 'Compartir')}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 transition-colors backdrop-blur-sm"
+          >
+            <Share2 size={16} />
+          </button>
+          <button
+            onClick={() => selectFaculty(null)}
+            aria-label={t('common.close')}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 transition-colors backdrop-blur-sm"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Grid de Pines */}

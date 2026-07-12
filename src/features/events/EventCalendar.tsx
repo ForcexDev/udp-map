@@ -135,10 +135,10 @@ export function EventCalendar({ events, userRSVPs, onRSVPChange, onSelectEvent }
                     : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
                 }`}
               >
-                <span>{day}</span>
+                <span className={dayEvents.length > 0 ? '-translate-y-0.5' : ''}>{day}</span>
                 {dayEvents.length > 0 && (
                   <span
-                    className={`absolute bottom-1.5 w-1 h-1 rounded-full ${
+                    className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
                       isSelected
                         ? 'bg-white dark:bg-neutral-900'
                         : 'bg-[#D41F2D]'
