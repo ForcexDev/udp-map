@@ -1,102 +1,101 @@
-# Contribuir a UDP Map v0.1
+# Contribuir a UDP Map v0.2.0
 
-¡Gracias por tu interés en contribuir! 🎉 Estamos construyendo el mapa vivo del campus, eventos y foro de la UDP.
+¡Gracias por tu interés en contribuir! 🎉 Estamos construyendo el mapa vivo, calendario de eventos y foro de la UDP.
 
-Este documento refleja la nueva arquitectura y estándares de la versión 0.1 (v0.1). Para detalles completos de producto y estado de sprints, revisa los archivos `PLAN.md` y `SPRINTS_STATUS.md`.
+Este documento refleja la arquitectura y estándares actuales de la versión 0.2.0 (que abarca los Sprints 1, 2 y 3). Para detalles completos del proyecto, estado de sprints y hoja de ruta, revisa `PLAN.md` y `SPRINTS_STATUS.md`.
 
 ## Inicio Rápido
 
-1. **Haz fork** del repo y clona tu fork.
+1. **Haz fork** del repo y clona tu fork localmente.
 2. **Instala** dependencias: `npm install`
 3. **Configura el entorno**: Copia `.env.example` a `.env` y llena las variables de Supabase (si las tienes).
 4. **Inicia** el servidor: `npm run dev`
 
-> **Demo Local:** Si no configuras Supabase, la app corre en un "modo demo" (con datos en memoria y mocks) útil para probar UI sin backend.
+> **Demo Local:** Si no configuras Supabase, la app corre en un "modo demo" (con datos en memoria y mocks) útil para probar la interfaz (mapas, pines, eventos y foros) sin necesidad de backend.
 
 ## Estructura del Proyecto (Feature-Sliced Design)
 
 El código está organizado por **funcionalidades (features)**, no por tipo de archivo:
 
-```
+```text
 src/
-├── app/                  → Entrada, providers (Query, Router, i18n, Zustand), layout global
-├── features/             → Dominios principales de la app
-│   ├── auth/             → Login, sesión, modo invitado, permissions.ts
-│   ├── map/              → MapLibre, campus, capas, indoor, ruteo peatonal
-│   ├── pins/             → Motor común: fotos, comentarios, expiración, votos
-│   ├── forum/            → Foro, hilos, comentarios anidados
-│   ├── profile/          → Perfil, karma, insignias
-│   └── moderation/       → Reportes, cola de moderación
-├── shared/               → Código compartido
-│   ├── ui/               → Design system (botones, modales, bottom sheets)
-│   ├── hooks/            → Hooks transversales
-│   ├── lib/              → Clientes (Supabase, QueryClient, i18n)
-│   └── types/            → Tipos autogenerados de DB y dominio
-└── styles/               → Tailwind CSS globales
+├── app/                  → Entrada (main.tsx), providers globales (Query, Router, i18n), layout global.
+├── features/             → Dominios principales de la aplicación:
+│   ├── auth/             → Autenticación, sesión, modo invitado, permissions.ts.
+│   ├── map/              → Componente MapLibre, campus, capas, ruteo peatonal.
+│   ├── pins/             → Motor común de pines: creador, fotos, expiración, votos y comentarios.
+│   ├── forum/            → Foro por facultad, hilos (threads), respuestas anidadas.
+│   ├── events/           → Calendario de eventos, filtros, creación de eventos oficiales y estudiantiles.
+│   └── profile/          → Perfil de usuario, perfiles públicos (vistos por otros), gestión de roles (admin).
+├── shared/               → Código base y utilidades compartidas:
+│   ├── ui/               → Design system (botones, modales, Bottom Sheets).
+│   ├── hooks/            → Hooks transversales.
+│   ├── lib/              → Clientes (Supabase, QueryClient, i18n).
+│   ├── data/             → Mock data y constantes (campusData).
+│   └── types/            → Tipos autogenerados de BD y modelos de dominio.
+└── styles/               → Estilos globales en Tailwind CSS (index.css).
+
 supabase/
-├── migrations/           → Esquema SQL (pines, RLS, RPCs)
-├── functions/            → Edge Functions (Deno: moderate-content, expire-pins)
-└── seed/                 → Datos iniciales (campus, facultades)
+├── migrations/           → Esquema SQL (tablas, RLS, triggers, políticas de seguridad).
+└── seed/                 → Datos iniciales.
 ```
 
 **Regla de oro de arquitectura:** Una feature no debe importar detalles internos de otra feature. Para compartir lógica, expón funciones claras o muévelo a `shared/`.
 
-## Autenticación y Roles
+## Autenticación, Usuarios y Roles
 
-Usamos **Supabase Auth (Google Provider)** restringido al dominio `@mail.udp.cl`.
+La plataforma usa **Supabase Auth (Google Provider)**, restringido al dominio `@mail.udp.cl`. Todo usuario (salvo invitados) tiene una entrada en la tabla `profiles`.
 
-Existen 4 roles definidos en la base de datos y controlados en `features/auth/permissions.ts`:
-1. **`guest`**: Usuarios sin login. Tienen acceso de **solo lectura**. Todo intento de escritura despliega un modal pidiendo login.
-2. **`student`**: Login con `@mail.udp.cl`. Pueden crear reportes, eventos estudiantiles, votar, comentar y subir fotos.
-3. **`moderator`**: Estudiantes promovidos. Pueden ocultar contenido ajeno y crear lugares permanentes (`place`).
-4. **`admin`**: Acceso total.
+Existen 4 roles controlados vía base de datos y `features/auth/permissions.ts`:
+1. **`guest`**: Usuarios sin inicio de sesión. Tienen acceso de **solo lectura**. Todo intento de escritura despliega un modal pidiendo login.
+2. **`student`**: Login normal. Pueden crear pines temporales (reportes), eventos, hilos en el foro, comentar y votar.
+3. **`moderator`**: Estudiantes promovidos. Pueden gestionar contenido (eliminar pines ajenos, fijar hilos) y crear lugares permanentes (`place`).
+4. **`admin`**: Acceso total. Además de la moderación, pueden asignar roles a otros perfiles y crear facultades o categorías.
 
-La seguridad está garantizada por **Row Level Security (RLS)** en la base de datos Supabase, que impide (incluso mediante la API) que un `guest` escriba directamente en la DB.
+La seguridad está fuertemente garantizada por **Row Level Security (RLS)** en Postgres, impidiendo accesos o modificaciones indebidas directamente en la API.
+
+## Modelo de Datos Unificado (Pines & Foro)
+
+- **Tabla `pins`**: Controla todo el contenido geolocalizado. Determinado por su columna `type` (`place`, `event`, `report`).
+  - Los eventos usan la misma tabla, definiendo `starts_at` y `ends_at`.
+  - Comparten tablas satélite: `pin_photos`, `pin_comments` y `pin_votes`.
+- **Foro (`forum_threads` y `forum_comments`)**: Sistema independiente de discusiones separadas por facultad. Soporta respuestas anidadas infinitas (renderizadas como un árbol de comentarios).
 
 ## Guías de Estilo y Desarrollo
 
 ### Stack Tecnológico
 - **Frontend:** React 19, TypeScript, Vite 6.
-- **Estado:** Zustand (UI local rápida) + TanStack Query (Estado asíncrono/servidor).
+- **Estado:** Zustand (estado UI local, como Modales) + TanStack Query (Estado de datos asíncrono y caché).
 - **Estilos:** Tailwind CSS 4 + Lucide React.
 - **Mapa:** MapLibre GL JS + OpenFreeMap.
 
 ### Tipado (TypeScript)
-- Evita usar `any` a toda costa. El linter arrojará error (`Unexpected any`). Si no conoces el tipo, usa `unknown`.
-- Los tipos de la base de datos se autogeneran de Supabase en `src/shared/types/database.ts`.
+- Evita usar `any` a toda costa. El linter arrojará error (`Unexpected any`). Si no conoces el tipo exacto, usa `unknown` o genéricos (`Record<string, unknown>`).
+- Los tipos de la base de datos se autogeneran en `src/shared/types/database.ts`. Usa las interfaces expuestas allí.
 
 ### Internacionalización (i18n)
-- Usamos `react-i18next`.
-- Usa el hook `const { t } = useTranslation()` en tus componentes.
-- Nunca pongas texto en español/inglés quemado directamente en el JSX.
+- La aplicación es bilingüe mediante `react-i18next`.
+- Usa siempre el hook `const { t } = useTranslation()` en tus componentes.
+- Nunca hardcodees texto directamente en el JSX (e.g. `<p>Hola</p>`), usa `<p>{t('greeting', 'Hola')}</p>`.
 
 ### Manejo del Mapa (MapLibre)
 - Toda la lógica del mapa vive en `src/features/map`.
-- Para interactuar con el mapa desde componentes externos, usa eventos de ventana (`window.dispatchEvent`) o modifica el estado de Zustand (`useUIStore`), evitando pasar referencias explícitas del objeto `map` por toda la aplicación.
-
-## Modelo de Datos Unificado (Pines)
-
-En la v0.1, **TODO** es un pin en la base de datos, definido por la columna `type` en la tabla `pins`:
-- `place`: Lugares permanentes (Facultades, bibliotecas). Los gestiona el administrador.
-- `event`: Eventos con fecha de inicio y fin (`starts_at`, `ends_at`).
-- `report`: Reportes temporales creados por usuarios que se eliminan solos al llegar a su tiempo de expiración (`expires_at`).
-
-Todos los pines (sin importar su tipo) comparten las mismas tablas satélite para interacciones: `pin_photos`, `pin_comments` y `pin_votes`.
+- Para interactuar con el mapa desde componentes externos, usa el estado global de Zustand (`useUIStore`) o propaga eventos, evitando pasar referencias directas del objeto `map` (`Map` instance) por toda la aplicación. Esto asegura que los componentes de React no fuercen re-renderizados costosos del canvas WebGL.
 
 ## Testing y CI/CD
 
-En cada Pull Request, GitHub Actions ejecutará automáticamente:
-1. `npm run lint` (ESLint, previene `any` y malas prácticas)
-2. `npm run typecheck` (TypeScript tsc)
-3. `npm run test` (Vitest)
+En cada Pull Request o push a la rama principal, GitHub Actions ejecutará:
+1. `npm run lint` (ESLint: verifica reglas de Hooks, `no-explicit-any`, etc.)
+2. `npm run typecheck` (TypeScript: validación estricta de tipos)
+3. `npm run test` (Vitest: Pruebas unitarias de utilidades y componentes lógicos)
 
-Asegúrate de correr estos comandos localmente antes de hacer push. Si modificas componentes del mapa, revisa que los mocks en `MapView.test.tsx` sigan siendo compatibles, ya que MapLibre no corre en el entorno de tests (Node/JSDOM).
+Asegúrate de correr estos tres comandos localmente antes de hacer push. Si modificas algo, revisa que los tests pasen exitosamente.
 
 ## Proceso de Pull Request
 
 1. Asegúrate de estar trabajando sobre la rama principal actualizada (`git pull origin main`).
-2. Crea una rama para tu feature: `git checkout -b feature/nombre-feature` o `fix/nombre-bug`.
-3. Haz tus cambios siguiendo las guías de estilo.
-4. Verifica localmente (`npm run lint`, `npm run test`, `npm run build`).
-5. Abre el PR con un título descriptivo y enlázalo a un issue si existe.
-6. Espera la revisión de tu código para hacer merge.
+2. Crea una rama descriptiva para tu feature o fix: `git checkout -b feature/nuevo-foro` o `fix/boton-login`.
+3. Haz tus cambios, respetando la estructura de carpetas y guías de estilo.
+4. Verifica todo localmente ejecutando `npm run lint`, `npm run test` y `npm run build`. (Si algo falla, la PR será rechazada automáticamente).
+5. Abre el PR con un título claro. Si resuelve un Issue, menciónalo (`Closes #12`).
+6. Espera la revisión de otro desarrollador para hacer merge.
