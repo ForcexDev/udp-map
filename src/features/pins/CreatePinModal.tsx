@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import * as RadixDialog from '@radix-ui/react-dialog'
-import { Camera, MapPin, Sparkles, X, Trash2, ArrowRight, Loader2 } from 'lucide-react'
+import { Camera, MapPin, Sparkles, X, Trash2, ArrowRight, Loader2, BadgeCheck, DoorOpen } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
@@ -104,12 +104,10 @@ export function CreatePinModal() {
       if (!currentCategory || currentCategory.kind !== 'event') {
         form.setValue('categoryId', eventCategories[0]?.id ?? null)
       }
-    } else if (type === 'report') {
+    } else if (type === 'report' || type === 'place') {
       if (!currentCategory || currentCategory.kind !== 'report') {
         form.setValue('categoryId', reportCategories[0]?.id ?? null)
       }
-    } else if (type === 'place') {
-      form.setValue('categoryId', null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
@@ -240,9 +238,6 @@ export function CreatePinModal() {
                   {facultyName}
                 </p>
               </div>
-            </div>
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center text-[#D41F2D] shrink-0">
-              <MapPin size={20} strokeWidth={2.5} />
             </div>
           </div>
 
@@ -420,87 +415,72 @@ export function CreatePinModal() {
                 </div>
               )}
             </div>
-            {type !== 'place' && (
-              <div className="space-y-6">
-                <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.category')}</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <Controller
-                    name="categoryId"
-                    control={form.control}
-                    render={({ field }) => {
-                      const activeCategories = CATEGORIES.filter((c) => c.kind === (type === 'event' ? 'event' : 'report'))
-                      return (
-                        <>
-                          {can(role, 'pin.moderate') && (
-                            <button
-                              type="button"
-                              onClick={() => field.onChange(null)}
-                              className={`flex flex-col items-center gap-3 p-4 rounded-[24px] border-2 transition-all ${
-                                field.value === null
-                                  ? 'shadow-lg scale-[1.02] border-[#D41F2D] bg-[#D41F2D]/5 dark:bg-[#D41F2D]/10'
-                                  : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
+
+            {/* Categories */}
+            <div className="space-y-6">
+              <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.category')}</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Controller
+                  name="categoryId"
+                  control={form.control}
+                  render={({ field }) => {
+                    const activeCategories = CATEGORIES.filter((c) => {
+                      if (c.kind !== (type === 'event' ? 'event' : 'report')) return false
+                      // 'entrada' is restricted to moderators/admins (or when creating a place)
+                      if (c.id === 'entrada' && type !== 'place' && !can(role, 'pin.moderate')) return false
+                      return true
+                    })
+                    return (
+                      <>
+                        {activeCategories.map(c => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => field.onChange(c.id)}
+                            className={`flex flex-col items-center gap-3 p-4 rounded-[24px] border-2 transition-all ${
+                              field.value === c.id
+                                ? 'shadow-lg scale-[1.02]'
+                                : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
+                            }`}
+                            style={field.value === c.id ? { 
+                              borderColor: c.color, 
+                              backgroundColor: `color-mix(in srgb, ${c.color} 10%, transparent)` 
+                            } : {}}
+                          >
+                            <div
+                              className={`w-11 h-11 rounded-[16px] flex items-center justify-center shrink-0 transition-all ${
+                                field.value === c.id 
+                                  ? 'text-white shadow-lg' 
+                                  : 'bg-white dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-100 dark:border-neutral-700'
                               }`}
+                              style={field.value === c.id ? { backgroundColor: c.color } : {}}
                             >
-                              <div className="w-11 h-11 rounded-[16px] flex items-center justify-center shrink-0 transition-all text-[#D41F2D] shadow-sm bg-white dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700">
+                              {c.id === 'entrada' ? (
+                                <DoorOpen size={22} strokeWidth={2.2} />
+                              ) : c.svgPath ? (
                                 <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                                  <path d={c.svgPath} />
                                 </svg>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-[12px] font-black text-neutral-900 dark:text-white leading-tight">
-                                  Entrada
-                                </div>
-                              </div>
-                            </button>
-                          )}
-                          {activeCategories.map(c => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => field.onChange(c.id)}
-                              className={`flex flex-col items-center gap-3 p-4 rounded-[24px] border-2 transition-all ${
-                                field.value === c.id
-                                  ? 'shadow-lg scale-[1.02]'
-                                  : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
+                              ) : (
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                              )}
+                            </div>
+                            <span 
+                              className={`text-[9px] font-black uppercase tracking-widest text-center leading-none ${
+                                field.value !== c.id && 'text-neutral-500 dark:text-neutral-400'
                               }`}
-                              style={field.value === c.id ? { 
-                                borderColor: c.color, 
-                                backgroundColor: `color-mix(in srgb, ${c.color} 10%, transparent)` 
-                              } : {}}
+                              style={field.value === c.id ? { color: c.color } : {}}
                             >
-                              <div
-                                className={`w-11 h-11 rounded-[16px] flex items-center justify-center shrink-0 transition-all ${
-                                  field.value === c.id 
-                                    ? 'text-white shadow-lg' 
-                                    : 'bg-white dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-100 dark:border-neutral-700'
-                                }`}
-                                style={field.value === c.id ? { backgroundColor: c.color } : {}}
-                              >
-                                {c.svgPath ? (
-                                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                                    <path d={c.svgPath} />
-                                  </svg>
-                                ) : (
-                                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                                )}
-                              </div>
-                              <span 
-                                className={`text-[9px] font-black uppercase tracking-widest text-center leading-none ${
-                                  field.value !== c.id && 'text-neutral-500 dark:text-neutral-400'
-                                }`}
-                                style={field.value === c.id ? { color: c.color } : {}}
-                              >
-                                {c.name}
-                              </span>
-                            </button>
-                          ))}
-                        </>
-                      )
-                    }}
-                  />
-                </div>
+                              {c.name}
+                            </span>
+                          </button>
+                        ))}
+                      </>
+                    )
+                  }}
+                />
               </div>
-            )}
+            </div>
 
             {/* Event Dates */}
             {type === 'event' && (
@@ -546,11 +526,16 @@ export function CreatePinModal() {
             {/* Admin Toggle: isOfficial */}
             {can(role, 'pin.moderate') && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between gap-4 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl px-5 py-4 shadow-sm">
-                  <div className="flex-1">
-                    <label className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em]">{t('pin.officialToggle', 'Publicar como Oficial')}</label>
-                    <p className="text-[11px] sm:text-xs text-neutral-500 dark:text-neutral-400 font-medium mt-1 leading-snug">
-                      El autor se mostrará como Administración UDP.
+                <div className="flex items-center justify-between gap-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-5 shadow-sm transition-all">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <BadgeCheck size={18} className="text-blue-500 shrink-0" strokeWidth={2.2} />
+                      <label className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] cursor-pointer">
+                        {t('pin.officialToggle', 'Publicar como Oficial')}
+                      </label>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-snug pl-6">
+                      El autor se mostrará como <span className="font-bold text-[#D41F2D]">Administración UDP</span>.
                     </p>
                   </div>
                   <Controller
@@ -562,8 +547,8 @@ export function CreatePinModal() {
                         role="switch"
                         aria-checked={field.value}
                         onClick={() => field.onChange(!field.value)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
-                          field.value ? 'bg-emerald-500' : 'bg-neutral-300 dark:bg-neutral-600'
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                          field.value ? 'bg-blue-600' : 'bg-neutral-300 dark:bg-neutral-600'
                         }`}
                       >
                         <span

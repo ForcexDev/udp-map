@@ -23,23 +23,42 @@ import { isLocationOutOfBounds } from './campusBoundary'
 
 function useUserLocation() {
   const [loc, setLoc] = useState<LatLng | null>(null)
+  const [heading, setHeading] = useState<number | null>(null)
   const [isTracking, setIsTracking] = useState(false)
   const watchIdRef = useRef<number | null>(null)
+  // Store the first-resolve callback so requestLocation doesn't recreate on every GPS update
+  const resolveRef = useRef<((v: LatLng | null) => void) | null>(null)
+  const locRef = useRef<LatLng | null>(null)
 
-  const requestLocation = useCallback(async () => {
-    if (watchIdRef.current !== null && loc) return loc
+  const requestLocation = useCallback((): Promise<LatLng | null> => {
+    // Already tracking and have a location — return immediately without a new watch
+    if (watchIdRef.current !== null && locRef.current) {
+      return Promise.resolve(locRef.current)
+    }
+    // Already watching but first fix not yet received
+    if (watchIdRef.current !== null) {
+      return new Promise((resolve) => { resolveRef.current = resolve })
+    }
 
     return new Promise<LatLng | null>((resolve, reject) => {
+      resolveRef.current = resolve
       const watchId = navigator.geolocation?.watchPosition(
         (pos) => {
           const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          locRef.current = newLoc
           setLoc(newLoc)
           setIsTracking(true)
-          resolve(newLoc)
+          // Resolve the first call only
+          if (resolveRef.current) {
+            resolveRef.current(newLoc)
+            resolveRef.current = null
+          }
         },
         (err) => {
+          locRef.current = null
           setLoc(null)
           setIsTracking(false)
+          resolveRef.current = null
           if (err.code === err.PERMISSION_DENIED) {
             reject(new Error('PERMISSION_DENIED'))
           } else {
@@ -48,14 +67,28 @@ function useUserLocation() {
         },
         { enableHighAccuracy: true, timeout: 8000 }
       )
-      
+
       if (watchId !== undefined) {
         watchIdRef.current = watchId
       } else {
         reject(new Error('NO_GEOLOCATION'))
       }
     })
-  }, [loc])
+  // Stable reference — no deps that change on every GPS update
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Device heading (compass) — for the directional dot on the map
+  useEffect(() => {
+    const handler = (e: DeviceOrientationEvent) => {
+      // webkitCompassHeading available on iOS; fallback to alpha on Android
+      const h = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading
+        ?? (e.alpha !== null ? (360 - e.alpha) % 360 : null)
+      setHeading(h)
+    }
+    window.addEventListener('deviceorientation', handler, true)
+    return () => window.removeEventListener('deviceorientation', handler, true)
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -65,7 +98,7 @@ function useUserLocation() {
     }
   }, [])
 
-  return { loc, isTracking, requestLocation }
+  return { loc, heading, isTracking, requestLocation }
 }
 
 export function MapPage() {
@@ -105,8 +138,12 @@ export function MapPage() {
     }
   }
 
-  const { loc: userLocation, isTracking, requestLocation } = useUserLocation()
+  const { loc: userLocation, heading: userHeading, isTracking, requestLocation } = useUserLocation()
   const [route, setRoute] = useState<WalkingRoute | null>(null)
+  // Ref to the initial origin used when the route was first calculated.
+  // We do NOT recalculate on GPS updates (industry standard: route is shown
+  // once and the user follows it; recalc only on explicit user action).
+  const routeOriginRef = useRef<LatLng | null>(null)
 
   // Faculty search state
   const [searchQuery, setSearchQuery] = useState('')
@@ -184,12 +221,16 @@ export function MapPage() {
     setSearchOpen(false)
   }
 
-  // Calcular ruta
+  // ── Calcular ruta (una sola vez al activar / cambiar modo accesible) ─────
+  // Industry standard: calcular ruta al inicio, no recalcular en cada update
+  // de GPS. El usuario sigue la ruta visualmente; recalculamos sólo si el
+  // destino cambia o el usuario pulsa explícitamente el botón de recalcular.
   useEffect(() => {
     let cancelled = false
 
     if (!routeTarget) {
       setRoute(null)
+      routeOriginRef.current = null
       return
     }
 
@@ -207,7 +248,7 @@ export function MapPage() {
         setRouteTarget(null)
         return
       }
-      
+
       if (cancelled) return
 
       const campus = CAMPUSES.find((c) => c.id === campusId) ?? CAMPUSES[0]
@@ -221,7 +262,9 @@ export function MapPage() {
         }
         origin = currentLoc
       }
-      
+
+      routeOriginRef.current = origin
+
       try {
         const r = await getWalkingRoute(origin, { lat: routeTarget.lat, lng: routeTarget.lng }, accessibleRoute)
         if (!cancelled) setRoute(r)
@@ -238,7 +281,11 @@ export function MapPage() {
     return () => {
       cancelled = true
     }
-  }, [routeTarget, accessibleRoute, campusId, showToast, t, requestLocation, setRouteTarget])
+  // IMPORTANT: Only recalculate when the TARGET or accessible mode changes.
+  // Do NOT include userLocation/requestLocation here — that would re-fire on
+  // every GPS update and burn the ORS quota (the original bug).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeTarget?.id, accessibleRoute])
 
   const movePin = useMutation({
     mutationFn: ({ lat, lng }: { lat: number; lng: number }) => {
@@ -265,6 +312,7 @@ export function MapPage() {
         route={route} 
         floorPlan={floorPlan} 
         userLocation={userLocation} 
+        userHeading={userHeading}
         isTrackingLocation={isTracking}
         onRequestLocation={requestLocation}
       />
