@@ -18,6 +18,7 @@ interface MapViewProps {
   route: WalkingRoute | null
   floorPlan: FloorPlan | null
   userLocation?: { lat: number; lng: number } | null
+  userHeading?: number | null
   isTrackingLocation?: boolean
   onRequestLocation?: () => Promise<{ lat: number; lng: number } | null>
 }
@@ -29,12 +30,28 @@ function markerColor(pin: Pin): string {
   return '#64748b'
 }
 
-function markerSvgPath(pin: Pin): string {
-  const defaultPlace = 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'
+// Exact lucide DoorOpen icon paths (stroke-based). Uses inline style to
+// override the CSS `.pin-marker svg { fill: white }` rule.
+const DOOR_OPEN_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" style="fill:none;stroke:white;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg>`
+
+function markerSvgContent(pin: Pin): string {
   const defaultEvent = 'M12 6c1.11 0 2-.9 2-2 0-.38-.1-.73-.29-1.03L12 0l-1.71 2.97c-.19.3-.29.65-.29 1.03 0 1.1.9 2 2 2zm4.6 9.99l-1.07-1.07-1.08 1.07c-1.3 1.3-3.58 1.31-4.89 0l-1.07-1.07-1.09 1.07C6.75 16.64 5.88 17 4.96 17c-.73 0-1.4-.23-1.96-.61V21c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-4.61c-.56.38-1.23.61-1.96.61-.92 0-1.79-.36-2.44-1.01zM18 9h-5V7h-2v2H6c-1.66 0-3 1.34-3 3v1.54c0 1.08.88 1.96 1.96 1.96.52 0 1.02-.2 1.38-.57l2.14-2.13 2.13 2.13c.74.74 2.03.74 2.77 0l2.14-2.13 2.13 2.13c.37.37.86.57 1.38.57 1.08 0 1.96-.88 1.96-1.96V12c.01-1.66-1.33-3-2.99-3z'
-  if (pin.category_id) return categoryById(pin.category_id)?.svgPath ?? defaultPlace
-  if (pin.type === 'event') return defaultEvent
-  return defaultPlace
+
+  if (pin.category_id) {
+    // Entrada uses its own filled DoorOpen icon
+    if (pin.category_id === 'entrada') return DOOR_OPEN_SVG
+    const cat = categoryById(pin.category_id)
+    if (cat?.svgPath) {
+      return `<svg viewBox="0 0 24 24" width="16" height="16"><path d="${cat.svgPath}" fill="white"/></svg>`
+    }
+  }
+
+  if (pin.type === 'event') {
+    return `<svg viewBox="0 0 24 24" width="16" height="16"><path d="${defaultEvent}" fill="white"/></svg>`
+  }
+
+  // Fallback for null category (legacy or place without category)
+  return DOOR_OPEN_SVG
 }
 
 // Module-level map reference for external access
@@ -67,7 +84,7 @@ export function getMapCenter(): { lat: number; lng: number } | null {
   return { lat: c.lat, lng: c.lng }
 }
 
-export function MapView({ pins, route, floorPlan, userLocation, isTrackingLocation, onRequestLocation }: MapViewProps) {
+export function MapView({ pins, route, floorPlan, userLocation, userHeading, isTrackingLocation, onRequestLocation }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
@@ -348,8 +365,7 @@ export function MapView({ pins, route, floorPlan, userLocation, isTrackingLocati
       }
 
       // Render SVG icon inside the marker
-      const svgPath = markerSvgPath(pin)
-      el.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16"><path d="${svgPath}" fill="white"/></svg>`
+      el.innerHTML = markerSvgContent(pin)
       el.style.setProperty('--pin-color', markerColor(pin))
       el.style.opacity = String(expiry.opacity)
       el.setAttribute('aria-label', pin.title)
@@ -375,7 +391,7 @@ export function MapView({ pins, route, floorPlan, userLocation, isTrackingLocati
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPinId])
 
-  // ── Marcador del usuario (punto azul) ──
+  // ── Marcador del usuario (punto azul con flecha de dirección) ──────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -390,13 +406,57 @@ export function MapView({ pins, route, floorPlan, userLocation, isTrackingLocati
 
     if (!userMarkerRef.current) {
       const el = document.createElement('div')
-      el.className = 'w-4 h-4 bg-[#D41F2D] border-2 border-white rounded-full shadow-[0_0_10px_rgba(212,31,45,0.8)] relative'
+      el.className = 'user-location-dot'
+      el.style.cssText = 'position:relative;width:20px;height:20px;'
 
+      // Heading cone (arrow pointing direction) — only visible when heading is known
+      const cone = document.createElement('div')
+      cone.className = 'user-heading-cone'
+      cone.style.cssText = [
+        'position:absolute',
+        'width:0',
+        'height:0',
+        // Triangle pointing up: rotated via JS below
+        'border-left:7px solid transparent',
+        'border-right:7px solid transparent',
+        'border-bottom:18px solid rgba(37,99,235,0.35)',
+        // Centered above the dot
+        'left:50%',
+        'top:50%',
+        'transform-origin:50% 100%',
+        'transform:translateX(-50%) translateY(-100%) rotate(0deg)',
+        'pointer-events:none',
+        'display:none', // hidden until heading is known
+      ].join(';')
+      el.appendChild(cone)
+
+      // Blue dot
+      const dot = document.createElement('div')
+      dot.style.cssText = [
+        'position:absolute',
+        'inset:0',
+        'margin:auto',
+        'width:14px',
+        'height:14px',
+        'background:#2563eb',
+        'border:2.5px solid white',
+        'border-radius:50%',
+        'box-shadow:0 0 0 3px rgba(37,99,235,0.25),0 2px 8px rgba(0,0,0,0.3)',
+      ].join(';')
+      el.appendChild(dot)
+
+      // Pulse ring
       const pulse = document.createElement('div')
-      pulse.className = 'absolute inset-0 bg-[#D41F2D] rounded-full animate-ping opacity-75'
+      pulse.style.cssText = [
+        'position:absolute',
+        'inset:-4px',
+        'border-radius:50%',
+        'background:rgba(37,99,235,0.15)',
+        'animation:user-pulse 2s ease-out infinite',
+      ].join(';')
       el.appendChild(pulse)
 
-      userMarkerRef.current = new maplibregl.Marker({ element: el })
+      userMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' })
         .setLngLat([userLocation.lng, userLocation.lat])
         .addTo(map)
     } else {
@@ -405,7 +465,19 @@ export function MapView({ pins, route, floorPlan, userLocation, isTrackingLocati
         userMarkerRef.current.addTo(map)
       }
     }
-  }, [userLocation, mapStyleUrl])
+
+    // Update heading arrow rotation
+    const el = userMarkerRef.current.getElement()
+    const cone = el.querySelector('.user-heading-cone') as HTMLElement | null
+    if (cone) {
+      if (userHeading !== null && userHeading !== undefined) {
+        cone.style.display = 'block'
+        cone.style.transform = `translateX(-50%) translateY(-100%) rotate(${userHeading}deg)`
+      } else {
+        cone.style.display = 'none'
+      }
+    }
+  }, [userLocation, userHeading, mapStyleUrl])
 
   // ── Capa de ruta ("cómo llegar") ──
   useEffect(() => {

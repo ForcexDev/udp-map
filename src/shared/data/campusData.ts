@@ -134,6 +134,8 @@ export const EVENT_COLOR = '#6366f1'
 
 // TTL por categoría (horas) según el plan: efímero por defecto.
 export const CATEGORIES: Category[] = [
+  { id: 'entrada', kind: 'report', name: 'Entrada', name_en: 'Entrance', emoji: '🚪', color: '#D41F2D', svgPath: 'M4 21v-2h2V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v15h2v2H4zm4-2h3V4H8v15zm5 0h3V5.5l-3-.9V19z', ttl_hours: null },
+
   // Estudio y Trabajo
   { id: 'sala-libre', kind: 'report', name: 'Sala Libre', name_en: 'Free Room', emoji: '🟩', color: '#10B981', svgPath: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z', ttl_hours: 6 },
   { id: 'estudio', kind: 'report', name: 'Estudio', name_en: 'Study', emoji: '🎓', color: '#3B82F6', svgPath: 'M12 3L1 9l11 6 9-4.91V17h2V9L12 3z', ttl_hours: 12 },

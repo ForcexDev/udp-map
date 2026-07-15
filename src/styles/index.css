@@ -385,23 +385,13 @@ body {
 
 /* (Faculty cards removed — replaced by search bar in MapPage) */
 
-/* ── User Location Pulse ────────────────────────────────── */
-.user-location-dot {
-  position: relative;
-}
-
-.user-location-dot::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
-  transform: translate(-50%, -50%) scale(0.8);
-  border-radius: 50%;
-  background: var(--udp-red);
-  opacity: 0.3;
-  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* ── User Location Dot (blue, with heading cone) ─────────── */
+/* The element itself is built entirely in JS (MapView.tsx); only
+   the pulse animation keyframe is defined here. */
+@keyframes user-pulse {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  70% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
 }
 
 /* ── Sidebar ────────────────────────────────────────────── */
