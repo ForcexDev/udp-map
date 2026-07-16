@@ -15,8 +15,8 @@ function memberSince(dateStr: string | null | undefined, lang: string): string {
   })
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
-import { fetchPublicProfile, fetchUserPins, updateUserRole } from './publicProfileApi'
-import type { Profile, Pin, Role } from '@/shared/types/database'
+import { fetchPublicProfile, fetchUserPins, updateUserRole, fetchUserBadges } from './publicProfileApi'
+import type { Profile, Pin, Role, UserBadge } from '@/shared/types/database'
 
 interface PublicProfileModalProps {
   userId: string | null
@@ -37,6 +37,7 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [pins, setPins] = useState<Pin[]>([])
+  const [badges, setBadges] = useState<UserBadge[]>([])
   const [loading, setLoading] = useState(false)
   const [updatingRole, setUpdatingRole] = useState(false)
 
@@ -44,6 +45,7 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
     if (!userId) {
       setProfile(null)
       setPins([])
+      setBadges([])
       return
     }
 
@@ -52,11 +54,13 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
     
     Promise.all([
       fetchPublicProfile(userId),
-      fetchUserPins(userId)
-    ]).then(([fetchedProfile, fetchedPins]) => {
+      fetchUserPins(userId),
+      fetchUserBadges(userId)
+    ]).then(([fetchedProfile, fetchedPins, fetchedBadges]) => {
       if (!isMounted) return
       setProfile(fetchedProfile)
       setPins(fetchedPins)
+      setBadges(fetchedBadges)
       setLoading(false)
     })
 
@@ -87,6 +91,7 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
 
   const datums: { label: string; value: string; className?: string }[] = profile ? [
     { label: t('profile.reports', 'REPORTES'), value: String(pins.length) },
+    { label: t('profile.karma', 'KARMA'), value: String(profile.karma), className: 'text-amber-500 font-bold' },
     { label: t('profile.memberSince', 'MIEMBRO DESDE'), value: memberSince(profile.created_at, i18n.language) },
     { label: t('profile.role', 'ROL'), value: t(`profile.roles.${profile.role}`, profile.role), className: ROLE_COLORS[profile.role] },
   ] : []
@@ -162,7 +167,7 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
               )}
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-px rounded-[10px] border border-neutral-200 dark:border-neutral-800 bg-neutral-200 dark:bg-neutral-800 overflow-hidden mb-5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-px rounded-[10px] border border-neutral-200 dark:border-neutral-800 bg-neutral-200 dark:bg-neutral-800 overflow-hidden mb-5">
                 {datums.map((d) => (
                   <div key={d.label} className="bg-white dark:bg-neutral-900 px-3.5 py-3 min-w-0">
                     <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-neutral-500 dark:text-neutral-400">
@@ -176,6 +181,69 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Badges Section */}
+              <div className="mb-5">
+                <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-neutral-500 dark:text-neutral-400 block mb-2">
+                  {t('profile.badges', 'INSIGNIAS')}
+                </span>
+                {badges.length === 0 ? (
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 italic">
+                    {t('profile.noBadges', 'Aún no tiene insignias.')}
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {badges.map((ub) => {
+                      const badge = ub.badge
+                      if (!badge) return null
+                      const badgeName = i18n.language === 'en' ? badge.name_en : badge.name
+                      const badgeDesc = i18n.language === 'en' ? badge.description_en : badge.description
+                  return (
+                        <div
+                          key={badge.id}
+                          className="group relative flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-full px-3 py-1 text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                        >
+                          <svg
+                            viewBox="0 0 32 36"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 flex-shrink-0"
+                          >
+                            <path
+                              d="M16 1L2 7v10c0 8.3 5.9 16 14 18 8.1-2 14-9.7 14-18V7L16 1z"
+                              fill="currentColor"
+                              fillOpacity="0.2"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M16 7L8 10.5v6c0 4.15 2.95 8 8 9 5.05-1 8-4.85 8-9v-6L16 7z"
+                              fill="currentColor"
+                              fillOpacity="0.4"
+                            />
+                            <path
+                              d="M11.5 18l3 3 6-6"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <span>{badgeName}</span>
+                          
+                          {/* Rich Tooltip on Hover */}
+                          <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-48 -translate-x-1/2 rounded-lg bg-neutral-900 dark:bg-neutral-950 p-2 text-center text-xs font-normal text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 border border-neutral-800">
+                            <p className="font-bold text-amber-400">{badgeName}</p>
+                            <p className="mt-1 text-[11px] text-neutral-200 leading-snug">{badgeDesc}</p>
+                            <div className="absolute top-full left-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 bg-neutral-900 dark:bg-neutral-950 border-r border-b border-neutral-800"></div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Pins History */}

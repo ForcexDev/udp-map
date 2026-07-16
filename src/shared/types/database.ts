@@ -161,3 +161,19 @@ export interface ForumVote {
   value: 1 | -1
 }
 
+export interface Badge {
+  id: string
+  name: string
+  name_en: string
+  description: string
+  description_en: string
+}
+
+export interface UserBadge {
+  user_id: string
+  badge_id: string
+  awarded_at: string
+  badge?: Badge
+}
+
+
