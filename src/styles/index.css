@@ -421,7 +421,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 0;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -494,6 +494,28 @@ body {
 
   .mb-safe {
     margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .mt-safe {
+    margin-top: env(safe-area-inset-top, 0px);
+  }
+
+  .pt-safe-hud {
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+
+  .pt-safe-page {
+    padding-top: calc(24px + env(safe-area-inset-top, 0px));
+  }
+
+  @media (min-width: 640px) {
+    .pt-safe-hud {
+      padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    }
   }
 }
 

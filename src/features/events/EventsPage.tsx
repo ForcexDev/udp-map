@@ -40,7 +40,7 @@ export function EventsPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-neutral-50 dark:bg-neutral-950 pb-16">
-      <div className="mx-auto w-full max-w-6xl px-4 pt-6">
+      <div className="mx-auto w-full max-w-6xl px-4 pt-safe-page">
         {/* Header section */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 dark:border-neutral-800 pb-4 mb-6">
           <div className="pr-2">

@@ -319,7 +319,7 @@ export function MapPage() {
 
       {/* ── TOP HUD ─────────────────────────────────────── */}
       {!pickingLocation && !movingPinId && (
-        <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none p-3 sm:p-5 flex flex-col gap-2">
+        <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none px-3 pb-3 pt-safe-hud sm:px-5 sm:pb-5 flex flex-col gap-2">
           {/* Top Bar: Search + Sidebar */}
           <div className="flex items-center justify-between gap-2.5 w-full pointer-events-auto" ref={searchRef}>
             {/* Search Input */}
