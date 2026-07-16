@@ -136,7 +136,7 @@ export function ForumPage() {
 
 
   return (
-    <div className="flex flex-col lg:flex-row h-full w-full overflow-hidden bg-neutral-50 dark:bg-neutral-950">
+    <div className="flex flex-col lg:flex-row h-full w-full overflow-hidden bg-neutral-50 dark:bg-neutral-950 pt-safe">
       
       {/* ── BARRA LATERAL: Selección de Facultad/Tablón ── */}
       <div className="w-full lg:w-72 shrink-0 border-b lg:border-b-0 lg:border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/40 overflow-y-auto max-h-48 lg:max-h-full">

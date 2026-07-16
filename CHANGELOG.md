@@ -1,7 +1,7 @@
 ### Novedades en esta versión
 
-- Nuevo sistema de enrutamiento peatonal (Mejorado)
-- Nuevo botón de ubicación (GPS)
-- Mejoras en el buscador de facultades
-- Múltiples correcciones menores y optimizaciones
-- Mejora en permisos y iconos de entrada.
+- Sistema de Karma: gana puntos al crear y recibir votos en tus reportes
+- Insignias y logros desbloqueables por tu actividad en el campus
+- Clasificación (Leaderboard) por facultad y global
+- Nuevo perfil público: ve el historial e insignias de otros usuarios
+- Correcciones de estabilidad y mejoras de rendimiento
