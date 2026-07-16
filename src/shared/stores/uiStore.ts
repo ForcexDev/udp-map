@@ -62,6 +62,10 @@ interface UIState {
 
   viewMode: '2d' | '3d'
   setViewMode: (mode: '2d' | '3d') => void
+
+  /** Admin-only: bypass all boundary restrictions for testing */
+  devUnlockMap: boolean
+  setDevUnlockMap: (v: boolean) => void
 }
 
 function initialTheme(): Theme {
@@ -151,6 +155,12 @@ export const useUIStore = create<UIState>((set) => {
 
     viewMode: '2d',
     setViewMode: (mode) => set({ viewMode: mode }),
+
+    devUnlockMap: localStorage.getItem('udpmap.devUnlock') === 'true',
+    setDevUnlockMap: (v) => {
+      localStorage.setItem('udpmap.devUnlock', String(v))
+      set({ devUnlockMap: v })
+    },
   }
 })
 

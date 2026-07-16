@@ -27,6 +27,8 @@ const mockMapInstance = {
   setPitch: vi.fn(),
   setMaxPitch: vi.fn(),
   setMinPitch: vi.fn(),
+  setMaxBounds: vi.fn(),
+  setMinZoom: vi.fn(),
   getBounds: vi.fn(() => ({
     getWest: () => -70.7,
     getSouth: () => -33.5,

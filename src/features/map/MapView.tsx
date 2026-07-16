@@ -93,6 +93,7 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
   const selectedPinId = useUIStore((s) => s.selectedPinId)
   const theme = useUIStore((s) => s.theme)
   const viewMode = useUIStore((s) => s.viewMode)
+  const devUnlockMap = useUIStore((s) => s.devUnlockMap)
   const mapStyleUrl = theme === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
 
   const [bearing, setBearing] = useState(0)
@@ -327,6 +328,36 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
     }
   }, [viewMode])
 
+  // ── Admin: toggle de desbloqueo de mapa ──
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (devUnlockMap) {
+      // Remove boundary restrictions
+      map.setMaxBounds(undefined as unknown as maplibregl.LngLatBoundsLike)
+      map.setMinZoom(1)
+      // Hide mask and border layers
+      if (map.getLayer('campus-boundary-mask-fill')) {
+        map.setLayoutProperty('campus-boundary-mask-fill', 'visibility', 'none')
+      }
+      if (map.getLayer('campus-boundary-line-layer')) {
+        map.setLayoutProperty('campus-boundary-line-layer', 'visibility', 'none')
+      }
+    } else {
+      // Restore boundary restrictions
+      map.setMaxBounds(BOUNDARY_MAX_BOUNDS)
+      map.setMinZoom(BOUNDARY_MIN_ZOOM)
+      // Show mask and border layers
+      if (map.getLayer('campus-boundary-mask-fill')) {
+        map.setLayoutProperty('campus-boundary-mask-fill', 'visibility', 'visible')
+      }
+      if (map.getLayer('campus-boundary-line-layer')) {
+        map.setLayoutProperty('campus-boundary-line-layer', 'visibility', 'visible')
+      }
+    }
+  }, [devUnlockMap])
+
   // ── Marcadores: diff contra el estado actual ──
   useEffect(() => {
     const map = mapRef.current
@@ -391,7 +422,7 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPinId])
 
-  // ── Marcador del usuario (punto azul con flecha de dirección) ──────────────
+  // ── Marcador del usuario (punto rojo con cono de dirección estilo Google Maps) ─
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -409,28 +440,50 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
       el.className = 'user-location-dot'
       el.style.cssText = 'position:relative;width:20px;height:20px;'
 
-      // Heading cone (arrow pointing direction) — only visible when heading is known
-      const cone = document.createElement('div')
-      cone.className = 'user-heading-cone'
-      cone.style.cssText = [
-        'position:absolute',
-        'width:0',
-        'height:0',
-        // Triangle pointing up: rotated via JS below
-        'border-left:7px solid transparent',
-        'border-right:7px solid transparent',
-        'border-bottom:18px solid rgba(37,99,235,0.35)',
-        // Centered above the dot
-        'left:50%',
-        'top:50%',
-        'transform-origin:50% 100%',
-        'transform:translateX(-50%) translateY(-100%) rotate(0deg)',
-        'pointer-events:none',
-        'display:none', // hidden until heading is known
-      ].join(';')
-      el.appendChild(cone)
+      // Heading cone — SVG fan (~60°) with radial gradient, Google Maps style
+      const coneSvgNS = 'http://www.w3.org/2000/svg'
+      const svg = document.createElementNS(coneSvgNS, 'svg')
+      svg.setAttribute('width', '60')
+      svg.setAttribute('height', '60')
+      svg.setAttribute('viewBox', '0 0 60 60')
+      svg.classList.add('user-heading-cone')
+      Object.assign(svg.style, {
+        position: 'absolute',
+        left: '50%',
+        top: '50%',
+        transformOrigin: '50% 100%',
+        transform: 'translateX(-50%) translateY(-100%) rotate(0deg)',
+        pointerEvents: 'none',
+        display: 'none', // hidden until heading is known
+        overflow: 'visible',
+      })
 
-      // Blue dot
+      // Radial gradient: solid red center → transparent edge
+      const defs = document.createElementNS(coneSvgNS, 'defs')
+      const grad = document.createElementNS(coneSvgNS, 'radialGradient')
+      grad.setAttribute('id', 'user-cone-grad')
+      grad.setAttribute('cx', '50%')
+      grad.setAttribute('cy', '100%')
+      grad.setAttribute('r', '100%')
+      const stop1 = document.createElementNS(coneSvgNS, 'stop')
+      stop1.setAttribute('offset', '0%')
+      stop1.setAttribute('stop-color', 'rgba(212,31,45,0.45)')
+      const stop2 = document.createElementNS(coneSvgNS, 'stop')
+      stop2.setAttribute('offset', '100%')
+      stop2.setAttribute('stop-color', 'rgba(212,31,45,0)')
+      grad.appendChild(stop1)
+      grad.appendChild(stop2)
+      defs.appendChild(grad)
+      svg.appendChild(defs)
+
+      // Fan sector path (~60° arc)
+      const path = document.createElementNS(coneSvgNS, 'path')
+      path.setAttribute('d', 'M30,60 L13,5 A30,30 0 0,1 47,5 Z')
+      path.setAttribute('fill', 'url(#user-cone-grad)')
+      svg.appendChild(path)
+      el.appendChild(svg)
+
+      // Red dot
       const dot = document.createElement('div')
       dot.style.cssText = [
         'position:absolute',
@@ -438,10 +491,11 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
         'margin:auto',
         'width:14px',
         'height:14px',
-        'background:#2563eb',
+        'background:#D41F2D',
         'border:2.5px solid white',
         'border-radius:50%',
-        'box-shadow:0 0 0 3px rgba(37,99,235,0.25),0 2px 8px rgba(0,0,0,0.3)',
+        'box-shadow:0 0 0 3px rgba(212,31,45,0.25),0 2px 8px rgba(0,0,0,0.3)',
+        'z-index:2',
       ].join(';')
       el.appendChild(dot)
 
@@ -451,8 +505,9 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
         'position:absolute',
         'inset:-4px',
         'border-radius:50%',
-        'background:rgba(37,99,235,0.15)',
+        'background:rgba(212,31,45,0.15)',
         'animation:user-pulse 2s ease-out infinite',
+        'z-index:1',
       ].join(';')
       el.appendChild(pulse)
 
@@ -466,16 +521,31 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
       }
     }
 
-    // Update heading arrow rotation
-    const el = userMarkerRef.current.getElement()
-    const cone = el.querySelector('.user-heading-cone') as HTMLElement | null
-    if (cone) {
+    // Helper: update cone rotation compensating for map bearing
+    const updateConeRotation = () => {
+      if (!userMarkerRef.current) return
+      const markerEl = userMarkerRef.current.getElement()
+      const coneSvg = markerEl.querySelector('.user-heading-cone') as SVGElement | null
+      if (!coneSvg) return
+
       if (userHeading !== null && userHeading !== undefined) {
-        cone.style.display = 'block'
-        cone.style.transform = `translateX(-50%) translateY(-100%) rotate(${userHeading}deg)`
+        coneSvg.style.display = 'block'
+        // Subtract map bearing so the cone always points to the real-world direction
+        const mapBearing = map.getBearing()
+        const visualHeading = ((userHeading - mapBearing) % 360 + 360) % 360
+        coneSvg.style.transform = `translateX(-50%) translateY(-100%) rotate(${visualHeading}deg)`
       } else {
-        cone.style.display = 'none'
+        coneSvg.style.display = 'none'
       }
+    }
+
+    updateConeRotation()
+
+    // Keep cone orientation correct when the user rotates the map
+    map.on('rotate', updateConeRotation)
+
+    return () => {
+      map.off('rotate', updateConeRotation)
     }
   }, [userLocation, userHeading, mapStyleUrl])
 
@@ -583,7 +653,7 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
              try {
                const loc = await onRequestLocation()
                if (loc) {
-                  if (isLocationOutOfBounds(loc.lat, loc.lng)) {
+                  if (!devUnlockMap && isLocationOutOfBounds(loc.lat, loc.lng)) {
                      useUIStore.getState().showToast('Estás fuera del área del mapa')
                   } else {
                      mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 18, duration: 1000 })

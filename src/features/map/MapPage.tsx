@@ -79,15 +79,38 @@ function useUserLocation() {
   }, [])
 
   // Device heading (compass) — for the directional dot on the map
+  // Throttled to ~100ms to avoid ~60 re-renders/sec from the gyroscope.
+  // Prefers deviceorientationabsolute on Android for true-north heading;
+  // falls back to deviceorientation + webkitCompassHeading on iOS.
   useEffect(() => {
+    let lastUpdate = 0
+    const THROTTLE_MS = 100
+
     const handler = (e: DeviceOrientationEvent) => {
-      // webkitCompassHeading available on iOS; fallback to alpha on Android
+      const now = Date.now()
+      if (now - lastUpdate < THROTTLE_MS) return
+      lastUpdate = now
+
       const h = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading
         ?? (e.alpha !== null ? (360 - e.alpha) % 360 : null)
       setHeading(h)
     }
-    window.addEventListener('deviceorientation', handler, true)
-    return () => window.removeEventListener('deviceorientation', handler, true)
+
+    // Android: deviceorientationabsolute gives true-north heading
+    const hasAbsolute = 'ondeviceorientationabsolute' in window
+    const primaryEvent = hasAbsolute ? 'deviceorientationabsolute' : 'deviceorientation'
+    window.addEventListener(primaryEvent, handler as EventListener, true)
+    // iOS always needs regular deviceorientation for webkitCompassHeading
+    if (hasAbsolute) {
+      window.addEventListener('deviceorientation', handler, true)
+    }
+
+    return () => {
+      window.removeEventListener(primaryEvent, handler as EventListener, true)
+      if (hasAbsolute) {
+        window.removeEventListener('deviceorientation', handler, true)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -255,7 +278,7 @@ export function MapPage() {
       let origin = { lat: campus.lat, lng: campus.lng }
 
       if (currentLoc) {
-        if (isLocationOutOfBounds(currentLoc.lat, currentLoc.lng)) {
+        if (!useUIStore.getState().devUnlockMap && isLocationOutOfBounds(currentLoc.lat, currentLoc.lng)) {
           showToast(t('map.outOfBounds', 'Estás demasiado lejos del campus para trazar una ruta a pie.'))
           setRouteTarget(null)
           return

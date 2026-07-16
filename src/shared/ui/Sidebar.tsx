@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router-dom'
 import {
   X, LogOut, Search,
-  CalendarDays, MessagesSquare, UserRound, Globe, HelpCircle
+  CalendarDays, MessagesSquare, UserRound, Globe, HelpCircle, MapPinOff
 } from 'lucide-react'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -21,7 +21,10 @@ export function Sidebar() {
   const openLoginModal = useUIStore((s) => s.openLoginModal)
   const openTutorial = useUIStore((s) => s.openTutorial)
   const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.role)
   const signOut = useAuthStore((s) => s.signOut)
+  const devUnlockMap = useUIStore((s) => s.devUnlockMap)
+  const setDevUnlockMap = useUIStore((s) => s.setDevUnlockMap)
 
   const [tab, setTab] = useState<'places' | 'community' | 'settings'>('places')
   const [searchQuery, setSearchQuery] = useState('')
@@ -272,6 +275,47 @@ export function Sidebar() {
                   </span>
                 </button>
               </section>
+
+              {/* Admin: Dev Unlock Map */}
+              {(role === 'admin' || role === 'moderator') && (
+                <section className="space-y-4">
+                  <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em]">
+                    Administrador
+                  </h4>
+                  <button
+                    onClick={() => setDevUnlockMap(!devUnlockMap)}
+                    className={`w-full p-4 rounded-[18px] flex items-center gap-3 font-bold transition-all border active:scale-[0.98] ${
+                      devUnlockMap
+                        ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
+                        : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-neutral-100 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      devUnlockMap
+                        ? 'bg-amber-100 dark:bg-amber-900/50'
+                        : 'bg-neutral-100 dark:bg-neutral-700'
+                    }`}>
+                      <MapPinOff size={18} />
+                    </div>
+                    <div className="flex flex-col flex-1 text-left">
+                      <span className="text-sm font-bold">
+                        {devUnlockMap ? 'Mapa desbloqueado' : 'Desbloquear mapa'}
+                      </span>
+                      <span className="text-[10px] font-medium opacity-60">
+                        Quita restricciones de área
+                      </span>
+                    </div>
+                    {/* Toggle pill */}
+                    <div className={`relative w-11 h-6 rounded-full transition-colors duration-300 flex-shrink-0 ${
+                      devUnlockMap ? 'bg-amber-400 dark:bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'
+                    }`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                        devUnlockMap ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </div>
+                  </button>
+                </section>
+              )}
 
               {/* Auth */}
               <section className="pt-2">

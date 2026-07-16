@@ -134,7 +134,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
     setPhotoIndex(Math.round(el.scrollLeft / el.clientWidth))
   }
 
-  const isOutOfArea = userLocation
+  const devUnlockMap = useUIStore((s) => s.devUnlockMap)
+  const isOutOfArea = !devUnlockMap && userLocation
     ? userLocation.lat < BOUNDARY_RECT.south ||
     userLocation.lat > BOUNDARY_RECT.north ||
     userLocation.lng < BOUNDARY_RECT.west ||

@@ -385,7 +385,7 @@ body {
 
 /* (Faculty cards removed — replaced by search bar in MapPage) */
 
-/* ── User Location Dot (blue, with heading cone) ─────────── */
+/* ── User Location Dot (red, with heading cone) ──────────── */
 /* The element itself is built entirely in JS (MapView.tsx); only
    the pulse animation keyframe is defined here. */
 @keyframes user-pulse {
