@@ -370,21 +370,27 @@ export function ProfilePage() {
               </div>
             ) : (
               <div className="grid gap-3.5 sm:grid-cols-2">
-                {(allBadgesQuery.data ?? []).map((badge) => {
-                  const unlockedBadge = badgesQuery.data?.find((ub) => ub.badge_id === badge.id)
-                  const isUnlocked = !!unlockedBadge
-                  const badgeName = i18n.language === 'en' ? badge.name_en : badge.name
-                  const badgeDesc = i18n.language === 'en' ? badge.description_en : badge.description
+                {[...(allBadgesQuery.data ?? [])]
+                  .sort((a, b) => {
+                    const aUnlocked = badgesQuery.data?.some((ub) => ub.badge_id === a.id) ? 1 : 0
+                    const bUnlocked = badgesQuery.data?.some((ub) => ub.badge_id === b.id) ? 1 : 0
+                    return bUnlocked - aUnlocked
+                  })
+                  .map((badge) => {
+                    const unlockedBadge = badgesQuery.data?.find((ub) => ub.badge_id === badge.id)
+                    const isUnlocked = !!unlockedBadge
+                    const badgeName = i18n.language === 'en' ? badge.name_en : badge.name
+                    const badgeDesc = i18n.language === 'en' ? badge.description_en : badge.description
 
-                  return (
-                    <div
-                      key={badge.id}
-                      className={`relative flex items-start gap-3.5 p-4 rounded-[14px] border transition-all ${
-                        isUnlocked
-                          ? 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 shadow-sm'
-                          : 'bg-neutral-50 dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800 opacity-40'
-                      }`}
-                    >
+                    return (
+                      <div
+                        key={badge.id}
+                        className={`relative flex items-start gap-3.5 p-4 rounded-[14px] border transition-all ${
+                          isUnlocked
+                            ? 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 shadow-sm'
+                            : 'bg-neutral-50 dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800 opacity-40'
+                        }`}
+                      >
                       {/* Shield SVG emblem */}
                       <div
                         className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${

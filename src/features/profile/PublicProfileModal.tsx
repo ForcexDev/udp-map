@@ -103,8 +103,10 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
     })
   }
 
-  const handleFromEmail = (email: string) => {
-    return '@' + email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_')
+  const handleFromEmail = (email: string | null | undefined, fallbackName: string | null) => {
+    if (email) return '@' + email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_')
+    if (fallbackName) return '@' + fallbackName.toLowerCase().replace(/[^a-z0-9]/g, '_')
+    return '@usuario'
   }
 
   return (
@@ -140,7 +142,7 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
                       {profile.name || 'Estudiante UDP'}
                     </h2>
                     <p className="font-mono text-[13px] text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
-                      {handleFromEmail(profile.email)}
+                      {handleFromEmail(profile.email, profile.name)}
                     </p>
                   </div>
                 </div>
