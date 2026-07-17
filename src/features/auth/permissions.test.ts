@@ -24,11 +24,12 @@ describe('can() — matriz de permisos del plan §3', () => {
     expect(can('student', 'users.manage')).toBe(false)
   })
 
-  it('moderator gestiona lugares, oficializa eventos y modera', () => {
+  it('moderator gestiona lugares, oficializa eventos, modera y verifica o extiende pines', () => {
     expect(can('moderator', 'pin.create.place')).toBe(true)
     expect(can('moderator', 'event.markOfficial')).toBe(true)
     expect(can('moderator', 'pin.moderate')).toBe(true)
-    expect(can('moderator', 'pin.makePermanent')).toBe(false)
+    expect(can('moderator', 'pin.makePermanent')).toBe(true)
+    expect(can('moderator', 'pin.extendTime')).toBe(true)
     expect(can('moderator', 'users.manage')).toBe(false)
   })
 

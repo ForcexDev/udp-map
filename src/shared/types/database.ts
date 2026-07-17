@@ -80,6 +80,7 @@ export interface Pin {
   ends_at: string | null
   is_official: boolean
   official_entity_name?: string | null
+  verifier_entity_name?: string | null
   created_at: string
   /** join opcional */
   pin_photos?: PinPhoto[]

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { Pin } from '@/shared/types/database'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
-import { deletePin, makePermanent, toggleFavorite, votePin } from './api'
+import { deletePin, extendPinTTL, toggleFavorite, verifyPin, votePin } from './api'
 
 export function usePinActions() {
   const queryClient = useQueryClient()
@@ -34,8 +34,16 @@ export function usePinActions() {
   })
 
   const promote = useMutation({
-    mutationFn: (pinId: string) => makePermanent(pinId),
-    onSuccess: () => showToast(t('pin.madePermanent')),
+    mutationFn: ({ pinId, verifierName }: { pinId: string; verifierName?: string }) =>
+      verifyPin(pinId, verifierName),
+    onSuccess: () => showToast(t('pin.verifiedSuccess', '¡Pin verificado y fijado!')),
+    onSettled: () => void invalidatePins(),
+    onError: () => showToast(t('common.error')),
+  })
+
+  const extendTTL = useMutation({
+    mutationFn: ({ pinId, hours }: { pinId: string; hours?: number }) => extendPinTTL(pinId, hours ?? 24),
+    onSuccess: () => showToast(t('pin.timeExtended', 'Tiempo extendido +24h')),
     onSettled: () => void invalidatePins(),
     onError: () => showToast(t('common.error')),
   })
@@ -49,5 +57,5 @@ export function usePinActions() {
     onError: () => showToast(t('common.error')),
   })
 
-  return { vote, remove, promote, favorite }
+  return { vote, remove, promote, extendTTL, favorite }
 }

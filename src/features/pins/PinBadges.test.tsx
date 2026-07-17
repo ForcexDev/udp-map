@@ -35,14 +35,14 @@ describe('PinBadges', () => {
     expect(screen.queryByText('Permanente')).not.toBeInTheDocument()
   })
 
-  it('muestra badge de permanente y sin expiración para un place', () => {
+  it('muestra badge de verificado y sin expiración para un place o pin permanente', () => {
     render(
       <PinBadges
         pin={{ ...base, type: 'place', category_id: null, is_permanent: true, expires_at: null }}
       />,
     )
     expect(screen.getByText('Lugar')).toBeInTheDocument()
-    expect(screen.getByText('Permanente')).toBeInTheDocument()
+    expect(screen.getByText(/Verificado por/)).toBeInTheDocument()
     expect(screen.queryByText(/Expira/)).not.toBeInTheDocument()
   })
 })

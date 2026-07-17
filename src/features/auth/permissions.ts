@@ -15,6 +15,7 @@ export type Action =
   | 'pin.favorite'
   | 'pin.delete.own'
   | 'pin.makePermanent'
+  | 'pin.extendTime'
   | 'pin.moderate'
   | 'pin.update.location'
   | 'event.rsvp'
@@ -40,7 +41,8 @@ const MIN_ROLE: Record<Action, Role> = {
   'pin.vote': 'student',
   'pin.favorite': 'student',
   'pin.delete.own': 'student',
-  'pin.makePermanent': 'admin',
+  'pin.makePermanent': 'moderator',
+  'pin.extendTime': 'moderator',
   'pin.moderate': 'moderator',
   'pin.update.location': 'moderator',
   'event.rsvp': 'student',

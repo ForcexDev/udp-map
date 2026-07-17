@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lock, BadgeCheck, Clock, User, Flag, MapPin } from 'lucide-react'
+import { BadgeCheck, Clock, User, Flag, MapPin } from 'lucide-react'
 import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import type { Pin } from '@/shared/types/database'
 import { expiryState } from '@/shared/utils/expiry'
@@ -41,15 +41,8 @@ export function PinBadges({ pin }: { pin: Pin }) {
     </div>
   )
 
-  // Permanente o expiración
-  if (pin.is_permanent) {
-    badges.push(
-      <div key="perm" className="flex items-center gap-1">
-        <Lock size={14} className="text-emerald-600" />
-        <span className="text-emerald-700 dark:text-emerald-400">{t('pin.permanent', 'Permanente')}</span>
-      </div>
-    )
-  } else if (pin.type !== 'event' && expiry.remainingMs !== null && pin.expires_at) {
+  // Expiración (solo si no es permanente y no es evento)
+  if (!pin.is_permanent && pin.type !== 'event' && expiry.remainingMs !== null && pin.expires_at) {
     badges.push(
       <div key="exp" className="flex items-center gap-1">
         <Clock size={14} className={expiry.status === 'fading' ? 'text-amber-500' : 'text-neutral-500'} />
@@ -79,6 +72,19 @@ export function PinBadges({ pin }: { pin: Pin }) {
         <span className="text-neutral-500 hover:underline">{pin.creator_name || 'Estudiante UDP'}</span>
       </button>
     )
+
+    if (pin.verifier_entity_name || (pin.is_permanent && !pin.is_official)) {
+      const verifierName = pin.verifier_entity_name || 'Centro de Alumnos UDP'
+      badges.push(
+        <div key="verified" className="flex items-center gap-1">
+          <BadgeCheck size={14} className="text-blue-500" />
+          <span className="text-neutral-700 dark:text-neutral-300">
+            {t('pin.verifiedByLabel', 'Verificado por:')}{' '}
+            <span className="text-[#D41F2D] font-bold">{verifierName}</span>
+          </span>
+        </div>
+      )
+    }
   }
 
   return (

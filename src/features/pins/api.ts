@@ -7,7 +7,9 @@ import { categoryById } from '@/shared/data/campusData'
 import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import type { PinFilters } from '@/shared/stores/filterStore'
 import { compressImage, photoStoragePath } from './photos'
-import { demoDb, demoAddPhotos, demoRemovePhotos, demoRecountVotes } from './demoStore'
+import { demoDb, demoAddPhotos, demoRemovePhotos, demoRecountVotes, demoVerifyPin, demoExtendPinTTL } from './demoStore'
+import { useAuthStore } from '@/features/auth/authStore'
+import { can } from '@/features/auth/permissions'
 
 export interface CreatePinInput {
   type: PinType
@@ -185,8 +187,16 @@ export async function updatePin(
     if (pin) {
       if (input.title !== undefined) pin.title = input.title
       if (input.description !== undefined) pin.description = input.description
-      if (input.categoryId !== undefined) pin.category_id = input.categoryId
-      if (input.facultyId !== undefined) pin.faculty_id = input.facultyId
+      
+      const isModerator = can(useAuthStore.getState().role, 'pin.moderate')
+      const isVerified = pin.is_permanent
+      const canEditStruct = !isVerified || isModerator
+
+      if (canEditStruct) {
+        if (input.categoryId !== undefined) pin.category_id = input.categoryId
+        if (input.facultyId !== undefined) pin.faculty_id = input.facultyId
+      }
+      
       if (input.type !== undefined) pin.type = input.type
       if (input.isOfficial !== undefined) pin.is_official = input.isOfficial
       if (input.officialEntityName !== undefined) pin.official_entity_name = input.officialEntityName
@@ -290,18 +300,33 @@ export async function votePin(pinId: string, value: 1 | -1, userId: string): Pro
   if (error) throw error
 }
 
-// ── Permanente (solo admin, RPC security definer) ──
+// ── Permanente & Verificación (moderador/admin, RPC security definer) ──
 
-export async function makePermanent(pinId: string): Promise<void> {
+export async function makePermanent(pinId: string, verifierName: string = 'Centro de Alumnos FIC'): Promise<void> {
+  return verifyPin(pinId, verifierName)
+}
+
+export async function verifyPin(pinId: string, verifierName: string = 'Centro de Alumnos FIC'): Promise<void> {
   if (!supabase) {
-    const pin = demoDb.pins.find((p) => p.id === pinId)
-    if (pin) {
-      pin.is_permanent = true
-      pin.expires_at = null
-    }
+    demoVerifyPin(pinId, verifierName)
     return
   }
-  const { error } = await supabase.rpc('set_pin_permanent', { p_pin: pinId })
+  const { error } = await supabase.rpc('verify_and_make_permanent', { 
+    p_pin: pinId, 
+    p_verifier_name: verifierName 
+  })
+  if (error) throw error
+}
+
+export async function extendPinTTL(pinId: string, hours: number = 24): Promise<void> {
+  if (!supabase) {
+    demoExtendPinTTL(pinId, hours)
+    return
+  }
+  const { error } = await supabase.rpc('extend_pin_ttl', { 
+    p_pin: pinId, 
+    p_hours: hours 
+  })
   if (error) throw error
 }
 
@@ -312,6 +337,8 @@ export async function updatePinLocation(pinId: string, lat: number, lng: number)
   if (!supabase) {
     const pin = demoDb.pins.find((p) => p.id === pinId)
     if (pin) {
+      const isModerator = can(useAuthStore.getState().role, 'pin.moderate')
+      if (pin.is_permanent && !isModerator) return // Protected fields
       pin.lat = lat
       pin.lng = lng
       pin.faculty_id = facultyId

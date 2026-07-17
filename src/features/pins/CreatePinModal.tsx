@@ -77,9 +77,11 @@ export function CreatePinModal() {
   const pinsData = queryClient.getQueriesData<Pin[]>({ queryKey: ['pins'] })
   const editingPin = pinToEdit ? pinsData.flatMap(d => d[1] ?? []).find(p => p.id === pinToEdit) : null
 
-  const reportCategories = CATEGORIES.filter((c) => c.kind === 'report')
+  const isModerator = can(role, 'pin.moderate')
+  const reportCategories = CATEGORIES.filter((c) => c.kind === 'report' && !(c.id === 'entrada' && !isModerator))
   const eventCategories = CATEGORIES.filter((c) => c.kind === 'event')
   const canCreatePlace = can(role, 'pin.create.place')
+  const isVerifiedLocked = !!editingPin?.is_permanent && !isModerator
 
   const form = useForm<PinFormValues>({
     resolver: zodResolver(pinSchema),
@@ -273,7 +275,7 @@ export function CreatePinModal() {
             className="flex-1 overflow-y-auto px-6 sm:px-8 pt-8 pb-32 sm:py-10 space-y-10 sm:space-y-12 no-scrollbar"
           >
             {/* Type selector */}
-            {availableTypes.length > 1 && (
+            {availableTypes.length > 1 && (!editingPin || can(role, 'pin.moderate')) && (
               <div className="flex gap-2 p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl" role="radiogroup">
                 {availableTypes.map((v) => (
                   <label
@@ -414,8 +416,11 @@ export function CreatePinModal() {
               <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.faculty')}</label>
               <button
                 type="button"
+                disabled={isVerifiedLocked}
                 onClick={() => setFacultyDropdownOpen(!facultyDropdownOpen)}
-                className="w-full bg-neutral-50/70 dark:bg-neutral-800/70 border border-neutral-100 dark:border-neutral-700 rounded-2xl px-6 py-4 text-sm font-bold text-neutral-800 dark:text-neutral-200 outline-none focus:ring-4 focus:ring-red-500/10 transition-all shadow-sm flex items-center justify-between"
+                className={`w-full border border-neutral-100 dark:border-neutral-700 rounded-2xl px-6 py-4 text-sm font-bold text-neutral-800 dark:text-neutral-200 outline-none focus:ring-4 focus:ring-red-500/10 transition-all shadow-sm flex items-center justify-between ${
+                  isVerifiedLocked ? 'bg-neutral-100 dark:bg-neutral-800/80 cursor-not-allowed opacity-70' : 'bg-neutral-50/70 dark:bg-neutral-800/70'
+                }`}
               >
                 <span className="truncate">
                   {form.watch('facultyId')
@@ -481,8 +486,7 @@ export function CreatePinModal() {
                   render={({ field }) => {
                     const activeCategories = CATEGORIES.filter((c) => {
                       if (c.kind !== (type === 'event' ? 'event' : 'report')) return false
-                      // 'entrada' is restricted to moderators/admins (or when creating a place)
-                      if (c.id === 'entrada' && type !== 'place' && !can(role, 'pin.moderate')) return false
+                      if (c.id === 'entrada' && !isModerator) return false
                       return true
                     })
                     return (
@@ -491,12 +495,13 @@ export function CreatePinModal() {
                           <button
                             key={c.id}
                             type="button"
+                            disabled={isVerifiedLocked && field.value !== c.id}
                             onClick={() => field.onChange(c.id)}
                             className={`flex flex-col items-center gap-3 p-4 rounded-[24px] border-2 transition-all ${
                               field.value === c.id
                                 ? 'shadow-lg scale-[1.02]'
                                 : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
-                            }`}
+                            } ${isVerifiedLocked && field.value !== c.id ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
                             style={field.value === c.id ? { 
                               borderColor: c.color, 
                               backgroundColor: `color-mix(in srgb, ${c.color} 10%, transparent)` 

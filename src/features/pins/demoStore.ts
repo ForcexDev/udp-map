@@ -137,3 +137,20 @@ export function demoRemovePhotos(pinId: string, photoIds: string[]): void {
   if (!pin || !pin.pin_photos) return
   pin.pin_photos = pin.pin_photos.filter((ph) => !photoIds.includes(ph.id))
 }
+
+export function demoVerifyPin(pinId: string, verifierName: string = 'Centro de Alumnos FIC'): void {
+  const pin = demoDb.pins.find((p) => p.id === pinId)
+  if (!pin || pin.is_permanent) return
+  pin.is_permanent = true
+  pin.type = 'place'
+  pin.expires_at = null
+  pin.verifier_entity_name = verifierName
+}
+
+export function demoExtendPinTTL(pinId: string, hours: number = 24): void {
+  const pin = demoDb.pins.find((p) => p.id === pinId)
+  if (!pin) return
+  const currentExp = pin.expires_at ? new Date(pin.expires_at).getTime() : Date.now()
+  const baseTime = Math.max(currentExp, Date.now())
+  pin.expires_at = new Date(baseTime + hours * 3600 * 1000).toISOString()
+}

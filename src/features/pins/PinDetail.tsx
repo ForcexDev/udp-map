@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Lock,
   Navigation,
   MapPin,
   Star,
@@ -16,6 +15,8 @@ import {
   ChevronRight,
   Share2,
   Calendar,
+  BadgeCheck,
+  Clock,
 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Pin } from '@/shared/types/database'
@@ -78,7 +79,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const setIndoor = useUIStore((s) => s.setIndoor)
   const startMovingPin = useUIStore((s) => s.startMovingPin)
   const openCreateModal = useUIStore((s) => s.openCreateModal)
-  const { vote, remove, promote, favorite } = usePinActions()
+  const { vote, remove, promote, extendTTL, favorite } = usePinActions()
 
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -88,7 +89,9 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const isOwner = user !== null && pin.creator_id === user.id
   const canDelete = isOwner || can(role, 'pin.moderate')
   const canEdit = isOwner || can(role, 'pin.moderate')
-  const canPromote = can(role, 'pin.makePermanent') && !pin.is_permanent && pin.type === 'report'
+  const isTemporalCategory = ['objeto-perdido', 'objeto-encontrado', 'sala-libre', 'food-truck', 'comida'].includes(pin.category_id ?? '')
+  const canPromote = can(role, 'pin.makePermanent') && !pin.is_permanent && pin.type === 'report' && !isTemporalCategory
+  const canExtend = can(role, 'pin.extendTime') && !pin.is_permanent && pin.type === 'report' && isTemporalCategory
   const canMove = can(role, 'pin.update.location')
   const hasIndoor =
     pin.type === 'place' && DEMO_FLOOR_PLANS.some((fp) => fp.faculty_id === pin.faculty_id)
@@ -336,7 +339,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
             <Navigation size={15} strokeWidth={2.5} /> {t('pin.directions', 'Cómo llegar')}
           </button>
 
-          {(canDelete || canPromote || canEdit || hasIndoor) && (
+          {(canDelete || canPromote || canExtend || canEdit || hasIndoor) && (
             <div className="mt-3 flex flex-wrap gap-2">
               {hasIndoor && (
                 <button onClick={() => setIndoor(pin.faculty_id)} className={ACTION_CHIP}>
@@ -354,8 +357,19 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                 </button>
               )}
               {canPromote && (
-                <button onClick={() => promote.mutate(pin.id)} className={ACTION_CHIP}>
-                  <Lock size={14} /> {t('pin.makePermanent', 'Hacer permanente')}
+                <button 
+                  onClick={() => promote.mutate({ 
+                    pinId: pin.id,
+                    verifierName: role === 'admin' ? 'Administración UDP' : 'Centro de Alumnos FIC'
+                  })} 
+                  className={ACTION_CHIP}
+                >
+                  <BadgeCheck size={14} className="text-blue-500" /> {t('pin.verifyAndFix', 'Verificar y Fijar')}
+                </button>
+              )}
+              {canExtend && (
+                <button onClick={() => extendTTL.mutate({ pinId: pin.id, hours: 24 })} className={ACTION_CHIP}>
+                  <Clock size={14} className="text-amber-500" /> {t('pin.extendTime', 'Extender (+24h)')}
                 </button>
               )}
               {canDelete && (
