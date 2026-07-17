@@ -43,7 +43,7 @@ Este documento rastrea el progreso exacto de las funcionalidades definidas en el
 ### Dev C (Lead motor de pines)
 
 - [x] UI crear/editar pin (react-hook-form + zod).
-- [ ] Subida de N fotos (compresión + manejo de error + UUID).
+- [x] Subida y edición de N fotos (compresión + manejo de error + UUID + RLS + borrado en Storage).
 - [x] Comentarios por pin en tiempo real (paginados).
 - [x] Votos vía RPC `vote_pin`.
 - [x] Eliminar pin propio.
@@ -87,6 +87,7 @@ Este documento rastrea el progreso exacto de las funcionalidades definidas en el
 - [x] Atribución de Entidad Oficial por Rol ("Centro de Alumnos FIC" para moderadores vs "Administración UDP" para admins).
 - [ ] Web Push (Notificaciones push reales por interacciones).
 - [ ] Cola de moderación para administradores.
+- [ ] Despliegue, Accesibilidad AA final y modo oscuro optimizado.
 
 ---
 

@@ -69,6 +69,7 @@ export function CreatePinModal() {
   const role = useAuthStore((s) => s.role)
   
   const [photos, setPhotos] = useState<File[]>([])
+  const [deletedPhotoIds, setDeletedPhotoIds] = useState<string[]>([])
   const [facultyDropdownOpen, setFacultyDropdownOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -112,9 +113,10 @@ export function CreatePinModal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
 
-  // Detección automática de facultad por perímetro o popular formulario si es modo edición
   useEffect(() => {
     if (open) {
+      setPhotos([])
+      setDeletedPhotoIds([])
       if (editingPin) {
         form.setValue('type', editingPin.type as 'report' | 'place' | 'event')
         form.setValue('title', editingPin.title)
@@ -132,6 +134,40 @@ export function CreatePinModal() {
     }
   }, [open, draftLocation, form, editingPin])
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+
+    const existingCount = editingPin
+      ? (editingPin.pin_photos ?? []).filter((ph) => !deletedPhotoIds.includes(ph.id)).length
+      : 0
+    const currentTotal = existingCount + photos.length
+    const availableSlots = (MAX_PHOTOS_PER_PIN ?? 5) - currentTotal
+
+    if (availableSlots <= 0) {
+      showToast('Límite de fotos alcanzado')
+      return
+    }
+
+    const validFiles: File[] = []
+    for (const file of files.slice(0, availableSlots)) {
+      const err = validatePhoto(file)
+      if (err) {
+        showToast(err)
+      } else {
+        validFiles.push(file)
+      }
+    }
+
+    if (validFiles.length > 0) {
+      setPhotos((prev) => [...prev, ...validFiles])
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   const create = useMutation({
     mutationFn: async (values: PinFormValues) => {
       const startsAtIso = values.type === 'event' && values.startsAt ? new Date(values.startsAt).toISOString() : null
@@ -142,17 +178,25 @@ export function CreatePinModal() {
         : null
 
       if (editingPin) {
-        await updatePin(editingPin.id, {
-          title: values.title,
-          description: values.description ? values.description : null,
-          categoryId: values.categoryId,
-          facultyId: values.facultyId,
-          type: values.type as PinType,
-          isOfficial: values.isOfficial,
-          officialEntityName,
-          startsAt: startsAtIso,
-          endsAt: endsAtIso,
-        })
+        await updatePin(
+          editingPin.id, 
+          {
+            title: values.title,
+            description: values.description ? values.description : null,
+            categoryId: values.categoryId,
+            facultyId: values.facultyId,
+            type: values.type as PinType,
+            isOfficial: values.isOfficial,
+            officialEntityName,
+            startsAt: startsAtIso,
+            endsAt: endsAtIso,
+            userId: user?.id,
+          },
+          {
+            newPhotos: photos,
+            deletedPhotoIds,
+          }
+        )
         return
       }
       
@@ -185,30 +229,6 @@ export function CreatePinModal() {
     onError: () => showToast(t('common.error')),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),
   })
-
-  const onPhotosSelected = (files: FileList | null) => {
-    if (!files) return
-    const next: File[] = [...photos]
-    for (const file of Array.from(files)) {
-      if (next.length >= MAX_PHOTOS_PER_PIN) break
-      const problem = validatePhoto(file)
-      if (problem === 'bad-type') {
-        showToast(t('pin.photoBadType', { name: file.name }))
-        continue
-      }
-      if (problem === 'too-large') {
-        showToast(t('pin.photoTooLarge', { name: file.name }))
-        continue
-      }
-      next.push(file)
-    }
-    setPhotos(next)
-  }
-
-  const removeImage = (index: number) => {
-    setPhotos(photos.filter((_, i) => i !== index))
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
 
   const availableTypes: ('report' | 'place' | 'event')[] = ['report', 'event']
   if (canCreatePlace) {
@@ -308,57 +328,86 @@ export function CreatePinModal() {
               />
             </div>
 
-            {/* Photos (Only when creating) */}
-            {!editingPin && (
-              <div className="space-y-6">
-                <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.photos')}</label>
-                <div className="flex flex-col gap-4">
-                  {photos.length > 0 && (
-                    <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 -mx-6 px-6 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-2 sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-700 sm:[&::-webkit-scrollbar-thumb]:rounded-full hover:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:hover:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-600">
-                      {photos.map((file, i) => (
-                        <div 
-                          key={i} 
-                          className={`relative shrink-0 snap-center rounded-[24px] overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] border border-neutral-100 dark:border-neutral-800 transition-all ${
-                            photos.length === 1 ? 'w-full aspect-[4/3] sm:aspect-video' : 'w-[75%] sm:w-[60%] aspect-square sm:aspect-[4/3]'
-                          }`}
-                        >
-                          <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(i)}
-                            className="absolute top-3 right-3 w-8 h-8 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-red-500 hover:scale-110 transition-all"
+            {/* Photos (Nativa UI con carrusel horizontal) */}
+            {(() => {
+              const existingPhotos = (editingPin?.pin_photos ?? []).filter((p) => !deletedPhotoIds.includes(p.id))
+              const totalCount = existingPhotos.length + photos.length
+
+              return (
+                <div className="space-y-6">
+                  <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">
+                    {t('pin.photos')}
+                  </label>
+                  <div className="flex flex-col gap-4">
+                    {totalCount > 0 && (
+                      <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 -mx-6 px-6 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-2 sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-700 sm:[&::-webkit-scrollbar-thumb]:rounded-full hover:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:hover:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-600">
+                        {/* Fotos guardadas en base de datos */}
+                        {existingPhotos.map((ph) => (
+                          <div
+                            key={ph.id}
+                            className={`relative shrink-0 snap-center rounded-[24px] overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] border border-neutral-100 dark:border-neutral-800 transition-all ${
+                              totalCount === 1 ? 'w-full aspect-[4/3] sm:aspect-video' : 'w-[75%] sm:w-[60%] aspect-square sm:aspect-[4/3]'
+                            }`}
                           >
-                            <Trash2 size={16} className="text-white" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {photos.length < MAX_PHOTOS_PER_PIN && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full h-28 bg-neutral-50 dark:bg-neutral-800/50 border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-3xl flex flex-col items-center justify-center gap-3 text-neutral-400 hover:border-[#D41F2D] hover:text-[#D41F2D] transition-all overflow-hidden relative"
-                      >
-                        <Camera size={28} strokeWidth={1.5} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{t('pin.addPhotos')}</span>
-                      </button>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={(e) => onPhotosSelected(e.target.files)}
-                        accept="image/*"
-                        capture="environment"
-                        multiple
-                        className="hidden"
-                      />
-                    </>
-                  )}
+                            <img src={ph.url} alt="Preview" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setDeletedPhotoIds((prev) => [...prev, ph.id])}
+                              className="absolute top-3 right-3 w-8 h-8 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-red-500 hover:scale-110 transition-all shadow-md"
+                              title="Eliminar foto"
+                            >
+                              <Trash2 size={16} className="text-white" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Fotos nuevas elegidas */}
+                        {photos.map((file, i) => (
+                          <div
+                            key={`new-${i}`}
+                            className={`relative shrink-0 snap-center rounded-[24px] overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.2)] border border-neutral-100 dark:border-neutral-800 transition-all ${
+                              totalCount === 1 ? 'w-full aspect-[4/3] sm:aspect-video' : 'w-[75%] sm:w-[60%] aspect-square sm:aspect-[4/3]'
+                            }`}
+                          >
+                            <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="absolute top-3 right-3 w-8 h-8 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-red-500 hover:scale-110 transition-all shadow-md"
+                              title="Quitar foto"
+                            >
+                              <Trash2 size={16} className="text-white" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {totalCount < (MAX_PHOTOS_PER_PIN ?? 5) && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full h-28 bg-neutral-50 dark:bg-neutral-800/50 border-2 border-dashed border-neutral-200 dark:border-neutral-700 rounded-3xl flex flex-col items-center justify-center gap-3 text-neutral-400 hover:border-[#D41F2D] hover:text-[#D41F2D] transition-all overflow-hidden relative"
+                        >
+                          <Camera size={28} strokeWidth={1.5} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">{t('pin.addPhotos')}</span>
+                        </button>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileSelect}
+                          accept="image/*"
+                          capture="environment"
+                          multiple
+                          className="hidden"
+                        />
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {/* Faculty */}
             <div className="space-y-6 relative">

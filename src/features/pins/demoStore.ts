@@ -131,3 +131,9 @@ export function demoAddPhotos(pinId: string, files: File[]): PinPhoto[] {
   pin.pin_photos = [...(pin.pin_photos ?? []), ...photos]
   return photos
 }
+
+export function demoRemovePhotos(pinId: string, photoIds: string[]): void {
+  const pin = demoDb.pins.find((p) => p.id === pinId)
+  if (!pin || !pin.pin_photos) return
+  pin.pin_photos = pin.pin_photos.filter((ph) => !photoIds.includes(ph.id))
+}

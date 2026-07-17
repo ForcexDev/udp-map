@@ -7,7 +7,7 @@ import { categoryById } from '@/shared/data/campusData'
 import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import type { PinFilters } from '@/shared/stores/filterStore'
 import { compressImage, photoStoragePath } from './photos'
-import { demoDb, demoAddPhotos, demoRecountVotes } from './demoStore'
+import { demoDb, demoAddPhotos, demoRemovePhotos, demoRecountVotes } from './demoStore'
 
 export interface CreatePinInput {
   type: PinType
@@ -170,7 +170,16 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
   return pin
 }
 
-export async function updatePin(pinId: string, input: Partial<CreatePinInput>): Promise<void> {
+export async function updatePin(
+  pinId: string, 
+  input: Partial<CreatePinInput>,
+  options?: {
+    newPhotos?: File[]
+    deletedPhotoIds?: string[]
+  }
+): Promise<void> {
+  const { newPhotos = [], deletedPhotoIds = [] } = options ?? {}
+
   if (!supabase) {
     const pin = demoDb.pins.find((p) => p.id === pinId)
     if (pin) {
@@ -186,9 +195,13 @@ export async function updatePin(pinId: string, input: Partial<CreatePinInput>): 
         pin.ends_at = input.endsAt
         if (pin.type === 'event') pin.expires_at = input.endsAt
       }
+      if (deletedPhotoIds.length > 0) demoRemovePhotos(pinId, deletedPhotoIds)
+      if (newPhotos.length > 0) demoAddPhotos(pinId, newPhotos)
     }
     return
   }
+
+  // 1. Actualizar datos base
   const { error } = await supabase
     .from('pins')
     .update({
@@ -205,6 +218,42 @@ export async function updatePin(pinId: string, input: Partial<CreatePinInput>): 
     })
     .eq('id', pinId)
   if (error) throw error
+
+  // 2. Eliminar fotos de Storage y tabla
+  if (deletedPhotoIds.length > 0) {
+    const { data: photosToDelete } = await supabase
+      .from('pin_photos')
+      .select('id, url')
+      .in('id', deletedPhotoIds)
+
+    if (photosToDelete && photosToDelete.length > 0) {
+      const storagePaths = photosToDelete
+        .map((ph) => ph.url.split(`/${PHOTOS_BUCKET}/`)[1])
+        .filter((p): p is string => Boolean(p))
+
+      if (storagePaths.length > 0) {
+        await supabase.storage.from(PHOTOS_BUCKET).remove(storagePaths)
+      }
+      await supabase.from('pin_photos').delete().in('id', deletedPhotoIds)
+    }
+  }
+
+  // 3. Subir nuevas fotos
+  if (newPhotos.length > 0 && input.userId) {
+    for (const file of newPhotos) {
+      const { blob, width, height } = await compressImage(file)
+      const path = photoStoragePath(input.userId)
+      const { error: upErr } = await supabase.storage
+        .from(PHOTOS_BUCKET)
+        .upload(path, blob, { contentType: 'image/jpeg' })
+      if (upErr) throw upErr
+      const { data: pub } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path)
+      const { error: photoErr } = await supabase
+        .from('pin_photos')
+        .insert({ pin_id: pinId, url: pub.publicUrl, width, height })
+      if (photoErr) throw photoErr
+    }
+  }
 }
 
 // ── Borrado (dueño o mod/admin vía RLS) + limpieza de Storage ──
