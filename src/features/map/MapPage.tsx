@@ -35,7 +35,10 @@ function useUserLocation() {
     if (compassHandlerRef.current) return // Ya está corriendo
 
     // 1. Manejo de permisos obligatorio para iOS 13+
-    const DeviceOrientationAny = window.DeviceOrientationEvent as any
+    interface DeviceOrientationiOS {
+      requestPermission?: () => Promise<'granted' | 'denied'>
+    }
+    const DeviceOrientationAny = window.DeviceOrientationEvent as unknown as DeviceOrientationiOS
     if (typeof DeviceOrientationAny !== 'undefined' && typeof DeviceOrientationAny.requestPermission === 'function') {
       try {
         const permission = await DeviceOrientationAny.requestPermission()
@@ -51,11 +54,16 @@ function useUserLocation() {
     let hasReceivedData = false
     const THROTTLE_MS = 100
 
+    interface ExtendedDeviceOrientationEvent extends DeviceOrientationEvent {
+      webkitCompassHeading?: number
+    }
+
     const handler = (e: DeviceOrientationEvent) => {
+      const extEv = e as ExtendedDeviceOrientationEvent
       // Determinar si el evento trae info absoluta real (Norte)
       const isAbsolute = e.type === 'deviceorientationabsolute' || 
                          e.absolute === true || 
-                         (e as any).webkitCompassHeading !== undefined
+                         extEv.webkitCompassHeading !== undefined
 
       if (isAbsolute) {
         hasAbsoluteData = true
@@ -69,7 +77,7 @@ function useUserLocation() {
       if (now - lastUpdate < THROTTLE_MS) return
       lastUpdate = now
 
-      const h = (e as any).webkitCompassHeading ?? (e.alpha !== null ? (360 - e.alpha) % 360 : null)
+      const h = extEv.webkitCompassHeading ?? (e.alpha !== null ? (360 - e.alpha) % 360 : null)
       setHeading(h)
     }
 

@@ -20,6 +20,7 @@ export interface CreatePinInput {
   userId: string
   userName: string
   isOfficial?: boolean
+  officialEntityName?: string | null
   startsAt?: string | null
   endsAt?: string | null
 }
@@ -120,6 +121,7 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
       starts_at: input.startsAt ?? null,
       ends_at: input.endsAt ?? null,
       is_official: input.isOfficial ?? false,
+      official_entity_name: input.officialEntityName ?? (input.isOfficial ? 'Administración UDP' : null),
       created_at: nowIso(),
       pin_photos: [],
     }
@@ -144,6 +146,7 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
       starts_at: input.startsAt,
       ends_at: input.endsAt,
       is_official: input.isOfficial ?? false,
+      official_entity_name: input.officialEntityName ?? null,
     })
     .select()
     .single()
@@ -177,6 +180,7 @@ export async function updatePin(pinId: string, input: Partial<CreatePinInput>): 
       if (input.facultyId !== undefined) pin.faculty_id = input.facultyId
       if (input.type !== undefined) pin.type = input.type
       if (input.isOfficial !== undefined) pin.is_official = input.isOfficial
+      if (input.officialEntityName !== undefined) pin.official_entity_name = input.officialEntityName
       if (input.startsAt !== undefined) pin.starts_at = input.startsAt
       if (input.endsAt !== undefined) {
         pin.ends_at = input.endsAt
@@ -196,7 +200,8 @@ export async function updatePin(pinId: string, input: Partial<CreatePinInput>): 
       starts_at: input.startsAt,
       ends_at: input.endsAt,
       ...(input.type === 'event' && input.endsAt !== undefined ? { expires_at: input.endsAt } : {}),
-      ...(input.isOfficial !== undefined ? { is_official: input.isOfficial } : {})
+      ...(input.isOfficial !== undefined ? { is_official: input.isOfficial } : {}),
+      ...(input.officialEntityName !== undefined ? { official_entity_name: input.officialEntityName } : {})
     })
     .eq('id', pinId)
   if (error) throw error

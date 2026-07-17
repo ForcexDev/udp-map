@@ -62,12 +62,13 @@ export function PinBadges({ pin }: { pin: Pin }) {
 
   // Quién lo añadió
   if (pin.is_official) {
+    const entityName = pin.official_entity_name || 'Administración UDP'
     badges.push(
       <div key="off" className="flex items-center gap-1">
         <BadgeCheck size={14} className="text-blue-500" />
         <span className="text-neutral-700 dark:text-neutral-300">
           {t('pin.addedBy', 'Añadido por:')}{' '}
-          <span className="text-[#D41F2D] font-bold">Administración UDP</span>
+          <span className="text-[#D41F2D] font-bold">{entityName}</span>
         </span>
       </div>
     )

@@ -80,18 +80,17 @@ Este documento rastrea el progreso exacto de las funcionalidades definidas en el
 
 ## 🏅 Sprint 4 — Social, Gamificación & Launch (Sem 7–8)
 
-*Aún no iniciado.*
-
-- [ ] Perfiles expansibles, Karma e Insignias (Leaderboard).
+- [x] Perfiles expansibles, Karma e Insignias (Leaderboard).
+- [x] Orientación nativa por giroscopio (cono tipo Google Maps con rotación de mapa).
+- [x] PWA Auto-Update al reactivar la app/pestaña.
+- [x] Modo Administrador: Toggle en ajustes para desbloqueo dinámico de límites del mapa.
+- [x] Atribución de Entidad Oficial por Rol ("Centro de Alumnos FIC" para moderadores vs "Administración UDP" para admins).
 - [ ] Web Push (Notificaciones push reales por interacciones).
 - [ ] Cola de moderación para administradores.
-- [ ] Despliegue, Accesibilidad AA final y modo oscuro optimizado.
 
 ---
 
-## 🗺️ Sprint 5 — Planos Indoor (Sem 9+)
+## 🗺️ Sprint 5 / Backlog Futuro — Expansión & Multicampus
 
-*Aún no iniciado. Pospuesto por complejidad.*
-
-- [ ] Tablas `floor_plans` + RLS.
-- [ ] Planos indoor (selector edificio/piso, renderizado GeoJSON en el mapa).
+- [ ] **Atribución Dinámica por Perímetro de Facultad**: Asignación automática del Centro de Alumnos (CEE) correspondiente según el perímetro GeoJSON de la facultad donde caiga la chincheta (`facultyIdAt`), permitiendo moderadores de múltiples carreras/facultades.
+- [ ] Selector de planos indoor (edificio/piso) y visor GeoJSON.

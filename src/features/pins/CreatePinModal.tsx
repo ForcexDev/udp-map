@@ -137,6 +137,10 @@ export function CreatePinModal() {
       const startsAtIso = values.type === 'event' && values.startsAt ? new Date(values.startsAt).toISOString() : null
       const endsAtIso = values.type === 'event' && values.endsAt ? new Date(values.endsAt).toISOString() : null
 
+      const officialEntityName = values.isOfficial
+        ? (role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP')
+        : null
+
       if (editingPin) {
         await updatePin(editingPin.id, {
           title: values.title,
@@ -145,6 +149,7 @@ export function CreatePinModal() {
           facultyId: values.facultyId,
           type: values.type as PinType,
           isOfficial: values.isOfficial,
+          officialEntityName,
           startsAt: startsAtIso,
           endsAt: endsAtIso,
         })
@@ -164,6 +169,7 @@ export function CreatePinModal() {
           userId: user.id,
           userName: user.name,
           isOfficial: values.isOfficial,
+          officialEntityName,
           startsAt: startsAtIso,
           endsAt: endsAtIso,
         },
@@ -535,7 +541,7 @@ export function CreatePinModal() {
                       </label>
                     </div>
                     <p className="text-[11px] sm:text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-snug pl-6">
-                      El autor se mostrará como <span className="font-bold text-[#D41F2D]">Administración UDP</span>.
+                      El autor se mostrará como <span className="font-bold text-[#D41F2D]">{role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP'}</span>.
                     </p>
                   </div>
                   <Controller
