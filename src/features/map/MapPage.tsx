@@ -47,9 +47,24 @@ function useUserLocation() {
     }
 
     let lastUpdate = 0
+    let hasAbsoluteData = false
+    let hasReceivedData = false
     const THROTTLE_MS = 100
 
     const handler = (e: DeviceOrientationEvent) => {
+      // Determinar si el evento trae info absoluta real (Norte)
+      const isAbsolute = e.type === 'deviceorientationabsolute' || 
+                         e.absolute === true || 
+                         (e as any).webkitCompassHeading !== undefined
+
+      if (isAbsolute) {
+        hasAbsoluteData = true
+      } else if (hasAbsoluteData) {
+        // ANTI-GLITCH: Ignoramos eventos relativos si ya tenemos fuente absoluta confiable
+        return
+      }
+
+      hasReceivedData = true
       const now = Date.now()
       if (now - lastUpdate < THROTTLE_MS) return
       lastUpdate = now
@@ -66,6 +81,13 @@ function useUserLocation() {
     if (hasAbsolute) {
       window.addEventListener('deviceorientation', handler, true)
     }
+
+    // ANTI-BRAVE: Health check para detectar bloqueo de hardware
+    setTimeout(() => {
+      if (!hasReceivedData) {
+        useUIStore.getState().showToast('Brújula bloqueada. Permite acceso a "Sensores de movimiento" en tu navegador (ej. Escudos Brave).')
+      }
+    }, 1500)
   }, [])
 
   const requestLocation = useCallback((): Promise<LatLng | null> => {
