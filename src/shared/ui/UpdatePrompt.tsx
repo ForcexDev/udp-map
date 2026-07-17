@@ -6,7 +6,25 @@ export function UpdatePrompt() {
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
-  } = useRegisterSW()
+  } = useRegisterSW({
+    onRegistered(r) {
+      if (r) {
+        // 1. Check updates when app is foregrounded or tab becomes visible
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible' && !r.installing) {
+            r.update().catch(console.error)
+          }
+        })
+
+        // 2. Periodic check every hour for long-running sessions (e.g. PC users)
+        setInterval(() => {
+          if (document.visibilityState === 'visible' && navigator.onLine && !r.installing) {
+            r.update().catch(console.error)
+          }
+        }, 60 * 60 * 1000) // 1 hour
+      }
+    }
+  })
 
   const isDevTesting = import.meta.env.DEV && window.location.search.includes('test-pwa')
 

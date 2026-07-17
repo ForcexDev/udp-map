@@ -29,8 +29,49 @@ function useUserLocation() {
   // Store the first-resolve callback so requestLocation doesn't recreate on every GPS update
   const resolveRef = useRef<((v: LatLng | null) => void) | null>(null)
   const locRef = useRef<LatLng | null>(null)
+  const compassHandlerRef = useRef<((e: DeviceOrientationEvent) => void) | null>(null)
+
+  const startCompass = useCallback(async () => {
+    if (compassHandlerRef.current) return // Ya está corriendo
+
+    // 1. Manejo de permisos obligatorio para iOS 13+
+    const DeviceOrientationAny = window.DeviceOrientationEvent as any
+    if (typeof DeviceOrientationAny !== 'undefined' && typeof DeviceOrientationAny.requestPermission === 'function') {
+      try {
+        const permission = await DeviceOrientationAny.requestPermission()
+        if (permission !== 'granted') return
+      } catch (err) {
+        console.error('Error pidiendo permiso de giroscopio', err)
+        return
+      }
+    }
+
+    let lastUpdate = 0
+    const THROTTLE_MS = 100
+
+    const handler = (e: DeviceOrientationEvent) => {
+      const now = Date.now()
+      if (now - lastUpdate < THROTTLE_MS) return
+      lastUpdate = now
+
+      const h = (e as any).webkitCompassHeading ?? (e.alpha !== null ? (360 - e.alpha) % 360 : null)
+      setHeading(h)
+    }
+
+    compassHandlerRef.current = handler
+    const hasAbsolute = 'ondeviceorientationabsolute' in window
+    const primaryEvent = hasAbsolute ? 'deviceorientationabsolute' : 'deviceorientation'
+    
+    window.addEventListener(primaryEvent, handler as EventListener, true)
+    if (hasAbsolute) {
+      window.addEventListener('deviceorientation', handler, true)
+    }
+  }, [])
 
   const requestLocation = useCallback((): Promise<LatLng | null> => {
+    // Iniciar giroscopio (gatillado por la acción del usuario)
+    void startCompass()
+
     // Already tracking and have a location — return immediately without a new watch
     if (watchIdRef.current !== null && locRef.current) {
       return Promise.resolve(locRef.current)
@@ -78,45 +119,20 @@ function useUserLocation() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Device heading (compass) — for the directional dot on the map
-  // Throttled to ~100ms to avoid ~60 re-renders/sec from the gyroscope.
-  // Prefers deviceorientationabsolute on Android for true-north heading;
-  // falls back to deviceorientation + webkitCompassHeading on iOS.
-  useEffect(() => {
-    let lastUpdate = 0
-    const THROTTLE_MS = 100
-
-    const handler = (e: DeviceOrientationEvent) => {
-      const now = Date.now()
-      if (now - lastUpdate < THROTTLE_MS) return
-      lastUpdate = now
-
-      const h = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading
-        ?? (e.alpha !== null ? (360 - e.alpha) % 360 : null)
-      setHeading(h)
-    }
-
-    // Android: deviceorientationabsolute gives true-north heading
-    const hasAbsolute = 'ondeviceorientationabsolute' in window
-    const primaryEvent = hasAbsolute ? 'deviceorientationabsolute' : 'deviceorientation'
-    window.addEventListener(primaryEvent, handler as EventListener, true)
-    // iOS always needs regular deviceorientation for webkitCompassHeading
-    if (hasAbsolute) {
-      window.addEventListener('deviceorientation', handler, true)
-    }
-
-    return () => {
-      window.removeEventListener(primaryEvent, handler as EventListener, true)
-      if (hasAbsolute) {
-        window.removeEventListener('deviceorientation', handler, true)
-      }
-    }
-  }, [])
-
+  // Clean up both GPS and Compass on unmount
   useEffect(() => {
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation?.clearWatch(watchIdRef.current)
+      }
+      if (compassHandlerRef.current) {
+        const handler = compassHandlerRef.current
+        const hasAbsolute = 'ondeviceorientationabsolute' in window
+        const primaryEvent = hasAbsolute ? 'deviceorientationabsolute' : 'deviceorientation'
+        window.removeEventListener(primaryEvent, handler as EventListener, true)
+        if (hasAbsolute) {
+          window.removeEventListener('deviceorientation', handler, true)
+        }
       }
     }
   }, [])
