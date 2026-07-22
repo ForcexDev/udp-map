@@ -3,6 +3,28 @@ import { deletePushSubscription, registerPushSubscription } from './api'
 
 export type PushState = 'unsupported' | 'idle' | 'subscribed' | 'denied' | 'loading' | 'error'
 
+function pushErrorMessage(cause: unknown): string {
+  const technicalMessage = cause instanceof Error ? cause.message : String(cause)
+  const errorName = cause instanceof DOMException ? cause.name : ''
+
+  if (Notification.permission === 'denied' || errorName === 'NotAllowedError') {
+    return 'Las notificaciones están bloqueadas para este sitio. Permítelas desde el candado de la barra de direcciones y vuelve a intentar.'
+  }
+
+  if (
+    errorName === 'AbortError'
+    || /registration failed|push service error|push service|service unavailable/i.test(technicalMessage)
+  ) {
+    return 'El navegador no pudo conectarse a su servicio de notificaciones. Revisa los permisos de Windows y del sitio, y prueba sin VPN, bloqueadores o modo privado.'
+  }
+
+  if (/applicationserverkey|vapid|invalid.*key/i.test(technicalMessage)) {
+    return 'La configuración de Web Push de la aplicación no es válida. Contacta al administrador.'
+  }
+
+  return 'No pudimos activar las notificaciones en este dispositivo. Revisa los permisos del navegador y vuelve a intentar.'
+}
+
 function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - value.length % 4) % 4)
   const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -31,7 +53,8 @@ export function usePushSubscription(enabled: boolean) {
       })
       .catch((cause: unknown) => {
         if (!active) return
-        setError(cause instanceof Error ? cause.message : String(cause))
+        console.error('[web-push] No se pudo consultar la suscripción del dispositivo:', cause)
+        setError(pushErrorMessage(cause))
         setState('error')
       })
     return () => { active = false }
@@ -63,8 +86,9 @@ export function usePushSubscription(enabled: boolean) {
       await registerPushSubscription(subscription)
       setState('subscribed')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
-      setState('error')
+      console.error('[web-push] No se pudo registrar el dispositivo:', cause)
+      setError(pushErrorMessage(cause))
+      setState(Notification.permission === 'denied' ? 'denied' : 'error')
     }
   }
 
@@ -81,7 +105,8 @@ export function usePushSubscription(enabled: boolean) {
       }
       setState('idle')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      console.error('[web-push] No se pudo desactivar el dispositivo:', cause)
+      setError(pushErrorMessage(cause))
       setState('error')
     }
   }

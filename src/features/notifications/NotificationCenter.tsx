@@ -101,7 +101,13 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
             <div className="min-w-0">
               <p className="text-xs font-extrabold text-neutral-800 dark:text-neutral-100">Notificaciones Web Push</p>
               <p className="truncate text-[10px] text-neutral-400">
-                {push.state === 'subscribed' ? 'Activadas en este dispositivo' : push.state === 'denied' ? 'Bloqueadas por el navegador' : 'Recíbelas aunque la app esté cerrada'}
+                {push.state === 'subscribed'
+                  ? 'Activadas en este dispositivo'
+                  : push.state === 'denied'
+                    ? 'Bloqueadas por el navegador'
+                    : push.state === 'unsupported'
+                      ? 'Este navegador no admite Web Push'
+                      : 'Recíbelas aunque la app esté cerrada'}
               </p>
             </div>
           </div>
@@ -109,7 +115,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
             <button type="button" onClick={() => void push.unsubscribe()} className="text-[10px] font-black text-neutral-400 hover:text-red-600">Desactivar</button>
           ) : (
             <button type="button" onClick={() => void push.subscribe()} disabled={push.state === 'loading' || push.state === 'unsupported' || push.state === 'denied'} className="rounded-full bg-[#D41F2D] px-3 py-1.5 text-[10px] font-black text-white disabled:opacity-40">
-              {push.state === 'loading' ? 'Activando…' : 'Activar'}
+              {push.state === 'loading' ? 'Activando…' : push.state === 'error' ? 'Reintentar' : 'Activar'}
             </button>
           )}
         </div>
