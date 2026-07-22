@@ -35,7 +35,7 @@ export function useComments(pinId: string) {
   const send = useMutation({
     mutationFn: (body: string) => {
       if (!user) throw new Error('not signed in')
-      return addComment(pinId, body, user.id, user.name)
+      return addComment(pinId, body, user.id, user.name, user.avatarUrl)
     },
     // UI optimista con rollback (rescatado de v1, plan §0)
     onMutate: async (body) => {
@@ -46,6 +46,7 @@ export function useComments(pinId: string) {
         pin_id: pinId,
         author_id: user?.id ?? null,
         author_name: user?.name ?? null,
+        author_avatar_url: user?.avatarUrl ?? null,
         body,
         created_at: new Date().toISOString(),
       }

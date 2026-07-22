@@ -6,7 +6,7 @@ import { demoForumDb } from './demoStore'
 const nowIso = () => new Date().toISOString()
 
 type ForumThreadRow = ForumThread & {
-  profiles?: { name?: string | null } | { name?: string | null }[] | null
+  profiles?: { name?: string | null; avatar_url?: string | null } | { name?: string | null; avatar_url?: string | null }[] | null
   forum_comments?: { count?: number | null }[] | null
 }
 
@@ -16,6 +16,7 @@ function mapThread(row: ForumThreadRow): ForumThread {
   return {
     ...thread,
     author_name: profile?.name || 'Estudiante UDP',
+    author_avatar_url: profile?.avatar_url ?? null,
     comment_count: forum_comments?.[0]?.count ?? 0,
   }
 }
@@ -54,7 +55,7 @@ export async function fetchThreads(
   // Consulta en Supabase
   let query = supabase
     .from('forum_threads')
-    .select('*, profiles:author_id(name), forum_comments(count)')
+    .select('*, profiles:author_id(name, avatar_url), forum_comments(count)')
     
   if (facultyId) {
     query = query.eq('faculty_id', facultyId)
@@ -91,7 +92,7 @@ export async function fetchThreadById(threadId: string): Promise<ForumThread | n
 
   const { data, error } = await supabase
     .from('forum_threads')
-    .select('*, profiles:author_id(name), forum_comments(count)')
+    .select('*, profiles:author_id(name, avatar_url), forum_comments(count)')
     .eq('id', threadId)
     .single()
 
@@ -141,7 +142,7 @@ export async function createThread(input: CreateThreadInput): Promise<ForumThrea
       faculty_id: input.facultyId,
       author_id: input.authorId,
     })
-    .select('*, profiles:author_id(name)')
+    .select('*, profiles:author_id(name, avatar_url)')
     .single()
 
   if (error) throw error
@@ -149,6 +150,7 @@ export async function createThread(input: CreateThreadInput): Promise<ForumThrea
   return {
     ...data,
     author_name: data.profiles?.name || 'Estudiante UDP',
+    author_avatar_url: data.profiles?.avatar_url ?? null,
     comment_count: 0,
   } as ForumThread
 }
@@ -192,15 +194,16 @@ export async function fetchComments(threadId: string): Promise<ForumComment[]> {
 
   const { data, error } = await supabase
     .from('forum_comments')
-    .select('*, profiles:author_id(name)')
+    .select('*, profiles:author_id(name, avatar_url)')
     .eq('thread_id', threadId)
     .order('created_at', { ascending: true })
 
   if (error) throw error
 
-  return (data || []).map((c: Record<string, unknown> & { profiles?: { name?: string } }) => ({
+  return (data || []).map((c: Record<string, unknown> & { profiles?: { name?: string; avatar_url?: string | null } }) => ({
     ...(c as unknown as ForumComment),
     author_name: c.profiles?.name || 'Estudiante UDP',
+    author_avatar_url: c.profiles?.avatar_url ?? null,
   })) as ForumComment[]
 }
 
@@ -209,6 +212,8 @@ export interface CreateCommentInput {
   parentCommentId: string | null
   content: string
   authorId: string
+  authorName?: string | null
+  authorAvatarUrl?: string | null
 }
 
 export async function createComment(input: CreateCommentInput): Promise<ForumComment> {
@@ -220,7 +225,8 @@ export async function createComment(input: CreateCommentInput): Promise<ForumCom
       author_id: input.authorId,
       content: input.content,
       created_at: nowIso(),
-      author_name: 'Yo',
+      author_name: input.authorName || 'Yo',
+      author_avatar_url: input.authorAvatarUrl ?? null,
     }
     demoForumDb.comments.push(newComment)
     return newComment
@@ -234,7 +240,7 @@ export async function createComment(input: CreateCommentInput): Promise<ForumCom
       content: input.content,
       author_id: input.authorId,
     })
-    .select('*, profiles:author_id(name)')
+    .select('*, profiles:author_id(name, avatar_url)')
     .single()
 
   if (error) throw error
@@ -242,6 +248,7 @@ export async function createComment(input: CreateCommentInput): Promise<ForumCom
   return {
     ...data,
     author_name: data.profiles?.name || 'Estudiante UDP',
+    author_avatar_url: data.profiles?.avatar_url ?? input.authorAvatarUrl ?? null,
   } as ForumComment
 }
 

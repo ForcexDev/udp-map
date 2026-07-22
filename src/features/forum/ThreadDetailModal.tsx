@@ -16,6 +16,7 @@ import {
   useTogglePinThread,
 } from './useForum'
 import { buildCommentTree, buildReplyContent, countNestedReplies, type CommentNode } from './utils'
+import { UserAvatar } from '@/shared/ui/UserAvatar'
 
 interface ThreadDetailModalProps {
   threadId: string | null
@@ -59,21 +60,17 @@ function CommentItem({
   const replyCount = countNestedReplies(node)
   const visibleReplies = depth === 0 && !showAllReplies ? [] : node.replies
 
-  const avatarSrc = isCommentOwner && user?.avatarUrl
-    ? user.avatarUrl
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        node.author_name ?? 'U'
-      )}&background=F3F4F6&color=374151&bold=true`
-
   const avatarSize = depth > 0 ? 'h-6 w-6' : 'h-7.5 w-7.5'
   const textSize = depth > 0 ? 'text-[11.5px]' : 'text-[12.5px]'
   const nameSize = depth > 0 ? 'text-[12px]' : 'text-[13px]'
 
   return (
     <div className={`relative flex gap-2.5 ${depth > 0 ? 'mt-2.5' : 'border-b border-neutral-100 dark:border-neutral-900 pb-3 last:border-0'}`}>
-      <div className={`mt-0.5 flex ${avatarSize} shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400`}>
-        <img src={avatarSrc} alt={node.author_name ?? ''} className="h-full w-full object-cover" loading="lazy" />
-      </div>
+      <UserAvatar
+        name={node.author_name}
+        src={node.author_avatar_url || (isCommentOwner ? user?.avatarUrl : null)}
+        className={`mt-0.5 ${avatarSize} ${depth > 0 ? 'text-2xl' : 'text-3xl'}`}
+      />
       
       <div className="flex flex-1 flex-col relative min-w-0">
         <div className="flex items-center gap-1.5 pr-10 flex-wrap">
@@ -265,6 +262,8 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
         parentCommentId: null,
         content: newCommentText.trim(),
         authorId: user.id,
+        authorName: user.name,
+        authorAvatarUrl: user.avatarUrl,
       },
       {
         onSuccess: () => {
@@ -287,6 +286,8 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
         parentCommentId: parentId,
         content: buildReplyContent(replyText, authorName),
         authorId: user.id,
+        authorName: user.name,
+        authorAvatarUrl: user.avatarUrl,
       },
       {
         onSuccess: () => {

@@ -429,16 +429,20 @@ export async function fetchComments(pinId: string, before?: string): Promise<Pin
   }
   let query = supabase
     .from('pin_comments')
-    .select('*, profiles(name)')
+    .select('*, profiles(name, avatar_url)')
     .eq('pin_id', pinId)
     .order('created_at', { ascending: false })
     .limit(COMMENTS_PAGE_SIZE)
   if (before) query = query.lt('created_at', before)
   const { data, error } = await query
   if (error) throw error
-  type Row = PinComment & { profiles: { name: string | null } | null }
+  type Row = PinComment & { profiles: { name: string | null; avatar_url: string | null } | null }
   return ((data ?? []) as Row[])
-    .map(({ profiles, ...c }) => ({ ...c, author_name: profiles?.name ?? null }))
+    .map(({ profiles, ...c }) => ({
+      ...c,
+      author_name: profiles?.name ?? null,
+      author_avatar_url: profiles?.avatar_url ?? null,
+    }))
     .reverse()
 }
 
@@ -447,6 +451,7 @@ export async function addComment(
   body: string,
   userId: string,
   userName: string,
+  userAvatarUrl: string | null,
 ): Promise<PinComment> {
   if (!supabase) {
     const comment: PinComment = {
@@ -454,6 +459,7 @@ export async function addComment(
       pin_id: pinId,
       author_id: userId,
       author_name: userName,
+      author_avatar_url: userAvatarUrl,
       body,
       created_at: nowIso(),
     }
@@ -467,7 +473,11 @@ export async function addComment(
     .select()
     .single()
   if (error) throw error
-  return { ...(data as PinComment), author_name: userName }
+  return {
+    ...(data as PinComment),
+    author_name: userName,
+    author_avatar_url: userAvatarUrl,
+  }
 }
 
 export async function deleteComment(commentId: string, pinId: string): Promise<void> {

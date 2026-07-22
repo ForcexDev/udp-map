@@ -9,6 +9,7 @@ import { relativeTime } from '@/shared/utils/datetime'
 import { Spinner } from '@/shared/ui/Spinner'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
+import { UserAvatar } from '@/shared/ui/UserAvatar'
 
 const AGO_KEY = { minute: 'agoMinutes', hour: 'agoHours', day: 'agoDays' } as const
 
@@ -50,24 +51,13 @@ export function CommentSection({ pinId }: { pinId: string }) {
             const isMe = user && user.id === c.author_id
             const canDelete = isMe || can(role, 'pin.moderate')
             
-            // Si es el usuario actual, usamos su foto de Google (avatarUrl local).
-            // Si es otro, generamos un avatar bonito con sus iniciales.
-            const avatarSrc = isMe && user?.avatarUrl
-              ? user.avatarUrl
-              : `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                  c.author_name ?? 'U'
-                )}&background=F3F4F6&color=374151&bold=true`
-
             return (
               <li key={c.id} className="group relative flex gap-3 border-b border-neutral-100 py-3 last:border-0 dark:border-neutral-800">
-                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400">
-                  <img
-                    src={avatarSrc}
-                    alt={c.author_name ?? ''}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
+                <UserAvatar
+                  name={c.author_name}
+                  src={c.author_avatar_url || (isMe ? user?.avatarUrl : null)}
+                  className="mt-0.5 h-10 w-10 text-4xl"
+                />
                 
                 <div className="flex flex-1 flex-col relative">
                   <button

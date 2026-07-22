@@ -100,6 +100,7 @@ export interface PinComment {
   pin_id: string
   author_id: string | null
   author_name: string | null
+  author_avatar_url?: string | null
   body: string
   created_at: string
 }
@@ -145,6 +146,7 @@ export interface ForumThread {
   created_at: string
   updated_at: string
   author_name?: string | null
+  author_avatar_url?: string | null
   comment_count?: number
 }
 
@@ -156,6 +158,7 @@ export interface ForumComment {
   content: string
   created_at: string
   author_name?: string | null
+  author_avatar_url?: string | null
 }
 
 export interface ForumVote {
