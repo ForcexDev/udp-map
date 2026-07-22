@@ -55,6 +55,10 @@ function CommentItem({
   const isModerator = role === 'admin' || role === 'moderator'
   const isCommentOwner = user && node.author_id === user.id
   const isReplying = replyingToId === node.id
+  const [showAllReplies, setShowAllReplies] = useState(false)
+  const visibleReplies = depth === 0 && !showAllReplies
+    ? node.replies.slice(0, 3)
+    : node.replies
 
   const avatarSrc = isCommentOwner && user?.avatarUrl
     ? user.avatarUrl
@@ -146,7 +150,7 @@ function CommentItem({
 
       {node.replies.length > 0 && (
         <div className={`flex flex-col mt-1.5 ${depth === 0 ? 'pl-2 border-l border-neutral-200 dark:border-neutral-800' : '-ml-[34px]'}`}>
-          {node.replies.map((reply) => (
+          {visibleReplies.map((reply) => (
             <CommentItem 
               key={reply.id} 
               node={reply} 
@@ -161,6 +165,17 @@ function CommentItem({
               onUserClick={onUserClick}
             />
           ))}
+          {depth === 0 && node.replies.length > 3 && (
+            <button
+              type="button"
+              onClick={() => setShowAllReplies((current) => !current)}
+              className="self-start mt-1 rounded-full px-3 py-1.5 text-[11px] font-bold text-[#D41F2D] hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+            >
+              {showAllReplies
+                ? t('forum.showLessReplies', 'Ver menos')
+                : t('forum.showMoreReplies', 'Ver más')}
+            </button>
+          )}
         </div>
       )}
       </div>
@@ -188,7 +203,6 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
   const [replyingToId, setReplyingToId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [profileId, setProfileId] = useState<string | null>(null)
-  const [showAllComments, setShowAllComments] = useState(false)
 
   if (!threadId) return null
 
@@ -285,7 +299,6 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
   }
 
   const commentTree = buildCommentTree(comments)
-  const visibleComments = showAllComments ? commentTree : commentTree.slice(0, 3)
 
   return (
     <Dialog
@@ -413,7 +426,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                 <p className="text-xs text-neutral-400 py-4 italic">{t('forum.noComments', 'Sé el primero en responder...')}</p>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {visibleComments.map((node) => (
+                  {commentTree.map((node) => (
                     <CommentItem 
                       key={node.id} 
                       node={node} 
@@ -428,17 +441,6 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                       onUserClick={setProfileId}
                     />
                   ))}
-                  {commentTree.length > 3 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllComments((current) => !current)}
-                      className="self-start rounded-full px-3 py-1.5 text-[11px] font-bold text-[#D41F2D] hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                    >
-                      {showAllComments
-                        ? t('forum.showLessReplies', 'Ver menos')
-                        : t('forum.showMoreReplies', 'Ver más')}
-                    </button>
-                  )}
                 </div>
               )}
             </div>
