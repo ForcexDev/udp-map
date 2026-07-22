@@ -1,6 +1,6 @@
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { ArrowDownToLine, CheckCircle2 } from 'lucide-react'
-import changelogRaw from '../../../CHANGELOG.md?raw'
+import changelogRaw from '../../../docs/CHANGELOG.md?raw'
 
 export function UpdatePrompt() {
   const {

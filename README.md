@@ -117,7 +117,7 @@ supabase/
 
 ## 🤝 Contribuir
 
-Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para instrucciones de configuración, estilo de código y proceso de Pull Requests.
+Consulta [CONTRIBUTING.md](docs/CONTRIBUTING.md) para instrucciones de configuración, estilo de código y proceso de Pull Requests.
 
 ---
 

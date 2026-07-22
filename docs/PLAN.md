@@ -1,47 +1,58 @@
-# 📍 UDP Map v0.1 — Documento Maestro de Reestructuración
+# 📍 UDP Map v0.2.0 — Documento Maestro y Plan Vivo
 
-> **Documento self-contained.** Contiene TODO lo necesario para reconstruir la app desde cero:
-> estado actual del repo, visión, modelo de datos, permisos, arquitectura, decisiones técnicas y
-> un plan de ejecución a **2 meses con 3 developers**. Un agente o dev puede implementar el
-> proyecto usando solo este documento. Todo el stack es **gratis** (o *free tier* con límites).
+> **Documento vivo.** Conserva la visión y el plan original, pero refleja el estado real del
+> repositorio v0.2.0. Para el seguimiento operativo consulta también
+> [SPRINTS_STATUS.md](SPRINTS_STATUS.md) y, para los pendientes de seguridad y base de datos,
+> [securytyDB.md](securytyDB.md).
 
 - **Producto:** Mapa colaborativo de pines + eventos + foro social para la comunidad UDP.
-- **Alcance:** 8 semanas / 4 sprints de 2 semanas / 3 developers.
-- **Última actualización:** 2026-07-08.
+- **Plan base:** 8 semanas / 4 sprints de 2 semanas / 3 developers.
+- **Estado actual:** Sprints 1–2 completados, núcleo de Sprint 3 completado y Sprint 4 en progreso.
+- **Versión del paquete:** 0.2.0.
+- **Última actualización:** 2026-07-21.
 
 ---
 
-## 📦 0. Estado actual del repositorio (punto de partida)
+## 📦 0. Estado actual del repositorio
 
-App existente (v1) que se va a **reestructurar**. Datos clave para el que implemente:
+La reestructuración v1 → v0.2.0 ya ocurrió. El repositorio actual usa:
 
-- **Stack v1:** React 19 + TypeScript + Vite 6, **Leaflet** (mapa), **Supabase** (Postgres + Auth Google + Realtime + Storage), **Google Gemini** (moderación, hoy en el frontend ⚠️), Tailwind, Lucide, i18n propio (ES/EN).
-- **Estructura v1:**
-  ```
-  src/
-  ├── app/ (App.tsx, index.tsx)
-  ├── components/ (AddPostModal, FacultyExplorer, Login, Onboarding, Sidebar, Toast, Map/*)
-  ├── config/ (types.ts, constants.ts)
-  ├── hooks/ (usePosts.ts, useUserSession.ts)
-  ├── services/ (supabaseService.ts, geminiService.ts)
-  ├── utils/ (mapUtils.ts)
-  └── i18n.ts
-  ```
-- **Tablas Supabase v1:** `profiles`, `posts` (pines), `chat` (chat por facultad). Bucket Storage `udp-map-assets`.
-- **Datos estáticos v1** en `src/config/constants.ts`: 3 campus (Ejército, República, Huechuraba), ~10 facultades con `coords`, `polygon` y `careers`, y 11 categorías con `svgPath`/color. **Migrar a la DB.**
-- **Variables de entorno:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (frontend), `GEMINI_API_KEY` (debe pasar a backend).
-- **Roles v1:** `guest | student | admin` (admin por lista de correos).
+- React 19, TypeScript, Vite 6, React Router, Zustand y TanStack Query.
+- MapLibre GL + OpenFreeMap, OpenRouteService opcional, límites geográficos, perímetros y orientación nativa.
+- Supabase Auth, Postgres, RLS, Realtime, Storage, `pg_cron` y una Edge Function de expiración.
+- Tailwind CSS 4, Radix UI, Lucide, react-hook-form, Zod y react-i18next.
+- PWA con Workbox, caché de tiles y actualización bajo confirmación del usuario.
 
-### 🔎 Auditoría v1 — qué rescatar y qué rehacer
-Hallazgos reales del código actual (usarlos como checklist al reimplementar):
+### Entregado
 
-| Área | 🟢 Rescatar | 🔴 Rehacer / arreglar |
-|---|---|---|
-| **Pines** | Realtime con re-suscripción por usuario; UI optimista con rollback | `getPosts()` trae **todos** los pines sin paginar → paginar/filtrar (bounds/facultad) con TanStack Query. `createdAt` es `Date.now()` del cliente → `timestamptz` server. Tipos `any`. |
-| **Votos** | Existe RPC seguro `vote_on_post` | `handleVote` usa `updatePost` directo (race conditions) en vez del RPC; anti-fraude solo con `localStorage` (evadible) → tabla `pin_votes` (1 fila/usuario) + RPC. Downvote y "report" están mezclados → separarlos. |
-| **Fotos** | Compresión con canvas (1200px, JPEG 0.7) antes de subir | Nombre `Math.random()+'.jpg'` (colisión) → `crypto.randomUUID()` + ruta por usuario. `compressImage` **sin manejo de error** (promesa cuelga si la imagen falla). Solo **1 foto** por pin → N fotos. No borra la imagen del Storage al eliminar el pin (fuga). Sin validar tipo/peso. |
-| **Comentarios** | — | **No existen comentarios por pin** en v1 (solo `chat` por facultad). Es feature nueva; reusar el patrón realtime del chat pero con tabla propia y paginación. |
-| **Seguridad** | RLS parcial + RPC de voto | 🚨 **API key de Gemini en el frontend** → mover a Edge Function. RLS que bloquee escritura de `guest`. |
+| Área | Estado comprobable |
+|---|---|
+| **Mapa** | Tres campus, filtros, bounds, ruteo, ubicación/rumbo, asignación por perímetro, modo 2D/3D y desbloqueo admin |
+| **Pines** | Tres tipos, fotos múltiples, comentarios paginados/Realtime, votos RPC, favoritos, TTL, verificación y edición |
+| **Eventos** | Calendario/lista, eventos oficiales/estudiantiles y RSVP |
+| **Foro** | Hilos por facultad, tags, comentarios anidados, votos y controles de moderación en UI |
+| **Perfil** | Edición, perfil público, gestión admin de roles, karma, insignias y leaderboard |
+| **PWA** | Instalación, offline shell, caché de tiles, chequeo automático de versión y pop-up con changelog |
+| **Calidad** | CI con lint, typecheck, 42 pruebas Vitest y build |
+
+### Preparado, pendiente de despliegue
+
+- Rate limit de 10 pines por estudiante y día UTC mediante `pin_creation_events` y
+  `create_pin_with_daily_limit`. El frontend y la migración están listos, pero todavía deben
+  ejecutarse y validarse en Supabase.
+
+### Pendiente real
+
+- Hardening de RLS, permisos de columnas y funciones `SECURITY DEFINER`.
+- Moderación IA, reportes y cola administrativa.
+- Web Push y centro de notificaciones.
+- Realtime y búsqueda de texto completo para el foro.
+- Planos indoor productivos desde Supabase; actualmente existen planos demo.
+- Clustering visual de pines tipo Waze.
+- E2E con Playwright e integración automatizada contra Supabase.
+- Accesibilidad AA y despliegue final documentado.
+
+Los detalles, evidencia y criterios de cierre de seguridad viven en [securytyDB.md](securytyDB.md).
 
 ---
 
@@ -92,7 +103,7 @@ pero distinta finalidad y ciclo de vida:
 - Creados por **estudiantes**. **Temporales:** nacen con `expires_at` (TTL por categoría, p. ej. 6–24 h
   un food truck, unos días un objeto perdido). Se **desvanecen** y se **eliminan** al expirar.
 - La gente puede **comentar** y **votar** (útil / no útil).
-- Un **admin** puede promover un report a permanente si resultó ser un lugar estable.
+- Un **moderador o admin** puede verificar un report y convertirlo en permanente.
 
 ### Resumen de comportamiento por tipo
 | | `place` (lugar) | `event` (evento) | `report` (random) |
@@ -126,7 +137,7 @@ pero distinta finalidad y ciclo de vida:
 |---|:---:|:---:|:---:|:---:|
 | Ver mapa, pines, fotos y comentarios | ✅ | ✅ | ✅ | ✅ |
 | Ver planos indoor / ruteo | ✅ | ✅ | ✅ | ✅ |
-| **Crear pin `report`** (con fotos) | ❌ | ✅ | ✅ | ✅ |
+| **Crear pin `report`** (con fotos) | ❌ | ✅ (máx. 10/día UTC al desplegar la migración) | ✅ sin límite | ✅ sin límite |
 | **Comentar** en cualquier pin | ❌ | ✅ | ✅ | ✅ |
 | Votar (útil/no útil) | ❌ | ✅ | ✅ | ✅ |
 | Eliminar **su propio** pin/comentario | ❌ | ✅ | ✅ | ✅ |
@@ -136,12 +147,16 @@ pero distinta finalidad y ciclo de vida:
 | Reportar contenido | ❌ | ✅ | ✅ | ✅ |
 | Crear/editar **pin `place`** (lugar) | ❌ | ❌ | ✅ | ✅ |
 | Marcar evento **oficial** | ❌ | ❌ | ✅ | ✅ |
-| **Hacer permanente** un report | ❌ | ❌ | ⚠️ opc. | ✅ |
+| **Hacer permanente** un report | ❌ | ❌ | ✅ | ✅ |
 | Moderar (ocultar/eliminar ajeno) | ❌ | ❌ | ✅ | ✅ |
 | Gestionar usuarios / roles | ❌ | ❌ | ❌ | ✅ |
+| Desbloquear límites del mapa | ❌ | ❌ | ❌ | ✅ |
 
 > **Regla de oro:** un `guest` **consume** pero **no produce ni interactúa**. Toda escritura le
 > muestra el modal *"Inicia sesión con tu correo UDP para participar"*. Se aplica en **UI + RLS**.
+>
+> El rate limit está implementado en el frontend y en una migración local, pero no debe marcarse
+> como activo en Supabase hasta ejecutar y validar `20260721000001_pin_daily_limit.sql`.
 
 ---
 
@@ -165,42 +180,42 @@ pero distinta finalidad y ciclo de vida:
 | **PWA/offline** | vite-plugin-pwa (Workbox) | Gratis |
 | **UI** | Tailwind + Lucide + Radix UI | Gratis |
 | **i18n** | react-i18next | Gratis |
-| **Tests / CI** | Vitest + Playwright + GitHub Actions | Gratis (2.000 min/mes CI) |
+| **Tests / CI** | Vitest + GitHub Actions; Playwright planificado | Gratis (2.000 min/mes CI) |
 | **Expiración de pines** | Supabase `pg_cron` | Incluido |
 
 ---
 
 ## 🗂️ 5. Arquitectura y carpetas (por features)
 
-```
+```text
 src/
-├── app/                  → entrada, providers (Query, Router, i18n, Theme, Zustand), layout
+├── app/                  → entrada, rutas y layout
 ├── features/
 │   ├── auth/             → login, sesión, modo invitado, permissions.ts (can())
-│   ├── map/              → MapLibre, campus, capas por tipo de pin, indoor, ruteo, filtros
-│   ├── pins/             → motor común de pines: fotos, comentarios, votos, expiración
-│   │   ├── places/       → pines tipo lugar (indoor, gestión admin)
-│   │   ├── events/       → pines tipo evento (RSVP, oficial, calendario)
-│   │   └── reports/      → pines tipo random (categorías, TTL)
-│   ├── forum/            → hilos, comentarios anidados, tags, anuncios
-│   ├── profile/          → perfil, karma, insignias, leaderboard
-│   ├── notifications/    → push, preferencias, centro de notificaciones
-│   └── moderation/       → reportes, cola de moderación, roles
+│   ├── events/           → calendario y RSVP
+│   ├── forum/            → hilos, comentarios anidados, tags y votos
+│   ├── map/              → MapLibre, campus, límites, perímetros, indoor demo y ruteo
+│   ├── pins/             → motor común: creación, fotos, comentarios, votos, TTL y verificación
+│   └── profile/          → perfil propio/público, roles, karma, insignias y leaderboard
 ├── shared/
-│   ├── ui/               → design system (botones, modales, cards, toasts, sheet)
-│   ├── hooks/            → hooks transversales
-│   ├── lib/              → supabase client, query client, config, i18n
-│   ├── types/            → tipos generados de DB + tipos de dominio
-│   └── utils/            → geo, fechas, permisos
-└── styles/
+│   ├── data/             → campus, facultades, categorías, perímetros y planos demo
+│   ├── lib/              → Supabase, QueryClient e i18n
+│   ├── stores/           → estado UI, filtros y sidebar
+│   ├── types/            → tipos de base de datos y dominio
+│   ├── ui/               → design system y UpdatePrompt
+│   └── utils/            → geo, fechas, expiración y rate limit
+├── styles/
+└── test/
 supabase/
 ├── migrations/           → esquema SQL versionado
-├── functions/            → Edge Functions: moderate-content, send-push, expire-pins
-└── seed/                 → campus, facultades (place pins), categorías
+├── functions/            → actualmente solo expire-pins
+└── seed/                 → campus, facultades, pines y categorías
+docs/                     → plan, estado, changelog, contributing y registro de seguridad
 ```
 
 **Reglas:** una feature no importa internos de otra (se comunica por `shared/` o su `index.ts`);
 toda escritura pasa por un servicio; permisos centralizados en `features/auth/permissions.ts`.
+Las carpetas `notifications/` y `moderation/` siguen planificadas, pero todavía no existen.
 
 ---
 
@@ -246,6 +261,8 @@ pins (
   expires_at timestamptz,            -- null si permanente; NOW()+TTL en report/event
   -- campos de evento (solo type='event'):
   starts_at timestamptz, ends_at timestamptz, is_official bool default false,
+  official_entity_name text,       -- autor institucional visible
+  verifier_entity_name text,       -- entidad que verificó/hizo permanente
   created_at timestamptz default now()
 )
 -- índices sugeridos: (type), (faculty_id), (expires_at), (lat,lng)
@@ -268,6 +285,12 @@ pin_votes (                          -- 1 voto por usuario por pin
 )
 favorites (user_id uuid, pin_id uuid, primary key (user_id, pin_id))
 
+-- Auditoría de creación para rate limit (migración preparada, pendiente de despliegue)
+pin_creation_events (
+  id uuid PK, pin_id uuid unique references pins on delete set null,
+  creator_id uuid references profiles, created_at timestamptz default now()
+)
+
 -- Solo eventos
 event_rsvps (
   pin_id uuid references pins on delete cascade,
@@ -282,60 +305,50 @@ floor_plans (
   building text, floor int, geojson jsonb, bounds jsonb, image_overlay text
 )
 
--- Foro
-threads (
-  id uuid PK, title, body, faculty_id text,
-  type text default 'discussion',    -- discussion|announcement|lost_found|wanted
-  author_id uuid, upvotes int default 0, tags text[], is_locked bool default false,
-  created_at timestamptz default now()
+-- Foro implementado
+forum_threads (
+  id uuid PK, faculty_id text, author_id uuid,
+  title text, content text, tags text[],
+  votes_up int default 0, votes_down int default 0,
+  is_pinned bool default false, created_at timestamptz, updated_at timestamptz
 )
-comments (
-  id uuid PK, thread_id uuid references threads on delete cascade,
-  author_id uuid, body text, parent_id uuid references comments,  -- anidado
-  upvotes int default 0, created_at timestamptz default now()
+forum_comments (
+  id uuid PK, thread_id uuid references forum_threads on delete cascade,
+  parent_comment_id uuid references forum_comments, author_id uuid,
+  content text, created_at timestamptz
 )
-votes (user_id uuid, target_type text, target_id uuid, value smallint,
-       primary key (user_id, target_type, target_id))
+forum_votes (
+  thread_id uuid, user_id uuid, value int,
+  primary key (thread_id, user_id)
+)
 
--- Gamificación
-badges      (id text PK, name, description, icon, criteria jsonb)
+-- Gamificación implementada
+badges      (id text PK, name, name_en, description, description_en, icon)
 user_badges (user_id uuid, badge_id text, awarded_at timestamptz, primary key (user_id, badge_id))
 -- karma vive en profiles.karma; leaderboard = query ordenada por faculty
 
--- Notificaciones
+-- Notificaciones (PLANIFICADO, NO IMPLEMENTADO)
 push_subscriptions (user_id uuid, endpoint text, keys jsonb, primary key (user_id, endpoint))
 notifications (id uuid PK, user_id uuid, type text, payload jsonb, read bool default false,
                created_at timestamptz default now())
 
--- Moderación
+-- Moderación (PLANIFICADO, NO IMPLEMENTADO)
 reports_mod (id uuid PK, target_type text, target_id uuid, reporter_id uuid,
              reason text, status text default 'open', created_at timestamptz default now())
 ```
 
 ### Políticas RLS clave
-```sql
--- Lectura pública de pines; escritura solo autenticados no-guest
-create policy "pins_read"  on pins for select using (true);
-create policy "pins_insert" on pins for insert with check (
-  auth.uid() is not null
-  and (select role from profiles where id = auth.uid()) <> 'guest'
-  -- 'place' solo lo crean mod/admin; 'report'/'event' cualquier student
-  and (type <> 'place'
-       or (select role from profiles where id = auth.uid()) in ('moderator','admin'))
-);
--- Hacer permanente / editar lugar: solo mod/admin
-create policy "pins_admin_update" on pins for update using (
-  (select role from profiles where id = auth.uid()) in ('moderator','admin')
-);
--- El creador puede borrar lo suyo
-create policy "pins_owner_delete" on pins for delete using (creator_id = auth.uid());
 
--- Comentarios: leer todos, escribir autenticado no-guest
-create policy "comments_read"  on pin_comments for select using (true);
-create policy "comments_write" on pin_comments for insert with check (
-  auth.uid() is not null and (select role from profiles where id = auth.uid()) <> 'guest'
-);
-```
+El esquema desplegado tiene RLS habilitado en todas las tablas públicas de la aplicación. Las
+migraciones son la fuente de verdad; este documento no duplica las policies completas.
+
+- La lectura de pines, contenido público y taxonomías es pública por diseño.
+- Las escrituras requieren sesión y rol suficiente.
+- Moderadores y administradores gestionan lugares, oficialidad, verificación y moderación.
+- Al desplegar el rate limit debe eliminarse `pins_insert`; toda creación pasará por
+  `create_pin_with_daily_limit`.
+- Las correcciones pendientes de perfiles, pines, foro, RSVP, votos y funciones privilegiadas
+  están registradas en `securytyDB.md` y evitan considerar cerrado el hardening de seguridad.
 
 ### Votos seguros (RPC) y expiración (job)
 ```sql
@@ -349,7 +362,7 @@ create function vote_pin(p_pin uuid, p_value smallint) returns void as $$
   where id = p_pin;
 $$ language sql security definer;
 
--- pg_cron diario: borra pines temporales vencidos (cascade limpia fotos/comentarios/votos)
+-- pg_cron cada 30 minutos: borra pines temporales vencidos (cascade limpia fotos/comentarios/votos)
 -- (además, borrar los archivos del Storage vía Edge Function 'expire-pins')
 delete from pins where is_permanent = false and expires_at < now();
 ```
@@ -364,42 +377,49 @@ delete from pins where is_permanent = false and expires_at < now();
   `pins/{userId}/{uuid}.jpg`; validar tipo y peso (<5MB). Al borrar/expirar el pin, **borrar también
   los archivos del Storage** (evitar fugas).
 - **Comentarios:** hilo bajo cada pin, en **tiempo real** (Realtime filtrado por `pin_id`),
-  paginado; moderación IA al crear. Se eliminan en cascada con el pin.
+  paginado y con UI optimista. Se eliminan en cascada con el pin. La moderación IA sigue pendiente.
 - **Votos:** `vote_pin` RPC (1 por usuario, atómico). Separado de "reportar contenido".
+  Falta cerrar la vía de DML directo documentada en `securytyDB.md`.
 - **Carga eficiente:** pines por **bounds del mapa** y/o **facultad** con TanStack Query (no traer todo).
+- **Rate limit:** máximo de 10 creaciones por estudiante/día UTC; implementado localmente y pendiente
+  de despliegue/validación en Supabase. Moderadores y administradores quedan exentos.
 
 ### 🏛️ Lugares (`place`)
 - Seed inicial desde `FACULTIES` de `constants.ts`. Gestión por admin/moderator.
-- **Planos indoor** por piso/edificio (GeoJSON). Comentarios y fotos habilitados.
+- **Planos indoor** por piso/edificio (GeoJSON). La UI y datos demo están implementados; la lectura
+  productiva desde `floor_plans` sigue pendiente.
 
 ### 🎉 Eventos (`event`)
 - Crear con **ubicación anclada al mapa**, categoría (charla/fiesta/deporte/ayudantía/feria),
   `starts_at`/`ends_at`; **oficial** solo mod/admin.
-- **RSVP** + recordatorios push. Vistas: calendario + lista + **capa en el mapa**.
+- **RSVP** implementado. Los recordatorios push siguen pendientes. Vistas: calendario + lista +
+  **capa en el mapa**.
 - **Cómo llegar** al evento (ruteo). Se ocultan al terminar.
 
 ### 📍 Random (`report`)
 - Categorías: comida, food-truck, objeto-perdido/encontrado, busco-estudio, baño, impresora, deporte…
 - **TTL por categoría** (`expires_at`): efímeros. Desvanecimiento visual antes de expirar.
-- Admin puede promover a permanente.
+- Moderador/admin puede verificar y convertir a permanente.
 
 ### 🗺️ Mapa & navegación
 - **MapLibre GL + OpenFreeMap**, estilo UDP, 3 campus. **Capas por tipo** (lugares / eventos / random) con toggles.
 - **Filtros combinados**: facultad + categoría + tipo (+ favoritos), en vivo.
-- **Indoor** por piso y **ruteo peatonal** ("cómo llegar", con rutas accesibles).
+- **Indoor demo** por piso y **ruteo peatonal** ("cómo llegar", con rutas accesibles).
+- Límites del mapa para todos los usuarios y desbloqueo exclusivo para administradores.
+- Asignación de facultad por perímetros GeoJSON. El clustering visual de pines tipo Waze no está implementado.
 
 ### 💬 Foro & anuncios
 - Hilos por facultad/tema con **upvotes**, **tags** y **comentarios anidados**.
-- **Tablón de anuncios**: `se busca` / `perdidos` + discusión. Búsqueda FTS + por tag.
+- **Tablón general** + discusiones por facultad. Búsqueda FTS, filtro por tags y Realtime siguen pendientes.
 
 ### 🏅 Perfil & gamificación
 - Perfil (carrera, año, facultad, avatar, historial). **Karma** por upvotes/aportes.
 - **Insignias** (Explorador, Fotógrafo, Anfitrión, Guardián, Pionero). **Leaderboard por facultad**.
 
 ### 🔔 Transversales
-- **Push (VAPID):** comentario en tu pin, respuesta en foro, evento próximo.
-- **Modo oscuro + accesibilidad (AA) + rutas accesibles**. **i18n ES/EN** (react-i18next).
-- **Moderación híbrida:** IA (Gemini + Groq respaldo) en Edge Function + reportes + roles.
+- **Push (VAPID):** pendiente.
+- **Modo oscuro**, rutas accesibles e **i18n ES/EN** implementados; auditoría AA final pendiente.
+- **Moderación híbrida:** pendiente la Edge Function IA, los reportes y la cola; los roles y controles UI sí existen.
 
 ---
 
@@ -415,19 +435,22 @@ delete from pins where is_permanent = false and expires_at < now();
 
 ## 🚀 9. Roadmap — 8 semanas / 4 sprints
 
+El calendario siguiente conserva el plan original. La columna de estado refleja el repositorio al
+2026-07-21; el detalle operativo está en [SPRINTS_STATUS.md](SPRINTS_STATUS.md).
+
 ```
 Semana:  1    2    3    4    5    6    7    8
 Sprint:  |--- S1 ---|--- S2 ---|--- S3 ---|--- S4 ---|
 Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
 ```
 
-| Sprint | Semanas | Meta demostrable |
-|---|---|---|
-| **S1 — Fundaciones** | 1–2 | App reestructurada, mapa MapLibre, auth + modo invitado, esquema `pins` base |
-| **S2 — Pines (3 tipos)** | 3–4 | Crear/ver `place`/`report` con **fotos + comentarios + votos**, expiración, permanente por admin, indoor, ruteo, filtros |
-| **S3 — Eventos & Foro** | 5–6 | Pin `event` con RSVP anclado al mapa; foro con hilos/comentarios/anuncios; moderación IA en backend |
-| **S4 — Social & Launch** | 7–8 | Perfil, karma, insignias, leaderboard, push, cola de moderación, pulido y deploy |
-| **S5 — Planos Indoor** | 9+ | Tablas `floor_plans`, selector edificio/piso, GeoJSON renderizado en mapa (pospuesto por complejidad) |
+| Sprint | Semanas | Estado | Meta demostrable |
+|---|---|---|---|
+| **S1 — Fundaciones** | 1–2 | Completado | App reestructurada, mapa MapLibre, auth + modo invitado, esquema `pins` base |
+| **S2 — Pines (3 tipos)** | 3–4 | Completado; indoor demo | Crear/ver `place`/`report` con fotos, comentarios, votos, expiración, ruteo y filtros |
+| **S3 — Eventos & Foro** | 5–6 | Núcleo completado | Eventos + RSVP y foro funcional; IA, FTS y Realtime del foro pendientes |
+| **S4 — Social & Launch** | 7–8 | En progreso | Social/gamificación entregados; push, moderación, hardening y deploy pendientes |
+| **S5 — Expansión** | 9+ | Backlog activo | Indoor productivo, clustering visual, atribución dinámica y expansión multicampus |
 
 ---
 
@@ -436,45 +459,60 @@ Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
 ### 🏗️ Sprint 1 — Fundaciones (Sem 1–2)
 **Meta:** el mapa nuevo carga, un usuario UDP inicia sesión, un invitado mira pero no escribe.
 
+**Estado actual: completado.**
+
 - **Dev A:** migrar Leaflet → **MapLibre GL + OpenFreeMap** (3 campus, estilo UDP, marcadores por categoría); **PWA** instalable + shell offline; base del **design system** (Tailwind + Radix + tema claro/oscuro).
 - **Dev B:** esquema `profiles`, `campuses`, `faculties`, `careers`, **`pins` (enum `pin_type`)** + **RLS**; **seed** de campus/facultades como `place` pins; auth Google **`@mail.udp.cl`** + trigger de `profile`; **tipos autogenerados** (`supabase gen types`).
 - **Dev C:** providers globales (**TanStack Query, Router, i18n, Theme, Zustand**); **rutas** `/mapa`, `/eventos`, `/foro`, `/perfil` + layout/nav; **modo invitado** (`permissions.ts` + modal); migrar i18n a **react-i18next**.
 - **Infra:** repo por features, **GitHub Actions** (lint + typecheck + test), Vitest.
 
-**DoD S1:** login UDP OK; guest ve mapa pero toda escritura muestra el modal; CI verde; PWA instalable.
+**DoD S1:** cumplida en código. El comportamiento productivo de Auth depende de la configuración
+del proyecto Supabase.
 
 ### 📌 Sprint 2 — Pines de 3 tipos (Sem 3–4)
-**Meta:** crear y ver pines `place` y `report` con **fotos, comentarios y votos**; temporalidad; permanente por admin; indoor y ruteo.
+**Meta:** crear y ver pines `place` y `report` con **fotos, comentarios y votos**; temporalidad; permanencia curada por moderador/admin; indoor y ruteo.
+
+**Estado actual: completado para el motor de pines; indoor funciona con datos demo.**
 
 - **Dev C (lead motor de pines):** UI **crear/editar pin** (react-hook-form + zod) con **subida de N fotos** (compresión + manejo de error + UUID); **comentarios** por pin en tiempo real (paginados); **votos** vía RPC `vote_pin`; eliminar propio; favoritos; estados de **desvanecimiento** por `expires_at`; badge de **permanente**.
-- **Dev B:** tablas `pin_photos`, `pin_comments`, `pin_votes`, `favorites` + RLS; **RPC `vote_pin`**; **expiración** (`pg_cron` + Edge Function `expire-pins` que también borra archivos del Storage); Realtime de pines y comentarios; policy de **permanente** (solo admin) y de **crear `place`** (solo mod/admin).
+- **Dev B:** tablas `pin_photos`, `pin_comments`, `pin_votes`, `favorites` + RLS; **RPC `vote_pin`**; **expiración** (`pg_cron` + Edge Function `expire-pins` que también borra archivos del Storage); Realtime de pines y comentarios; verificación/permanencia y creación de `place` para mod/admin.
 - **Dev A:** **ruteo peatonal** ("cómo llegar" + rutas accesibles); **filtros combinados** (facultad + categoría + tipo + favoritos) y **capas por tipo**.
 
-**DoD S2:** un estudiante crea un `report` con fotos, recibe comentarios y votos; el pin se desvanece/expira; un admin lo hace permanente o crea un `place`; se filtra por tipo y se traza la ruta; guest solo mira.
+**DoD S2:** cumplida para pines, fotos, comentarios, votos, TTL, filtros y ruteo. Falta conectar
+`floor_plans` productivo y cerrar los pendientes de seguridad relacionados con escrituras directas.
 
 ### 📅 Sprint 3 — Eventos & Foro (Sem 5–6)
 **Meta:** pin `event` con RSVP anclado al mapa y foro funcional.
 
+**Estado actual: núcleo funcional completado; DoD original parcial.**
+
 - **Dev C (eventos):** `event_rsvps` + RLS (oficial solo mod/admin); **crear evento** (`type='event'`, `starts_at`/`ends_at`, categoría, ubicación anclada); **RSVP** + vistas calendario/lista; oficiales/destacados.
 - **Dev A:** **capa de eventos** en el mapa + "cómo llegar" (reusa ruteo S2); estilos de destacados.
-- **Dev B:** foro (`threads`, `comments`, `votes`, `reports_mod`) + RLS; **Edge Function `moderate-content`** (Gemini + **Groq respaldo**, key fuera del frontend) que audita pines/comentarios/hilos; Realtime + FTS.
+- **Dev B:** foro (`forum_threads`, `forum_comments`, `forum_votes`) + RLS implementado. `reports_mod`, la Edge Function `moderate-content`, Realtime y FTS siguen pendientes.
 - **Dev C (foro UI, apoyo A):** hilos por facultad/tema, **upvotes**, **tags**, **comentarios anidados**; **tablón** (se busca / perdidos).
 
-**DoD S3:** crear evento oficial + RSVP con recordatorio; abrir hilo, comentar anidado y votar; contenido pasa por moderación IA.
+**DoD S3:** eventos, RSVP, hilos, comentarios anidados y votos están listos. No está cumplida la
+parte de recordatorios push ni moderación IA.
 
 ### 🏅 Sprint 4 — Social, Gamificación & Launch (Sem 7–8)
 **Meta:** perfil vivo, comunidad premiada, notificaciones y producción.
 
-- **Dev C:** **perfil** (carrera, año, facultad, historial); **karma** (triggers) + **insignias**; **leaderboard por facultad**.
-- **Dev B:** **Web Push** (VAPID, Edge Function `send-push`, `push_subscriptions`, `notifications`); triggers: comentario o like en tu pin / respuesta en foro / evento próximo / nuevo pin en tu facultad (silenciosa); **cola de moderación**.
-- **Dev A:** **accesibilidad AA**, modo oscuro final, rutas accesibles; optimización PWA (offline, caché de tiles); **deploy** (Cloudflare/Vercel) + smoke tests Playwright.
-- **Transversal:** hardening RLS, e2e críticos, docs de usuario, revisión de free tiers.
+**Estado actual: en progreso.**
 
-**DoD S4:** perfil con karma e insignias; leaderboard; push OK (incl. comentarios en pines); moderadores gestionan reportes; **app en producción**.
+- **Dev C — completado:** perfil, perfil público, karma, insignias y leaderboard por facultad.
+- **Dev B — pendiente:** Web Push, `send-push`, tablas de notificaciones y cola de moderación.
+- **Dev A — parcial:** modo oscuro, rutas accesibles, PWA/offline y actualización automática listos; AA final, deploy y Playwright pendientes.
+- **Transversal — en progreso:** rate limit preparado; hardening RLS/funciones, E2E y revisión productiva pendientes.
+
+**DoD S4:** parcialmente cumplida. La parte social está lista; faltan push, cola/reportes,
+hardening, E2E y despliegue final.
 
 ### 🗺️ Sprint 5 — Planos Indoor (Sem 9+)
 **Meta:** renderizado de planos internos de facultades.
-- **Dev A / Dev B:** tablas `floor_plans` + RLS; planos indoor (selector edificio/piso, GeoJSON). Pospuesto a fase posterior por alta complejidad de datos geoespaciales.
+
+**Estado actual: parcial/backlog.** La tabla, RLS, selector y render GeoJSON existen, pero la UI usa
+`DEMO_FLOOR_PLANS`. Falta cargar y administrar planos productivos desde Supabase. Este sprint
+también agrupa clustering visual y atribución oficial dinámica por facultad.
 
 ---
 
@@ -487,10 +525,12 @@ Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
 6. PR revisado por otro dev.
 
 ## 🧪 12. Testing & CI
-- **Unit** (Vitest): permisos, expiración/TTL, votos, utils geo.
-- **Componentes:** crear pin, subir N fotos, comentar.
-- **E2E** (Playwright): login UDP, guest bloqueado, crear `report` con fotos, expiración, hacer permanente (admin), crear `place` (mod), RSVP en `event`, comentar en foro.
-- **CI:** lint → typecheck → test por PR + deploy preview.
+- **Estado actual:** 9 archivos y 42 pruebas Vitest.
+- **Unit:** permisos, dominio UDP, expiración/TTL, geografía, perímetros, rate limit, fotos y árbol de comentarios.
+- **Componentes:** MapView y badges visuales de pines.
+- **Pendiente:** pruebas de formularios completos, RSVP, perfil/gamificación, RPC/RLS y migraciones.
+- **E2E (Playwright):** planificado, todavía no instalado ni implementado.
+- **CI actual:** lint → typecheck → test → build en pushes a `main` y Pull Requests.
 
 ## ⚠️ 13. Riesgos y mitigaciones
 | Riesgo | Mitigación |
@@ -501,13 +541,20 @@ Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
 | Spam en pines/comentarios/foro | Moderación IA + reportes + rate limit + solo `@mail.udp.cl` |
 | Costo IA | Gemini free + Groq respaldo; degradar a filtro de palabras |
 | 3 devs = poco margen | Alcance por sprint es *must-have*; extras a backlog |
+| Funciones privilegiadas expuestas | Revocar `EXECUTE` y aplicar mínimo privilegio según `securytyDB.md` |
+| Policies/columnas demasiado permisivas | Migraciones de hardening + pruebas de integración por rol |
+| Rate limit aún no desplegado | Ejecutar la migración completa y validar estudiante/mod/admin en Supabase |
+| Contadores de votos inconsistentes | Unificar escrituras en RPC o triggers transaccionales |
 
 ## 🔭 14. Backlog / Fase 2
 - Menú del casino + precios del día · Marketplace (apuntes/libros) · Buscar compañeros por ramo ·
   Horario de clases + "dónde está mi próxima sala" · Calendario académico oficial · Chat directo ·
   Pines colaborativos con varias fotos de distintos usuarios.
-- **Perfiles Públicos:** Al hacer clic en el nombre de un usuario en un pin o comentario, desplegar su perfil (karma, likes, rol, foto).
+- [x] **Perfiles públicos:** modal con karma, rol, insignias, aportes y gestión de roles para admin.
 - **Distintivos de Moderación:** Badges e indicadores visuales junto al nombre para moderadores y administradores en pines y comentarios.
+- **Clustering visual tipo Waze:** agrupar pines cercanos/duplicados y mostrar cantidad o consenso.
+- **Atribución oficial dinámica:** resolver el CEE/entidad según facultad y rol; hoy el texto de moderador está fijado a FIC.
+- **Indoor productivo:** cargar `floor_plans` desde Supabase para más edificios.
 
 ---
 
