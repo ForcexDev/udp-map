@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pin as PinIcon, Trash2, Reply, MessageSquare, ThumbsUp, ThumbsDown, Send } from 'lucide-react'
+import { ChevronDown, Pin as PinIcon, Trash2, Reply, MessageSquare, ThumbsUp, ThumbsDown, Send } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
 import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -15,7 +15,7 @@ import {
   useDeleteThread,
   useTogglePinThread,
 } from './useForum'
-import { buildCommentTree, buildReplyContent, type CommentNode } from './utils'
+import { buildCommentTree, buildReplyContent, countNestedReplies, type CommentNode } from './utils'
 
 interface ThreadDetailModalProps {
   threadId: string | null
@@ -56,9 +56,8 @@ function CommentItem({
   const isCommentOwner = user && node.author_id === user.id
   const isReplying = replyingToId === node.id
   const [showAllReplies, setShowAllReplies] = useState(false)
-  const visibleReplies = depth === 0 && !showAllReplies
-    ? node.replies.slice(0, 3)
-    : node.replies
+  const replyCount = countNestedReplies(node)
+  const visibleReplies = depth === 0 && !showAllReplies ? [] : node.replies
 
   const avatarSrc = isCommentOwner && user?.avatarUrl
     ? user.avatarUrl
@@ -150,6 +149,23 @@ function CommentItem({
 
       {node.replies.length > 0 && (
         <div className={`flex flex-col mt-1.5 ${depth === 0 ? 'pl-2 border-l border-neutral-200 dark:border-neutral-800' : '-ml-[34px]'}`}>
+          {depth === 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAllReplies((current) => !current)}
+              className="self-start flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-extrabold text-neutral-700 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800 transition-colors"
+              aria-expanded={showAllReplies}
+            >
+              {showAllReplies
+                ? t('forum.hideReplies', 'Ocultar respuestas')
+                : t('forum.replyCount', { count: replyCount, defaultValue: '{{count}} respuestas' })}
+              <ChevronDown
+                size={14}
+                strokeWidth={2.5}
+                className={`transition-transform ${showAllReplies ? 'rotate-180' : ''}`}
+              />
+            </button>
+          )}
           {visibleReplies.map((reply) => (
             <CommentItem 
               key={reply.id} 
@@ -165,17 +181,6 @@ function CommentItem({
               onUserClick={onUserClick}
             />
           ))}
-          {depth === 0 && node.replies.length > 3 && (
-            <button
-              type="button"
-              onClick={() => setShowAllReplies((current) => !current)}
-              className="self-start mt-1 rounded-full px-3 py-1.5 text-[11px] font-bold text-[#D41F2D] hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-            >
-              {showAllReplies
-                ? t('forum.showLessReplies', 'Ver menos')
-                : t('forum.showMoreReplies', 'Ver más')}
-            </button>
-          )}
         </div>
       )}
       </div>

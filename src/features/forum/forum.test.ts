@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCommentTree, buildReplyContent, replyMention } from './utils'
+import { buildCommentTree, buildReplyContent, countNestedReplies, replyMention } from './utils'
 import type { ForumComment } from '@/shared/types/database'
 
 describe('buildCommentTree (árbol de respuestas anidadas del foro)', () => {
@@ -54,9 +54,11 @@ describe('buildCommentTree (árbol de respuestas anidadas del foro)', () => {
     expect(tree[0].replies[0].replies).toHaveLength(1)
     expect(tree[0].replies[0].replies[0].id).toBe('c-3')
     expect(tree[0].replies[0].replies[0].replies).toHaveLength(0)
+    expect(countNestedReplies(tree[0])).toBe(2)
 
     // El segundo comentario raíz no debe tener respuestas
     expect(tree[1].replies).toHaveLength(0)
+    expect(countNestedReplies(tree[1])).toBe(0)
   })
 
   it('retorna un array vacío si no hay comentarios', () => {

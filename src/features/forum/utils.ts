@@ -4,6 +4,13 @@ export interface CommentNode extends ForumComment {
   replies: CommentNode[]
 }
 
+export function countNestedReplies(node: CommentNode): number {
+  return node.replies.reduce(
+    (total, reply) => total + 1 + countNestedReplies(reply),
+    0,
+  )
+}
+
 export function replyMention(authorName?: string | null): string {
   return `@${authorName?.trim() || 'Estudiante UDP'} `
 }
