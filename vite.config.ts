@@ -1,14 +1,36 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite'
+import { readFileSync } from 'node:fs'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
 
+function updateInfoPlugin(): Plugin {
+  return {
+    name: 'udp-map-update-info',
+    apply: 'build',
+    generateBundle() {
+      const changelog = readFileSync(path.resolve(__dirname, 'docs/CHANGELOG.md'), 'utf8')
+      const improvements = changelog
+        .split('\n')
+        .filter((line) => line.trim().startsWith('-'))
+        .map((line) => line.replace(/^\s*-\s*/, '').trim())
+
+      this.emitFile({
+        type: 'asset',
+        fileName: 'update-info.json',
+        source: JSON.stringify({ improvements }),
+      })
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    updateInfoPlugin(),
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['favicon.svg'],

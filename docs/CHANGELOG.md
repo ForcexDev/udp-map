@@ -1,5 +1,6 @@
 ### Novedades en esta versión
 
+- El aviso de actualización ahora detecta cada publicación inmediatamente y muestra las novedades de la versión nueva, sin reutilizar las de la versión anterior.
 - Los comentarios de pines y las respuestas del foro ahora muestran el avatar real del perfil, con iniciales locales como respaldo si la imagen no está disponible.
 - El foro ahora muestra el conteo real de respuestas, inserta menciones automáticas al responder y sincroniza los cambios sin desfases.
 - Los votos de hilos y pines son únicos, atómicos y permiten cambiar o quitar el voto sin duplicar contadores.

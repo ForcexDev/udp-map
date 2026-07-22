@@ -1,39 +1,99 @@
+import { useEffect, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { ArrowDownToLine, CheckCircle2 } from 'lucide-react'
 import changelogRaw from '../../../docs/CHANGELOG.md?raw'
 
+const fallbackImprovements = changelogRaw
+  .split('\n')
+  .filter((line) => line.trim().startsWith('-'))
+  .map((line) => line.replace(/^\s*-\s*/, '').trim())
+
+const configuredRegistrations = new WeakSet<ServiceWorkerRegistration>()
+
+function configureUpdateChecks(registration: ServiceWorkerRegistration) {
+  if (configuredRegistrations.has(registration)) return
+  configuredRegistrations.add(registration)
+
+  let checking = false
+  const checkForUpdate = async () => {
+    if (checking || registration.installing || !navigator.onLine) return
+
+    checking = true
+    try {
+      await registration.update()
+    } catch (error) {
+      console.error('No se pudo comprobar la actualización de la aplicación.', error)
+    } finally {
+      checking = false
+    }
+  }
+
+  void checkForUpdate()
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void checkForUpdate()
+  })
+  window.addEventListener('focus', () => void checkForUpdate())
+  window.addEventListener('online', () => void checkForUpdate())
+
+  // Detecta publicaciones nuevas incluso si la app permanece abierta.
+  window.setInterval(() => void checkForUpdate(), 60 * 1000)
+}
+
 export function UpdatePrompt() {
+  const [improvements, setImprovements] = useState(fallbackImprovements)
+  const [updateInfoReady, setUpdateInfoReady] = useState(false)
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegistered(r) {
-      if (r) {
-        // 1. Check updates when app is foregrounded or tab becomes visible
-        document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible' && !r.installing) {
-            r.update().catch(console.error)
-          }
-        })
-
-        // 2. Periodic check every hour for long-running sessions (e.g. PC users)
-        setInterval(() => {
-          if (document.visibilityState === 'visible' && navigator.onLine && !r.installing) {
-            r.update().catch(console.error)
-          }
-        }, 60 * 60 * 1000) // 1 hour
-      }
-    }
+    immediate: true,
+    onRegisteredSW(_swUrl, registration) {
+      if (registration) configureUpdateChecks(registration)
+    },
   })
 
   const isDevTesting = import.meta.env.DEV && window.location.search.includes('test-pwa')
 
-  if (!needRefresh && !isDevTesting) return null
+  useEffect(() => {
+    if (!needRefresh) {
+      setImprovements(fallbackImprovements)
+      setUpdateInfoReady(false)
+      return
+    }
 
-  const improvements = changelogRaw
-    .split('\n')
-    .filter((line) => line.trim().startsWith('-'))
-    .map((line) => line.replace(/^-/, '').trim())
+    setImprovements([])
+    const controller = new AbortController()
+
+    async function loadLatestUpdateInfo() {
+      try {
+        const response = await fetch(`/update-info.json?v=${Date.now()}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+        const data = await response.json() as { improvements?: unknown }
+        if (Array.isArray(data.improvements)) {
+          const latestImprovements = data.improvements.filter(
+            (item): item is string => typeof item === 'string' && item.trim().length > 0,
+          )
+          if (latestImprovements.length > 0) setImprovements(latestImprovements)
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error('No se pudieron cargar las novedades de la actualización.', error)
+        }
+      } finally {
+        if (!controller.signal.aborted) setUpdateInfoReady(true)
+      }
+    }
+
+    void loadLatestUpdateInfo()
+    return () => controller.abort()
+  }, [needRefresh])
+
+  if ((!needRefresh && !isDevTesting) || (needRefresh && !updateInfoReady)) return null
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-300">
