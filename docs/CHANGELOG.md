@@ -1,5 +1,8 @@
 ### Novedades en esta versión
 
+- Centro de notificaciones en la sidebar con logros, respuestas del foro, eventos próximos y un canal administrativo separado.
+- Web Push por dispositivo con reintentos, navegación contextual y limpieza segura al cerrar sesión.
+- Cola de moderación exclusiva para administradores, con snapshots, asignación y resolución auditable.
 - El aviso de actualización ahora detecta cada publicación inmediatamente y muestra las novedades de la versión nueva, sin reutilizar las de la versión anterior.
 - Los comentarios de pines y las respuestas del foro ahora muestran el avatar real del perfil, con iniciales locales como respaldo si la imagen no está disponible.
 - El foro ahora muestra el conteo real de respuestas, inserta menciones automáticas al responder y sincroniza los cambios sin desfases.

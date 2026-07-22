@@ -17,6 +17,7 @@ import {
   Calendar,
   BadgeCheck,
   Clock,
+  Flag,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import type { Pin } from '@/shared/types/database'
@@ -32,6 +33,7 @@ import { CommentSection } from './CommentSection'
 import { usePinActions } from './usePinActions'
 import { DraggableBottomSheet } from '@/shared/ui/DraggableBottomSheet'
 import { BOUNDARY_RECT } from '@/features/map/campusBoundary'
+import { ReportContentDialog, type ReportTarget } from '@/features/moderation/ReportContentDialog'
 
 interface PinDetailProps {
   pin: Pin
@@ -84,6 +86,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [photoIndex, setPhotoIndex] = useState(0)
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null)
 
   const faculty = FACULTIES.find((f) => f.id === pin.faculty_id)
   const isOwner = user !== null && pin.creator_id === user.id
@@ -379,6 +382,14 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                   <Trash2 size={14} /> {t('pin.delete', 'Eliminar pin')}
                 </button>
               )}
+              {user && !isOwner && role !== 'guest' && (
+                <button
+                  onClick={() => setReportTarget({ type: 'pin', id: pin.id })}
+                  className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-neutral-300 px-3 py-1.5 text-[13px] font-semibold text-neutral-500 transition-colors hover:border-[#D41F2D] hover:text-[#D41F2D] dark:border-neutral-600"
+                >
+                  <Flag size={14} /> Reportar
+                </button>
+              )}
             </div>
           )}
 
@@ -398,6 +409,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
         confirmText={t('common.delete', 'Eliminar')}
         onConfirm={() => remove.mutate(pin)}
       />
+
+      <ReportContentDialog target={reportTarget} onClose={() => setReportTarget(null)} />
 
       {selectedPhoto && (
         <div

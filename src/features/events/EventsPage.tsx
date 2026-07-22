@@ -1,6 +1,7 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { usePins } from '@/features/pins/usePins'
 import { useUserRSVPs, useSetRSVP } from './useEvents'
@@ -12,6 +13,7 @@ import type { Pin } from '@/shared/types/database'
 export function EventsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const startPickingLocation = useUIStore((s) => s.startPickingLocation)
   const selectPin = useUIStore((s) => s.selectPin)
   const guard = useGuard()
@@ -21,6 +23,16 @@ export function EventsPage() {
   const rsvpMutation = useSetRSVP()
 
   const events = pins.filter((p) => p.type === 'event')
+
+  useEffect(() => {
+    const linkedEventId = searchParams.get('event')
+    if (!linkedEventId || isLoading) return
+    const linkedEvent = events.find((event) => event.id === linkedEventId)
+    if (linkedEvent) {
+      selectPin(linkedEvent.id)
+      navigate(`/mapa?pin=${linkedEvent.id}`, { replace: true })
+    }
+  }, [events, isLoading, navigate, searchParams, selectPin])
 
   const handleCreateEvent = () => {
     if (!guard('pin.create.event')) return

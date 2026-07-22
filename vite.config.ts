@@ -33,7 +33,7 @@ export default defineConfig({
     updateInfoPlugin(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'push-sw.js'],
       manifest: {
         name: 'UDP Map',
         short_name: 'UDP Map',
@@ -56,6 +56,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        importScripts: ['push-sw.js'],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',

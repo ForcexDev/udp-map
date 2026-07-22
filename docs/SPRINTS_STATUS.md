@@ -148,8 +148,8 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 
 ### Pendiente
 
-- [ ] Web Push y centro de notificaciones.
-- [ ] Cola de moderación para administradores.
+- [x] Web Push y centro de notificaciones implementados en código; pendientes de despliegue y validación según `NOTIFICATIONS_AND_MODERATION.md`.
+- [x] Cola de moderación exclusiva para administradores implementada en código; pendiente de aplicar migración y validar DoD.
 - [ ] Hardening de RLS, columnas y funciones `SECURITY DEFINER` documentado en `securytyDB.md`.
 - [ ] Pruebas de integración reales contra Supabase.
 - [ ] Accesibilidad AA final.

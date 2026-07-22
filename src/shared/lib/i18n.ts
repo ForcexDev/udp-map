@@ -91,7 +91,8 @@ const es = {
     },
     sidebar: {
       settings: 'Ajustes',
-      community: 'Comunidad',
+      community: 'Notificaciones',
+      notifications: 'Notificaciones',
       places: 'Lugares',
       campus: 'Sede Universitaria',
       categories: 'Categorías Activas',
@@ -276,7 +277,8 @@ const en = {
     },
     sidebar: {
       settings: 'Settings',
-      community: 'Community',
+      community: 'Notifications',
+      notifications: 'Notifications',
       places: 'Places',
       campus: 'Campus',
       categories: 'Active Categories',

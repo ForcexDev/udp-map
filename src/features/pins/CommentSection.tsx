@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Send, Trash2 } from 'lucide-react'
+import { Flag, Send, Trash2 } from 'lucide-react'
 import { useComments } from './useComments'
 import { useGuard } from '@/features/auth/useGuard'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -10,6 +10,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import { UserAvatar } from '@/shared/ui/UserAvatar'
+import { ReportContentDialog, type ReportTarget } from '@/features/moderation/ReportContentDialog'
 
 const AGO_KEY = { minute: 'agoMinutes', hour: 'agoHours', day: 'agoDays' } as const
 
@@ -22,6 +23,7 @@ export function CommentSection({ pinId }: { pinId: string }) {
   const [body, setBody] = useState('')
   const [commentToDelete, setCommentToDelete] = useState<string | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null)
 
   const submit = () => {
     const text = body.trim()
@@ -75,15 +77,14 @@ export function CommentSection({ pinId }: { pinId: string }) {
                     {t(`time.${AGO_KEY[rel.unit]}`, { n: rel.value })}
                   </span>
 
-                  {canDelete && (
-                    <button
-                      onClick={() => setCommentToDelete(c.id)}
-                      className="absolute right-0 top-0 p-1 -mr-1 -mt-1 text-[#9d2235]/70 transition-colors hover:text-[#9d2235]"
-                      aria-label={t('common.delete', 'Eliminar')}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  )}
+                  <div className="absolute right-0 top-0 flex items-center gap-0.5">
+                    {user && !isMe && role !== 'guest' && (
+                      <button onClick={() => setReportTarget({ type: 'pin_comment', id: c.id })} className="p-1 -mt-1 text-neutral-400 transition-colors hover:text-[#D41F2D]" aria-label="Reportar comentario"><Flag size={14} /></button>
+                    )}
+                    {canDelete && (
+                      <button onClick={() => setCommentToDelete(c.id)} className="p-1 -mr-1 -mt-1 text-[#9d2235]/70 transition-colors hover:text-[#9d2235]" aria-label={t('common.delete', 'Eliminar')}><Trash2 size={15} /></button>
+                    )}
+                  </div>
                 </div>
               </li>
             )
@@ -125,6 +126,7 @@ export function CommentSection({ pinId }: { pinId: string }) {
       />
 
       <PublicProfileModal userId={profileId} onClose={() => setProfileId(null)} />
+      <ReportContentDialog target={reportTarget} onClose={() => setReportTarget(null)} />
     </section>
   )
 }

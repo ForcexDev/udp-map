@@ -215,7 +215,7 @@ docs/                     → plan, estado, changelog, contributing y registro d
 
 **Reglas:** una feature no importa internos de otra (se comunica por `shared/` o su `index.ts`);
 toda escritura pasa por un servicio; permisos centralizados en `features/auth/permissions.ts`.
-Las carpetas `notifications/` y `moderation/` siguen planificadas, pero todavía no existen.
+Las carpetas `notifications/` y `moderation/` contienen el centro de avisos, Web Push, reportes y cola administrativa.
 
 ---
 
@@ -327,14 +327,11 @@ badges      (id text PK, name, name_en, description, description_en, icon)
 user_badges (user_id uuid, badge_id text, awarded_at timestamptz, primary key (user_id, badge_id))
 -- karma vive en profiles.karma; leaderboard = query ordenada por faculty
 
--- Notificaciones (PLANIFICADO, NO IMPLEMENTADO)
-push_subscriptions (user_id uuid, endpoint text, keys jsonb, primary key (user_id, endpoint))
-notifications (id uuid PK, user_id uuid, type text, payload jsonb, read bool default false,
-               created_at timestamptz default now())
+-- Notificaciones y Web Push (IMPLEMENTADO EN CÓDIGO)
+notifications, push_subscriptions, notification_push_deliveries
 
--- Moderación (PLANIFICADO, NO IMPLEMENTADO)
-reports_mod (id uuid PK, target_type text, target_id uuid, reporter_id uuid,
-             reason text, status text default 'open', created_at timestamptz default now())
+-- Moderación (IMPLEMENTADO EN CÓDIGO)
+content_reports con snapshot, asignación, resolución y auditoría
 ```
 
 ### Políticas RLS clave
@@ -501,7 +498,7 @@ cerrar recordatorios push, Realtime, FTS y reportes; la moderación IA ya no for
 **Estado actual: en progreso.**
 
 - **Dev C — completado:** perfil, perfil público, karma, insignias y leaderboard por facultad.
-- **Dev B — pendiente:** Web Push, `send-push`, tablas de notificaciones y cola de moderación.
+- **Dev B — implementado en código:** Web Push, `send-push`, tablas de notificaciones y cola de moderación; falta despliegue y validación operativa.
 - **Dev A — parcial:** modo oscuro, rutas accesibles, PWA/offline y actualización automática listos; AA final, deploy y Playwright pendientes.
 - **Transversal — en progreso:** rate limit preparado; hardening RLS/funciones, E2E y revisión productiva pendientes.
 

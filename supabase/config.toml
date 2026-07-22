@@ -1,0 +1,4 @@
+project_id = "udp-map"
+
+[functions.send-push]
+verify_jwt = false

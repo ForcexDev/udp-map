@@ -1,9 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink } from 'react-router-dom'
 import {
   X, LogOut, Search,
-  CalendarDays, MessagesSquare, UserRound, Globe, HelpCircle, MapPinOff
+  Globe, HelpCircle, MapPinOff
 } from 'lucide-react'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -11,11 +10,15 @@ import { useAuthStore } from '@/features/auth/authStore'
 import { setLanguage } from '@/shared/lib/i18n'
 import { CAMPUSES, FACULTIES } from '@/shared/data/campusData'
 import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher'
+import { NotificationCenter } from '@/features/notifications/NotificationCenter'
+import { useNotifications } from '@/features/notifications/useNotifications'
 
 export function Sidebar() {
   const { t, i18n } = useTranslation()
   const isOpen = useSidebarStore((s) => s.isOpen)
   const close = useSidebarStore((s) => s.close)
+  const tab = useSidebarStore((s) => s.activeTab)
+  const setTab = useSidebarStore((s) => s.setActiveTab)
 
   const setCampusId = useUIStore((s) => s.setCampusId)
   const openLoginModal = useUIStore((s) => s.openLoginModal)
@@ -26,8 +29,9 @@ export function Sidebar() {
   const devUnlockMap = useUIStore((s) => s.devUnlockMap)
   const setDevUnlockMap = useUIStore((s) => s.setDevUnlockMap)
 
-  const [tab, setTab] = useState<'places' | 'community' | 'settings'>('places')
   const [searchQuery, setSearchQuery] = useState('')
+  const { data: notifications = [] } = useNotifications()
+  const unreadNotifications = notifications.filter((notification) => !notification.read_at).length
   const langActiveIndex = i18n.language.startsWith('en') ? 1 : 0
 
   // Group faculties by campus, filtered by search
@@ -92,7 +96,7 @@ export function Sidebar() {
 
           {/* Tabs Menu on Top with Sliding Animation */}
           {(() => {
-            const TABS = ['places', 'community', 'settings'] as const
+            const TABS = ['places', 'notifications', 'settings'] as const
             const tabActiveIndex = TABS.indexOf(tab)
             return (
               <div className="relative flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl w-full select-none mt-2">
@@ -115,7 +119,12 @@ export function Sidebar() {
                           : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
                       }`}
                     >
-                      {tKey === 'places' ? t('sidebar.places') : tKey === 'community' ? t('sidebar.community') : t('sidebar.settings')}
+                      {tKey === 'places' ? t('sidebar.places') : tKey === 'notifications' ? (
+                        <span className="inline-flex items-center gap-1">
+                          {t('sidebar.notifications', 'Notificaciones')}
+                          {unreadNotifications > 0 && <span className="rounded-full bg-[#D41F2D] px-1.5 py-0.5 text-[8px] leading-none text-white">{unreadNotifications}</span>}
+                        </span>
+                      ) : t('sidebar.settings')}
                     </button>
                   )
                 })}
@@ -182,34 +191,7 @@ export function Sidebar() {
             </div>
           )}
 
-          {tab === 'community' && (
-            <div className="space-y-3 pb-12">
-              {/* Navigation Links */}
-              {[
-                { to: '/eventos', icon: CalendarDays, label: t('nav.events') },
-                { to: '/foro', icon: MessagesSquare, label: t('nav.forum') },
-                { to: '/perfil', icon: UserRound, label: t('nav.profile') },
-              ].map(({ to, icon: Icon, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={close}
-                  className={({ isActive }) =>
-                    `w-full p-4 rounded-[18px] flex items-center gap-4 font-bold transition-all border ${
-                      isActive
-                        ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white border-neutral-200 dark:border-neutral-700 shadow-md'
-                        : 'bg-neutral-50/50 dark:bg-neutral-800/50 text-neutral-400 dark:text-neutral-500 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
-                    }`
-                  }
-                >
-                  <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center">
-                    <Icon size={20} />
-                  </div>
-                  <span className="text-sm">{label}</span>
-                </NavLink>
-              ))}
-            </div>
-          )}
+          {tab === 'notifications' && <NotificationCenter onNavigate={close} />}
 
           {tab === 'settings' && (
             <div className="space-y-8 pb-12">

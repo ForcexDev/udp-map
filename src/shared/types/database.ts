@@ -182,4 +182,51 @@ export interface UserBadge {
   badge?: Badge
 }
 
+export type NotificationCategory = 'profile' | 'forum' | 'events' | 'moderation'
+export type NotificationAudience = 'personal' | 'admin'
+export type NotificationType =
+  | 'achievement'
+  | 'forum_reply'
+  | 'event_reminder'
+  | 'moderation_report'
+  | 'moderation_update'
+
+export interface AppNotification {
+  id: string
+  user_id: string
+  actor_id: string | null
+  type: NotificationType
+  category: NotificationCategory
+  audience: NotificationAudience
+  title: string
+  body: string
+  url: string
+  payload: Record<string, unknown>
+  dedupe_key: string
+  read_at: string | null
+  created_at: string
+}
+
+export type ModerationTargetType = 'pin' | 'pin_comment' | 'forum_thread' | 'forum_comment'
+export type ModerationReason = 'spam' | 'harassment' | 'misinformation' | 'inappropriate' | 'other'
+export type ModerationStatus = 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+
+export interface ContentReport {
+  id: string
+  target_type: ModerationTargetType
+  target_id: string
+  reporter_id: string
+  reporter_name?: string | null
+  reason: ModerationReason
+  details: string | null
+  snapshot: Record<string, unknown>
+  status: ModerationStatus
+  assigned_to: string | null
+  resolution_action: 'dismiss' | 'delete' | null
+  resolution_note: string | null
+  created_at: string
+  updated_at: string
+  resolved_at: string | null
+}
+
 

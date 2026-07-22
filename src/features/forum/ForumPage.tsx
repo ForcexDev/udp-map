@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MessagesSquare, Plus, Pin, MessageSquare, ThumbsUp, ThumbsDown, SlidersHorizontal, ChevronRight, Megaphone, GraduationCap } from 'lucide-react'
 import { FACULTIES } from '@/shared/data/campusData'
@@ -122,11 +123,26 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
 export function ForumPage() {
   const { t } = useTranslation()
   const guard = useGuard()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [activeFacultyId, setActiveFacultyId] = useState<string | null>(null) // null = General Tab
   const [sortBy, setSortBy] = useState<'recent' | 'top'>('recent')
   const [createModalOpen, setCreateModalOpen] = useState(false)
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(() => searchParams.get('thread'))
+
+  useEffect(() => {
+    const linkedThread = searchParams.get('thread')
+    if (linkedThread) setSelectedThreadId(linkedThread)
+  }, [searchParams])
+
+  const closeThread = () => {
+    setSelectedThreadId(null)
+    if (searchParams.has('thread')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('thread')
+      setSearchParams(next, { replace: true })
+    }
+  }
 
   const { data: threads = [], isLoading, error } = useThreads(activeFacultyId, sortBy)
 
@@ -253,7 +269,7 @@ export function ForumPage() {
       {selectedThreadId && (
         <ThreadDetailModal
           threadId={selectedThreadId}
-          onClose={() => setSelectedThreadId(null)}
+          onClose={closeThread}
         />
       )}
     </div>

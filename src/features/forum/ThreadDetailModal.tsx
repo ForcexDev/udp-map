@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, Pin as PinIcon, Trash2, Reply, MessageSquare, ThumbsUp, ThumbsDown, Send } from 'lucide-react'
+import { ChevronDown, Pin as PinIcon, Trash2, Reply, MessageSquare, ThumbsUp, ThumbsDown, Send, Flag } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
 import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -17,6 +17,7 @@ import {
 } from './useForum'
 import { buildCommentTree, buildReplyContent, countNestedReplies, type CommentNode } from './utils'
 import { UserAvatar } from '@/shared/ui/UserAvatar'
+import { ReportContentDialog, type ReportTarget } from '@/features/moderation/ReportContentDialog'
 
 interface ThreadDetailModalProps {
   threadId: string | null
@@ -36,6 +37,7 @@ interface CommentItemProps {
   onAddReply: (parentId: string, authorName?: string | null) => void
   onDeleteComment: (commentId: string) => void
   onUserClick: (userId: string) => void
+  onReport: (target: ReportTarget) => void
 }
 
 function CommentItem({
@@ -48,7 +50,8 @@ function CommentItem({
   isSubmitting,
   onAddReply,
   onDeleteComment,
-  onUserClick
+  onUserClick,
+  onReport,
 }: CommentItemProps) {
   const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
@@ -105,6 +108,15 @@ function CommentItem({
           >
             <Reply size={12} />
           </button>
+          {user && !isCommentOwner && role !== 'guest' && (
+            <button
+              onClick={() => onReport({ type: 'forum_comment', id: node.id })}
+              className="p-1 -mt-1 text-neutral-400 hover:text-[#D41F2D] transition-colors"
+              title="Reportar respuesta"
+            >
+              <Flag size={12} />
+            </button>
+          )}
           {(isCommentOwner || isModerator) && (
             <button
               onClick={() => onDeleteComment(node.id)}
@@ -176,6 +188,7 @@ function CommentItem({
               onAddReply={onAddReply}
               onDeleteComment={onDeleteComment}
               onUserClick={onUserClick}
+              onReport={onReport}
             />
           ))}
         </div>
@@ -205,6 +218,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
   const [replyingToId, setReplyingToId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [profileId, setProfileId] = useState<string | null>(null)
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null)
 
   if (!threadId) return null
 
@@ -344,6 +358,15 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
 
                 {/* Actions: Pin & Delete */}
                 <div className="flex items-center gap-1.5">
+                  {user && !isOwner && role !== 'guest' && (
+                    <button
+                      onClick={() => setReportTarget({ type: 'forum_thread', id: thread.id })}
+                      className="p-1.5 border border-neutral-200 dark:border-neutral-700 rounded-full text-neutral-400 hover:text-[#D41F2D] hover:border-red-500/20 transition-colors flex items-center justify-center"
+                      title="Reportar hilo"
+                    >
+                      <Flag size={14} />
+                    </button>
+                  )}
                   {isModerator && (
                     <button
                       onClick={handlePinToggle}
@@ -445,6 +468,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                       onAddReply={handleAddReply}
                       onDeleteComment={handleDeleteComment}
                       onUserClick={setProfileId}
+                      onReport={setReportTarget}
                     />
                   ))}
                 </div>
@@ -477,6 +501,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
       
       {/* Public Profile Modal superimposed on top of this one */}
       <PublicProfileModal userId={profileId} onClose={() => setProfileId(null)} />
+      <ReportContentDialog target={reportTarget} onClose={() => setReportTarget(null)} />
     </Dialog>
   )
 }

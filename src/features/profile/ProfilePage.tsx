@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { UserRound, MapPin, LogOut, Share2 } from 'lucide-react'
@@ -39,6 +39,7 @@ const ROLE_COLORS: Record<string, string> = {
 export function ProfilePage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const signOut = useAuthStore((s) => s.signOut)
@@ -46,7 +47,9 @@ export function ProfilePage() {
   const selectPin = useUIStore((s) => s.selectPin)
   const showToast = useUIStore((s) => s.showToast)
   const [editOpen, setEditOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'reports' | 'badges' | 'leaderboard'>('reports')
+  const [activeTab, setActiveTab] = useState<'reports' | 'badges' | 'leaderboard'>(() =>
+    searchParams.get('tab') === 'badges' ? 'badges' : searchParams.get('tab') === 'leaderboard' ? 'leaderboard' : 'reports',
+  )
   const [leaderboardFaculty, setLeaderboardFaculty] = useState<string>('all')
   const [publicProfileId, setPublicProfileId] = useState<string | null>(null)
 
@@ -90,6 +93,11 @@ export function ProfilePage() {
       setLeaderboardFaculty(user.faculty_id)
     }
   }, [user?.faculty_id])
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'badges' || tab === 'leaderboard' || tab === 'reports') setActiveTab(tab)
+  }, [searchParams])
 
   if (!user) {
     return (

@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from '@/shared/lib/supabase'
 import type { Role } from '@/shared/types/database'
 import { isUdpEmail } from './permissions'
 import i18n from '@/shared/lib/i18n'
+import { removeCurrentBrowserPushSubscription } from '@/features/notifications/api'
 
 export interface AuthUser {
   id: string
@@ -161,7 +162,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     localStorage.removeItem(DEMO_KEY)
-    if (supabase) await supabase.auth.signOut()
+    if (supabase) {
+      try {
+        await removeCurrentBrowserPushSubscription()
+      } catch (error) {
+        console.error('No se pudo eliminar la suscripción Web Push al cerrar sesión.', error)
+      }
+      await supabase.auth.signOut()
+    }
     set({ user: null, role: 'guest', loading: false })
   },
 
