@@ -7,20 +7,37 @@ ADD COLUMN IF NOT EXISTS official_entity_name text NULL;
 
 CREATE TABLE IF NOT EXISTS public.pin_creation_events (
   id         uuid primary key default gen_random_uuid(),
+  pin_id     uuid NULL references public.pins(id) on delete set null,
   creator_id uuid not null references public.profiles on delete cascade,
   created_at timestamptz not null default now()
 );
 
+ALTER TABLE public.pin_creation_events
+ADD COLUMN IF NOT EXISTS pin_id uuid NULL references public.pins(id) on delete set null;
+
 CREATE INDEX IF NOT EXISTS pin_creation_events_creator_day_idx
   ON public.pin_creation_events (creator_id, created_at desc);
 
+CREATE UNIQUE INDEX IF NOT EXISTS pin_creation_events_pin_uidx
+  ON public.pin_creation_events (pin_id)
+  WHERE pin_id IS NOT NULL;
+
 ALTER TABLE public.pin_creation_events ENABLE ROW LEVEL SECURITY;
 
+-- La tabla es un registro interno: ningún cliente debe leerla ni escribirla.
+-- La RPC SECURITY DEFINER es la única vía de inserción.
+REVOKE ALL ON TABLE public.pin_creation_events FROM anon, authenticated;
+
 -- Conserva el historial existente al activar el límite.
-INSERT INTO public.pin_creation_events (creator_id, created_at)
-SELECT creator_id, created_at
-FROM public.pins
-WHERE creator_id IS NOT NULL;
+INSERT INTO public.pin_creation_events (pin_id, creator_id, created_at)
+SELECT p.id, p.creator_id, p.created_at
+FROM public.pins p
+WHERE p.creator_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.pin_creation_events e
+    WHERE e.pin_id = p.id
+  );
 
 CREATE OR REPLACE FUNCTION public.create_pin_with_daily_limit(
   p_type public.pin_type,
@@ -39,11 +56,12 @@ CREATE OR REPLACE FUNCTION public.create_pin_with_daily_limit(
 RETURNS SETOF public.pins
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_role text;
   v_created_today integer;
+  v_day_start timestamptz;
   v_pin public.pins;
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -61,12 +79,16 @@ BEGIN
   IF v_role NOT IN ('moderator', 'admin') THEN
     PERFORM pg_advisory_xact_lock(hashtext(auth.uid()::text));
 
+    -- El límite se calcula siempre con días UTC, independientemente de la
+    -- zona horaria configurada en la sesión de Postgres.
+    v_day_start := date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC';
+
     SELECT count(*)::integer
     INTO v_created_today
     FROM public.pin_creation_events
     WHERE creator_id = auth.uid()
-      AND created_at >= date_trunc('day', now())
-      AND created_at < date_trunc('day', now()) + interval '1 day';
+      AND created_at >= v_day_start
+      AND created_at < v_day_start + interval '1 day';
 
     IF v_created_today >= 10 THEN
       RAISE EXCEPTION 'DAILY_PIN_LIMIT_REACHED';
@@ -118,8 +140,8 @@ BEGIN
   )
   RETURNING * INTO v_pin;
 
-  INSERT INTO public.pin_creation_events (creator_id)
-  VALUES (auth.uid());
+  INSERT INTO public.pin_creation_events (pin_id, creator_id)
+  VALUES (v_pin.id, auth.uid());
 
   RETURN NEXT v_pin;
 END;
