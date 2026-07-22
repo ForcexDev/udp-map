@@ -14,13 +14,14 @@ export function useModerationQueue(status: ModerationStatus) {
   })
 
   useEffect(() => {
-    if (!supabase) return
-    const channel = supabase.channel('moderation-queue')
+    const client = supabase
+    if (!client) return
+    const channel = client.channel('moderation-queue')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_reports' }, () => {
         void queryClient.invalidateQueries({ queryKey: ['moderation-reports'] })
       })
       .subscribe()
-    return () => { void supabase.removeChannel(channel) }
+    return () => { void client.removeChannel(channel) }
   }, [queryClient])
   return query
 }

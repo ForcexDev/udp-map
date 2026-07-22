@@ -17,8 +17,9 @@ export function useNotifications() {
   })
 
   useEffect(() => {
-    if (!supabase || !userId) return
-    const channel = supabase
+    const client = supabase
+    if (!client || !userId) return
+    const channel = client
       .channel(`notifications:${userId}`)
       .on(
         'postgres_changes',
@@ -26,7 +27,7 @@ export function useNotifications() {
         () => void queryClient.invalidateQueries({ queryKey: ['notifications', userId] }),
       )
       .subscribe()
-    return () => { void supabase.removeChannel(channel) }
+    return () => { void client.removeChannel(channel) }
   }, [queryClient, userId])
 
   return query
