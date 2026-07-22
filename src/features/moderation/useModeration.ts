@@ -16,7 +16,7 @@ export function useModerationQueue(status: ModerationStatus) {
   useEffect(() => {
     const client = supabase
     if (!client) return
-    const channel = client.channel('moderation-queue')
+    const channel = client.channel(`moderation-queue:${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_reports' }, () => {
         void queryClient.invalidateQueries({ queryKey: ['moderation-reports'] })
       })

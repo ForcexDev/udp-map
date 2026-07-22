@@ -6,7 +6,7 @@ import { LoginModal } from '@/features/auth/LoginModal'
 import { Toast } from '@/shared/ui/Toast'
 import { NotificationUrlHandler } from '@/features/notifications/NotificationUrlHandler'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
-import { useNotifications } from '@/features/notifications/useNotifications'
+import { useNotificationRealtime, useNotifications } from '@/features/notifications/useNotifications'
 
 const NAV_ITEMS = [
   { to: '/mapa', key: 'nav.map', Icon: Map },
@@ -19,6 +19,7 @@ export function Layout() {
   const { t } = useTranslation()
   const openNotifications = useSidebarStore((state) => state.openNotifications)
   const { data: notifications = [] } = useNotifications()
+  useNotificationRealtime()
   const unread = notifications.filter((notification) => !notification.read_at).length
 
   return (

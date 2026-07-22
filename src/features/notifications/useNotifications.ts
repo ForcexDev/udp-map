@@ -8,19 +8,22 @@ import { fetchNotifications, markCategoryRead, markNotificationRead } from './ap
 export function useNotifications() {
   const userId = useAuthStore((state) => state.user?.id)
   const role = useAuthStore((state) => state.role)
-  const queryClient = useQueryClient()
-  const query = useQuery({
+  return useQuery({
     queryKey: ['notifications', userId, role],
     queryFn: () => userId ? fetchNotifications(userId, role) : [],
     enabled: Boolean(userId),
     staleTime: 30_000,
   })
+}
 
+export function useNotificationRealtime() {
+  const userId = useAuthStore((state) => state.user?.id)
+  const queryClient = useQueryClient()
   useEffect(() => {
     const client = supabase
     if (!client || !userId) return
     const channel = client
-      .channel(`notifications:${userId}`)
+      .channel(`notifications:${userId}:${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
@@ -29,8 +32,6 @@ export function useNotifications() {
       .subscribe()
     return () => { void client.removeChannel(channel) }
   }, [queryClient, userId])
-
-  return query
 }
 
 export function useMarkNotificationRead() {
