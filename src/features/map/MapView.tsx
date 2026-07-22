@@ -5,6 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Pin } from '@/shared/types/database'
 import type { FloorPlan } from '@/shared/types/database'
 import { useUIStore } from '@/shared/stores/uiStore'
+import { useAuthStore } from '@/features/auth/authStore'
 import { CAMPUSES, FACULTIES, categoryById, EVENT_COLOR, PLACE_COLOR } from '@/shared/data/campusData'
 import { expiryState } from '@/shared/utils/expiry'
 import { publishBounds } from '@/features/pins/usePins'
@@ -93,7 +94,9 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
   const selectedPinId = useUIStore((s) => s.selectedPinId)
   const theme = useUIStore((s) => s.theme)
   const viewMode = useUIStore((s) => s.viewMode)
-  const devUnlockMap = useUIStore((s) => s.devUnlockMap)
+  const devUnlockSetting = useUIStore((s) => s.devUnlockMap)
+  const role = useAuthStore((s) => s.role)
+  const devUnlockMap = role === 'admin' && devUnlockSetting
   const mapStyleUrl = theme === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
 
   const [bearing, setBearing] = useState(0)

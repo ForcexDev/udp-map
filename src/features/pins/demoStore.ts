@@ -107,6 +107,11 @@ export const demoDb = {
   favorites: new Set<string>(), // `${userId}:${pinId}`
 }
 
+/** Historial separado para que borrar un pin no permita eludir el límite diario. */
+export const demoPinCreationEvents = demoDb.pins
+  .filter((pin) => pin.creator_id !== null)
+  .map((pin) => ({ creator_id: pin.creator_id as string, created_at: pin.created_at }))
+
 export function demoRecountVotes(pin: Pin) {
   const votes = demoDb.votes.get(pin.id)
   if (!votes) return

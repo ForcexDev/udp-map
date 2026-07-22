@@ -228,7 +228,12 @@ export function CreatePinModal() {
       setPhotos([])
       close()
     },
-    onError: () => showToast(t('common.error')),
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : String(error)
+      showToast(message.includes('DAILY_PIN_LIMIT_REACHED')
+        ? t('pin.dailyLimitReached')
+        : t('common.error'))
+    },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),
   })
 

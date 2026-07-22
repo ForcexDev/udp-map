@@ -7,9 +7,10 @@ import { categoryById } from '@/shared/data/campusData'
 import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import type { PinFilters } from '@/shared/stores/filterStore'
 import { compressImage, photoStoragePath } from './photos'
-import { demoDb, demoAddPhotos, demoRemovePhotos, demoRecountVotes, demoVerifyPin, demoExtendPinTTL } from './demoStore'
+import { demoDb, demoAddPhotos, demoRemovePhotos, demoRecountVotes, demoVerifyPin, demoExtendPinTTL, demoPinCreationEvents } from './demoStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
+import { hasReachedDailyPinLimit } from '@/shared/utils/rateLimit'
 
 export interface CreatePinInput {
   type: PinType
@@ -103,6 +104,12 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
   const facultyId = input.facultyId !== undefined ? input.facultyId : facultyIdAt(input.lat, input.lng)
 
   if (!supabase) {
+    const role = useAuthStore.getState().role
+    const hasDailyLimit = role !== 'moderator' && role !== 'admin'
+    if (hasDailyLimit && hasReachedDailyPinLimit(demoPinCreationEvents, input.userId)) {
+      throw new Error('DAILY_PIN_LIMIT_REACHED')
+    }
+
     const pin: Pin = {
       id: crypto.randomUUID(),
       type: input.type,
@@ -128,27 +135,25 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
       pin_photos: [],
     }
     demoDb.pins.unshift(pin)
+    demoPinCreationEvents.push({ creator_id: input.userId, created_at: pin.created_at })
     demoAddPhotos(pin.id, photos)
     return pin
   }
 
   const { data, error } = await supabase
-    .from('pins')
-    .insert({
-      type: input.type,
-      title: input.title,
-      description: input.description,
-      category_id: input.categoryId,
-      faculty_id: facultyId,
-      lat: input.lat,
-      lng: input.lng,
-      creator_id: input.userId,
-      is_permanent: isPlace,
-      expires_at,
-      starts_at: input.startsAt,
-      ends_at: input.endsAt,
-      is_official: input.isOfficial ?? false,
-      official_entity_name: input.officialEntityName ?? null,
+    .rpc('create_pin_with_daily_limit', {
+      p_type: input.type,
+      p_title: input.title,
+      p_description: input.description,
+      p_category_id: input.categoryId,
+      p_faculty_id: facultyId,
+      p_lat: input.lat,
+      p_lng: input.lng,
+      p_is_official: input.isOfficial ?? false,
+      p_official_entity_name: input.officialEntityName ?? null,
+      p_expires_at: expires_at,
+      p_starts_at: input.startsAt ?? null,
+      p_ends_at: input.endsAt ?? null,
     })
     .select()
     .single()

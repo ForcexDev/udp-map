@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { MapView } from './MapView'
 import '@/shared/lib/i18n'
+import { useAuthStore } from '@/features/auth/authStore'
+import { useUIStore } from '@/shared/stores/uiStore'
 
 // Mock maplibre-gl
 const mockMapEvents = new Map<string, (() => void)[]>()
@@ -78,6 +80,8 @@ describe('MapView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockMapEvents.clear()
+    useAuthStore.setState({ role: 'guest' })
+    useUIStore.setState({ devUnlockMap: false })
   })
 
   it('renders the map container correctly', () => {
@@ -134,5 +138,25 @@ describe('MapView', () => {
       pitch: 0,
       duration: 800
     })
+  })
+
+  it('ignora un desbloqueo guardado si el usuario no es admin', () => {
+    useAuthStore.setState({ role: 'moderator' })
+    useUIStore.setState({ devUnlockMap: true })
+
+    render(<MapView pins={[]} route={null} floorPlan={null} userLocation={null} />)
+
+    expect(mockMapInstance.setMaxBounds).not.toHaveBeenCalledWith(undefined)
+    expect(mockMapInstance.setMinZoom).not.toHaveBeenCalledWith(1)
+  })
+
+  it('permite desbloquear los límites solamente a un admin', () => {
+    useAuthStore.setState({ role: 'admin' })
+    useUIStore.setState({ devUnlockMap: true })
+
+    render(<MapView pins={[]} route={null} floorPlan={null} userLocation={null} />)
+
+    expect(mockMapInstance.setMaxBounds).toHaveBeenCalledWith(undefined)
+    expect(mockMapInstance.setMinZoom).toHaveBeenCalledWith(1)
   })
 })

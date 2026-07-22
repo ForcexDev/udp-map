@@ -12,6 +12,7 @@ import { CreatePinModal } from '@/features/pins/CreatePinModal'
 import { TutorialModal } from './TutorialModal'
 import { ProfileSetupModal } from '@/features/auth/ProfileSetupModal'
 import { updatePinLocation } from '@/features/pins/api'
+import { useAuthStore } from '@/features/auth/authStore'
 import { CAMPUSES, FACULTIES, DEMO_FLOOR_PLANS } from '@/shared/data/campusData'
 import { formatDistance, type LatLng } from '@/shared/utils/geo'
 import { MapView, getMapCenter } from './MapView'
@@ -174,7 +175,7 @@ export function MapPage() {
   const { t, i18n } = useTranslation()
   const guard = useGuard()
   const { pins, favoriteIds } = usePins()
-  // role was removed since it's unused
+  const role = useAuthStore((s) => s.role)
   const pickingLocation = useUIStore((s) => s.pickingLocation)
   const cancelPickingLocation = useUIStore((s) => s.cancelPickingLocation)
   const startPickingLocation = useUIStore((s) => s.startPickingLocation)
@@ -324,7 +325,8 @@ export function MapPage() {
       let origin = { lat: campus.lat, lng: campus.lng }
 
       if (currentLoc) {
-        if (!useUIStore.getState().devUnlockMap && isLocationOutOfBounds(currentLoc.lat, currentLoc.lng)) {
+        const adminMapUnlocked = role === 'admin' && useUIStore.getState().devUnlockMap
+        if (!adminMapUnlocked && isLocationOutOfBounds(currentLoc.lat, currentLoc.lng)) {
           showToast(t('map.outOfBounds', 'Estás demasiado lejos del campus para trazar una ruta a pie.'))
           setRouteTarget(null)
           return
@@ -368,6 +370,18 @@ export function MapPage() {
     onError: () => showToast(t('common.error')),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),
   })
+
+  const confirmPlacement = () => {
+    const center = getMapCenter()
+    if (!center) return
+
+    if (movingPinId) {
+      movePin.mutate(center)
+      return
+    }
+
+    useUIStore.getState().setDraftLocation(center)
+  }
 
   const onCreateClick = () => {
     if (!guard('pin.create.report')) return
@@ -530,21 +544,12 @@ export function MapPage() {
                   {t('common.cancel')}
                 </button>
                 <button
-                  onClick={() => {
-                    const center = getMapCenter()
-                    if (center) {
-                      if (movingPinId) {
-                        movePin.mutate(center)
-                      } else {
-                        useUIStore.getState().setDraftLocation(center)
-                      }
-                    }
-                  }}
+                  onClick={confirmPlacement}
                   disabled={movePin.isPending}
                   className={`flex-[2] h-12 ${movingPinId ? 'bg-blue-600 shadow-[0_8px_24px_-8px_rgba(37,99,235,0.4)]' : 'bg-[#D41F2D] red-shadow'} text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50`}
                 >
-                  {movingPinId 
-                    ? (movePin.isPending ? <Loader2 size={16} className="animate-spin" /> : t('pin.confirmMove', 'Guardar ubicación')) 
+                  {movingPinId
+                    ? (movePin.isPending ? <Loader2 size={16} className="animate-spin" /> : t('pin.confirmMove', 'Guardar ubicación'))
                     : t('pin.confirmLocation', 'Confirmar ubicación')}
                 </button>
               </div>

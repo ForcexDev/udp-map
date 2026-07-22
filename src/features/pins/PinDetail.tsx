@@ -138,7 +138,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   }
 
   const devUnlockMap = useUIStore((s) => s.devUnlockMap)
-  const isOutOfArea = !devUnlockMap && userLocation
+  const adminMapUnlocked = role === 'admin' && devUnlockMap
+  const isOutOfArea = !adminMapUnlocked && userLocation
     ? userLocation.lat < BOUNDARY_RECT.south ||
     userLocation.lat > BOUNDARY_RECT.north ||
     userLocation.lng < BOUNDARY_RECT.west ||

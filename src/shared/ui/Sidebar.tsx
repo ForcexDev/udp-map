@@ -277,7 +277,7 @@ export function Sidebar() {
               </section>
 
               {/* Admin: Dev Unlock Map */}
-              {(role === 'admin' || role === 'moderator') && (
+              {role === 'admin' && (
                 <section className="space-y-4">
                   <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em]">
                     Administrador
