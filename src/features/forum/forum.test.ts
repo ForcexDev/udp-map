@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCommentTree, hasReplyBody, replyMention } from './utils'
+import { buildCommentTree, buildReplyContent, replyMention } from './utils'
 import type { ForumComment } from '@/shared/types/database'
 
 describe('buildCommentTree (árbol de respuestas anidadas del foro)', () => {
@@ -71,9 +71,8 @@ describe('menciones al responder', () => {
     expect(replyMention(null)).toBe('@Estudiante UDP ')
   })
 
-  it('no considera que una mención sola sea una respuesta', () => {
-    expect(hasReplyBody('@Cata M. ', 'Cata M.')).toBe(false)
-    expect(hasReplyBody('@Cata M. gracias por avisar', 'Cata M.')).toBe(true)
-    expect(hasReplyBody('Gracias por avisar', 'Cata M.')).toBe(true)
+  it('antepone la mención solo al construir la respuesta final', () => {
+    expect(buildReplyContent('Gracias por avisar', 'Cata M.')).toBe('@Cata M. Gracias por avisar')
+    expect(buildReplyContent('  Muchas gracias  ', 'Cata M.')).toBe('@Cata M. Muchas gracias')
   })
 })

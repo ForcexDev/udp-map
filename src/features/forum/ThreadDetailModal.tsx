@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pin as PinIcon, Trash2, Reply, MessageSquare, ThumbsUp, ThumbsDown, Send } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
@@ -15,7 +15,7 @@ import {
   useDeleteThread,
   useTogglePinThread,
 } from './useForum'
-import { buildCommentTree, hasReplyBody, replyMention, type CommentNode } from './utils'
+import { buildCommentTree, buildReplyContent, type CommentNode } from './utils'
 
 interface ThreadDetailModalProps {
   threadId: string | null
@@ -97,7 +97,7 @@ function CommentItem({
                 setReplyText('')
               } else {
                 setReplyingToId(node.id)
-                setReplyText(replyMention(node.author_name))
+                setReplyText('')
               }
             }}
             className="p-1 -mr-1 -mt-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded text-neutral-400 hover:text-neutral-700 transition-colors"
@@ -135,7 +135,7 @@ function CommentItem({
             </button>
             <button
               onClick={() => onAddReply(node.id, node.author_name)}
-              disabled={!hasReplyBody(replyText, node.author_name) || isSubmitting}
+              disabled={!replyText.trim() || isSubmitting}
               className="px-2.5 py-1 text-[10px] font-bold bg-[#D41F2D] hover:bg-[#b11a25] disabled:opacity-50 text-white rounded transition-colors"
             >
               {t('forum.sendReply', 'Responder')}
@@ -188,13 +188,6 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
   const [replyingToId, setReplyingToId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [profileId, setProfileId] = useState<string | null>(null)
-  const threadMention = thread ? replyMention(thread.author_name) : ''
-
-  useEffect(() => {
-    setNewCommentText(threadMention)
-    setReplyingToId(null)
-    setReplyText('')
-  }, [threadId, threadMention])
 
   if (!threadId) return null
 
@@ -244,7 +237,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
       showToast(t('auth.loginRequired', 'Debes iniciar sesión para comentar'))
       return
     }
-    if (!thread || !hasReplyBody(newCommentText, thread.author_name) || createCommentMutation.isPending) return
+    if (!newCommentText.trim() || createCommentMutation.isPending) return
 
     createCommentMutation.mutate(
       {
@@ -255,7 +248,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
       },
       {
         onSuccess: () => {
-          setNewCommentText(replyMention(thread.author_name))
+          setNewCommentText('')
         },
       }
     )
@@ -266,13 +259,13 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
       showToast(t('auth.loginRequired', 'Debes iniciar sesión para responder'))
       return
     }
-    if (!hasReplyBody(replyText, authorName) || createCommentMutation.isPending) return
+    if (!replyText.trim() || createCommentMutation.isPending) return
 
     createCommentMutation.mutate(
       {
         threadId: threadId,
         parentCommentId: parentId,
-        content: replyText.trim(),
+        content: buildReplyContent(replyText, authorName),
         authorId: user.id,
       },
       {
@@ -451,7 +444,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
               />
               <button
                 type="submit"
-                disabled={createCommentMutation.isPending || !thread || !hasReplyBody(newCommentText, thread.author_name)}
+                disabled={createCommentMutation.isPending || !newCommentText.trim()}
                 className="bg-[#D41F2D] hover:bg-[#b11a25] disabled:bg-neutral-100 dark:disabled:bg-neutral-850 disabled:text-neutral-400 disabled:opacity-50 text-white h-9 w-9 shrink-0 rounded-full flex items-center justify-center transition-all shadow-sm active:scale-95"
               >
                 <Send size={14} />

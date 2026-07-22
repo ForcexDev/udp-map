@@ -8,10 +8,8 @@ export function replyMention(authorName?: string | null): string {
   return `@${authorName?.trim() || 'Estudiante UDP'} `
 }
 
-export function hasReplyBody(text: string, authorName?: string | null): boolean {
-  const mention = replyMention(authorName)
-  const body = text.startsWith(mention) ? text.slice(mention.length) : text
-  return body.trim().length > 0
+export function buildReplyContent(text: string, authorName?: string | null): string {
+  return `${replyMention(authorName)}${text.trim()}`
 }
 
 export function buildCommentTree(comments: ForumComment[]): CommentNode[] {
