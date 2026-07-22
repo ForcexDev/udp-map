@@ -118,6 +118,10 @@ const es = {
     forum: {
       title: 'Foro',
       comingSoon: 'Los hilos por facultad, anuncios y perdidos llegan en el Sprint 3.',
+      showMoreReplies: 'Ver más',
+      showLessReplies: 'Ver menos',
+      like: 'Me gusta',
+      dislike: 'No me gusta',
     },
     profile: {
       title: 'Perfil',
@@ -296,6 +300,10 @@ const en = {
     forum: {
       title: 'Forum',
       comingSoon: 'Faculty threads, announcements and lost & found arrive in Sprint 3.',
+      showMoreReplies: 'Show more',
+      showLessReplies: 'Show less',
+      like: 'Like',
+      dislike: 'Dislike',
     },
     profile: {
       title: 'Profile',

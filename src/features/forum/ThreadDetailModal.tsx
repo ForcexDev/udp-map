@@ -188,6 +188,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
   const [replyingToId, setReplyingToId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [profileId, setProfileId] = useState<string | null>(null)
+  const [showAllComments, setShowAllComments] = useState(false)
 
   if (!threadId) return null
 
@@ -284,6 +285,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
   }
 
   const commentTree = buildCommentTree(comments)
+  const visibleComments = showAllComments ? commentTree : commentTree.slice(0, 3)
 
   return (
     <Dialog
@@ -411,7 +413,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                 <p className="text-xs text-neutral-400 py-4 italic">{t('forum.noComments', 'Sé el primero en responder...')}</p>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {commentTree.map((node) => (
+                  {visibleComments.map((node) => (
                     <CommentItem 
                       key={node.id} 
                       node={node} 
@@ -426,6 +428,17 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                       onUserClick={setProfileId}
                     />
                   ))}
+                  {commentTree.length > 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllComments((current) => !current)}
+                      className="self-start rounded-full px-3 py-1.5 text-[11px] font-bold text-[#D41F2D] hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                    >
+                      {showAllComments
+                        ? t('forum.showLessReplies', 'Ver menos')
+                        : t('forum.showMoreReplies', 'Ver más')}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

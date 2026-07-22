@@ -29,39 +29,38 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
     voteMutation.mutate({ threadId: thread.id, value: val })
   }
 
-  const netVotes = thread.votes_up - thread.votes_down
-
   return (
     <div
       onClick={() => onSelect(thread.id)}
       className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-5 flex flex-col sm:flex-row gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden"
     >
       {/* Panel de Votos (Lado Izquierdo en Desktop) */}
-      <div className="flex sm:flex-col items-center justify-center gap-1.5 sm:w-12 shrink-0 border-r border-neutral-100 dark:border-neutral-800 sm:pr-4">
+      <div className="flex sm:flex-col items-center justify-center gap-1.5 sm:w-14 shrink-0 border-r border-neutral-100 dark:border-neutral-800 sm:pr-4">
         <button
           onClick={(e) => handleCardVote(e, 1)}
           disabled={voteMutation.isPending}
-          className={`p-1.5 rounded-full transition-colors flex items-center justify-center ${
+          aria-label={t('forum.like', 'Me gusta')}
+          className={`px-2 py-1.5 rounded-full transition-colors flex items-center justify-center gap-1 ${
             userVote === 1
               ? 'bg-[#D41F2D] text-white'
               : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-[#D41F2D]'
           }`}
         >
           <ThumbsUp size={14} strokeWidth={2.5} />
+          <span className="text-xs font-black">{thread.votes_up}</span>
         </button>
-        <span className={`text-xs font-black sm:w-full text-center ${netVotes > 0 ? 'text-[#D41F2D]' : netVotes < 0 ? 'text-neutral-500' : 'text-neutral-400'}`}>
-          {netVotes}
-        </span>
         <button
           onClick={(e) => handleCardVote(e, -1)}
           disabled={voteMutation.isPending}
-          className={`p-1.5 rounded-full transition-colors flex items-center justify-center ${
+          aria-label={t('forum.dislike', 'No me gusta')}
+          className={`px-2 py-1.5 rounded-full transition-colors flex items-center justify-center gap-1 ${
             userVote === -1
               ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
               : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
           }`}
         >
           <ThumbsDown size={14} strokeWidth={2.5} />
+          <span className="text-xs font-black">{thread.votes_down}</span>
         </button>
       </div>
 
