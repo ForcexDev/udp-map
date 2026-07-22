@@ -14,6 +14,7 @@ import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import type { Pin, PinType } from '@/shared/types/database'
 import { createPin, updatePin } from './api'
 import { validatePhoto, MAX_PHOTOS_PER_PIN } from './photos'
+import { nextDailyPinReset } from '@/shared/utils/rateLimit'
 
 const pinSchema = z.object({
   type: z.enum(['report', 'place', 'event']),
@@ -230,8 +231,21 @@ export function CreatePinModal() {
     },
     onError: (error) => {
       const message = error instanceof Error ? error.message : String(error)
-      showToast(message.includes('DAILY_PIN_LIMIT_REACHED')
-        ? t('pin.dailyLimitReached')
+      if (message.includes('DAILY_PIN_LIMIT_REACHED')) {
+        const locale = i18n.language === 'en' ? 'en-US' : 'es-CL'
+        const resetAt = new Intl.DateTimeFormat(locale, {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZoneName: 'short',
+        }).format(nextDailyPinReset())
+        showToast(t('pin.dailyLimitReached', {
+          name: user?.name || t('profile.user', 'usuario'),
+          resetAt,
+        }))
+        return
+      }
+      showToast(message.includes('PIN_LOCATION_OCCUPIED')
+        ? t('pin.locationOccupied')
         : t('common.error'))
     },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),

@@ -21,6 +21,7 @@ import { FiltersPanel } from './FiltersPanel'
 import { IndoorPanel } from './IndoorPanel'
 import { getWalkingRoute, type WalkingRoute } from './routing'
 import { isLocationOutOfBounds } from './campusBoundary'
+import { isPinLocationOccupied } from '@/shared/utils/pinLocation'
 
 function useUserLocation() {
   const [loc, setLoc] = useState<LatLng | null>(null)
@@ -367,13 +368,23 @@ export function MapPage() {
       showToast(t('pin.moved', 'Pin reubicado correctamente'))
       cancelMovingPin()
     },
-    onError: () => showToast(t('common.error')),
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : String(error)
+      showToast(message.includes('PIN_LOCATION_OCCUPIED')
+        ? t('pin.locationOccupied')
+        : t('common.error'))
+    },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),
   })
 
   const confirmPlacement = () => {
     const center = getMapCenter()
     if (!center) return
+
+    if (isPinLocationOccupied(pins, center.lat, center.lng, movingPinId)) {
+      showToast(t('pin.locationOccupied'))
+      return
+    }
 
     if (movingPinId) {
       movePin.mutate(center)

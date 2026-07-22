@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DAILY_PIN_LIMIT, countPinsCreatedToday, hasReachedDailyPinLimit } from './rateLimit'
+import { DAILY_PIN_LIMIT, countPinsCreatedToday, hasReachedDailyPinLimit, nextDailyPinReset } from './rateLimit'
 
 const NOW = Date.parse('2026-07-21T15:00:00.000Z')
 
@@ -26,5 +26,9 @@ describe('límite diario de pines', () => {
     ]
     expect(countPinsCreatedToday(pins, 'user-1', NOW)).toBe(10)
     expect(countPinsCreatedToday(pins, 'user-2', NOW)).toBe(10)
+  })
+
+  it('restablece la cuota a medianoche UTC', () => {
+    expect(nextDailyPinReset(NOW).toISOString()).toBe('2026-07-22T00:00:00.000Z')
   })
 })

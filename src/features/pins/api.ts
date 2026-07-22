@@ -11,6 +11,7 @@ import { demoDb, demoAddPhotos, demoRemovePhotos, demoRecountVotes, demoVerifyPi
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
 import { hasReachedDailyPinLimit } from '@/shared/utils/rateLimit'
+import { isPinLocationOccupied } from '@/shared/utils/pinLocation'
 
 export interface CreatePinInput {
   type: PinType
@@ -109,6 +110,9 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
     if (hasDailyLimit && hasReachedDailyPinLimit(demoPinCreationEvents, input.userId)) {
       throw new Error('DAILY_PIN_LIMIT_REACHED')
     }
+    if (isPinLocationOccupied(demoDb.pins, input.lat, input.lng)) {
+      throw new Error('PIN_LOCATION_OCCUPIED')
+    }
 
     const pin: Pin = {
       id: crypto.randomUUID(),
@@ -157,7 +161,7 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
     })
     .select()
     .single()
-  if (error) throw error
+  if (error) throw new Error(error.message)
   const pin = data as Pin
 
   // Subida de N fotos; si una falla, el pin queda creado y se reporta el error
@@ -344,6 +348,9 @@ export async function updatePinLocation(pinId: string, lat: number, lng: number)
     if (pin) {
       const isModerator = can(useAuthStore.getState().role, 'pin.moderate')
       if (pin.is_permanent && !isModerator) return // Protected fields
+      if (isPinLocationOccupied(demoDb.pins, lat, lng, pinId)) {
+        throw new Error('PIN_LOCATION_OCCUPIED')
+      }
       pin.lat = lat
       pin.lng = lng
       pin.faculty_id = facultyId
@@ -354,7 +361,7 @@ export async function updatePinLocation(pinId: string, lat: number, lng: number)
     .from('pins')
     .update({ lat, lng, faculty_id: facultyId })
     .eq('id', pinId)
-  if (error) throw error
+  if (error) throw new Error(error.message)
 }
 
 // ── Favoritos ──

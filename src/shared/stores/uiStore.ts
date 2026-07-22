@@ -149,7 +149,7 @@ export const useUIStore = create<UIState>((set) => {
     showToast: (msg) => {
       clearTimeout(toastTimer)
       set({ toast: msg })
-      toastTimer = setTimeout(() => set({ toast: null }), 3500)
+      toastTimer = setTimeout(() => set({ toast: null }), msg.length > 80 ? 6500 : 3500)
     },
     clearToast: () => set({ toast: null }),
 
