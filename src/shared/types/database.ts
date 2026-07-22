@@ -145,6 +145,7 @@ export interface ForumThread {
   created_at: string
   updated_at: string
   author_name?: string | null
+  comment_count?: number
 }
 
 export interface ForumComment {

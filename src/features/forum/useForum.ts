@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/features/auth/authStore'
+import type { ForumThread } from '@/shared/types/database'
 import {
   fetchThreads,
   fetchThreadById,
@@ -76,6 +77,8 @@ export function useCreateComment() {
     mutationFn: (input: CreateCommentInput) => createComment(input),
     onSuccess: (_, { threadId }) => {
       void queryClient.invalidateQueries({ queryKey: ['forum-comments', threadId] })
+      void queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+      void queryClient.invalidateQueries({ queryKey: ['forum-thread', threadId] })
     },
   })
 }
@@ -87,6 +90,8 @@ export function useDeleteComment() {
       deleteComment(commentId),
     onSuccess: (_, { threadId }) => {
       void queryClient.invalidateQueries({ queryKey: ['forum-comments', threadId] })
+      void queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+      void queryClient.invalidateQueries({ queryKey: ['forum-thread', threadId] })
     },
   })
 }
@@ -98,7 +103,21 @@ export function useVoteThread() {
   return useMutation({
     mutationFn: ({ threadId, value }: { threadId: string; value: 1 | -1 }) =>
       voteThread(threadId, value),
-    onSuccess: (_, { threadId }) => {
+    onSuccess: (result, { threadId }) => {
+      if (result) {
+        const updateThread = (thread: ForumThread): ForumThread => thread.id === threadId
+          ? { ...thread, votes_up: result.votesUp, votes_down: result.votesDown }
+          : thread
+        queryClient.setQueriesData<ForumThread[]>({ queryKey: ['forum-threads'] }, (threads) =>
+          threads?.map(updateThread),
+        )
+        queryClient.setQueryData<ForumThread | null>(['forum-thread', threadId], (thread) =>
+          thread ? updateThread(thread) : thread,
+        )
+        if (userId) {
+          queryClient.setQueryData(['forum-user-vote', threadId, userId], result.userVote)
+        }
+      }
       void queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
       void queryClient.invalidateQueries({ queryKey: ['forum-thread', threadId] })
       if (userId) {

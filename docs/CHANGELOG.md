@@ -1,5 +1,8 @@
 ### Novedades en esta versión
 
+- El foro ahora muestra el conteo real de respuestas, inserta menciones automáticas al responder y sincroniza los cambios sin desfases.
+- Los votos de hilos y pines son únicos, atómicos y permiten cambiar o quitar el voto sin duplicar contadores.
+- La moderación IA y todo el alcance de planos indoor se concentran en el Sprint 6.
 - Límite de 10 pines diarios para estudiantes, con aviso al alcanzar el máximo; moderadores y administradores quedan exentos.
 - Publicaciones oficiales diferenciadas ("Centro de Alumnos FIC" para moderadores y "Administración UDP" para administradores).
 - Visualización nativa orientada hacia donde miras, con calibración de rumbo y compensación de inclinación/rotación del mapa.

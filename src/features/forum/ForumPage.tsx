@@ -21,6 +21,7 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
 
   const handleCardVote = (e: React.MouseEvent, val: 1 | -1) => {
     e.stopPropagation()
+    if (voteMutation.isPending) return
     if (!user || role === 'guest') {
       showToast(t('auth.loginRequired', 'Debes iniciar sesión con tu correo UDP'))
       return
@@ -39,6 +40,7 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
       <div className="flex sm:flex-col items-center justify-center gap-1.5 sm:w-12 shrink-0 border-r border-neutral-100 dark:border-neutral-800 sm:pr-4">
         <button
           onClick={(e) => handleCardVote(e, 1)}
+          disabled={voteMutation.isPending}
           className={`p-1.5 rounded-full transition-colors flex items-center justify-center ${
             userVote === 1
               ? 'bg-[#D41F2D] text-white'
@@ -52,6 +54,7 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
         </span>
         <button
           onClick={(e) => handleCardVote(e, -1)}
+          disabled={voteMutation.isPending}
           className={`p-1.5 rounded-full transition-colors flex items-center justify-center ${
             userVote === -1
               ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
@@ -95,7 +98,7 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
           </span>
           <div className="flex items-center gap-1.5 text-neutral-400">
             <MessageSquare size={13} />
-            <span className="text-xs font-bold">{thread.tags.length}</span> {/* tags length for tags mockup, or comment count mock */}
+            <span className="text-xs font-bold">{thread.comment_count ?? 0}</span>
           </div>
         </div>
 

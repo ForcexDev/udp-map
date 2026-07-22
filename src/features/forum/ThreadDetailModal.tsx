@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pin as PinIcon, Trash2, Reply, MessageSquare, ThumbsUp, ThumbsDown, Send } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
@@ -15,7 +15,7 @@ import {
   useDeleteThread,
   useTogglePinThread,
 } from './useForum'
-import { buildCommentTree, type CommentNode } from './utils'
+import { buildCommentTree, hasReplyBody, replyMention, type CommentNode } from './utils'
 
 interface ThreadDetailModalProps {
   threadId: string | null
@@ -31,7 +31,8 @@ interface CommentItemProps {
   setReplyingToId: (id: string | null) => void
   replyText: string
   setReplyText: (text: string) => void
-  onAddReply: (parentId: string) => void
+  isSubmitting: boolean
+  onAddReply: (parentId: string, authorName?: string | null) => void
   onDeleteComment: (commentId: string) => void
   onUserClick: (userId: string) => void
 }
@@ -43,6 +44,7 @@ function CommentItem({
   setReplyingToId,
   replyText,
   setReplyText,
+  isSubmitting,
   onAddReply,
   onDeleteComment,
   onUserClick
@@ -90,8 +92,13 @@ function CommentItem({
         <div className="absolute right-0 top-0 flex items-center gap-0.5">
           <button
             onClick={() => {
-              setReplyingToId(isReplying ? null : node.id)
-              setReplyText('')
+              if (isReplying) {
+                setReplyingToId(null)
+                setReplyText('')
+              } else {
+                setReplyingToId(node.id)
+                setReplyText(replyMention(node.author_name))
+              }
             }}
             className="p-1 -mr-1 -mt-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded text-neutral-400 hover:text-neutral-700 transition-colors"
             title={t('forum.reply', 'Responder')}
@@ -116,6 +123,7 @@ function CommentItem({
             onChange={(e) => setReplyText(e.target.value)}
             placeholder={t('forum.replyPlaceholder', 'Escribe tu respuesta...')}
             rows={2}
+            autoFocus
             className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-[#D41F2D] transition-colors resize-none"
           />
           <div className="flex justify-end gap-1">
@@ -126,8 +134,8 @@ function CommentItem({
               {t('common.cancel')}
             </button>
             <button
-              onClick={() => onAddReply(node.id)}
-              disabled={!replyText.trim()}
+              onClick={() => onAddReply(node.id, node.author_name)}
+              disabled={!hasReplyBody(replyText, node.author_name) || isSubmitting}
               className="px-2.5 py-1 text-[10px] font-bold bg-[#D41F2D] hover:bg-[#b11a25] disabled:opacity-50 text-white rounded transition-colors"
             >
               {t('forum.sendReply', 'Responder')}
@@ -147,6 +155,7 @@ function CommentItem({
               setReplyingToId={setReplyingToId}
               replyText={replyText}
               setReplyText={setReplyText}
+              isSubmitting={isSubmitting}
               onAddReply={onAddReply}
               onDeleteComment={onDeleteComment}
               onUserClick={onUserClick}
@@ -179,6 +188,13 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
   const [replyingToId, setReplyingToId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [profileId, setProfileId] = useState<string | null>(null)
+  const threadMention = thread ? replyMention(thread.author_name) : ''
+
+  useEffect(() => {
+    setNewCommentText(threadMention)
+    setReplyingToId(null)
+    setReplyText('')
+  }, [threadId, threadMention])
 
   if (!threadId) return null
 
@@ -190,9 +206,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
       showToast(t('auth.loginRequired', 'Debes iniciar sesión con tu correo UDP'))
       return
     }
-    // Si ya votó lo mismo, quitamos el voto votando lo contrario o simplemente llamando
-    // (en Supabase la RPC inserta/actualiza. Para des-votar de verdad podríamos implementar una RPC más compleja,
-    // pero por ahora solo manejamos el cambio de voto tradicional de Supabase).
+    if (voteMutation.isPending) return
     voteMutation.mutate({ threadId: threadId, value: val })
   }
 
@@ -230,7 +244,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
       showToast(t('auth.loginRequired', 'Debes iniciar sesión para comentar'))
       return
     }
-    if (!newCommentText.trim()) return
+    if (!thread || !hasReplyBody(newCommentText, thread.author_name) || createCommentMutation.isPending) return
 
     createCommentMutation.mutate(
       {
@@ -241,18 +255,18 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
       },
       {
         onSuccess: () => {
-          setNewCommentText('')
+          setNewCommentText(replyMention(thread.author_name))
         },
       }
     )
   }
 
-  const handleAddReply = (parentId: string) => {
+  const handleAddReply = (parentId: string, authorName?: string | null) => {
     if (!user || role === 'guest') {
       showToast(t('auth.loginRequired', 'Debes iniciar sesión para responder'))
       return
     }
-    if (!replyText.trim()) return
+    if (!hasReplyBody(replyText, authorName) || createCommentMutation.isPending) return
 
     createCommentMutation.mutate(
       {
@@ -365,6 +379,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                 <div className="flex items-stretch overflow-hidden rounded-full border border-neutral-200 dark:border-neutral-700 h-9 bg-neutral-50 dark:bg-neutral-900/50">
                   <button
                     onClick={() => handleVote(1)}
+                    disabled={voteMutation.isPending}
                     className={`px-3.5 flex items-center justify-center gap-1.5 transition-colors ${
                       userVote === 1
                         ? 'bg-red-50 text-[#D41F2D] dark:bg-red-950/30 dark:text-red-400'
@@ -377,6 +392,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                   <div className="w-px bg-neutral-200 dark:bg-neutral-700" />
                   <button
                     onClick={() => handleVote(-1)}
+                    disabled={voteMutation.isPending}
                     className={`px-3.5 flex items-center justify-center gap-1.5 transition-colors ${
                       userVote === -1
                         ? 'bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200'
@@ -411,6 +427,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                       setReplyingToId={setReplyingToId}
                       replyText={replyText}
                       setReplyText={setReplyText}
+                      isSubmitting={createCommentMutation.isPending}
                       onAddReply={handleAddReply}
                       onDeleteComment={handleDeleteComment}
                       onUserClick={setProfileId}
@@ -434,7 +451,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
               />
               <button
                 type="submit"
-                disabled={createCommentMutation.isPending || !newCommentText.trim()}
+                disabled={createCommentMutation.isPending || !thread || !hasReplyBody(newCommentText, thread.author_name)}
                 className="bg-[#D41F2D] hover:bg-[#b11a25] disabled:bg-neutral-100 dark:disabled:bg-neutral-850 disabled:text-neutral-400 disabled:opacity-50 text-white h-9 w-9 shrink-0 rounded-full flex items-center justify-center transition-all shadow-sm active:scale-95"
               >
                 <Send size={14} />

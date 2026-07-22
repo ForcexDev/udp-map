@@ -1,8 +1,31 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { ForumThread, ForumComment } from '@/shared/types/database'
+import { applyVoteTransition } from '@/shared/utils/vote'
 import { demoForumDb } from './demoStore'
 
 const nowIso = () => new Date().toISOString()
+
+type ForumThreadRow = ForumThread & {
+  profiles?: { name?: string | null } | { name?: string | null }[] | null
+  forum_comments?: { count?: number | null }[] | null
+}
+
+function mapThread(row: ForumThreadRow): ForumThread {
+  const { profiles, forum_comments, ...thread } = row
+  const profile = Array.isArray(profiles) ? profiles[0] : profiles
+  return {
+    ...thread,
+    author_name: profile?.name || 'Estudiante UDP',
+    comment_count: forum_comments?.[0]?.count ?? 0,
+  }
+}
+
+function demoThreadWithCount(thread: ForumThread): ForumThread {
+  return {
+    ...thread,
+    comment_count: demoForumDb.comments.filter((comment) => comment.thread_id === thread.id).length,
+  }
+}
 
 // ── Hilos (Threads) ──
 
@@ -11,7 +34,9 @@ export async function fetchThreads(
   sortBy: 'recent' | 'top' = 'recent'
 ): Promise<ForumThread[]> {
   if (!supabase) {
-    const list = demoForumDb.threads.filter((t) => t.faculty_id === facultyId)
+    const list = demoForumDb.threads
+      .filter((t) => t.faculty_id === facultyId)
+      .map(demoThreadWithCount)
     // Ordenar: Pinned van primero siempre
     list.sort((a, b) => {
       if (a.is_pinned && !b.is_pinned) return -1
@@ -29,7 +54,7 @@ export async function fetchThreads(
   // Consulta en Supabase
   let query = supabase
     .from('forum_threads')
-    .select('*, profiles:author_id(name)')
+    .select('*, profiles:author_id(name), forum_comments(count)')
     
   if (facultyId) {
     query = query.eq('faculty_id', facultyId)
@@ -41,10 +66,7 @@ export async function fetchThreads(
 
   if (error) throw error
 
-  const threads = (data || []).map((t: Record<string, unknown> & { profiles?: { name?: string } }) => ({
-    ...(t as unknown as ForumThread),
-    author_name: t.profiles?.name || 'Estudiante UDP',
-  })) as ForumThread[]
+  const threads = (data || []).map((thread) => mapThread(thread as unknown as ForumThreadRow))
 
   // Ordenamos en memoria
   threads.sort((a, b) => {
@@ -64,12 +86,12 @@ export async function fetchThreads(
 export async function fetchThreadById(threadId: string): Promise<ForumThread | null> {
   if (!supabase) {
     const thread = demoForumDb.threads.find((t) => t.id === threadId)
-    return thread || null
+    return thread ? demoThreadWithCount(thread) : null
   }
 
   const { data, error } = await supabase
     .from('forum_threads')
-    .select('*, profiles:author_id(name)')
+    .select('*, profiles:author_id(name), forum_comments(count)')
     .eq('id', threadId)
     .single()
 
@@ -78,10 +100,7 @@ export async function fetchThreadById(threadId: string): Promise<ForumThread | n
     throw error
   }
 
-  return {
-    ...data,
-    author_name: data.profiles?.name || 'Estudiante UDP',
-  } as ForumThread
+  return mapThread(data as unknown as ForumThreadRow)
 }
 
 export interface CreateThreadInput {
@@ -107,6 +126,7 @@ export async function createThread(input: CreateThreadInput): Promise<ForumThrea
       created_at: nowIso(),
       updated_at: nowIso(),
       author_name: 'Yo',
+      comment_count: 0,
     }
     demoForumDb.threads.unshift(newThread)
     return newThread
@@ -129,6 +149,7 @@ export async function createThread(input: CreateThreadInput): Promise<ForumThrea
   return {
     ...data,
     author_name: data.profiles?.name || 'Estudiante UDP',
+    comment_count: 0,
   } as ForumThread
 }
 
@@ -226,7 +247,18 @@ export async function createComment(input: CreateCommentInput): Promise<ForumCom
 
 export async function deleteComment(commentId: string): Promise<void> {
   if (!supabase) {
-    demoForumDb.comments = demoForumDb.comments.filter((c) => c.id !== commentId)
+    const deletedIds = new Set([commentId])
+    let foundDescendant = true
+    while (foundDescendant) {
+      foundDescendant = false
+      for (const comment of demoForumDb.comments) {
+        if (comment.parent_comment_id && deletedIds.has(comment.parent_comment_id) && !deletedIds.has(comment.id)) {
+          deletedIds.add(comment.id)
+          foundDescendant = true
+        }
+      }
+    }
+    demoForumDb.comments = demoForumDb.comments.filter((comment) => !deletedIds.has(comment.id))
     return
   }
 
@@ -240,39 +272,57 @@ export async function deleteComment(commentId: string): Promise<void> {
 
 // ── Votos (Votes) ──
 
-export async function voteThread(threadId: string, value: 1 | -1): Promise<void> {
+export interface ThreadVoteResult {
+  votesUp: number
+  votesDown: number
+  userVote: 1 | -1 | null
+}
+
+export async function voteThread(threadId: string, value: 1 | -1): Promise<ThreadVoteResult | null> {
   if (!supabase) {
     const thread = demoForumDb.threads.find((t) => t.id === threadId)
     if (thread) {
+      const userId = 'demo-current-user'
       let votesMap = demoForumDb.votes.get(threadId)
       if (!votesMap) {
         votesMap = new Map()
         demoForumDb.votes.set(threadId, votesMap)
       }
-      votesMap.set('me', value)
-      
-      // Recalcular
-      let up = 0
-      let down = 0
-      votesMap.forEach((v) => (v === 1 ? up++ : down++))
-      thread.votes_up = up
-      thread.votes_down = down
+      const previousVote = votesMap.get(userId)
+      const transition = applyVoteTransition(previousVote, value, thread.votes_up, thread.votes_down)
+      if (transition.userVote === null) {
+        votesMap.delete(userId)
+      } else {
+        votesMap.set(userId, transition.userVote)
+      }
+      thread.votes_up = transition.votesUp
+      thread.votes_down = transition.votesDown
+      return {
+        ...transition,
+      }
     }
-    return
+    return null
   }
 
-  const { error } = await supabase.rpc('vote_thread', {
+  const { data, error } = await supabase.rpc('vote_thread', {
     p_thread: threadId,
     p_value: value,
   })
 
   if (error) throw error
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row) return null
+  return {
+    votesUp: Number(row.votes_up),
+    votesDown: Number(row.votes_down),
+    userVote: row.user_vote === 1 || row.user_vote === -1 ? row.user_vote : null,
+  }
 }
 
 export async function fetchUserVoteOnThread(threadId: string, userId: string): Promise<1 | -1 | null> {
   if (!supabase) {
     const votesMap = demoForumDb.votes.get(threadId)
-    return votesMap?.get('me') || null
+    return votesMap?.get('demo-current-user') || null
   }
 
   const { data, error } = await supabase

@@ -19,7 +19,21 @@ export function usePinActions() {
       if (!userId) throw new Error('not signed in')
       return votePin(pinId, value, userId)
     },
-    onSettled: () => void invalidatePins(),
+    onSuccess: (result, { pinId }) => {
+      if (!result || !userId) return
+      queryClient.setQueryData(['pin_vote', pinId, userId], result.userVote ?? 0)
+      queryClient.setQueriesData<Pin[]>({ queryKey: ['pins'] }, (pins) =>
+        pins?.map((pin) => pin.id === pinId
+          ? { ...pin, votes_up: result.votesUp, votes_down: result.votesDown }
+          : pin),
+      )
+    },
+    onSettled: (_, __, { pinId }) => {
+      void invalidatePins()
+      if (userId) {
+        void queryClient.invalidateQueries({ queryKey: ['pin_vote', pinId, userId] })
+      }
+    },
     onError: () => showToast(t('common.error')),
   })
 

@@ -6,7 +6,7 @@
 > [securytyDB.md](securytyDB.md).
 
 - **Producto:** Mapa colaborativo de pines + eventos + foro social para la comunidad UDP.
-- **Plan base:** 8 semanas / 4 sprints de 2 semanas / 3 developers.
+- **Plan base original:** 8 semanas / 4 sprints de 2 semanas / 3 developers; el roadmap activo se amplía hasta Sprint 6.
 - **Estado actual:** Sprints 1–2 completados, núcleo de Sprint 3 completado y Sprint 4 en progreso.
 - **Versión del paquete:** 0.2.0.
 - **Última actualización:** 2026-07-21.
@@ -33,7 +33,7 @@ La reestructuración v1 → v0.2.0 ya ocurrió. El repositorio actual usa:
 | **Foro** | Hilos por facultad, tags, comentarios anidados, votos y controles de moderación en UI |
 | **Perfil** | Edición, perfil público, gestión admin de roles, karma, insignias y leaderboard |
 | **PWA** | Instalación, offline shell, caché de tiles, chequeo automático de versión y pop-up con changelog |
-| **Calidad** | CI con lint, typecheck, 42 pruebas Vitest y build |
+| **Calidad** | CI con lint, typecheck, 51 pruebas Vitest y build |
 
 ### Preparado, pendiente de despliegue
 
@@ -44,10 +44,10 @@ La reestructuración v1 → v0.2.0 ya ocurrió. El repositorio actual usa:
 ### Pendiente real
 
 - Hardening de RLS, permisos de columnas y funciones `SECURITY DEFINER`.
-- Moderación IA, reportes y cola administrativa.
+- Reportes y cola administrativa; la moderación IA queda asignada al Sprint 6.
 - Web Push y centro de notificaciones.
 - Realtime y búsqueda de texto completo para el foro.
-- Planos indoor productivos desde Supabase; actualmente existen planos demo.
+- Planos indoor productivos desde Supabase; todo el alcance indoor queda agrupado en Sprint 6.
 - Clustering visual de pines tipo Waze.
 - E2E con Playwright e integración automatizada contra Supabase.
 - Accesibilidad AA y despliegue final documentado.
@@ -433,24 +433,25 @@ delete from pins where is_permanent = false and expires_at < now();
 
 ---
 
-## 🚀 9. Roadmap — 8 semanas / 4 sprints
+## 🚀 9. Roadmap — 12 semanas / 6 sprints
 
 El calendario siguiente conserva el plan original. La columna de estado refleja el repositorio al
 2026-07-21; el detalle operativo está en [SPRINTS_STATUS.md](SPRINTS_STATUS.md).
 
 ```
-Semana:  1    2    3    4    5    6    7    8
-Sprint:  |--- S1 ---|--- S2 ---|--- S3 ---|--- S4 ---|
-Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
+Semana:  1    2    3    4    5    6    7    8    9   10   11   12
+Sprint:  |--- S1 ---|--- S2 ---|--- S3 ---|--- S4 ---|--- S5 ---|--- S6 ---|
+Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch  Expansión  IA+Indoor
 ```
 
 | Sprint | Semanas | Estado | Meta demostrable |
 |---|---|---|---|
 | **S1 — Fundaciones** | 1–2 | Completado | App reestructurada, mapa MapLibre, auth + modo invitado, esquema `pins` base |
-| **S2 — Pines (3 tipos)** | 3–4 | Completado; indoor demo | Crear/ver `place`/`report` con fotos, comentarios, votos, expiración, ruteo y filtros |
-| **S3 — Eventos & Foro** | 5–6 | Núcleo completado | Eventos + RSVP y foro funcional; IA, FTS y Realtime del foro pendientes |
+| **S2 — Pines (3 tipos)** | 3–4 | Completado | Crear/ver `place`/`report` con fotos, comentarios, votos, expiración, ruteo y filtros |
+| **S3 — Eventos & Foro** | 5–6 | En estabilización | Eventos + RSVP y foro funcional; FTS y Realtime del foro pendientes |
 | **S4 — Social & Launch** | 7–8 | En progreso | Social/gamificación entregados; push, moderación, hardening y deploy pendientes |
-| **S5 — Expansión** | 9+ | Backlog activo | Indoor productivo, clustering visual, atribución dinámica y expansión multicampus |
+| **S5 — Expansión** | 9–10 | Backlog activo | Clustering visual, atribución dinámica y expansión multicampus |
+| **S6 — IA & Planos Indoor** | 11–12 | Planificado | Moderación IA y fuente productiva de planos por edificio/piso |
 
 ---
 
@@ -470,9 +471,9 @@ Foco:    Fundaciones  Pines(3 tipos) Eventos+Foro  Social+Launch
 del proyecto Supabase.
 
 ### 📌 Sprint 2 — Pines de 3 tipos (Sem 3–4)
-**Meta:** crear y ver pines `place` y `report` con **fotos, comentarios y votos**; temporalidad; permanencia curada por moderador/admin; indoor y ruteo.
+**Meta:** crear y ver pines `place` y `report` con **fotos, comentarios y votos**; temporalidad; permanencia curada por moderador/admin y ruteo.
 
-**Estado actual: completado para el motor de pines; indoor funciona con datos demo.**
+**Estado actual: completado para el motor de pines.**
 
 - **Dev C (lead motor de pines):** UI **crear/editar pin** (react-hook-form + zod) con **subida de N fotos** (compresión + manejo de error + UUID); **comentarios** por pin en tiempo real (paginados); **votos** vía RPC `vote_pin`; eliminar propio; favoritos; estados de **desvanecimiento** por `expires_at`; badge de **permanente**.
 - **Dev B:** tablas `pin_photos`, `pin_comments`, `pin_votes`, `favorites` + RLS; **RPC `vote_pin`**; **expiración** (`pg_cron` + Edge Function `expire-pins` que también borra archivos del Storage); Realtime de pines y comentarios; verificación/permanencia y creación de `place` para mod/admin.
@@ -488,11 +489,11 @@ del proyecto Supabase.
 
 - **Dev C (eventos):** `event_rsvps` + RLS (oficial solo mod/admin); **crear evento** (`type='event'`, `starts_at`/`ends_at`, categoría, ubicación anclada); **RSVP** + vistas calendario/lista; oficiales/destacados.
 - **Dev A:** **capa de eventos** en el mapa + "cómo llegar" (reusa ruteo S2); estilos de destacados.
-- **Dev B:** foro (`forum_threads`, `forum_comments`, `forum_votes`) + RLS implementado. `reports_mod`, la Edge Function `moderate-content`, Realtime y FTS siguen pendientes.
+- **Dev B:** foro (`forum_threads`, `forum_comments`, `forum_votes`) + RLS implementado. `reports_mod`, Realtime y FTS siguen pendientes; `moderate-content` se mueve al Sprint 6.
 - **Dev C (foro UI, apoyo A):** hilos por facultad/tema, **upvotes**, **tags**, **comentarios anidados**; **tablón** (se busca / perdidos).
 
-**DoD S3:** eventos, RSVP, hilos, comentarios anidados y votos están listos. No está cumplida la
-parte de recordatorios push ni moderación IA.
+**DoD S3:** eventos, RSVP, hilos, comentarios anidados y votos consistentes están listos. Falta
+cerrar recordatorios push, Realtime, FTS y reportes; la moderación IA ya no forma parte de este sprint.
 
 ### 🏅 Sprint 4 — Social, Gamificación & Launch (Sem 7–8)
 **Meta:** perfil vivo, comunidad premiada, notificaciones y producción.
@@ -507,12 +508,18 @@ parte de recordatorios push ni moderación IA.
 **DoD S4:** parcialmente cumplida. La parte social está lista; faltan push, cola/reportes,
 hardening, E2E y despliegue final.
 
-### 🗺️ Sprint 5 — Planos Indoor (Sem 9+)
-**Meta:** renderizado de planos internos de facultades.
+### 🗺️ Sprint 5 — Expansión y Multicampus (Sem 9–10)
+**Meta:** clustering visual, atribución oficial dinámica y expansión geográfica.
 
-**Estado actual: parcial/backlog.** La tabla, RLS, selector y render GeoJSON existen, pero la UI usa
-`DEMO_FLOOR_PLANS`. Falta cargar y administrar planos productivos desde Supabase. Este sprint
-también agrupa clustering visual y atribución oficial dinámica por facultad.
+**Estado actual: backlog activo.** Los perímetros y la asignación automática existen; faltan el
+clustering de pines, la atribución por facultad/CEE y completar la cobertura multicampus.
+
+### 🤖 Sprint 6 — IA y Planos Indoor (Sem 11–12)
+**Meta:** concentrar la moderación asistida por IA y toda la evolución de planos interiores.
+
+**Estado actual: planificado.** Para indoor ya existen tabla, RLS, selector, render GeoJSON y datos
+demo; falta conectar una fuente productiva por edificio/piso. La moderación IA, sus proveedores,
+fallbacks, evaluación y operación administrativa se implementarán en este sprint.
 
 ---
 
@@ -525,7 +532,7 @@ también agrupa clustering visual y atribución oficial dinámica por facultad.
 6. PR revisado por otro dev.
 
 ## 🧪 12. Testing & CI
-- **Estado actual:** 9 archivos y 42 pruebas Vitest.
+- **Estado actual:** 11 archivos y 51 pruebas Vitest.
 - **Unit:** permisos, dominio UDP, expiración/TTL, geografía, perímetros, rate limit, fotos y árbol de comentarios.
 - **Componentes:** MapView y badges visuales de pines.
 - **Pendiente:** pruebas de formularios completos, RSVP, perfil/gamificación, RPC/RLS y migraciones.
@@ -554,7 +561,7 @@ también agrupa clustering visual y atribución oficial dinámica por facultad.
 - **Distintivos de Moderación:** Badges e indicadores visuales junto al nombre para moderadores y administradores en pines y comentarios.
 - **Clustering visual tipo Waze:** agrupar pines cercanos/duplicados y mostrar cantidad o consenso.
 - **Atribución oficial dinámica:** resolver el CEE/entidad según facultad y rol; hoy el texto de moderador está fijado a FIC.
-- **Indoor productivo:** cargar `floor_plans` desde Supabase para más edificios.
+- **Sprint 6 — Indoor productivo:** cargar `floor_plans` desde Supabase para más edificios.
 
 ---
 

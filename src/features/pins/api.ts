@@ -7,11 +7,12 @@ import { categoryById } from '@/shared/data/campusData'
 import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import type { PinFilters } from '@/shared/stores/filterStore'
 import { compressImage, photoStoragePath } from './photos'
-import { demoDb, demoAddPhotos, demoRemovePhotos, demoRecountVotes, demoVerifyPin, demoExtendPinTTL, demoPinCreationEvents } from './demoStore'
+import { demoDb, demoAddPhotos, demoRemovePhotos, demoVerifyPin, demoExtendPinTTL, demoPinCreationEvents } from './demoStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
 import { hasReachedDailyPinLimit } from '@/shared/utils/rateLimit'
 import { isPinLocationOccupied } from '@/shared/utils/pinLocation'
+import { applyVoteTransition } from '@/shared/utils/vote'
 
 export interface CreatePinInput {
   type: PinType
@@ -295,18 +296,38 @@ export async function deletePin(pin: Pin): Promise<void> {
 
 // ── Votos: RPC atómico (1 voto por usuario, reemplaza localStorage v1) ──
 
-export async function votePin(pinId: string, value: 1 | -1, userId: string): Promise<void> {
+export interface PinVoteResult {
+  votesUp: number
+  votesDown: number
+  userVote: 1 | -1 | null
+}
+
+export async function votePin(pinId: string, value: 1 | -1, userId: string): Promise<PinVoteResult | null> {
   if (!supabase) {
     const pin = demoDb.pins.find((p) => p.id === pinId)
-    if (!pin) return
+    if (!pin) return null
     const votes = demoDb.votes.get(pinId) ?? new Map<string, 1 | -1>()
-    votes.set(userId, value)
+    const previousVote = votes.get(userId)
+    const transition = applyVoteTransition(previousVote, value, pin.votes_up, pin.votes_down)
+    if (transition.userVote === null) {
+      votes.delete(userId)
+    } else {
+      votes.set(userId, transition.userVote)
+    }
+    pin.votes_up = transition.votesUp
+    pin.votes_down = transition.votesDown
     demoDb.votes.set(pinId, votes)
-    demoRecountVotes(pin)
-    return
+    return transition
   }
-  const { error } = await supabase.rpc('vote_pin', { p_pin: pinId, p_value: value })
+  const { data, error } = await supabase.rpc('vote_pin', { p_pin: pinId, p_value: value })
   if (error) throw error
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row) return null
+  return {
+    votesUp: Number(row.votes_up),
+    votesDown: Number(row.votes_down),
+    userVote: row.user_vote === 1 || row.user_vote === -1 ? row.user_vote : null,
+  }
 }
 
 // ── Permanente & Verificación (moderador/admin, RPC security definer) ──

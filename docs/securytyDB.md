@@ -53,7 +53,7 @@ Cómo demostrar que quedó resuelto.
 | SEC-005 | Crítica | Pendiente | Dueños pueden modificar campos internos de sus pines |
 | SEC-006 | Alta | Pendiente | Policy defectuosa para fijar hilos del foro |
 | SEC-007 | Media | Pendiente | RSVP públicos y sin validación del tipo de pin |
-| SEC-008 | Alta | Pendiente | Escrituras directas de votos pueden desincronizar contadores |
+| SEC-008 | Alta | En progreso | Escrituras directas de votos pueden desincronizar contadores |
 | SEC-009 | Alta | Pendiente | Estandarizar permisos y `search_path` de funciones privilegiadas |
 | SEC-010 | Media | Pendiente | Agregar pruebas de regresión de seguridad de base de datos |
 
@@ -240,7 +240,7 @@ La API revela únicamente la información de asistencia aprobada y rechaza RSVP 
 
 ## SEC-008 — Escrituras directas de votos pueden desincronizar contadores
 
-- Estado: Pendiente
+- Estado: En progreso
 - Severidad: Alta
 - Fecha de detección: 2026-07-21
 - Fecha de finalización: —
@@ -261,6 +261,7 @@ No existe una ruta que modifique un voto sin actualizar en la misma transacción
 ### Historial
 
 - 2026-07-21: La combinación de policies, RPC y triggers existentes confirmó dos vías de escritura con efectos diferentes.
+- 2026-07-21: La migración local `20260721000003_forum_vote_consistency.sql` bloquea DML directo, serializa votos, protege contadores y repara valores históricos. Falta desplegarla y ejecutar pruebas de integración en Supabase para cerrar el hallazgo.
 
 ## SEC-009 — Estandarizar permisos y `search_path` de funciones privilegiadas
 

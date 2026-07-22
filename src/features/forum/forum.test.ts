@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCommentTree } from './utils'
+import { buildCommentTree, hasReplyBody, replyMention } from './utils'
 import type { ForumComment } from '@/shared/types/database'
 
 describe('buildCommentTree (árbol de respuestas anidadas del foro)', () => {
@@ -62,5 +62,18 @@ describe('buildCommentTree (árbol de respuestas anidadas del foro)', () => {
   it('retorna un array vacío si no hay comentarios', () => {
     const tree = buildCommentTree([])
     expect(tree).toHaveLength(0)
+  })
+})
+
+describe('menciones al responder', () => {
+  it('crea automáticamente la mención del autor objetivo', () => {
+    expect(replyMention('Cata M.')).toBe('@Cata M. ')
+    expect(replyMention(null)).toBe('@Estudiante UDP ')
+  })
+
+  it('no considera que una mención sola sea una respuesta', () => {
+    expect(hasReplyBody('@Cata M. ', 'Cata M.')).toBe(false)
+    expect(hasReplyBody('@Cata M. gracias por avisar', 'Cata M.')).toBe(true)
+    expect(hasReplyBody('Gracias por avisar', 'Cata M.')).toBe(true)
   })
 })

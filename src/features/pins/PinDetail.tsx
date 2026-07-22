@@ -18,7 +18,7 @@ import {
   BadgeCheck,
   Clock,
 } from 'lucide-react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import type { Pin } from '@/shared/types/database'
 import { supabase } from '@/shared/lib/supabase'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -97,7 +97,6 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
     pin.type === 'place' && DEMO_FLOOR_PLANS.some((fp) => fp.faculty_id === pin.faculty_id)
   const photos = pin.pin_photos ?? []
 
-  const queryClient = useQueryClient()
   const { data: userVote = 0 } = useQuery({
     queryKey: ['pin_vote', pin.id, user?.id],
     queryFn: async () => {
@@ -115,10 +114,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
 
   const onVote = (value: 1 | -1) => {
     if (!guard('pin.vote')) return
-
-    // Optimistic UI Update
-    queryClient.setQueryData(['pin_vote', pin.id, user?.id], value)
-
+    if (vote.isPending) return
     vote.mutate({ pinId: pin.id, value })
   }
 
@@ -286,6 +282,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
               >
                 <button
                   onClick={() => onVote(1)}
+                  disabled={vote.isPending}
                   aria-label={t('pin.useful', 'Útil')}
                   aria-pressed={userVote === 1}
                   className={`${VOTE_SEGMENT} ${userVote === 1 ? LIKE_ACTIVE : VOTE_INACTIVE}`}
@@ -295,6 +292,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                 <div className="w-px bg-neutral-200 dark:bg-neutral-700" />
                 <button
                   onClick={() => onVote(-1)}
+                  disabled={vote.isPending}
                   aria-label={t('pin.notUseful', 'No útil')}
                   aria-pressed={userVote === -1}
                   className={`${VOTE_SEGMENT} ${userVote === -1 ? DISLIKE_ACTIVE : VOTE_INACTIVE}`}

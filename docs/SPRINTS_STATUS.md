@@ -15,10 +15,11 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 | Sprint | Estado | Resultado actual |
 |---|---|---|
 | Sprint 1 — Fundaciones | Completado | Arquitectura por features, MapLibre, PWA, Auth, roles, modo invitado, i18n y CI |
-| Sprint 2 — Motor de pines | Completado con alcance indoor demo | Pines, fotos, comentarios, votos, favoritos, expiración, ruteo y filtros |
-| Sprint 3 — Eventos y foro | Núcleo completado | Eventos, RSVP, calendario y foro; faltan IA, FTS y tiempo real del foro |
+| Sprint 2 — Motor de pines | Completado | Pines, fotos, comentarios, votos, favoritos, expiración, ruteo y filtros |
+| Sprint 3 — Eventos y foro | En estabilización | Eventos, RSVP, calendario y foro; faltan FTS y tiempo real del foro |
 | Sprint 4 — Social y lanzamiento | En progreso | Perfil, karma, badges, orientación, actualización PWA y controles administrativos listos |
-| Sprint 5 — Expansión | Backlog activo | Clustering visual, indoor productivo, atribución dinámica y multicampus |
+| Sprint 5 — Expansión | Backlog activo | Clustering visual, atribución dinámica y multicampus |
+| Sprint 6 — IA y planos indoor | Planificado | Moderación IA y fuente productiva de planos por edificio/piso |
 
 ---
 
@@ -79,12 +80,10 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 - [x] Límites visuales y de navegación del mapa.
 - [x] Desbloqueo de límites exclusivo para administradores.
 - [x] Perímetros de facultades y asignación automática de `faculty_id` según la ubicación del pin.
-- [x] Planos indoor demo con selector de piso y capa GeoJSON.
-- [ ] Cargar planos indoor desde `floor_plans` en Supabase; hoy la UI usa `DEMO_FLOOR_PLANS`.
 
 ### Backend
 
-- [x] Tablas `pin_photos`, `pin_comments`, `pin_votes`, `favorites` y `floor_plans`.
+- [x] Tablas `pin_photos`, `pin_comments`, `pin_votes` y `favorites`.
 - [x] RLS para tablas satélite y Storage.
 - [x] CRON de expiración y Edge Function `expire-pins`.
 - [x] Publicación Realtime para pines y comentarios.
@@ -112,12 +111,13 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 - [x] Creación y eliminación de hilos.
 - [x] Tags y orden por reciente o puntaje.
 - [x] Comentarios y respuestas anidadas.
-- [x] Votos mediante RPC `vote_thread`.
+- [x] Conteo real de respuestas en tarjetas y actualización tras crear/eliminar comentarios.
+- [x] Mención automática al autor del hilo o comentario al responder.
+- [x] Votos únicos y consistentes mediante RPC atómica `vote_thread`.
 - [x] Fijar/desfijar hilos desde la UI de moderación.
 - [ ] Corregir la policy `threads_update_owner_or_mod` antes de considerar segura la moderación.
 - [ ] Suscripciones Realtime del foro.
 - [ ] Búsqueda de texto completo y filtro por tags.
-- [ ] Edge Function de moderación IA con Gemini y respaldo Groq.
 - [ ] Flujo de reportes de contenido.
 
 ---
@@ -150,7 +150,6 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 
 - [ ] Web Push y centro de notificaciones.
 - [ ] Cola de moderación para administradores.
-- [ ] Moderación IA.
 - [ ] Hardening de RLS, columnas y funciones `SECURITY DEFINER` documentado en `securytyDB.md`.
 - [ ] Pruebas de integración reales contra Supabase.
 - [ ] Accesibilidad AA final.
@@ -166,16 +165,32 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 - [x] Asignación automática del `faculty_id` al crear o reubicar un pin.
 - [ ] Atribución oficial dinámica por facultad/CEE; actualmente el moderador usa el texto fijo “Centro de Alumnos FIC”.
 - [ ] Clustering visual de pines tipo Waze cuando varios reportan lo mismo o están en el mismo punto.
-- [ ] Fuente productiva de planos indoor por edificio/piso desde Supabase.
-- [ ] Ampliar y validar datos indoor para más edificios.
 - [ ] Completar pruebas geográficas de todos los perímetros.
+
+---
+
+## Sprint 6 — IA y planos indoor
+
+### Planos indoor
+
+- [x] Tabla `floor_plans` y RLS inicial.
+- [x] Planos demo con selector de piso y capa GeoJSON.
+- [ ] Fuente productiva por edificio/piso desde Supabase; hoy la UI usa `DEMO_FLOOR_PLANS`.
+- [ ] Ampliar y validar datos indoor para más edificios.
+- [ ] Herramientas de carga, validación y administración de GeoJSON indoor.
+
+### Inteligencia artificial
+
+- [ ] Edge Function de moderación IA con proveedor principal y respaldo.
+- [ ] Evaluación de falsos positivos, límites, costos y degradación segura.
+- [ ] Integración con reportes y cola administrativa.
 
 ---
 
 ## Estado de calidad
 
-- 9 archivos de pruebas Vitest.
-- 42 pruebas unitarias/de componentes registradas.
+- 11 archivos de pruebas Vitest.
+- 51 pruebas unitarias/de componentes registradas.
 - CI ejecuta `lint`, `typecheck`, `test` y `build`.
 - El build de producción está operativo.
 - No existen pruebas E2E ni suite de integración de Supabase todavía.
