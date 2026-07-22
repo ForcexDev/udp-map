@@ -255,6 +255,23 @@ export function MapPage() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  // Reset scroll on visualViewport resize (e.g. Android soft keyboard show/hide)
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const handleViewportResize = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) {
+        window.scrollTo(0, 0)
+      }
+    }
+    vv.addEventListener('resize', handleViewportResize)
+    vv.addEventListener('scroll', handleViewportResize)
+    return () => {
+      vv.removeEventListener('resize', handleViewportResize)
+      vv.removeEventListener('scroll', handleViewportResize)
+    }
+  }, [])
+
   // Deep link handler para ?pin= y ?faculty=
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -430,6 +447,9 @@ export function MapPage() {
                   onFocus={() => {
                     setSearchOpen(true)
                     selectPin(null)
+                  }}
+                  onBlur={() => {
+                    window.scrollTo(0, 0)
                   }}
                   placeholder={t('map.searchFaculty', 'Buscar facultad en {{campus}}...', { campus: CAMPUSES.find((c) => c.id === campusId)?.name ?? '' })}
                   className="flex-1 bg-transparent text-sm font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none"
