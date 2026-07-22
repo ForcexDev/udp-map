@@ -37,14 +37,14 @@ export function UpdatePrompt() {
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="w-full max-w-[320px] rounded-[22px] p-5 shadow-3xl flex flex-col gap-5 bg-white dark:bg-neutral-900 animate-in zoom-in-95 duration-300 border border-neutral-200/50 dark:border-neutral-800/50">
+      <div className="w-full max-w-[340px] max-h-[85dvh] rounded-[22px] p-5 shadow-3xl flex flex-col gap-4 bg-white dark:bg-neutral-900 animate-in zoom-in-95 duration-300 border border-neutral-200/50 dark:border-neutral-800/50 overflow-hidden">
         
-        <div className="flex flex-col items-center text-center mt-2 gap-3">
-          <div className="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-900 dark:text-white">
+        <div className="flex flex-col items-center text-center mt-1 gap-2.5 flex-shrink-0">
+          <div className="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-900 dark:text-white flex-shrink-0">
             <ArrowDownToLine size={24} strokeWidth={2} />
           </div>
           <div>
-            <h3 className="text-[18px] font-black tracking-tight text-neutral-900 dark:text-white">
+            <h3 className="text-[18px] font-black tracking-tight text-neutral-900 dark:text-white leading-tight">
               Actualización disponible
             </h3>
             <p className="text-[13px] text-neutral-500 font-medium mt-0.5 leading-snug px-2">
@@ -53,7 +53,7 @@ export function UpdatePrompt() {
           </div>
         </div>
 
-        <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-3.5 border border-neutral-100 dark:border-neutral-800">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-3.5 border border-neutral-100 dark:border-neutral-800 pr-2">
           <ul className="flex flex-col gap-2.5">
             {improvements.length > 0 ? (
               improvements.map((item, idx) => (
@@ -80,7 +80,7 @@ export function UpdatePrompt() {
               updateServiceWorker(true)
             }
           }}
-          className="w-full py-3 px-4 bg-[#D41F2D] hover:bg-[#b01a25] text-white rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm"
+          className="flex-shrink-0 w-full py-3 px-4 bg-[#D41F2D] hover:bg-[#b01a25] text-white rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm"
         >
           Actualizar ahora
         </button>
