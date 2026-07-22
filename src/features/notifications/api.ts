@@ -42,7 +42,7 @@ function demoNotifications(userId: string, role: Role): AppNotification[] {
       created_at: new Date(now - 5 * 60_000).toISOString(),
     })
   }
-  return personal
+  return personal.filter((n) => !deletedDemoIds.has(n.id))
 }
 
 export async function fetchNotifications(userId: string, role: Role): Promise<AppNotification[]> {
@@ -66,6 +66,53 @@ export async function markNotificationRead(notificationId: string): Promise<void
   const { error } = await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
+    .eq('id', notificationId)
+  if (error) throw error
+}
+
+export async function toggleNotificationRead(notificationId: string, currentReadAt: string | null): Promise<void> {
+  if (!supabase) {
+    if (currentReadAt) {
+      demoRead.delete(notificationId)
+    } else {
+      demoRead.add(notificationId)
+    }
+    return
+  }
+  const nextReadAt = currentReadAt ? null : new Date().toISOString()
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: nextReadAt })
+    .eq('id', notificationId)
+  if (error) throw error
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  if (!supabase) {
+    demoRead.add('demo-achievement')
+    demoRead.add('demo-forum')
+    demoRead.add('demo-event')
+    demoRead.add('demo-admin-report')
+    return
+  }
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .is('read_at', null)
+  if (error) throw error
+}
+
+const deletedDemoIds = new Set<string>()
+
+export async function deleteNotification(notificationId: string): Promise<void> {
+  if (!supabase) {
+    deletedDemoIds.add(notificationId)
+    return
+  }
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
     .eq('id', notificationId)
   if (error) throw error
 }

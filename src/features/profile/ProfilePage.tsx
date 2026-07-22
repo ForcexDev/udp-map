@@ -6,6 +6,7 @@ import { UserRound, MapPin, LogOut, Share2 } from 'lucide-react'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { Button } from '@/shared/ui/Button'
+import { CustomSelect } from '@/shared/ui/CustomSelect'
 import { fetchPins } from '@/features/pins/api'
 import { FACULTIES, categoryById } from '@/shared/data/campusData'
 import type { Pin } from '@/shared/types/database'
@@ -488,18 +489,18 @@ export function ProfilePage() {
               </div>
 
               {/* Selector de Facultad / Global */}
-              <select
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('profile.globalLeaderboard', 'Clasificación Global') },
+                  ...FACULTIES.filter(f => f.id !== 'deportes' && f.id !== 'dti' && f.id !== 'biblioteca').map((f) => ({
+                    value: f.id,
+                    label: i18n.language === 'en' ? f.name_en : f.name,
+                  })),
+                ]}
                 value={leaderboardFaculty}
-                onChange={(e) => setLeaderboardFaculty(e.target.value)}
-                className="p-2 text-xs sm:text-sm font-semibold rounded-[10px] border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white outline-none focus:border-[#D41F2D] transition-colors"
-              >
-                <option value="all">{t('profile.globalLeaderboard', 'Clasificación Global')}</option>
-                {FACULTIES.filter(f => f.id !== 'deportes' && f.id !== 'dti' && f.id !== 'biblioteca').map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {i18n.language === 'en' ? f.name_en : f.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setLeaderboardFaculty(val)}
+                className="w-full sm:w-auto min-w-[200px]"
+              />
             </div>
 
             {leaderboardQuery.isLoading ? (

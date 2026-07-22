@@ -4,6 +4,7 @@ interface UserAvatarProps {
   name?: string | null
   src?: string | null
   className?: string
+  onClick?: () => void
 }
 
 function initials(name?: string | null): string {
@@ -12,13 +13,14 @@ function initials(name?: string | null): string {
   return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase()
 }
 
-export function UserAvatar({ name, src, className = '' }: UserAvatarProps) {
+export function UserAvatar({ name, src, className = '', onClick }: UserAvatarProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const showImage = Boolean(src) && failedSrc !== src
 
   return (
     <div
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-200 ${className}`}
+      onClick={onClick}
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-200 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-200 ${onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''} ${className}`}
       aria-label={name || 'Usuario'}
     >
       {showImage ? (

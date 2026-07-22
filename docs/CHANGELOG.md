@@ -1,16 +1,10 @@
 ### Novedades en esta versión
 
-- Centro de notificaciones en la sidebar con logros, respuestas del foro, eventos próximos y un canal administrativo separado.
-- Web Push por dispositivo con reintentos, navegación contextual y limpieza segura al cerrar sesión.
-- Cola de moderación exclusiva para administradores, con snapshots, asignación y resolución auditable.
-- El aviso de actualización ahora detecta cada publicación inmediatamente y muestra las novedades de la versión nueva, sin reutilizar las de la versión anterior.
-- Los comentarios de pines y las respuestas del foro ahora muestran el avatar real del perfil, con iniciales locales como respaldo si la imagen no está disponible.
-- El foro ahora muestra el conteo real de respuestas, inserta menciones automáticas al responder y sincroniza los cambios sin desfases.
-- Los votos de hilos y pines son únicos, atómicos y permiten cambiar o quitar el voto sin duplicar contadores.
-- La moderación IA y todo el alcance de planos indoor se concentran en el Sprint 6.
-- Límite de 10 pines diarios para estudiantes, con aviso al alcanzar el máximo; moderadores y administradores quedan exentos.
-- Publicaciones oficiales diferenciadas ("Centro de Alumnos FIC" para moderadores y "Administración UDP" para administradores).
-- Visualización nativa orientada hacia donde miras, con calibración de rumbo y compensación de inclinación/rotación del mapa.
-- Las actualizaciones de la aplicación se detectan automáticamente al volver a la app o cambiar de pestaña.
-- Sistema de Karma, insignias y logros por actividad, tabla de clasificación por facultad y perfil público.
-- Detección inteligente de bloqueos de hardware (Brave Shields) y eliminación de glitches visuales.
+- Centro de Notificaciones en vivo con alertas de respuestas en foros, eventos del campus y logros de usuario.
+- Foro Comunitario por Facultades con indicador inteligente de mensajes no leídos y menciones automáticas.
+- Mapa Interactivo UDP con navegación en tiempo real, reportes de campus, lugares de estudio y eventos locales.
+- Sistema de Karma, Logros e Insignias con tabla de clasificación por facultad y perfil público de estudiante.
+- Orientación de Mapa en tiempo real adaptada hacia donde miras, con brújula y calibración de rumbo.
+- Identificación de Publicaciones Oficiales ("Centro de Alumnos FIC" y "Administración UDP").
+- Control de Límite Diario de 10 Pines por estudiante para mantener un mapa limpio y libre de spam.
+- Experiencia Web PWA con actualizaciones automáticas en segundo plano e instalación instantánea en móviles.

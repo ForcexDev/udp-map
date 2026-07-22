@@ -62,7 +62,7 @@ function formatEventDate(startsAt: string, endsAt: string) {
   const isSameDay = d1.toDateString() === d2.toDateString()
   
   const dateOpts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
-  const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+  const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false }
   
   if (isSameDay) {
     return `${d1.toLocaleDateString('es-CL', dateOpts)}, ${d1.toLocaleTimeString('es-CL', timeOpts)} - ${d2.toLocaleTimeString('es-CL', timeOpts)}`
@@ -306,8 +306,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
             )}
             
             {pin.type === 'event' && pin.starts_at && pin.ends_at && (
-              <div className="flex flex-1 items-center gap-1.5 px-3 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 h-9 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                <Calendar size={14} className="text-neutral-500" />
+              <div className="flex flex-1 min-w-0 items-center gap-1.5 px-3 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 h-9 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                <Calendar size={14} className="text-neutral-500 flex-shrink-0" />
                 <span className="truncate">
                   {formatEventDate(pin.starts_at, pin.ends_at)}
                 </span>
@@ -329,6 +329,16 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
             >
               <Share2 size={16} strokeWidth={2} />
             </button>
+            {user && !isOwner && role !== 'guest' && (
+              <button
+                onClick={() => setReportTarget({ type: 'pin', id: pin.id })}
+                aria-label={t('report.action', 'Reportar')}
+                title={t('report.action', 'Reportar contenido')}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors hover:text-red-500 hover:border-red-300 dark:hover:border-red-800 ${FAVORITE_CIRCLE_INACTIVE}`}
+              >
+                <Flag size={15} strokeWidth={2} />
+              </button>
+            )}
           </div>
 
           <button
@@ -380,14 +390,6 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                   className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#D41F2D] px-3 py-1.5 text-[13px] font-semibold text-[#D41F2D] transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
                 >
                   <Trash2 size={14} /> {t('pin.delete', 'Eliminar pin')}
-                </button>
-              )}
-              {user && !isOwner && role !== 'guest' && (
-                <button
-                  onClick={() => setReportTarget({ type: 'pin', id: pin.id })}
-                  className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-neutral-300 px-3 py-1.5 text-[13px] font-semibold text-neutral-500 transition-colors hover:border-[#D41F2D] hover:text-[#D41F2D] dark:border-neutral-600"
-                >
-                  <Flag size={14} /> Reportar
                 </button>
               )}
             </div>

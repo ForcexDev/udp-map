@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   X, LogOut, Search,
-  Globe, HelpCircle, MapPinOff
+  Globe, HelpCircle, MapPinOff, MapPin, Bell, Settings
 } from 'lucide-react'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -70,7 +70,7 @@ export function Sidebar() {
       />
 
       {/* Panel */}
-      <div className="sidebar-panel relative w-full max-w-sm h-full bg-white dark:bg-neutral-900 flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.1)] border-l border-neutral-100 dark:border-neutral-800">
+      <div className="sidebar-panel relative w-full max-w-sm sm:max-w-md h-full bg-white dark:bg-neutral-900 flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.1)] border-l border-neutral-100 dark:border-neutral-800">
         {/* Header */}
         <div className="p-6 pt-10 sm:p-8 sm:pt-12">
           <div className="flex items-center justify-between mb-8">
@@ -88,7 +88,7 @@ export function Sidebar() {
             <button
               onClick={close}
               aria-label={t('common.close')}
-              className="w-9 h-9 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 active:scale-90 transition-all"
+              className="w-9 h-9 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 active:scale-90 transition-all cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -96,35 +96,39 @@ export function Sidebar() {
 
           {/* Tabs Menu on Top with Sliding Animation */}
           {(() => {
-            const TABS = ['places', 'notifications', 'settings'] as const
-            const tabActiveIndex = TABS.indexOf(tab)
+            const TABS = [
+              { key: 'places', label: t('sidebar.places', 'Lugares'), Icon: MapPin },
+              { key: 'notifications', label: t('sidebar.notificationsShort', 'Avisos'), Icon: Bell },
+              { key: 'settings', label: t('sidebar.settings', 'Ajustes'), Icon: Settings },
+            ] as const
+            const tabActiveIndex = TABS.findIndex((tItem) => tItem.key === tab)
             return (
-              <div className="relative flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl w-full select-none mt-2">
+              <div className="grid grid-cols-3 p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-2xl w-full select-none mt-2 relative">
                 <div
-                  className="absolute top-1.5 bottom-1.5 left-1.5 bg-white dark:bg-neutral-700 rounded-[14px] shadow-sm transition-transform duration-300 ease-out pointer-events-none"
+                  className="absolute top-1 bottom-1 bg-white dark:bg-neutral-700 rounded-[14px] shadow-sm transition-all duration-300 ease-out pointer-events-none"
                   style={{
-                    width: 'calc((100% - 12px) / 3)',
-                    transform: `translateX(${tabActiveIndex * 100}%)`,
+                    width: 'calc((100% - 8px) / 3)',
+                    left: `calc(4px + ${tabActiveIndex} * ((100% - 8px) / 3))`,
                   }}
                 />
-                {TABS.map((tKey) => {
-                  const isActive = tab === tKey
+                {TABS.map(({ key, label, Icon }) => {
+                  const isActive = tab === key
                   return (
                     <button
-                      key={tKey}
-                      onClick={() => setTab(tKey)}
-                      className={`relative z-10 flex-1 py-2.5 rounded-[14px] text-[10px] font-black tracking-[0.15em] transition-colors duration-300 uppercase ${
+                      key={key}
+                      type="button"
+                      onClick={() => setTab(key)}
+                      className={`relative z-10 py-2.5 rounded-[14px] text-[10px] font-black tracking-wider transition-colors duration-200 flex items-center justify-center gap-1.5 uppercase cursor-pointer ${
                         isActive
                           ? 'text-neutral-900 dark:text-white'
                           : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
                       }`}
                     >
-                      {tKey === 'places' ? t('sidebar.places') : tKey === 'notifications' ? (
-                        <span className="inline-flex items-center gap-1">
-                          {t('sidebar.notifications', 'Notificaciones')}
-                          {unreadNotifications > 0 && <span className="rounded-full bg-[#D41F2D] px-1.5 py-0.5 text-[8px] leading-none text-white">{unreadNotifications}</span>}
-                        </span>
-                      ) : t('sidebar.settings')}
+                      <Icon size={14} className="flex-shrink-0" />
+                      <span className="truncate">{label}</span>
+                      {key === 'notifications' && unreadNotifications > 0 && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#D41F2D] flex-shrink-0 animate-pulse" />
+                      )}
                     </button>
                   )
                 })}

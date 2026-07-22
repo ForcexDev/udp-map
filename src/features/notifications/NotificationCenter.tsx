@@ -1,58 +1,100 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Bell, BellOff, CalendarDays, CheckCheck, ChevronRight,
-  MessagesSquare, ShieldAlert, Trophy,
+  MessagesSquare, ShieldAlert, Trophy, Trash2, CheckCircle2, Circle
 } from 'lucide-react'
 import type { AppNotification, NotificationCategory } from '@/shared/types/database'
 import { useAuthStore } from '@/features/auth/authStore'
 import { relativeTime } from '@/shared/utils/datetime'
-import { useMarkCategoryRead, useMarkNotificationRead, useNotifications } from './useNotifications'
+import {
+  useMarkCategoryRead,
+  useMarkNotificationRead,
+  useToggleNotificationRead,
+  useMarkAllNotificationsRead,
+  useDeleteNotification,
+  useNotifications
+} from './useNotifications'
 import { usePushSubscription } from './usePushSubscription'
 
-const SECTION_CONFIG: Array<{
-  category: NotificationCategory
-  label: string
-  path: string
-  icon: typeof Trophy
-}> = [
-  { category: 'profile', label: 'Perfil', path: '/perfil', icon: Trophy },
-  { category: 'forum', label: 'Foro', path: '/foro', icon: MessagesSquare },
-  { category: 'events', label: 'Eventos', path: '/eventos', icon: CalendarDays },
+const CATEGORY_TABS: Array<{ category: NotificationCategory | 'all'; label: string; icon: typeof Trophy }> = [
+  { category: 'all', label: 'Todas', icon: Bell },
+  { category: 'forum', label: 'Foro', icon: MessagesSquare },
+  { category: 'events', label: 'Eventos', icon: CalendarDays },
+  { category: 'profile', label: 'Perfil', icon: Trophy },
 ]
 
 function NotificationRow({
   notification,
   onOpen,
+  onToggleRead,
+  onDelete,
 }: {
   notification: AppNotification
   onOpen: (notification: AppNotification) => void
+  onToggleRead: (id: string, readAt: string | null) => void
+  onDelete: (id: string) => void
 }) {
   const relative = relativeTime(notification.created_at)
+  const isRead = Boolean(notification.read_at)
+
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(notification)}
-      className={`w-full rounded-xl px-3 py-2.5 text-left transition-colors ${
-        notification.read_at
-          ? 'bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800'
-          : 'bg-red-50/70 hover:bg-red-50 dark:bg-red-950/20 dark:hover:bg-red-950/30'
+    <div
+      className={`group relative flex items-start gap-2.5 rounded-2xl p-3 text-left transition-all border ${
+        isRead
+          ? 'bg-neutral-50/50 dark:bg-neutral-800/40 border-neutral-100 dark:border-neutral-800'
+          : 'bg-red-50/60 dark:bg-red-950/20 border-red-100/80 dark:border-red-900/40 shadow-sm'
       }`}
     >
-      <div className="flex items-start gap-2">
-        {!notification.read_at && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#D41F2D]" />}
-        <div className="min-w-0 flex-1">
-          <p className="text-[12px] font-extrabold text-neutral-800 dark:text-neutral-100">
-            {notification.title}
-          </p>
-          <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-neutral-500 dark:text-neutral-400">
-            {notification.body}
-          </p>
-          <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-neutral-400">
-            {relative.value === 0 ? 'Ahora' : `${relative.unit === 'day' ? relative.value + ' d' : relative.unit === 'hour' ? relative.value + ' h' : relative.value + ' min'}`}
-          </p>
-        </div>
+      {/* Read Status Dot / Toggle */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleRead(notification.id, notification.read_at)
+        }}
+        title={isRead ? 'Marcar como no leída' : 'Marcar como leída'}
+        className="mt-0.5 text-neutral-400 hover:text-[#D41F2D] transition-colors p-0.5 cursor-pointer flex-shrink-0"
+      >
+        {isRead ? (
+          <Circle size={14} className="text-neutral-300 dark:text-neutral-600" />
+        ) : (
+          <span className="block w-2.5 h-2.5 rounded-full bg-[#D41F2D] shadow-[0_0_8px_rgba(212,31,45,0.6)]" />
+        )}
+      </button>
+
+      {/* Main Content (Clickable) */}
+      <button
+        type="button"
+        onClick={() => onOpen(notification)}
+        className="min-w-0 flex-1 text-left cursor-pointer"
+      >
+        <p className={`text-xs font-black leading-snug ${isRead ? 'text-neutral-700 dark:text-neutral-300' : 'text-neutral-900 dark:text-white'}`}>
+          {notification.title}
+        </p>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400 line-clamp-2">
+          {notification.body}
+        </p>
+        <span className="inline-block mt-1 text-[9px] font-extrabold uppercase tracking-wider text-neutral-400">
+          {relative.value === 0 ? 'Ahora' : `${relative.value} ${relative.unit === 'day' ? 'd' : relative.unit === 'hour' ? 'h' : 'min'}`}
+        </span>
+      </button>
+
+      {/* Actions (Delete) */}
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(notification.id)
+          }}
+          title="Eliminar notificación"
+          className="text-neutral-400 dark:text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-all p-1.5 cursor-pointer rounded-xl"
+        >
+          <Trash2 size={15} />
+        </button>
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -62,12 +104,19 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
   const role = useAuthStore((state) => state.role)
   const { data: notifications = [], isLoading } = useNotifications()
   const markRead = useMarkNotificationRead()
+  const toggleRead = useToggleNotificationRead()
+  const markAll = useMarkAllNotificationsRead()
+  const deleteSingle = useDeleteNotification()
   const markCategory = useMarkCategoryRead()
   const push = usePushSubscription(Boolean(user))
 
+  const [activeFilter, setActiveFilter] = useState<NotificationCategory | 'all'>('all')
+
   const openNotification = (notification: AppNotification) => {
     if (!notification.read_at) markRead.mutate(notification.id)
-    navigate(notification.url)
+    if (notification.url) {
+      navigate(notification.url)
+    }
     onNavigate()
   }
 
@@ -89,18 +138,25 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
 
   const personal = notifications.filter((notification) => notification.audience === 'personal')
   const adminNotifications = notifications.filter((notification) => notification.audience === 'admin')
+  const unreadCount = notifications.filter((n) => !n.read_at).length
+
+  // Filtered notifications list
+  const filteredPersonal = activeFilter === 'all'
+    ? personal
+    : personal.filter((n) => n.category === activeFilter)
 
   return (
     <div className="space-y-5 pb-12">
-      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-800/50">
+      {/* Web Push Card */}
+      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3.5 dark:border-neutral-700 dark:bg-neutral-800/50 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${push.state === 'subscribed' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50' : 'bg-neutral-200 text-neutral-500 dark:bg-neutral-700'}`}>
               {push.state === 'subscribed' ? <Bell size={17} /> : <BellOff size={17} />}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-extrabold text-neutral-800 dark:text-neutral-100">Notificaciones Web Push</p>
-              <p className="truncate text-[10px] text-neutral-400">
+              <p className="text-xs font-black text-neutral-800 dark:text-neutral-100">Notificaciones Web Push</p>
+              <p className="truncate text-[10px] text-neutral-400 font-medium">
                 {push.state === 'subscribed'
                   ? 'Activadas en este dispositivo'
                   : push.state === 'denied'
@@ -112,9 +168,9 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
             </div>
           </div>
           {push.state === 'subscribed' ? (
-            <button type="button" onClick={() => void push.unsubscribe()} className="text-[10px] font-black text-neutral-400 hover:text-red-600">Desactivar</button>
+            <button type="button" onClick={() => void push.unsubscribe()} className="text-[10px] font-black text-neutral-400 hover:text-red-600 transition-colors cursor-pointer">Desactivar</button>
           ) : (
-            <button type="button" onClick={() => void push.subscribe()} disabled={push.state === 'loading' || push.state === 'unsupported' || push.state === 'denied'} className="rounded-full bg-[#D41F2D] px-3 py-1.5 text-[10px] font-black text-white disabled:opacity-40">
+            <button type="button" onClick={() => void push.subscribe()} disabled={push.state === 'loading' || push.state === 'unsupported' || push.state === 'denied'} className="rounded-xl bg-[#D41F2D] px-3 py-1.5 text-[10px] font-black text-white active:scale-95 transition-all disabled:opacity-40 cursor-pointer">
               {push.state === 'loading' ? 'Activando…' : push.state === 'error' ? 'Reintentar' : 'Activar'}
             </button>
           )}
@@ -126,42 +182,91 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
         <div className="py-10 text-center text-xs font-semibold text-neutral-400">Cargando notificaciones…</div>
       ) : (
         <>
-          <section className="space-y-3">
+          {/* Header & Mark All Read */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-400">Tus notificaciones</h3>
-              {personal.some((notification) => !notification.read_at) && <CheckCheck size={15} className="text-neutral-400" />}
+              <div className="flex items-center gap-2">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-400">Tus avisos</h3>
+                {unreadCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-[#D41F2D] text-white text-[9px] font-black leading-none">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => markAll.mutate()}
+                  disabled={markAll.isPending}
+                  className="flex items-center gap-1.5 text-[10px] font-black text-[#D41F2D] hover:text-[#b11a25] transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <CheckCheck size={14} />
+                  <span>Marcar leídas</span>
+                </button>
+              )}
             </div>
 
-            {SECTION_CONFIG.map(({ category, label, path, icon: Icon }) => {
-              const items = personal.filter((notification) => notification.category === category)
-              const unread = items.filter((notification) => !notification.read_at).length
-              return (
-                <div key={category} className="overflow-hidden rounded-[18px] border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
-                  <button type="button" onClick={() => openSection(path, category)} className="flex w-full items-center gap-3 px-3.5 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                    <div className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"><Icon size={17} /></div>
-                    <span className="flex-1 text-sm font-extrabold text-neutral-800 dark:text-neutral-100">{label}</span>
-                    {unread > 0 && <span className="min-w-5 rounded-full bg-[#D41F2D] px-1.5 py-0.5 text-center text-[10px] font-black text-white">{unread}</span>}
-                    <ChevronRight size={15} className="text-neutral-300" />
-                  </button>
-                  {items.length > 0 && (
-                    <div className="border-t border-neutral-100 p-1.5 dark:border-neutral-800">
-                      {items.slice(0, 3).map((notification) => <NotificationRow key={notification.id} notification={notification} onOpen={openNotification} />)}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </section>
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1.5 pt-0.5 px-0.5 pr-8">
+              {CATEGORY_TABS.map(({ category, label, icon: Icon }) => {
+                const isActive = activeFilter === category
+                const categoryUnread = category === 'all'
+                  ? unreadCount
+                  : personal.filter((n) => n.category === category && !n.read_at).length
 
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setActiveFilter(category)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm'
+                        : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400'
+                    }`}
+                  >
+                    <Icon size={12} />
+                    <span>{label}</span>
+                    {categoryUnread > 0 && (
+                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#D41F2D]' : 'bg-[#D41F2D]'}`} />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Notifications List */}
+            {filteredPersonal.length > 0 ? (
+              <div className="space-y-2">
+                {filteredPersonal.map((notification) => (
+                  <NotificationRow
+                    key={notification.id}
+                    notification={notification}
+                    onOpen={openNotification}
+                    onToggleRead={(id, readAt) => toggleRead.mutate({ id, readAt })}
+                    onDelete={(id) => deleteSingle.mutate(id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center bg-neutral-50/50 dark:bg-neutral-800/20 rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800">
+                <CheckCircle2 size={24} className="mx-auto text-neutral-300 dark:text-neutral-600 mb-2" />
+                <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">Sin notificaciones en esta categoría</p>
+              </div>
+            )}
+          </div>
+
+          {/* Admin Moderation Section */}
           {role === 'admin' && (
             <section className="space-y-3 border-t border-neutral-200 pt-5 dark:border-neutral-800">
               <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-[#D41F2D]">Administración</h3>
               <div className="overflow-hidden rounded-[18px] border border-red-200 bg-red-50/40 dark:border-red-900/50 dark:bg-red-950/10">
-                <button type="button" onClick={() => openSection('/moderacion', 'moderation')} className="flex w-full items-center gap-3 px-3.5 py-3 text-left hover:bg-red-50 dark:hover:bg-red-950/20">
+                <button type="button" onClick={() => openSection('/moderacion', 'moderation')} className="flex w-full items-center gap-3 px-3.5 py-3 text-left hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer">
                   <div className="grid h-9 w-9 place-items-center rounded-xl bg-red-100 text-[#D41F2D] dark:bg-red-950/50"><ShieldAlert size={18} /></div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-extrabold text-neutral-800 dark:text-neutral-100">Cola de moderación</p>
-                    <p className="text-[10px] text-neutral-400">Reportes separados de tus avisos personales</p>
+                    <p className="text-[10px] text-neutral-400 font-medium">Reportes separados de tus avisos personales</p>
                   </div>
                   {adminNotifications.filter((notification) => !notification.read_at).length > 0 && (
                     <span className="min-w-5 rounded-full bg-[#D41F2D] px-1.5 py-0.5 text-center text-[10px] font-black text-white">
@@ -171,8 +276,16 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
                   <ChevronRight size={15} className="text-neutral-300" />
                 </button>
                 {adminNotifications.length > 0 && (
-                  <div className="border-t border-red-100 p-1.5 dark:border-red-950">
-                    {adminNotifications.slice(0, 3).map((notification) => <NotificationRow key={notification.id} notification={notification} onOpen={openNotification} />)}
+                  <div className="border-t border-red-100 p-2 space-y-2 dark:border-red-950">
+                    {adminNotifications.slice(0, 3).map((notification) => (
+                      <NotificationRow
+                        key={notification.id}
+                        notification={notification}
+                        onOpen={openNotification}
+                        onToggleRead={(id, readAt) => toggleRead.mutate({ id, readAt })}
+                        onDelete={(id) => deleteSingle.mutate(id)}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
@@ -183,3 +296,4 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
     </div>
   )
 }
+

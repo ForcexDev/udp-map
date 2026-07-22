@@ -7,6 +7,8 @@ interface DraftLocation {
   lng: number
 }
 
+export type DraftPinType = 'report' | 'place' | 'event' | null
+
 interface UIState {
   theme: Theme
   setTheme: (theme: Theme) => void
@@ -29,7 +31,8 @@ interface UIState {
 
   /** Modo "toca el mapa para fijar ubicación" antes de abrir el formulario */
   pickingLocation: boolean
-  startPickingLocation: () => void
+  draftPinType: DraftPinType
+  startPickingLocation: (type?: DraftPinType) => void
   cancelPickingLocation: () => void
   draftLocation: DraftLocation | null
   setDraftLocation: (loc: DraftLocation) => void
@@ -116,12 +119,13 @@ export const useUIStore = create<UIState>((set) => {
     createModalOpen: false,
     pinToEdit: null,
     openCreateModal: (pinId) => set({ createModalOpen: true, pinToEdit: pinId ?? null }),
-    closeCreateModal: () => set({ createModalOpen: false, pinToEdit: null }),
+    closeCreateModal: () => set({ createModalOpen: false, pinToEdit: null, draftPinType: null }),
 
     pickingLocation: false,
-    startPickingLocation: () =>
-      set({ pickingLocation: true, selectedPinId: null, createModalOpen: false }),
-    cancelPickingLocation: () => set({ pickingLocation: false }),
+    draftPinType: null,
+    startPickingLocation: (type) =>
+      set({ pickingLocation: true, draftPinType: type ?? null, selectedPinId: null, createModalOpen: false }),
+    cancelPickingLocation: () => set({ pickingLocation: false, draftPinType: null }),
     draftLocation: null,
     setDraftLocation: (loc) =>
       set({ draftLocation: loc, pickingLocation: false, createModalOpen: true }),

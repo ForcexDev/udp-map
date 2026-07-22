@@ -5,6 +5,7 @@ import { useAuthStore } from './authStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { Dialog } from '@/shared/ui/Dialog'
 import { Button } from '@/shared/ui/Button'
+import { CustomSelect } from '@/shared/ui/CustomSelect'
 import { FACULTIES, CAREERS } from '@/shared/data/campusData'
 
 export function ProfileSetupModal() {
@@ -63,6 +64,7 @@ export function ProfileSetupModal() {
       hideClose={true} // Bloquear cerrado accidental (obligatorio)
       title={t('auth.setupProfile', 'Configura tu Perfil')}
       description={t('auth.setupProfileDesc', 'Cuéntanos de qué facultad eres para personalizar tu experiencia.')}
+      contentClassName="!bg-white dark:!bg-neutral-900 sm:max-w-md shadow-2xl rounded-2xl"
     >
       <div className="flex flex-col gap-5 py-2">
         
@@ -72,21 +74,19 @@ export function ProfileSetupModal() {
             <MapPin size={16} className="text-[#D41F2D]" />
             {t('auth.faculty', 'Facultad')}
           </label>
-          <select
+          <CustomSelect
+            options={academicFaculties.map((f) => ({
+              value: f.id,
+              label: i18n.language === 'en' ? f.name_en : f.name,
+            }))}
             value={facultyId}
-            onChange={(e) => {
-              setFacultyId(e.target.value)
-              setCareer('') // Reset career on faculty change
+            onChange={(val) => {
+              setFacultyId(val)
+              setCareer('')
             }}
-            className="w-full p-3 rounded-[14px] bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-sm font-medium focus:outline-none focus:border-[#D41F2D] transition-colors"
-          >
-            <option value="" disabled>{t('auth.selectFaculty', 'Selecciona tu facultad')}</option>
-            {academicFaculties.map(f => (
-              <option key={f.id} value={f.id}>
-                {i18n.language === 'en' ? f.name_en : f.name}
-              </option>
-            ))}
-          </select>
+            placeholder={t('auth.selectFaculty', 'Selecciona tu facultad')}
+            className="w-full"
+          />
         </div>
 
         {/* Carrera */}
@@ -95,35 +95,31 @@ export function ProfileSetupModal() {
             <GraduationCap size={16} className="text-[#D41F2D]" />
             {t('auth.career', 'Carrera')}
           </label>
-          <select
+          <CustomSelect
+            options={availableCareers.map((c) => ({
+              value: c.name,
+              label: i18n.language === 'en' ? c.name_en : c.name,
+            }))}
             value={career}
-            onChange={(e) => setCareer(e.target.value)}
-            disabled={!facultyId || availableCareers.length === 0}
-            className="w-full p-3 rounded-[14px] bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-sm font-medium focus:outline-none focus:border-[#D41F2D] transition-colors disabled:opacity-50"
-          >
-            <option value="" disabled>
-              {!facultyId 
+            onChange={(val) => setCareer(val)}
+            placeholder={
+              !facultyId 
                 ? t('auth.careerRequiresFaculty', 'Primero selecciona una facultad')
                 : availableCareers.length === 0 
                   ? t('auth.noCareers', 'No hay carreras registradas')
                   : t('auth.selectCareer', 'Selecciona tu carrera')
-              }
-            </option>
-            {availableCareers.map(c => (
-              <option key={c.name} value={c.name}>
-                {i18n.language === 'en' ? c.name_en : c.name}
-              </option>
-            ))}
-          </select>
+            }
+            className="w-full"
+          />
         </div>
 
       </div>
 
-      <div className="mt-6 flex flex-col gap-2">
+      <div className="mt-6 flex flex-col gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800">
         <Button 
           onClick={handleSave} 
           disabled={!facultyId || (!career && availableCareers.length > 0) || loading}
-          className="w-full"
+          className="w-full bg-[#D41F2D] hover:bg-[#b11a25] text-white rounded-full py-2.5 font-bold uppercase tracking-wider text-xs"
         >
           {loading ? t('common.saving', 'Guardando...') : t('common.save', 'Guardar y Continuar')}
         </Button>

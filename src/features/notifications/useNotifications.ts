@@ -2,8 +2,8 @@ import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/features/auth/authStore'
 import { supabase } from '@/shared/lib/supabase'
-import type { NotificationCategory } from '@/shared/types/database'
-import { fetchNotifications, markCategoryRead, markNotificationRead } from './api'
+import type { AppNotification, NotificationCategory } from '@/shared/types/database'
+import { fetchNotifications, markCategoryRead, markNotificationRead, markAllNotificationsRead, toggleNotificationRead, deleteNotification } from './api'
 
 export function useNotifications() {
   const userId = useAuthStore((state) => state.user?.id)
@@ -16,7 +16,7 @@ export function useNotifications() {
   })
 }
 
-export function useNotificationRealtime() {
+export function useNotificationRealtime(onNewNotification?: (notification: AppNotification) => void) {
   const userId = useAuthStore((state) => state.user?.id)
   const queryClient = useQueryClient()
   useEffect(() => {
@@ -27,17 +27,47 @@ export function useNotificationRealtime() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        () => void queryClient.invalidateQueries({ queryKey: ['notifications', userId] }),
+        (payload) => {
+          void queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
+          if (payload.eventType === 'INSERT' && payload.new && onNewNotification) {
+            onNewNotification(payload.new as AppNotification)
+          }
+        },
       )
       .subscribe()
     return () => { void client.removeChannel(channel) }
-  }, [queryClient, userId])
+  }, [queryClient, userId, onNewNotification])
 }
 
 export function useMarkNotificationRead() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: markNotificationRead,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+}
+
+export function useToggleNotificationRead() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, readAt }: { id: string; readAt: string | null }) => toggleNotificationRead(id, readAt),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+}
+
+export function useMarkAllNotificationsRead() {
+  const userId = useAuthStore((state) => state.user?.id)
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => userId ? markAllNotificationsRead(userId) : Promise.resolve(),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+}
+
+export function useDeleteNotification() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteNotification,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   })
 }

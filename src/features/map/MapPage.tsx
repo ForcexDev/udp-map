@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown } from 'lucide-react'
+import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown, Bell } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
+import { useNotifications } from '@/features/notifications/useNotifications'
 import { useGuard } from '@/features/auth/useGuard'
 import { AnimatePresence } from 'framer-motion'
 import { usePins } from '@/features/pins/usePins'
@@ -197,6 +198,9 @@ export function MapPage() {
   const viewMode = useUIStore((s) => s.viewMode)
   const setViewMode = useUIStore((s) => s.setViewMode)
   const openSidebar = useSidebarStore((s) => s.open)
+  const openNotifications = useSidebarStore((s) => s.openNotifications)
+  const { data: notifications = [] } = useNotifications()
+  const unreadNotificationsCount = notifications.filter((n) => !n.read_at).length
   const queryClient = useQueryClient()
 
   const handleSelectCampus = (id: string) => {
@@ -431,10 +435,10 @@ export function MapPage() {
       {/* ── TOP HUD ─────────────────────────────────────── */}
       {!pickingLocation && !movingPinId && (
         <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none px-3 pb-3 pt-safe-hud sm:px-5 sm:pb-5 flex flex-col gap-2">
-          {/* Top Bar: Search + Sidebar */}
-          <div className="flex items-center justify-between gap-2.5 w-full pointer-events-auto" ref={searchRef}>
-            {/* Search Input */}
-            <div className="flex-1 w-full relative md:max-w-md z-40">
+          {/* Top Bar: Search (Left) + Bell & Sidebar (Right) */}
+          <div className="flex items-start justify-between gap-2.5 w-full pointer-events-auto">
+            {/* Search Input on Left */}
+            <div className="flex-1 max-w-xs sm:max-w-md relative z-40" ref={searchRef}>
               <div className="glass-hud h-10 rounded-full premium-shadow flex items-center gap-2 px-3.5 w-full">
                 <Search size={18} className="text-neutral-400 flex-shrink-0" strokeWidth={2} />
                 <input
@@ -451,13 +455,13 @@ export function MapPage() {
                   onBlur={() => {
                     window.scrollTo(0, 0)
                   }}
-                  placeholder={t('map.searchFaculty', 'Buscar facultad en {{campus}}...', { campus: CAMPUSES.find((c) => c.id === campusId)?.name ?? '' })}
-                  className="flex-1 bg-transparent text-sm font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none"
+                  placeholder={t('map.searchFaculty', 'Buscar facultad...')}
+                  className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none truncate"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => { setSearchQuery(''); setSearchOpen(false) }}
-                    className="text-neutral-400 hover:text-neutral-600 transition-colors"
+                    className="text-neutral-400 hover:text-neutral-600 transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -475,13 +479,13 @@ export function MapPage() {
                           <button
                             key={f.id}
                             onClick={() => handleSelectFaculty(f)}
-                            className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 active:scale-[0.98]"
+                            className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 active:scale-[0.98] cursor-pointer"
                           >
                             <div className="w-8 h-8 rounded-xl bg-[#D41F2D]/10 flex items-center justify-center flex-shrink-0">
                               <MapPin size={14} className="text-[#D41F2D]" strokeWidth={2.5} />
                             </div>
                             <div className="flex flex-col min-w-0">
-                              <span className="text-[12px] font-bold text-neutral-800 dark:text-neutral-200 leading-tight truncate">
+                              <span className="text-[12px] font-extrabold text-neutral-800 dark:text-neutral-200 leading-snug">
                                 {i18n.language === 'en' ? f.name_en : f.name}
                               </span>
                               <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
@@ -501,14 +505,33 @@ export function MapPage() {
               )}
             </div>
 
-            {/* Sidebar Button */}
-            <button
-              onClick={openSidebar}
-              className="w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-transform active:scale-90 flex-shrink-0"
-              aria-label={t('sidebar.settings')}
-            >
-              <Menu size={18} className="text-neutral-700 dark:text-neutral-300" strokeWidth={2.5} />
-            </button>
+            {/* Top Right Actions: Bell + Menu (aligned with Sidebar right edge!) */}
+            <div className="flex items-center gap-2 flex-shrink-0 z-40">
+              {/* Notification Bell Button */}
+              <button
+                type="button"
+                onClick={openNotifications}
+                className="relative w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-transform active:scale-90 flex-shrink-0 cursor-pointer"
+                aria-label={t('sidebar.notifications', 'Notificaciones')}
+              >
+                <Bell size={18} className="text-neutral-700 dark:text-neutral-300" strokeWidth={2.2} />
+                {unreadNotificationsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[#D41F2D] border-2 border-white dark:border-neutral-900 text-white text-[9px] font-black leading-none flex items-center justify-center px-1 shadow-sm">
+                    {unreadNotificationsCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Sidebar Button */}
+              <button
+                type="button"
+                onClick={openSidebar}
+                className="w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-transform active:scale-90 flex-shrink-0 cursor-pointer"
+                aria-label={t('sidebar.settings')}
+              >
+                <Menu size={18} className="text-neutral-700 dark:text-neutral-300" strokeWidth={2.5} />
+              </button>
+            </div>
           </div>
           
           <div className="pointer-events-auto self-start mt-1">

@@ -1,13 +1,12 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Bell, CalendarDays, Map, MessagesSquare, UserRound } from 'lucide-react'
+import { CalendarDays, Map, MessagesSquare, UserRound } from 'lucide-react'
 import { Sidebar } from '@/shared/ui/Sidebar'
 import { LoginModal } from '@/features/auth/LoginModal'
 import { Toast } from '@/shared/ui/Toast'
 import { NotificationUrlHandler } from '@/features/notifications/NotificationUrlHandler'
-import { useSidebarStore } from '@/shared/stores/sidebarStore'
-import { useNotificationRealtime, useNotifications } from '@/features/notifications/useNotifications'
+import { NotificationBanner } from '@/features/notifications/NotificationBanner'
 
 const NAV_ITEMS = [
   { to: '/mapa', key: 'nav.map', Icon: Map },
@@ -18,10 +17,6 @@ const NAV_ITEMS = [
 
 export function Layout() {
   const { t } = useTranslation()
-  const openNotifications = useSidebarStore((state) => state.openNotifications)
-  const { data: notifications = [] } = useNotifications()
-  useNotificationRealtime()
-  const unread = notifications.filter((notification) => !notification.read_at).length
 
   // Lock window scroll to (0,0) globally to prevent Android WebView/PWA displacement
   useEffect(() => {
@@ -36,6 +31,8 @@ export function Layout() {
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden">
+      <NotificationBanner />
+
       {/* Main content — full height */}
       <main className="relative min-h-0 flex-1 overflow-hidden">
         <Outlet />
@@ -58,13 +55,6 @@ export function Layout() {
             {t(key)}
           </NavLink>
         ))}
-        <button type="button" onClick={openNotifications} className="bottom-nav-link relative">
-          <span className="relative">
-            <Bell size={20} aria-hidden />
-            {unread > 0 && <span className="absolute -right-2 -top-2 min-w-4 rounded-full bg-[#D41F2D] px-1 text-center text-[9px] font-black leading-4 text-white">{unread}</span>}
-          </span>
-          {t('sidebar.notifications', 'Notificaciones')}
-        </button>
       </nav>
 
       <Sidebar />

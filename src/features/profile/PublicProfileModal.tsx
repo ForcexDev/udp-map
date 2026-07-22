@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MapPin, ShieldAlert } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
+import { CustomSelect } from '@/shared/ui/CustomSelect'
 import { useAuthStore } from '@/features/auth/authStore'
 import { FACULTIES, categoryById } from '@/shared/data/campusData'
 import { relativeTime } from '@/shared/utils/datetime'
@@ -155,16 +156,21 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
                     <ShieldAlert size={16} className="text-[#D41F2D]" />
                     Gestión de Rol
                   </div>
-                  <select
+                  <CustomSelect
+                    options={[
+                      { value: 'student', label: 'Estudiante' },
+                      { value: 'moderator', label: 'Moderador' },
+                      { value: 'admin', label: 'Admin' },
+                    ]}
                     value={profile.role}
-                    onChange={handleRoleChange}
-                    disabled={updatingRole}
-                    className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-sm font-semibold rounded-lg px-2 py-1 outline-none disabled:opacity-50"
-                  >
-                    <option value="student">Estudiante</option>
-                    <option value="moderator">Moderador</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                    onChange={(val) => {
+                      if (!updatingRole) {
+                        const syntheticEvent = { target: { value: val } } as React.ChangeEvent<HTMLSelectElement>
+                        handleRoleChange(syntheticEvent)
+                      }
+                    }}
+                    className="min-w-[130px]"
+                  />
                 </div>
               )}
 

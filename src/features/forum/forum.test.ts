@@ -46,14 +46,10 @@ describe('buildCommentTree (árbol de respuestas anidadas del foro)', () => {
     expect(tree[0].id).toBe('c-1')
     expect(tree[1].id).toBe('c-4')
 
-    // El primer comentario raíz debe tener una respuesta
-    expect(tree[0].replies).toHaveLength(1)
+    // El primer comentario raíz debe contener todas las respuestas asociadas (Nivel 1 plano)
+    expect(tree[0].replies).toHaveLength(2)
     expect(tree[0].replies[0].id).toBe('c-2')
-
-    // Esa respuesta a su vez debe tener su propia respuesta
-    expect(tree[0].replies[0].replies).toHaveLength(1)
-    expect(tree[0].replies[0].replies[0].id).toBe('c-3')
-    expect(tree[0].replies[0].replies[0].replies).toHaveLength(0)
+    expect(tree[0].replies[1].id).toBe('c-3')
     expect(countNestedReplies(tree[0])).toBe(2)
 
     // El segundo comentario raíz no debe tener respuestas

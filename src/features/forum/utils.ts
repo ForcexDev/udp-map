@@ -20,24 +20,44 @@ export function buildReplyContent(text: string, authorName?: string | null): str
 }
 
 export function buildCommentTree(comments: ForumComment[]): CommentNode[] {
-  const map = new Map<string, CommentNode>()
   const roots: CommentNode[] = []
+  const rootMap = new Map<string, CommentNode>()
+  const parentMap = new Map<string, ForumComment>()
 
   comments.forEach((c) => {
-    map.set(c.id, { ...c, replies: [] })
+    parentMap.set(c.id, c)
   })
 
+  // Primer paso: identificar nodos raíz (comentarios sin parent_comment_id)
   comments.forEach((c) => {
-    const node = map.get(c.id)!
+    if (!c.parent_comment_id) {
+      const rootNode: CommentNode = { ...c, replies: [] }
+      roots.push(rootNode)
+      rootMap.set(c.id, rootNode)
+    }
+  })
+
+  // Función para encontrar el ID del comentario raíz original
+  const findRootId = (commentId: string): string | null => {
+    let current = parentMap.get(commentId)
+    while (current && current.parent_comment_id) {
+      current = parentMap.get(current.parent_comment_id)
+    }
+    return current ? current.id : null
+  }
+
+  // Segundo paso: asociar todas las respuestas directamente a su comentario raíz (Nivel 1 Plano)
+  comments.forEach((c) => {
     if (c.parent_comment_id) {
-      const parent = map.get(c.parent_comment_id)
-      if (parent) {
-        parent.replies.push(node)
+      const rootId = findRootId(c.id)
+      if (rootId && rootMap.has(rootId)) {
+        rootMap.get(rootId)!.replies.push({ ...c, replies: [] })
       } else {
-        roots.push(node)
+        // En caso de que no se encuentre la raíz, tratarlo como raíz
+        const rootNode: CommentNode = { ...c, replies: [] }
+        roots.push(rootNode)
+        rootMap.set(c.id, rootNode)
       }
-    } else {
-      roots.push(node)
     }
   })
 

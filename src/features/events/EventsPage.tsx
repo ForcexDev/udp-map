@@ -36,8 +36,8 @@ export function EventsPage() {
 
   const handleCreateEvent = () => {
     if (!guard('pin.create.event')) return
-    // Start the map selection workflow
-    startPickingLocation()
+    // Start the map selection workflow in Event mode
+    startPickingLocation('event')
     navigate('/mapa')
   }
 

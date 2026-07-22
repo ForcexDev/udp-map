@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/shared/lib/supabase'
 import { useAuthStore } from '@/features/auth/authStore'
 import type { ForumThread } from '@/shared/types/database'
 import {
@@ -17,10 +19,31 @@ import {
 } from './api'
 
 export function useThreads(facultyId: string | null, sortBy: 'recent' | 'top') {
-  return useQuery({
+  const queryClient = useQueryClient()
+  const query = useQuery({
     queryKey: ['forum-threads', facultyId, sortBy],
     queryFn: () => fetchThreads(facultyId, sortBy),
   })
+
+  useEffect(() => {
+    if (!supabase) return
+    const channel = supabase
+      .channel(`forum-threads-${Math.random()}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'forum_threads' },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      void supabase?.removeChannel(channel)
+    }
+  }, [facultyId, sortBy, queryClient])
+
+  return query
 }
 
 export function useThread(threadId: string) {
@@ -64,11 +87,34 @@ export function useTogglePinThread() {
 }
 
 export function useComments(threadId: string) {
-  return useQuery({
+  const queryClient = useQueryClient()
+  const query = useQuery({
     queryKey: ['forum-comments', threadId],
     queryFn: () => fetchComments(threadId),
     enabled: Boolean(threadId),
   })
+
+  useEffect(() => {
+    if (!supabase || !threadId) return
+    const channel = supabase
+      .channel(`forum-comments-${threadId}-${Math.random()}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'forum_comments', filter: `thread_id=eq.${threadId}` },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ['forum-comments', threadId] })
+          void queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+          void queryClient.invalidateQueries({ queryKey: ['forum-thread', threadId] })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      void supabase?.removeChannel(channel)
+    }
+  }, [threadId, queryClient])
+
+  return query
 }
 
 export function useCreateComment() {
