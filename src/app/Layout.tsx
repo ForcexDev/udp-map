@@ -7,6 +7,7 @@ import { LoginModal } from '@/features/auth/LoginModal'
 import { Toast } from '@/shared/ui/Toast'
 import { NotificationUrlHandler } from '@/features/notifications/NotificationUrlHandler'
 import { NotificationBanner } from '@/features/notifications/NotificationBanner'
+import { AboutModal } from '@/features/about/AboutModal'
 
 const NAV_ITEMS = [
   { to: '/mapa', key: 'nav.map', Icon: Map },
@@ -60,6 +61,7 @@ export function Layout() {
       <Sidebar />
       <NotificationUrlHandler />
       <LoginModal />
+      <AboutModal />
       <Toast />
     </div>
   )

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   X, LogOut, Search,
-  Globe, HelpCircle, MapPinOff, MapPin, Bell, Settings
+  Globe, HelpCircle, MapPinOff, MapPin, Bell, Settings, Info
 } from 'lucide-react'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -23,6 +23,7 @@ export function Sidebar() {
   const setCampusId = useUIStore((s) => s.setCampusId)
   const openLoginModal = useUIStore((s) => s.openLoginModal)
   const openTutorial = useUIStore((s) => s.openTutorial)
+  const openAbout = useUIStore((s) => s.openAbout)
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const signOut = useAuthStore((s) => s.signOut)
@@ -258,6 +259,18 @@ export function Sidebar() {
                   <HelpCircle size={18} />
                   <span className="text-sm">
                     {t('sidebar.showTutorial', 'Ver tutorial')}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    openAbout()
+                    close()
+                  }}
+                  className="w-full p-4 rounded-[18px] bg-neutral-50/50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-700 flex items-center gap-3 font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 active:scale-[0.98] transition-all"
+                >
+                  <Info size={18} />
+                  <span className="text-sm">
+                    {t('sidebar.aboutUs', 'Sobre nosotros')}
                   </span>
                 </button>
               </section>

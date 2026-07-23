@@ -101,6 +101,7 @@ const es = {
       themeLight: 'Claro',
       themeDark: 'Oscuro',
       themeSystem: 'Sistema',
+      aboutUs: 'Sobre nosotros',
     },
     map: { campus: 'Campus' },
     events: {
@@ -129,6 +130,19 @@ const es = {
       official: 'Oficial',
       officialToggle: 'Publicar como Oficial',
       officialDescription: 'El autor se mostrará como {{entity}}.',
+    },
+    tutorial: {
+      title: 'Bienvenido a UDP Map',
+      subtitle: 'Descubre todo lo que puedes hacer en el mapa de tu universidad.',
+      installTitle: 'Instala UDP Map para disfrutarla al máximo',
+      installBody: 'Agrega UDP Map a tu pantalla de inicio o usa la opción “Instalar” del navegador para tener acceso rápido y una experiencia completa.',
+      browserBody: 'Recomendamos usar Google Chrome o Safari para una mejor experiencia.',
+      start: '¡Entendido, a explorar!',
+    },
+    about: {
+      title: 'Sobre nosotros',
+      description: 'Conoce al equipo detrás de UDP Map.',
+      body: 'UDP Map es una iniciativa creada para ayudar a la comunidad UDP a explorar sus campus, compartir información y mantenerse conectada.',
     },
     profile: {
       title: 'Perfil',
@@ -290,6 +304,7 @@ const en = {
       themeLight: 'Light',
       themeDark: 'Dark',
       themeSystem: 'System',
+      aboutUs: 'About us',
     },
     map: { campus: 'Campus' },
     events: {
@@ -318,6 +333,19 @@ const en = {
       official: 'Official',
       officialToggle: 'Publish as Official',
       officialDescription: 'The author will be shown as {{entity}}.',
+    },
+    tutorial: {
+      title: 'Welcome to UDP Map',
+      subtitle: 'Discover everything you can do on your university map.',
+      installTitle: 'Install UDP Map for the full experience',
+      installBody: 'Add UDP Map to your home screen or use your browser’s “Install” option for quick access and the full experience.',
+      browserBody: 'We recommend using Google Chrome or Safari for the best experience.',
+      start: 'Got it, let’s explore!',
+    },
+    about: {
+      title: 'About us',
+      description: 'Meet the team behind UDP Map.',
+      body: 'UDP Map is an initiative created to help the UDP community explore its campuses, share information and stay connected.',
     },
     profile: {
       title: 'Profile',
