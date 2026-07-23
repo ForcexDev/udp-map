@@ -24,7 +24,6 @@
   --udp-red-dark: #b11a25;
   --udp-red-glow: rgba(212, 31, 45, 0.35);
   --sidebar-width: 380px;
-  --app-height: 100dvh;
 }
 
 html,
@@ -33,8 +32,8 @@ body,
   position: fixed;
   inset: 0;
   width: 100%;
-  height: var(--app-height);
-  min-height: var(--app-height);
+  height: 100%;
+  min-height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: manipulation;
@@ -408,19 +407,21 @@ body {
 
 .sidebar-panel {
   animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-  height: var(--app-height);
-  max-height: var(--app-height);
+  height: 100%;
+  max-height: 100%;
   min-height: 0;
 }
 
 .sidebar-root {
-  height: var(--app-height);
-  min-height: var(--app-height);
+  height: 100%;
+  min-height: 100%;
 }
 
 .app-shell {
-  height: var(--app-height);
-  min-height: var(--app-height);
+  height: 100%;
+  min-height: 100%;
+  max-height: 100%;
+  overscroll-behavior: none;
 }
 
 .sidebar-header {
@@ -431,35 +432,22 @@ body {
   padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
 }
 
-.bottom-nav {
-  flex-shrink: 0;
-  min-height: 56px;
+.app-shell main,
+.sidebar-content,
+.overflow-y-auto,
+.overflow-auto {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Installed iOS PWAs can miscalculate explicit viewport heights. Let fixed
-   inset edges define the real WebKit viewport instead: the bar reaches the
-   screen edge, while its controls remain above the home indicator. */
-@supports (-webkit-touch-callout: none) {
-  @media (display-mode: standalone) {
-    html,
-    body,
-    #root,
-    .app-shell,
-    .sidebar-root {
-      height: auto;
-      min-height: 0;
-    }
-
-    .sidebar-panel {
-      height: 100%;
-      max-height: 100%;
-    }
-
-    .bottom-nav {
-      padding-top: 0;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-    }
-  }
+.bottom-nav {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  min-height: 56px;
+  margin-bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* ── Scrollbar Utilities ────────────────────────────────── */
