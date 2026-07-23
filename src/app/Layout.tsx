@@ -42,7 +42,7 @@ export function Layout() {
       {/* Bottom Navigation — unified fixed bar on all pages */}
       <nav
         aria-label="Principal"
-        className="bottom-nav z-30 flex border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 pb-safe"
+        className="bottom-nav z-30 flex border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
       >
         {NAV_ITEMS.map(({ to, key, Icon }) => (
           <NavLink

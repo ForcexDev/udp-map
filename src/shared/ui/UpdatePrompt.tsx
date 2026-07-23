@@ -43,6 +43,7 @@ function configureUpdateChecks(registration: ServiceWorkerRegistration) {
 export function UpdatePrompt() {
   const [improvements, setImprovements] = useState(fallbackImprovements)
   const [updateInfoReady, setUpdateInfoReady] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
@@ -93,6 +94,43 @@ export function UpdatePrompt() {
     return () => controller.abort()
   }, [needRefresh])
 
+  const handleUpdate = async () => {
+    if (isUpdating) return
+    setIsUpdating(true)
+
+    try {
+      if (!('serviceWorker' in navigator)) {
+        await updateServiceWorker(true)
+        return
+      }
+
+      const registration = await navigator.serviceWorker.getRegistration()
+      const waitingWorker = registration?.waiting
+
+      if (waitingWorker) {
+        let reloaded = false
+        const reloadOnce = () => {
+          if (reloaded) return
+          reloaded = true
+          navigator.serviceWorker.removeEventListener('controllerchange', reloadOnce)
+          window.location.reload()
+        }
+
+        navigator.serviceWorker.addEventListener('controllerchange', reloadOnce)
+        waitingWorker.postMessage({ type: 'SKIP_WAITING' })
+
+        // iOS can fail to emit controllerchange while the PWA is foregrounded.
+        window.setTimeout(reloadOnce, 2500)
+        return
+      }
+
+      await updateServiceWorker(true)
+    } catch (error) {
+      console.error('No se pudo aplicar la actualizaciÃ³n.', error)
+      setIsUpdating(false)
+    }
+  }
+
   if ((!needRefresh && !isDevTesting) || (needRefresh && !updateInfoReady)) return null
 
   return (
@@ -131,18 +169,21 @@ export function UpdatePrompt() {
         </div>
 
         <button
+          type="button"
           onClick={() => {
             if (isDevTesting) {
               const url = new URL(window.location.href)
               url.searchParams.delete('test-pwa')
               window.location.href = url.toString()
             } else {
-              updateServiceWorker(true)
+              void handleUpdate()
             }
           }}
-          className="flex-shrink-0 w-full py-3 px-4 bg-[#D41F2D] hover:bg-[#b01a25] text-white rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm"
+          disabled={isUpdating}
+          aria-busy={isUpdating}
+          className="flex-shrink-0 w-full py-3 px-4 bg-[#D41F2D] hover:bg-[#b01a25] text-white rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm disabled:cursor-wait disabled:opacity-70"
         >
-          Actualizar ahora
+          {isUpdating ? 'Actualizando…' : 'Actualizar ahora'}
         </button>
       </div>
     </div>

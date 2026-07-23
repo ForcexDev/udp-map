@@ -441,6 +441,14 @@ body {
   :root {
     --app-height: calc(100dvh + env(safe-area-inset-bottom, 0px));
   }
+
+  .bottom-nav {
+    /* iOS puts the home-indicator inset above the links by default when it is
+       used as bottom padding. Move that same space to the top so the links
+       reach the physical bottom of the screen. */
+    padding-top: env(safe-area-inset-bottom, 0px);
+    padding-bottom: 0;
+  }
 }
 
 /* ── Scrollbar Utilities ────────────────────────────────── */
