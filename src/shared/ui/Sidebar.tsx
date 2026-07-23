@@ -63,7 +63,7 @@ export function Sidebar() {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[2000] flex justify-end">
+    <div className="sidebar-root fixed inset-0 z-[2000] flex justify-end">
       {/* Overlay */}
       <div
         className="sidebar-overlay absolute inset-0 bg-black/10 backdrop-blur-md"
@@ -73,7 +73,7 @@ export function Sidebar() {
       {/* Panel */}
       <div className="sidebar-panel relative w-full max-w-sm sm:max-w-md h-full bg-white dark:bg-neutral-900 flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.1)] border-l border-neutral-100 dark:border-neutral-800">
         {/* Header */}
-        <div className="p-6 pt-10 sm:p-8 sm:pt-12">
+        <div className="sidebar-header p-6 sm:p-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight mt-1">
@@ -139,7 +139,7 @@ export function Sidebar() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 no-scrollbar">
+        <div className="sidebar-content min-h-0 flex-1 overflow-y-auto px-6 sm:px-8 py-6 no-scrollbar">
           {tab === 'places' && (
             <div className="space-y-6 pb-12">
               <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em] mb-1">

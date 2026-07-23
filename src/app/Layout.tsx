@@ -31,7 +31,7 @@ export function Layout() {
   }, [])
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden">
       <NotificationBanner />
 
       {/* Main content — full height */}
@@ -42,7 +42,7 @@ export function Layout() {
       {/* Bottom Navigation — unified fixed bar on all pages */}
       <nav
         aria-label="Principal"
-        className="z-30 flex border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 pb-safe"
+        className="bottom-nav z-30 flex border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 pb-safe"
       >
         {NAV_ITEMS.map(({ to, key, Icon }) => (
           <NavLink
