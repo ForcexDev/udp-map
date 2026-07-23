@@ -6,6 +6,7 @@ import { CustomSelect } from '@/shared/ui/CustomSelect'
 import { useAuthStore } from '@/features/auth/authStore'
 import { FACULTIES, categoryById } from '@/shared/data/campusData'
 import { relativeTime } from '@/shared/utils/datetime'
+import { AdminBadge } from './AdminBadge'
 
 function memberSince(dateStr: string | null | undefined, lang: string): string {
   if (!dateStr) return '—'
@@ -148,6 +149,20 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
                   </div>
                 </div>
               </div>
+
+              {profile.role === 'admin' && (
+                <div className="mb-5 flex items-center gap-3 rounded-2xl border border-[#D41F2D]/20 bg-gradient-to-r from-red-50/90 via-amber-50/60 to-white p-3.5 dark:border-red-400/25 dark:from-red-950/40 dark:via-amber-950/20 dark:to-neutral-900">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#D41F2D] text-white shadow-md shadow-red-900/15">
+                    <span className="text-lg">★</span>
+                  </div>
+                  <div className="min-w-0">
+                    <AdminBadge />
+                    <p className="mt-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">
+                      {t('profile.adminDescription', 'Cuenta oficial de administración de UDP Map')}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Controles de admin */}
               {isAdmin && (
