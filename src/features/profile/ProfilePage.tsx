@@ -14,7 +14,6 @@ import { EditProfileModal } from './EditProfileModal'
 import { PublicProfileModal } from './PublicProfileModal'
 import { fetchPublicProfile, fetchUserBadges, fetchBadges, fetchLeaderboard } from './publicProfileApi'
 import { relativeTime } from '@/shared/utils/datetime'
-import { AdminBadge } from './AdminBadge'
 
 const AGO_KEY = { minute: 'agoMinutes', hour: 'agoHours', day: 'agoDays' } as const
 
@@ -191,12 +190,9 @@ export function ProfilePage() {
               <h2 className="text-[21px] font-bold leading-tight text-neutral-900 dark:text-white break-words">
                 {user.name}
               </h2>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <p className="font-mono text-[13px] text-neutral-500 dark:text-neutral-400 truncate">
-                  {handleFromEmail(user.email)}
-                </p>
-                {role === 'admin' && <AdminBadge />}
-              </div>
+              <p className="mt-1.5 font-mono text-[13px] text-neutral-500 dark:text-neutral-400 truncate">
+                {handleFromEmail(user.email)}
+              </p>
             </div>
           </div>
           <button

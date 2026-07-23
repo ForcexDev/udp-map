@@ -24,6 +24,7 @@
   --udp-red-dark: #b11a25;
   --udp-red-glow: rgba(212, 31, 45, 0.35);
   --sidebar-width: 380px;
+  --app-height: 100dvh;
 }
 
 html,
@@ -32,8 +33,8 @@ body,
   position: fixed;
   inset: 0;
   width: 100%;
-  height: 100dvh;
-  min-height: 100dvh;
+  height: var(--app-height);
+  min-height: var(--app-height);
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: manipulation;
@@ -407,14 +408,19 @@ body {
 
 .sidebar-panel {
   animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-  height: 100dvh;
-  max-height: 100dvh;
+  height: var(--app-height);
+  max-height: var(--app-height);
   min-height: 0;
 }
 
 .sidebar-root {
-  height: 100dvh;
-  min-height: 100dvh;
+  height: var(--app-height);
+  min-height: var(--app-height);
+}
+
+.app-shell {
+  height: var(--app-height);
+  min-height: var(--app-height);
 }
 
 .sidebar-header {
@@ -427,6 +433,14 @@ body {
 
 .bottom-nav {
   flex-shrink: 0;
+}
+
+/* Safari iOS reports the dynamic viewport without the bottom home-indicator
+   area. Include that inset in the app shell so the UI reaches the screen edge. */
+@supports (-webkit-touch-callout: none) {
+  :root {
+    --app-height: calc(100dvh + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* ── Scrollbar Utilities ────────────────────────────────── */

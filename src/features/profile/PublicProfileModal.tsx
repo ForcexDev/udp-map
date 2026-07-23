@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MapPin, ShieldAlert } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
-import { CustomSelect } from '@/shared/ui/CustomSelect'
-import { useAuthStore } from '@/features/auth/authStore'
 import { FACULTIES, categoryById } from '@/shared/data/campusData'
 import { relativeTime } from '@/shared/utils/datetime'
-import { AdminBadge } from './AdminBadge'
 
 function memberSince(dateStr: string | null | undefined, lang: string): string {
   if (!dateStr) return '—'
@@ -17,7 +14,7 @@ function memberSince(dateStr: string | null | undefined, lang: string): string {
   })
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
-import { fetchPublicProfile, fetchUserPins, updateUserRole, fetchUserBadges } from './publicProfileApi'
+import { fetchPublicProfile, fetchUserPins, fetchUserBadges } from './publicProfileApi'
 import type { Profile, Pin, Role, UserBadge } from '@/shared/types/database'
 
 interface PublicProfileModalProps {
@@ -34,14 +31,11 @@ const ROLE_COLORS: Record<Role, string> = {
 
 export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps) {
   const { t, i18n } = useTranslation()
-  const loggedInRole = useAuthStore((s) => s.role)
-  const isAdmin = loggedInRole === 'admin'
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [pins, setPins] = useState<Pin[]>([])
   const [badges, setBadges] = useState<UserBadge[]>([])
   const [loading, setLoading] = useState(false)
-  const [updatingRole, setUpdatingRole] = useState(false)
 
   useEffect(() => {
     if (!userId) {
@@ -70,21 +64,6 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
       isMounted = false
     }
   }, [userId])
-
-  const handleRoleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    if (!profile) return
-    const newRole = e.target.value as Role
-    if (confirm(`¿Estás seguro de que quieres cambiar el rol de este usuario a ${newRole}?`)) {
-      setUpdatingRole(true)
-      const success = await updateUserRole(profile.id, newRole)
-      if (success) {
-        setProfile({ ...profile, role: newRole })
-      } else {
-        alert('Error al actualizar el rol.')
-      }
-      setUpdatingRole(false)
-    }
-  }
 
   // Si no hay ID, no renderizamos nada
   if (!userId) return null
@@ -143,40 +122,12 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
                     <h2 className="text-[21px] font-bold leading-tight text-neutral-900 dark:text-white break-words">
                       {profile.name || 'Estudiante UDP'}
                     </h2>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      <p className="font-mono text-[13px] text-neutral-500 dark:text-neutral-400 truncate">
-                        {handleFromEmail(profile.email, profile.name)}
-                      </p>
-                      {profile.role === 'admin' && <AdminBadge />}
-                    </div>
+                    <p className="mt-1.5 font-mono text-[13px] text-neutral-500 dark:text-neutral-400 truncate">
+                      {handleFromEmail(profile.email, profile.name)}
+                    </p>
                   </div>
                 </div>
               </div>
-
-              {/* Controles de admin */}
-              {isAdmin && (
-                <div className="mb-5 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[10px] p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                    <ShieldAlert size={16} className="text-[#D41F2D]" />
-                    Gestión de Rol
-                  </div>
-                  <CustomSelect
-                    options={[
-                      { value: 'student', label: 'Estudiante' },
-                      { value: 'moderator', label: 'Moderador' },
-                      { value: 'admin', label: 'Admin' },
-                    ]}
-                    value={profile.role}
-                    onChange={(val) => {
-                      if (!updatingRole) {
-                        const syntheticEvent = { target: { value: val } } as React.ChangeEvent<HTMLSelectElement>
-                        handleRoleChange(syntheticEvent)
-                      }
-                    }}
-                    className="min-w-[130px]"
-                  />
-                </div>
-              )}
 
               {/* Stats Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-px rounded-[10px] border border-neutral-200 dark:border-neutral-800 bg-neutral-200 dark:bg-neutral-800 overflow-hidden mb-5">
