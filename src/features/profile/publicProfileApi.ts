@@ -5,7 +5,7 @@ import { demoDb } from '../pins/demoStore'
 // Perfil público — solo campos seguros, sin email
 const PROFILE_PUBLIC_FIELDS = 'id, name, role, faculty_id, career, year, karma, avatar_url, created_at'
 // Leaderboard — mínimo necesario: identidad + karma + facultad para filtro
-const LEADERBOARD_FIELDS = 'id, name, role, avatar_url, faculty_id, karma'
+const LEADERBOARD_FIELDS = 'id, name, avatar_url, faculty_id, karma'
 
 export async function fetchPublicProfile(userId: string): Promise<Profile | null> {
   if (!supabase) {

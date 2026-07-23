@@ -191,9 +191,12 @@ export function ProfilePage() {
               <h2 className="text-[21px] font-bold leading-tight text-neutral-900 dark:text-white break-words">
                 {user.name}
               </h2>
-              <p className="font-mono text-[13px] text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
-                {handleFromEmail(user.email)}
-              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <p className="font-mono text-[13px] text-neutral-500 dark:text-neutral-400 truncate">
+                  {handleFromEmail(user.email)}
+                </p>
+                {role === 'admin' && <AdminBadge />}
+              </div>
             </div>
           </div>
           <button
@@ -203,20 +206,6 @@ export function ProfilePage() {
             {t('profile.editProfile')}
           </button>
         </div>
-
-        {role === 'admin' && (
-          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-[#D41F2D]/20 bg-gradient-to-r from-red-50/90 via-amber-50/60 to-white p-3.5 dark:border-red-400/25 dark:from-red-950/40 dark:via-amber-950/20 dark:to-neutral-900">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#D41F2D] text-white shadow-md shadow-red-900/15">
-              <span className="text-lg">★</span>
-            </div>
-            <div className="min-w-0">
-              <AdminBadge />
-              <p className="mt-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">
-                {t('profile.adminDescription', 'Cuenta oficial de administración de UDP Map')}
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* ── Datos de cuenta ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-px rounded-[10px] border border-neutral-200 dark:border-neutral-800 bg-neutral-200 dark:bg-neutral-800 overflow-hidden mb-5">
@@ -535,7 +524,6 @@ export function ProfilePage() {
                   <tbody>
                     {leaderboardQuery.data?.map((profile, idx) => {
                       const isMe = profile.id === user.id
-                      const isAdmin = profile.role === 'admin'
                       const rank = idx + 1
                       const medalClass =
                         rank === 1 ? 'text-amber-400' :
@@ -546,9 +534,7 @@ export function ProfilePage() {
                         <tr
                           key={profile.id}
                           className={`border-b border-neutral-100 dark:border-neutral-850 last:border-0 transition-colors text-sm ${
-                            isAdmin
-                              ? 'border-l-2 border-l-[#D41F2D] bg-gradient-to-r from-red-50/80 to-amber-50/30 dark:from-red-950/30 dark:to-amber-950/10'
-                              : isMe
+                            isMe
                               ? 'bg-red-50/50 dark:bg-red-950/20 font-bold'
                               : 'hover:bg-neutral-50/60 dark:hover:bg-neutral-800/30'
                           }`}
@@ -565,17 +551,16 @@ export function ProfilePage() {
                                 <img
                                   src={profile.avatar_url}
                                   alt={profile.name || 'User'}
-                                  className={`w-7 h-7 rounded-full object-cover flex-shrink-0 ${isAdmin ? 'ring-2 ring-[#D41F2D]/60 ring-offset-1 dark:ring-offset-neutral-900' : ''}`}
+                                  className="w-7 h-7 rounded-full object-cover flex-shrink-0"
                                 />
                               ) : (
-                                <div className={`w-7 h-7 rounded-full text-[11px] font-bold flex items-center justify-center border flex-shrink-0 ${isAdmin ? 'bg-[#D41F2D] text-white border-[#D41F2D] shadow-sm' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 border-neutral-200 dark:border-neutral-700'}`}>
+                                <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-neutral-800 text-[11px] font-bold text-neutral-400 flex items-center justify-center border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
                                   {(profile.name || 'U').charAt(0).toUpperCase()}
                                 </div>
                               )}
                               <span className="truncate max-w-[140px] sm:max-w-none">
                                 {profile.name || 'Estudiante UDP'}
                               </span>
-                              {isAdmin && <AdminBadge compact />}
                               {isMe && (
                                 <span className="text-[10px] bg-red-100 dark:bg-red-950 text-[#D41F2D] font-mono px-1 rounded-md uppercase">
                                   Tú
