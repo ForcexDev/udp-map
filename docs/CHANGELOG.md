@@ -1,5 +1,6 @@
 ### Novedades en esta versión
 
+
 - Centro de Notificaciones en vivo con alertas de respuestas en foros, eventos del campus y logros de usuario.
 - Foro Comunitario por Facultades con indicador inteligente de mensajes no leídos y menciones automáticas.
 - Mapa Interactivo UDP con navegación en tiempo real, reportes de campus, lugares de estudio y eventos locales.
