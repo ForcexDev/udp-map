@@ -149,7 +149,7 @@ export function CreatePinModal() {
         }
       }
     }
-  }, [open, draftLocation, draftPinType, form, editingPin])
+  }, [open, draftLocation, draftPinType, form, editingPin, eventCategories, reportCategories])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])

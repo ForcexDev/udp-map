@@ -7,6 +7,11 @@ interface ImportMetaEnv {
   readonly VITE_ORS_API_KEY?: string
 }
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
+interface Window {
+  __deferredPwaPrompt?: BeforeInstallPromptEvent
 }
