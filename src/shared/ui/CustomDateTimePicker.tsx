@@ -7,6 +7,7 @@ interface CustomDateTimePickerProps {
   placeholder?: string
   error?: boolean
   className?: string
+  align?: 'left' | 'right'
 }
 
 const MONTH_NAMES = [
@@ -21,6 +22,7 @@ export function CustomDateTimePicker({
   placeholder = 'Seleccionar fecha y hora...',
   error = false,
   className = '',
+  align = 'left',
 }: CustomDateTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -162,7 +164,7 @@ export function CustomDateTimePicker({
 
       {/* Popover Panel */}
       {isOpen && (
-        <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-50 w-full sm:w-[320px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl shadow-2xl p-4 animate-scale-in">
+        <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full mt-2 z-50 w-full sm:w-[320px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl shadow-2xl p-4 animate-scale-in`}>
           {/* Header Mes y Año */}
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-100 dark:border-neutral-800">
             <button

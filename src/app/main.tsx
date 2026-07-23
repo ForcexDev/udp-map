@@ -10,6 +10,13 @@ import { App } from './App'
 
 import { GoogleOAuthProvider } from '@react-oauth/google'
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault()
+    window.__deferredPwaPrompt = e as BeforeInstallPromptEvent
+  })
+}
+
 useAuthStore.getState().init()
 
 createRoot(document.getElementById('root')!).render(
