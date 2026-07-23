@@ -595,6 +595,7 @@ export function CreatePinModal() {
                         onChange={field.onChange}
                         placeholder="Seleccionar inicio..."
                         error={!!form.formState.errors.startsAt}
+                        align="left"
                       />
                     )}
                   />
@@ -613,6 +614,7 @@ export function CreatePinModal() {
                         onChange={field.onChange}
                         placeholder="Seleccionar término..."
                         error={!!form.formState.errors.endsAt}
+                        align="right"
                       />
                     )}
                   />
