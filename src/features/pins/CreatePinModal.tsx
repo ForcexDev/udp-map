@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -29,48 +29,41 @@ const pinSchema = z.object({
 }).superRefine((data, ctx) => {
   if (data.type === 'event') {
     if (!data.startsAt) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'La fecha de inicio es requerida',
-        path: ['startsAt'],
-      })
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'STARTS_AT_REQUIRED', path: ['startsAt'] })
     }
     if (!data.endsAt) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'La fecha de término es requerida',
-        path: ['endsAt'],
-      })
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'ENDS_AT_REQUIRED', path: ['endsAt'] })
     }
-    if (data.startsAt && data.endsAt && new Date(data.endsAt) <= new Date(data.startsAt)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'La fecha de término debe ser posterior a la de inicio',
-        path: ['endsAt'],
-      })
+    if (data.startsAt && data.endsAt) {
+      const s = new Date(data.startsAt).getTime()
+      const e = new Date(data.endsAt).getTime()
+      if (e <= s) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'ENDS_BEFORE_STARTS', path: ['endsAt'] })
+      }
     }
   }
 })
-export type PinFormValues = z.infer<typeof pinSchema>
 
-const toLocalDatetimeString = (dateStr: string) => {
-  const date = new Date(dateStr)
-  const tzoffset = date.getTimezoneOffset() * 60000
-  const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16)
-  return localISOTime
+type PinFormValues = z.infer<typeof pinSchema>
+
+function toLocalDatetimeString(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 export function CreatePinModal() {
   const { t, i18n } = useTranslation()
-  const queryClient = useQueryClient()
   const open = useUIStore((s) => s.createModalOpen)
-  const close = useUIStore((s) => s.closeCreateModal)
   const draftLocation = useUIStore((s) => s.draftLocation)
   const draftPinType = useUIStore((s) => s.draftPinType)
+  const close = useUIStore((s) => s.closeCreateModal)
   const showToast = useUIStore((s) => s.showToast)
-  const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
-  
+  const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
+
   const [photos, setPhotos] = useState<File[]>([])
   const [deletedPhotoIds, setDeletedPhotoIds] = useState<string[]>([])
   const [facultyDropdownOpen, setFacultyDropdownOpen] = useState(false)
@@ -81,8 +74,14 @@ export function CreatePinModal() {
   const editingPin = pinToEdit ? pinsData.flatMap(d => d[1] ?? []).find(p => p.id === pinToEdit) : null
 
   const isModerator = can(role, 'pin.moderate')
-  const reportCategories = CATEGORIES.filter((c) => c.kind === 'report' && !(c.id === 'entrada' && !isModerator))
-  const eventCategories = CATEGORIES.filter((c) => c.kind === 'event')
+  const reportCategories = useMemo(
+    () => CATEGORIES.filter((c) => c.kind === 'report' && !(c.id === 'entrada' && !isModerator)),
+    [isModerator]
+  )
+  const eventCategories = useMemo(
+    () => CATEGORIES.filter((c) => c.kind === 'event'),
+    []
+  )
   const canCreatePlace = can(role, 'pin.create.place')
   const isVerifiedLocked = !!editingPin?.is_permanent && !isModerator
 
@@ -149,7 +148,8 @@ export function CreatePinModal() {
         }
       }
     }
-  }, [open, draftLocation, draftPinType, form, editingPin, eventCategories, reportCategories])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draftLocation, draftPinType, editingPin])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
