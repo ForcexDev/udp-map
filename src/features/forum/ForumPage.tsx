@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MessagesSquare, Plus, Pin, MessageSquare, ThumbsUp, ThumbsDown, SlidersHorizontal, ChevronRight, ChevronDown, Megaphone, GraduationCap, Search } from 'lucide-react'
+import { BadgeCheck, MessagesSquare, Plus, Pin, MessageSquare, ThumbsUp, ThumbsDown, SlidersHorizontal, ChevronRight, ChevronDown, Megaphone, GraduationCap, Search } from 'lucide-react'
 import { FACULTIES } from '@/shared/data/campusData'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -54,7 +54,12 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
           />
           <div className="flex flex-col min-w-0 flex-1">
             <span className="text-[13.5px] font-extrabold text-neutral-900 dark:text-neutral-100 leading-tight">
-              {thread.author_name || 'Estudiante UDP'}
+              <span className="flex items-center gap-1.5 truncate">
+                {thread.is_official
+                  ? (thread.official_entity_name || t('pin.officialEntityDefault', 'Administración UDP'))
+                  : (thread.author_name || 'Estudiante UDP')}
+                {thread.is_official && <BadgeCheck size={14} className="text-blue-500 shrink-0" aria-label={t('forum.official', 'Oficial')} />}
+              </span>
             </span>
             <span className="text-[10px] text-neutral-400 font-medium leading-none mt-0.5">
               {relTime.value === 0 ? 'Ahora' : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`}
@@ -236,7 +241,7 @@ export function ForumPage() {
   }, [allRecentThreads, lastVisitedMap, activeFacultyId])
 
   const handleCreateClick = () => {
-    if (!guard('pin.create.report')) return // Requires student/auth
+    if (!guard('forum.post')) return
     setCreateModalOpen(true)
   }
 

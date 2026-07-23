@@ -21,6 +21,7 @@ export type Action =
   | 'event.rsvp'
   | 'event.markOfficial'
   | 'forum.post'
+  | 'forum.postOfficial'
   | 'content.report'
   | 'users.manage'
 
@@ -48,6 +49,7 @@ const MIN_ROLE: Record<Action, Role> = {
   'event.rsvp': 'student',
   'event.markOfficial': 'moderator',
   'forum.post': 'student',
+  'forum.postOfficial': 'moderator',
   'content.report': 'student',
   'users.manage': 'admin',
 }

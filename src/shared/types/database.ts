@@ -143,6 +143,8 @@ export interface ForumThread {
   votes_up: number
   votes_down: number
   is_pinned: boolean
+  is_official: boolean
+  official_entity_name?: string | null
   created_at: string
   updated_at: string
   author_name?: string | null

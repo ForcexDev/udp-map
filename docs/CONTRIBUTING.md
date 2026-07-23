@@ -58,8 +58,8 @@ La plataforma usa **Supabase Auth (Google Provider)**, restringido al dominio `@
 Existen 4 roles controlados vía base de datos y `features/auth/permissions.ts`:
 1. **`guest`**: Usuarios sin inicio de sesión. Tienen acceso de **solo lectura**. Todo intento de escritura despliega un modal pidiendo login.
 2. **`student`**: Login normal. Pueden crear pines temporales (reportes), eventos, hilos en el foro, comentar y votar. El código incorpora un máximo de 10 pines por día UTC, pendiente de activar mediante su migración en Supabase.
-3. **`moderator`**: Estudiantes promovidos. Pueden gestionar contenido (eliminar pines ajenos, fijar hilos) y crear lugares permanentes (`place`).
-4. **`admin`**: Acceso total. Además de la moderación, pueden asignar roles a otros perfiles y crear facultades o categorías.
+3. **`moderator`**: Estudiantes promovidos. Pueden gestionar contenido (eliminar pines ajenos, fijar hilos), crear lugares permanentes (`place`) y publicar hilos como Centro de Alumnos FIC.
+4. **`admin`**: Acceso total. Además de la moderación, pueden asignar roles a otros perfiles, crear facultades o categorías y publicar hilos como Administración UDP.
 
 La aplicación usa **Row Level Security (RLS)** y validaciones dentro de RPCs. No asumas que una restricción del frontend es una medida de seguridad. Existen tareas de hardening confirmadas y documentadas en [securytyDB.md](securytyDB.md); una contribución que toque tablas, policies, triggers o funciones privilegiadas debe revisar ese registro.
 

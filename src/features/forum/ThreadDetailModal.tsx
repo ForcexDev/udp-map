@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, Pin as PinIcon, Trash2, Reply, ThumbsUp, ThumbsDown, Send, Flag } from 'lucide-react'
+import { BadgeCheck, ChevronDown, Pin as PinIcon, Trash2, Reply, ThumbsUp, ThumbsDown, Send, Flag } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
 import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -358,7 +358,12 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                       onClick={() => thread.author_id && setProfileId(thread.author_id)}
                       className="text-[14px] font-extrabold text-neutral-900 dark:text-neutral-100 text-left hover:underline"
                     >
-                      {thread.author_name || 'Estudiante UDP'}
+                      <span className="flex items-center gap-1.5">
+                        {thread.is_official
+                          ? (thread.official_entity_name || t('pin.officialEntityDefault', 'Administración UDP'))
+                          : (thread.author_name || 'Estudiante UDP')}
+                        {thread.is_official && <BadgeCheck size={15} className="text-blue-500" aria-label={t('forum.official', 'Oficial')} />}
+                      </span>
                     </button>
                     <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 font-medium flex-wrap">
                       <span>{relTime ? (relTime.value === 0 ? 'Ahora' : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`) : ''}</span>

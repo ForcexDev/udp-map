@@ -9,6 +9,7 @@ describe('can() — matriz de permisos del plan §3', () => {
     expect(can('guest', 'pin.vote')).toBe(false)
     expect(can('guest', 'event.rsvp')).toBe(false)
     expect(can('guest', 'forum.post')).toBe(false)
+    expect(can('guest', 'forum.postOfficial')).toBe(false)
     expect(can('guest', 'content.report')).toBe(false)
   })
 
@@ -25,6 +26,8 @@ describe('can() — matriz de permisos del plan §3', () => {
   })
 
   it('moderator gestiona lugares, oficializa eventos, modera y verifica o extiende pines', () => {
+    expect(can('moderator', 'forum.post')).toBe(true)
+    expect(can('moderator', 'forum.postOfficial')).toBe(true)
     expect(can('moderator', 'pin.create.place')).toBe(true)
     expect(can('moderator', 'event.markOfficial')).toBe(true)
     expect(can('moderator', 'pin.moderate')).toBe(true)
@@ -34,6 +37,7 @@ describe('can() — matriz de permisos del plan §3', () => {
   })
 
   it('admin puede todo, incluido hacer permanente y gestionar usuarios', () => {
+    expect(can('admin', 'forum.postOfficial')).toBe(true)
     expect(can('admin', 'pin.makePermanent')).toBe(true)
     expect(can('admin', 'users.manage')).toBe(true)
     expect(can('admin', 'pin.create.place')).toBe(true)

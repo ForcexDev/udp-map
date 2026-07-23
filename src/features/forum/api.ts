@@ -110,6 +110,8 @@ export interface CreateThreadInput {
   tags: string[]
   facultyId: string | null
   authorId: string
+  isOfficial?: boolean
+  officialEntityName?: string | null
 }
 
 export async function createThread(input: CreateThreadInput): Promise<ForumThread> {
@@ -124,6 +126,8 @@ export async function createThread(input: CreateThreadInput): Promise<ForumThrea
       votes_up: 0,
       votes_down: 0,
       is_pinned: false,
+      is_official: input.isOfficial ?? false,
+      official_entity_name: input.officialEntityName ?? null,
       created_at: nowIso(),
       updated_at: nowIso(),
       author_name: 'Yo',
@@ -141,6 +145,8 @@ export async function createThread(input: CreateThreadInput): Promise<ForumThrea
       tags: input.tags,
       faculty_id: input.facultyId,
       author_id: input.authorId,
+      is_official: input.isOfficial ?? false,
+      official_entity_name: input.officialEntityName ?? null,
     })
     .select('*, profiles:author_id(name, avatar_url)')
     .single()

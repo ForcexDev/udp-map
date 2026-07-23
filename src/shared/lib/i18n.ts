@@ -126,6 +126,9 @@ const es = {
       hideReplies: 'Ocultar respuestas',
       like: 'Me gusta',
       dislike: 'No me gusta',
+      official: 'Oficial',
+      officialToggle: 'Publicar como Oficial',
+      officialDescription: 'El autor se mostrará como {{entity}}.',
     },
     profile: {
       title: 'Perfil',
@@ -312,6 +315,9 @@ const en = {
       hideReplies: 'Hide replies',
       like: 'Like',
       dislike: 'Dislike',
+      official: 'Official',
+      officialToggle: 'Publish as Official',
+      officialDescription: 'The author will be shown as {{entity}}.',
     },
     profile: {
       title: 'Profile',

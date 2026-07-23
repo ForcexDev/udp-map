@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Dialog } from '@/shared/ui/Dialog'
 import { FACULTIES } from '@/shared/data/campusData'
 import { useAuthStore } from '@/features/auth/authStore'
+import { can } from '@/features/auth/permissions'
 import { useCreateThread } from './useForum'
 import { CustomSelect } from '@/shared/ui/CustomSelect'
-import { GraduationCap, Type, AlignLeft, Tag, Send } from 'lucide-react'
+import { BadgeCheck, GraduationCap, Type, AlignLeft, Tag, Send } from 'lucide-react'
 
 import type { ForumThread } from '@/shared/types/database'
 
@@ -19,6 +20,8 @@ interface CreateThreadModalProps {
 export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }: CreateThreadModalProps) {
   const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.role)
+  const canPostOfficial = can(role, 'forum.postOfficial')
   const [error, setError] = useState('')
   const createThreadMutation = useCreateThread()
 
@@ -26,6 +29,7 @@ export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }
   const [content, setContent] = useState('')
   const [facultyId, setFacultyId] = useState<string | null>(defaultFacultyId)
   const [tagsInput, setTagsInput] = useState('')
+  const [isOfficial, setIsOfficial] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,12 +57,17 @@ export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }
         tags,
         facultyId: facultyId === 'general' ? null : facultyId,
         authorId: user.id,
+        isOfficial: canPostOfficial && isOfficial,
+        officialEntityName: canPostOfficial && isOfficial
+          ? (role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP')
+          : null,
       },
       {
         onSuccess: (newThread) => {
           setTitle('')
           setContent('')
           setTagsInput('')
+          setIsOfficial(false)
           setError('')
           if (newThread && onCreated) {
             onCreated(newThread)
@@ -151,6 +160,36 @@ export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }
         </div>
 
         {/* Botones de Acción */}
+        {canPostOfficial && (
+          <div className="flex items-center justify-between gap-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-4 shadow-sm">
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <BadgeCheck size={18} className="text-blue-500 shrink-0" strokeWidth={2.2} />
+                <label htmlFor="forum-official" className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.15em] cursor-pointer">
+                  {t('forum.officialToggle', 'Publicar como Oficial')}
+                </label>
+              </div>
+              <p className="text-[11px] sm:text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-snug pl-6">
+                {t('forum.officialDescription', 'El autor se mostrará como {{entity}}.', {
+                  entity: role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP',
+                })}
+              </p>
+            </div>
+            <button
+              id="forum-official"
+              type="button"
+              role="switch"
+              aria-checked={isOfficial}
+              onClick={() => setIsOfficial((value) => !value)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                isOfficial ? 'bg-blue-600' : 'bg-neutral-300 dark:bg-neutral-600'
+              }`}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isOfficial ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
           <button
             type="button"
