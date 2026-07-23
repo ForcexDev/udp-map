@@ -433,21 +433,32 @@ body {
 
 .bottom-nav {
   flex-shrink: 0;
+  min-height: 56px;
 }
 
-/* Safari iOS reports the dynamic viewport without the bottom home-indicator
-   area. Include that inset in the app shell so the UI reaches the screen edge. */
+/* Installed iOS PWAs can miscalculate explicit viewport heights. Let fixed
+   inset edges define the real WebKit viewport instead: the bar reaches the
+   screen edge, while its controls remain above the home indicator. */
 @supports (-webkit-touch-callout: none) {
-  :root {
-    --app-height: calc(100dvh + env(safe-area-inset-bottom, 0px));
-  }
+  @media (display-mode: standalone) {
+    html,
+    body,
+    #root,
+    .app-shell,
+    .sidebar-root {
+      height: auto;
+      min-height: 0;
+    }
 
-  .bottom-nav {
-    /* iOS puts the home-indicator inset above the links by default when it is
-       used as bottom padding. Move that same space to the top so the links
-       reach the physical bottom of the screen. */
-    padding-top: env(safe-area-inset-bottom, 0px);
-    padding-bottom: 0;
+    .sidebar-panel {
+      height: 100%;
+      max-height: 100%;
+    }
+
+    .bottom-nav {
+      padding-top: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
   }
 }
 
