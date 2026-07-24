@@ -526,8 +526,8 @@ body {
 /* ── Attribution (Watermark mode - License Compliant) ──────────────────── */
 .leaflet-control-attribution,
 .maplibregl-ctrl-attrib {
-  font-size: 10px !important;
-  opacity: 0.6;
+  font-size: 9px !important;
+  opacity: 0.55;
   background-color: transparent !important;
   padding: 0 6px 4px !important;
   pointer-events: none;
