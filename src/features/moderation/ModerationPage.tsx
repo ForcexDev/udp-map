@@ -19,6 +19,7 @@ const REASON_LABELS: Record<ContentReport['reason'], string> = {
   harassment: 'Acoso o ataques personales',
   misinformation: 'Información falsa',
   inappropriate: 'Contenido inapropiado',
+  easter_eggs: 'Easter Eggs / Secretos',
   other: 'Otro motivo',
 }
 
