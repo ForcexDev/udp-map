@@ -37,6 +37,13 @@ export function CustomSelect({
   // El botón vive dentro de modales con overflow-y-auto: un menú `absolute`
   // se recorta contra ese borde. Portal a <body> + posición `fixed` calculada
   // desde el botón lo saca de ese contenedor y lo deja siempre visible.
+  //
+  // La posición se calcula UNA sola vez al abrir y el menú se queda quieto: en
+  // móvil, tocar una opción hace que iOS colapse la barra de direcciones y
+  // dispare `resize`/`scroll`. Si movíamos o cerrábamos el menú con esos eventos,
+  // el `click` sintético caía sobre la opción de abajo (o el elemento de atrás):
+  // por eso "no dejaba seleccionar y elegía la de abajo". Un menú inmóvil hace
+  // que el dedo siempre dé en la opción que se ve.
   useEffect(() => {
     if (!isOpen || !containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
@@ -51,7 +58,9 @@ export function CustomSelect({
   }, [isOpen])
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    if (!isOpen) return
+
+    function handlePointerOutside(e: Event) {
       const target = e.target as Node
       if (
         containerRef.current && !containerRef.current.contains(target)
@@ -63,24 +72,39 @@ export function CustomSelect({
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setIsOpen(false)
     }
-    function handleScroll(e: Event) {
-      if (menuRef.current && menuRef.current.contains(e.target as Node)) return
-      setIsOpen(false)
-    }
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      document.addEventListener('keydown', handleKeyDown)
-      window.addEventListener('scroll', handleScroll, true)
-      window.addEventListener('resize', handleScroll)
-    }
+    // pointerdown cubre mouse y touch (a diferencia de mousedown, que en táctil
+    // llega con retardo/sintético). NO escuchamos scroll/resize: mover o cerrar
+    // el menú por esos eventos es justo lo que rompía la selección táctil.
+    document.addEventListener('pointerdown', handlePointerOutside)
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('pointerdown', handlePointerOutside)
       document.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('scroll', handleScroll, true)
-      window.removeEventListener('resize', handleScroll)
     }
   }, [isOpen])
+
+  // El menú está portaleado a <body>, FUERA del Content de Radix Dialog. Su
+  // DismissableLayer escucha pointerdown/focus en `document` y, al ver un evento
+  // fuera del Content, cierra el modal ANTES de que el onClick de la opción se
+  // registre (por eso "no dejaba seleccionar"). Cortamos la propagación nativa
+  // de esos eventos en el nodo del menú para que nunca lleguen a `document`:
+  // Radix no los ve, el modal no se cierra y la selección funciona. Escuchamos
+  // sobre el nodo real (no vía React) porque el portal a <body> queda fuera del
+  // árbol DOM donde React delega sus eventos.
+  useEffect(() => {
+    const node = menuRef.current
+    if (!isOpen || !node) return
+    const stop = (e: Event) => e.stopPropagation()
+    node.addEventListener('pointerdown', stop)
+    node.addEventListener('mousedown', stop)
+    node.addEventListener('focusin', stop)
+    return () => {
+      node.removeEventListener('pointerdown', stop)
+      node.removeEventListener('mousedown', stop)
+      node.removeEventListener('focusin', stop)
+    }
+  }, [isOpen, menuStyle])
 
   return (
     <div ref={containerRef} className={`relative inline-block ${className}`}>
@@ -110,6 +134,11 @@ export function CustomSelect({
             bottom: menuStyle.openUp ? window.innerHeight - menuStyle.top + 4 : undefined,
             left: menuStyle.left,
             width: menuStyle.width,
+            // Radix Dialog (modal) apaga los pointer-events del <body> y solo los
+            // reactiva dentro de su Content. Como el menú vive en <body> (portal),
+            // sin esto heredaría pointer-events:none y los clicks lo ATRAVESARÍAN
+            // hacia el elemento de atrás — el famoso "selecciona el de abajo".
+            pointerEvents: 'auto',
           }}
           className={`z-50 max-h-60 overflow-y-auto bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-xl shadow-2xl p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
         >

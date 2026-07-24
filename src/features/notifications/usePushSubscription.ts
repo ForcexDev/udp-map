@@ -81,6 +81,36 @@ export function usePushSubscription(enabled: boolean) {
     return () => { active = false }
   }, [enabled, supported])
 
+  // Re-sincroniza la suscripción existente con el backend cada vez que la app
+  // vuelve a primer plano. Crítico en iOS: cuando el endpoint rota en silencio,
+  // el service worker se re-suscribe (pushsubscriptionchange) pero solo la
+  // página, con una RPC autenticada, puede avisarle al servidor del endpoint
+  // nuevo. Va gatillado por `supported` (no `enabled`) para correr app-wide vía
+  // el Sidebar siempre montado, no solo cuando el panel de notificaciones está
+  // abierto. No pide permisos ni crea suscripciones: si no hay una, no hace nada.
+  useEffect(() => {
+    if (!supported) return
+    let cancelled = false
+    async function resyncOnForeground() {
+      if (document.visibilityState !== 'visible') return
+      if (Notification.permission !== 'granted') return
+      try {
+        const registration = await navigator.serviceWorker.ready
+        const subscription = await registration.pushManager.getSubscription()
+        if (!subscription || cancelled) return
+        await registerPushSubscription(subscription)
+      } catch (cause) {
+        console.error('[web-push] No se pudo resincronizar la suscripción en primer plano:', cause)
+      }
+    }
+    void resyncOnForeground()
+    document.addEventListener('visibilitychange', resyncOnForeground)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', resyncOnForeground)
+    }
+  }, [supported])
+
   const subscribe = async () => {
     const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
     if (!supported) return
