@@ -12,7 +12,10 @@ export function usePinActions() {
   const selectPin = useUIStore((s) => s.selectPin)
   const userId = useAuthStore((s) => s.user?.id)
 
-  const invalidatePins = () => queryClient.invalidateQueries({ queryKey: ['pins'] })
+  const invalidatePins = () => {
+    queryClient.invalidateQueries({ queryKey: ['pins'] })
+    queryClient.invalidateQueries({ queryKey: ['user-pins'] })
+  }
 
   const vote = useMutation({
     mutationFn: ({ pinId, value }: { pinId: string; value: 1 | -1 }) => {
@@ -23,6 +26,11 @@ export function usePinActions() {
       if (!result || !userId) return
       queryClient.setQueryData(['pin_vote', pinId, userId], result.userVote ?? 0)
       queryClient.setQueriesData<Pin[]>({ queryKey: ['pins'] }, (pins) =>
+        pins?.map((pin) => pin.id === pinId
+          ? { ...pin, votes_up: result.votesUp, votes_down: result.votesDown }
+          : pin),
+      )
+      queryClient.setQueriesData<Pin[]>({ queryKey: ['user-pins'] }, (pins) =>
         pins?.map((pin) => pin.id === pinId
           ? { ...pin, votes_up: result.votesUp, votes_down: result.votesDown }
           : pin),

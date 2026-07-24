@@ -1,21 +1,21 @@
-# 📍 UDP Map v0.2.0 — Documento Maestro y Plan Vivo
+# 📍 UDP Map v0.3.0 — Documento Maestro y Plan Vivo
 
 > **Documento vivo.** Conserva la visión y el plan original, pero refleja el estado real del
-> repositorio v0.2.0 al **2026-07-24**. Para el seguimiento operativo consulta también
+> repositorio v0.3.0 al **2026-07-24**. Para el seguimiento operativo consulta también
 > [SPRINTS_STATUS.md](SPRINTS_STATUS.md) y, para los pendientes de seguridad y base de datos,
 > [securityDB.md](securityDB.md).
 
 - **Producto:** Mapa colaborativo de pines + eventos + foro social + notificaciones + panel de administración para la comunidad UDP.
 - **Plan base original:** 8 semanas / 4 sprints de 2 semanas / 3 desarrolladores; el roadmap activo se amplía hasta Sprint 6.
 - **Estado actual:** Sprints 1, 2, 3 y 4 completados y operativos en código. Sprint 5 (expansión y clustering) en progreso.
-- **Versión del paquete:** 0.2.0.
+- **Versión del paquete:** 0.3.0.
 - **Última actualización:** 2026-07-24.
 
 ---
 
 ## 📦 0. Estado actual del repositorio
 
-El repositorio v0.2.0 utiliza:
+El repositorio v0.3.0 utiliza:
 
 - React 19, TypeScript 5.7, Vite 6, React Router 7, Zustand y TanStack Query.
 - MapLibre GL JS + OpenFreeMap, OpenRouteService opcional, límites geográficos, perímetros GeoJSON y orientación nativa.

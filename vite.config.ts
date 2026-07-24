@@ -1,12 +1,34 @@
 /// <reference types="vitest/config" />
 import { readFileSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
 
-function updateInfoPlugin(): Plugin {
+// ---------------------------------------------------------------------------
+// Version: 0.SPRINT+COMMITS  (e.g. 0.5+170)
+// Sprint is read from SPRINTS_STATUS.md, commit count from git history.
+// Falls back to package.json version if git is unavailable (e.g. zip exports).
+// ---------------------------------------------------------------------------
+function computeAppVersion(): string {
+  try {
+    const sprintsStatus = readFileSync(path.resolve(__dirname, 'docs/SPRINTS_STATUS.md'), 'utf8')
+    const sprintMatch = sprintsStatus.match(/\|\s*Sprint (\d+).*?\|\s*En progreso\s*\|/)
+    const sprint = sprintMatch ? sprintMatch[1] : '0'
+    const commits = execSync('git rev-list --count HEAD', { stdio: ['pipe', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+    return `0.${sprint}+${commits}`
+  } catch {
+    // Fallback to package.json version if git is unavailable
+    const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'))
+    return pkg.version as string
+  }
+}
+
+function updateInfoPlugin(version: string): Plugin {
   return {
     name: 'udp-map-update-info',
     apply: 'build',
@@ -20,17 +42,23 @@ function updateInfoPlugin(): Plugin {
       this.emitFile({
         type: 'asset',
         fileName: 'update-info.json',
-        source: JSON.stringify({ improvements }),
+        source: JSON.stringify({ version, improvements }),
       })
     },
   }
 }
 
+const APP_VERSION = computeAppVersion()
+
 export default defineConfig({
+  define: {
+    // Injected at build-time; available globally as __APP_VERSION__
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   plugins: [
     react(),
     tailwindcss(),
-    updateInfoPlugin(),
+    updateInfoPlugin(APP_VERSION),
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'push-sw.js'],

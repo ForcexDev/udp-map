@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history needed so git rev-list --count HEAD returns the correct
+          # total commit count used to compute the build version (0.SPRINT+COMMITS).
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
