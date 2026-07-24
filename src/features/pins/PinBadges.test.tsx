@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import '@/shared/lib/i18n'
 import type { Pin } from '@/shared/types/database'
 import { PinBadges } from './PinBadges'
@@ -29,7 +30,11 @@ const base: Pin = {
 
 describe('PinBadges', () => {
   it('muestra tipo, categoría y expiración para un report efímero', () => {
-    render(<PinBadges pin={base} />)
+    render(
+      <MemoryRouter>
+        <PinBadges pin={base} />
+      </MemoryRouter>,
+    )
     expect(screen.getByText('Reporte')).toBeInTheDocument()
     expect(screen.getByText(/Expira/)).toBeInTheDocument()
     expect(screen.queryByText('Permanente')).not.toBeInTheDocument()
@@ -37,9 +42,11 @@ describe('PinBadges', () => {
 
   it('muestra badge de verificado y sin expiración para un place o pin permanente', () => {
     render(
-      <PinBadges
-        pin={{ ...base, type: 'place', category_id: null, is_permanent: true, expires_at: null }}
-      />,
+      <MemoryRouter>
+        <PinBadges
+          pin={{ ...base, type: 'place', category_id: null, is_permanent: true, expires_at: null }}
+        />
+      </MemoryRouter>,
     )
     expect(screen.getByText('Lugar')).toBeInTheDocument()
     expect(screen.getByText(/Verificado por/)).toBeInTheDocument()
