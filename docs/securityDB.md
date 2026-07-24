@@ -141,6 +141,7 @@ Un estudiante puede editar solo los campos de perfil autorizados. Los intentos d
 
 - 2026-07-21: Riesgo identificado al revisar la policy vigente y el trigger de badges.
 - 2026-07-24: Migración `supabase/migrations/20260724000009_protect_profile_columns.sql` aplicada a prod. Se reemplazó el chequeo ad hoc de `role` en `profiles_update_own` por trigger `trg_protect_profile_privileged_fields` (`BEFORE UPDATE`) que congela `email`, `role`, `karma`, `created_at` e `id` salvo admin. Campos editables por el dueño: `name`, `faculty_id`, `career`, `year`, `avatar_url`. Enfoque unificado con trigger en vez de `GRANT` columna por columna, mismo patrón que SEC-005/SEC-006.
+- 2026-07-24: Migración `supabase/migrations/20260724000011_fix_admin_downgrade_and_profile_trigger.sql` agregada. Se solucionó la imposibilidad de degradar administradores: `protect_profile_privileged_fields` se actualizó para otorgar bypass a superusuarios de la base de datos (`postgres`, `service_role`, `supabase_admin`, `dashboard_user`) cuando ejecutan consultas SQL directamente (donde `auth.uid()` es `null`), y `admin_set_user_role` se simplificó para permitir a un admin cambiar el rol de cualquier otro usuario a `student`, `moderator` o `admin`.
 
 ## SEC-004 — Lectura pública de todas las columnas de perfiles
 
@@ -165,7 +166,9 @@ Un usuario anónimo o autenticado no puede consultar correos ni columnas privada
 ### Historial
 
 - 2026-07-21: Se confirmó que una migración anterior eliminaba nombres alternativos de policy, pero no eliminaba `profiles_read`.
-- 2026-07-24: Migración `supabase/migrations/20260724000009_protect_profile_columns.sql` aplicada a prod. Se eliminaron `profiles_read` y `profiles_read_authenticated`; se agregaron `profiles_read_own` (`id = auth.uid()`) y `profiles_read_admin` (solo admin, para el panel). Se creó vista `public.profiles_public` (id, name, avatar_url, role, karma, faculty_id, career, year, created_at — sin email) con `select` para `anon`/`authenticated`. Frontend actualizado: [publicProfileApi.ts](../src/features/profile/publicProfileApi.ts) (`fetchPublicProfile`, `fetchLeaderboard`) ahora consulta `profiles_public` en vez de `profiles`. Verificado: `has_table_privilege('anon'/'authenticated', 'public.profiles_public', 'select')` = `true`; policies restantes en `profiles` = `profiles_read_own`, `profiles_read_admin`, `profiles_update_own`, `profiles_admin_update`.
+- 2026-07-24: Migración `supabase/migrations/20260724000009_protect_profile_columns.sql` aplicada a prod. Se eliminaron `profiles_read` y `profiles_read_authenticated`; se agregaron `profiles_read_own` (`id = auth.uid()`) y `profiles_read_admin` (solo admin, para el panel). Se creó vista `public.profiles_public` (id, name, avatar_url, role, karma, faculty_id, career, year, created_at — sin email) con `select` para `anon`/`authenticated`. Frontend actualizado: [publicProfileApi.ts](../src/features/profile/publicProfileApi.ts) (`fetchPublicProfile`, `fetchLeaderboard`) ahora consulta `profiles_public` en vez of `profiles`. Verificado: `has_table_privilege('anon'/'authenticated', 'public.profiles_public', 'select')` = `true`; policies restantes en `profiles` = `profiles_read_own`, `profiles_read_admin`, `profiles_update_own`, `profiles_admin_update`.
+- 2026-07-24: Migración `supabase/migrations/20260724000011_fix_admin_downgrade_and_profile_trigger.sql` resolvió la advertencia de linter Supabase `security_definer_view`: `public.profiles_public` se configuró con `security_invoker = true`. Para respetar la evaluación de RLS del invocador preservando la privacidad del correo, se asignó `profiles_read_public` en `profiles` restringiendo los `GRANT SELECT` de la tabla base por columnas (excluyendo `email` para usuarios anónimos).
+- 2026-07-24: Migración `supabase/migrations/20260724000013_fix_karma_update_in_profile_trigger.sql` corregida en prod. Se ajustaron `adjust_karma` y `protect_profile_privileged_fields` mediante la variable de sesión `udpmap.internal_karma_update`, permitiendo que las acciones de votación/pines/comentarios de usuarios con rol `student` actualicen el karma del autor sin ser rechazadas por el trigger de protección del perfil.
 
 ## SEC-005 — Dueños pueden modificar campos internos de sus pines
 
@@ -193,6 +196,7 @@ Un estudiante no puede alterar contadores, autoría, oficialidad, verificación,
 
 - 2026-07-21: Se confirmó que existe `trg_protect_pin_sensitive_fields`, pero su cobertura es parcial.
 - 2026-07-24: Migración `supabase/migrations/20260724000010_protect_pin_fields.sql` aplicada a prod. `protect_pin_sensitive_fields` extendida para congelar también `creator_id`, `votes_up`, `votes_down` y `reports` salvo mod/admin (antes solo protegía `is_permanent`, `verifier_entity_name`, `is_official`, `official_entity_name`, `type`, `expires_at`). Decisión de producto confirmada: en pines no permanentes el dueño puede seguir editando `lat`/`lng`/`faculty_id`/`category_id` (colaboración desde casa, sin restricción GPS — ver Decisiones vigentes).
+- 2026-07-24: Migración `supabase/migrations/20260724000012_fix_vote_counter_protection_triggers.sql` corregida en prod. Se ajustó `protect_pin_sensitive_fields` para evaluar `current_setting('udpmap.vote_rpc', true) = 'on'`, permitiendo que la RPC autorizada `vote_pin()` actualice los contadores `votes_up` y `votes_down` para usuarios con rol `student`.
 
 ## SEC-006 — Policy defectuosa para fijar hilos del foro
 
@@ -218,6 +222,7 @@ El dueño puede editar el contenido permitido de su hilo, pero no puede cambiar 
 
 - 2026-07-21: Error tautológico confirmado en el output real de policies.
 - 2026-07-24: Migración `supabase/migrations/20260724000008_fix_threads_pin_policy.sql` aplicada a prod. `threads_update_owner_or_mod` simplificada a solo dueño-o-mod (sin subconsulta); trigger nuevo `trg_protect_thread_privileged_fields` congela `is_pinned`, `is_official`, `official_entity_name`, `author_id`, `votes_up`, `votes_down` salvo mod/admin — se agregó protección de `author_id`/votos que el hallazgo original no mencionaba pero compartía la misma falla estructural. Verificado: `with_check` de `threads_update_owner_or_mod` ya no contiene subconsulta `old_thread`.
+- 2026-07-24: Migración `supabase/migrations/20260724000012_fix_vote_counter_protection_triggers.sql` corregida en prod. Se ajustó `protect_thread_privileged_fields` para permitir actualizaciones de `votes_up`/`votes_down` cuando `current_setting('udpmap.vote_rpc', true) = 'on'`, de modo que `vote_thread()` funcione correctamente para usuarios `student`.
 
 ## SEC-007 — RSVP públicos y sin validación del tipo de pin
 

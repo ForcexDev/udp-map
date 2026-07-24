@@ -210,7 +210,7 @@ export interface AppNotification {
 }
 
 export type ModerationTargetType = 'pin' | 'pin_comment' | 'forum_thread' | 'forum_comment'
-export type ModerationReason = 'spam' | 'harassment' | 'misinformation' | 'inappropriate' | 'other'
+export type ModerationReason = 'spam' | 'harassment' | 'misinformation' | 'inappropriate' | 'other' | 'easter_eggs'
 export type ModerationStatus = 'pending' | 'reviewing' | 'resolved' | 'dismissed'
 
 export interface ContentReport {
