@@ -24,7 +24,7 @@ export async function fetchPublicProfile(userId: string): Promise<Profile | null
   }
 
   const { data, error } = await supabase
-    .from('profiles')
+    .from('profiles_public')
     .select(PROFILE_PUBLIC_FIELDS)
     .eq('id', userId)
     .single()
@@ -118,7 +118,7 @@ export async function fetchLeaderboard(facultyId?: string): Promise<Profile[]> {
   if (!session) return []
 
   let query = supabase
-    .from('profiles')
+    .from('profiles_public')
     .select(LEADERBOARD_FIELDS)
     .order('karma', { ascending: false })
     .limit(50)

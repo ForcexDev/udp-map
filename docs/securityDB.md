@@ -1,6 +1,6 @@
 # Security DB — Registro histórico de pendientes
 
-**Última actualización:** 2026-07-21
+**Última actualización:** 2026-07-24
 
 ## Cómo usar este documento
 
@@ -47,14 +47,14 @@ Cómo demostrar que quedó resuelto.
 | ID | Severidad | Estado | Tema |
 |---|---|---|---|
 | SEC-001 | Alta | Pendiente | Aplicar y validar rate limit diario de pines |
-| SEC-002 | Crítica | Pendiente | Funciones internas `SECURITY DEFINER` expuestas |
-| SEC-003 | Crítica | Pendiente | Usuarios pueden modificar columnas protegidas de su perfil |
-| SEC-004 | Alta | Pendiente | Lectura pública de todas las columnas de perfiles |
-| SEC-005 | Crítica | Pendiente | Dueños pueden modificar campos internos de sus pines |
-| SEC-006 | Alta | Pendiente | Policy defectuosa para fijar hilos del foro |
+| SEC-002 | Crítica | Completado | Funciones internas `SECURITY DEFINER` expuestas |
+| SEC-003 | Crítica | Completado | Usuarios pueden modificar columnas protegidas de su perfil |
+| SEC-004 | Alta | Completado | Lectura pública de todas las columnas de perfiles |
+| SEC-005 | Crítica | Completado | Dueños pueden modificar campos internos de sus pines |
+| SEC-006 | Alta | Completado | Policy defectuosa para fijar hilos del foro |
 | SEC-007 | Media | Pendiente | RSVP públicos y sin validación del tipo de pin |
 | SEC-008 | Alta | En progreso | Escrituras directas de votos pueden desincronizar contadores |
-| SEC-009 | Alta | Pendiente | Estandarizar permisos y `search_path` de funciones privilegiadas |
+| SEC-009 | Alta | En progreso | Estandarizar permisos y `search_path` de funciones privilegiadas |
 | SEC-010 | Media | Pendiente | Agregar pruebas de regresión de seguridad de base de datos |
 
 ## SEC-001 — Aplicar y validar rate limit diario de pines
@@ -89,10 +89,10 @@ Ejecutar completa la migración `supabase/migrations/20260721000001_pin_daily_li
 
 ## SEC-002 — Funciones internas `SECURITY DEFINER` expuestas
 
-- Estado: Pendiente
+- Estado: Completado
 - Severidad: Crítica
 - Fecha de detección: 2026-07-21
-- Fecha de finalización: —
+- Fecha de finalización: 2026-07-24
 - Alcance: funciones privilegiadas del esquema `public`
 
 ### Problema
@@ -115,13 +115,14 @@ Las funciones internas devuelven `false` en `has_function_privilege` para `anon`
 ### Historial
 
 - 2026-07-21: Exposición confirmada mediante `has_function_privilege` para todas las funciones `SECURITY DEFINER` revisadas.
+- 2026-07-24: Migración `supabase/migrations/20260724000007_lock_down_internal_functions.sql` aplicada a prod. Recon adicional detectó `admin_broadcast_push_notification`, `admin_count_push_subscribers` y `admin_set_user_role` también expuestas a `anon`/`PUBLIC` (no listadas originalmente); las tres tienen chequeo interno `user_role() = 'admin'` pero igual se restringieron a `authenticated` por defensa en profundidad. Verificado: `has_function_privilege('anon'/'authenticated', 'adjust_karma(uuid,integer)', 'execute')` = `false`; `vote_pin(uuid,smallint)` y `admin_set_user_role(uuid,text)` = `false` para `anon`, `true` para `authenticated`; `user_role()` intacto para `anon` (`true`, requerido por RLS).
 
 ## SEC-003 — Usuarios pueden modificar columnas protegidas de su perfil
 
-- Estado: Pendiente
+- Estado: Completado
 - Severidad: Crítica
 - Fecha de detección: 2026-07-21
-- Fecha de finalización: —
+- Fecha de finalización: 2026-07-24
 - Alcance: tabla `public.profiles`, policy `profiles_update_own`
 
 ### Problema
@@ -139,13 +140,14 @@ Un estudiante puede editar solo los campos de perfil autorizados. Los intentos d
 ### Historial
 
 - 2026-07-21: Riesgo identificado al revisar la policy vigente y el trigger de badges.
+- 2026-07-24: Migración `supabase/migrations/20260724000009_protect_profile_columns.sql` aplicada a prod. Se reemplazó el chequeo ad hoc de `role` en `profiles_update_own` por trigger `trg_protect_profile_privileged_fields` (`BEFORE UPDATE`) que congela `email`, `role`, `karma`, `created_at` e `id` salvo admin. Campos editables por el dueño: `name`, `faculty_id`, `career`, `year`, `avatar_url`. Enfoque unificado con trigger en vez de `GRANT` columna por columna, mismo patrón que SEC-005/SEC-006.
 
 ## SEC-004 — Lectura pública de todas las columnas de perfiles
 
-- Estado: Pendiente
+- Estado: Completado
 - Severidad: Alta
 - Fecha de detección: 2026-07-21
-- Fecha de finalización: —
+- Fecha de finalización: 2026-07-24
 - Alcance: tabla `public.profiles`, policies `profiles_read` y `profiles_read_authenticated`
 
 ### Problema
@@ -163,13 +165,14 @@ Un usuario anónimo o autenticado no puede consultar correos ni columnas privada
 ### Historial
 
 - 2026-07-21: Se confirmó que una migración anterior eliminaba nombres alternativos de policy, pero no eliminaba `profiles_read`.
+- 2026-07-24: Migración `supabase/migrations/20260724000009_protect_profile_columns.sql` aplicada a prod. Se eliminaron `profiles_read` y `profiles_read_authenticated`; se agregaron `profiles_read_own` (`id = auth.uid()`) y `profiles_read_admin` (solo admin, para el panel). Se creó vista `public.profiles_public` (id, name, avatar_url, role, karma, faculty_id, career, year, created_at — sin email) con `select` para `anon`/`authenticated`. Frontend actualizado: [publicProfileApi.ts](../src/features/profile/publicProfileApi.ts) (`fetchPublicProfile`, `fetchLeaderboard`) ahora consulta `profiles_public` en vez de `profiles`. Verificado: `has_table_privilege('anon'/'authenticated', 'public.profiles_public', 'select')` = `true`; policies restantes en `profiles` = `profiles_read_own`, `profiles_read_admin`, `profiles_update_own`, `profiles_admin_update`.
 
 ## SEC-005 — Dueños pueden modificar campos internos de sus pines
 
-- Estado: Pendiente
+- Estado: Completado
 - Severidad: Crítica
 - Fecha de detección: 2026-07-21
-- Fecha de finalización: —
+- Fecha de finalización: 2026-07-24
 - Alcance: tabla `public.pins`, policy `pins_owner_update`, trigger `protect_pin_sensitive_fields`
 
 ### Problema
@@ -189,13 +192,14 @@ Un estudiante no puede alterar contadores, autoría, oficialidad, verificación,
 ### Historial
 
 - 2026-07-21: Se confirmó que existe `trg_protect_pin_sensitive_fields`, pero su cobertura es parcial.
+- 2026-07-24: Migración `supabase/migrations/20260724000010_protect_pin_fields.sql` aplicada a prod. `protect_pin_sensitive_fields` extendida para congelar también `creator_id`, `votes_up`, `votes_down` y `reports` salvo mod/admin (antes solo protegía `is_permanent`, `verifier_entity_name`, `is_official`, `official_entity_name`, `type`, `expires_at`). Decisión de producto confirmada: en pines no permanentes el dueño puede seguir editando `lat`/`lng`/`faculty_id`/`category_id` (colaboración desde casa, sin restricción GPS — ver Decisiones vigentes).
 
 ## SEC-006 — Policy defectuosa para fijar hilos del foro
 
-- Estado: Pendiente
+- Estado: Completado
 - Severidad: Alta
 - Fecha de detección: 2026-07-21
-- Fecha de finalización: —
+- Fecha de finalización: 2026-07-24
 - Alcance: tabla `public.forum_threads`, policy `threads_update_owner_or_mod`
 
 ### Problema
@@ -213,6 +217,7 @@ El dueño puede editar el contenido permitido de su hilo, pero no puede cambiar 
 ### Historial
 
 - 2026-07-21: Error tautológico confirmado en el output real de policies.
+- 2026-07-24: Migración `supabase/migrations/20260724000008_fix_threads_pin_policy.sql` aplicada a prod. `threads_update_owner_or_mod` simplificada a solo dueño-o-mod (sin subconsulta); trigger nuevo `trg_protect_thread_privileged_fields` congela `is_pinned`, `is_official`, `official_entity_name`, `author_id`, `votes_up`, `votes_down` salvo mod/admin — se agregó protección de `author_id`/votos que el hallazgo original no mencionaba pero compartía la misma falla estructural. Verificado: `with_check` de `threads_update_owner_or_mod` ya no contiene subconsulta `old_thread`.
 
 ## SEC-007 — RSVP públicos y sin validación del tipo de pin
 
@@ -292,6 +297,7 @@ La revisión del catálogo no encuentra funciones privilegiadas con permisos o `
 ### Historial
 
 - 2026-07-21: Pendiente creado después de confirmar que todas las funciones privilegiadas revisadas eran ejecutables por clientes.
+- 2026-07-24: Parte de permisos resuelta junto con SEC-002 (ver su historial). Pendiente: `extend_pin_ttl`, `protect_pin_sensitive_fields` y `verify_and_make_permanent` siguen sin `search_path` fijo (`proconfig` vacío); falta `ALTER DEFAULT PRIVILEGES` para que funciones nuevas no nazcan ejecutables por `PUBLIC`. Queda `En progreso`.
 
 ## SEC-010 — Pruebas de regresión de seguridad de base de datos
 
@@ -325,4 +331,5 @@ Estas entradas documentan decisiones actuales; no son pendientes y no deben elim
 - Estado: Aceptado — `FORCE ROW LEVEL SECURITY` está desactivado; esto es normal para el uso cliente de Supabase, pero no reemplaza la revisión de funciones privilegiadas y `service_role`.
 - Estado: Aceptado — Pines, publicaciones, taxonomías y fotografías destinadas al mapa son de lectura pública.
 - Estado: Aceptado — Los usuarios pueden colaborar creando pines desde casa; no existe una restricción GPS de 1 km.
+- Estado: Aceptado (2026-07-24) — En pines no permanentes, el dueño puede seguir editando `lat`, `lng`, `faculty_id` y `category_id` tras crear el pin; `trg_protect_pin_sensitive_fields` no los congela (ver SEC-005).
 - Estado: Aceptado — Moderadores y administradores están exentos del límite diario de 10 pines.
