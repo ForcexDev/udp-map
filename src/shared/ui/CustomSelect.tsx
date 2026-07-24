@@ -84,26 +84,25 @@ export function CustomSelect({
     }
   }, [isOpen])
 
-  // El menú está portaleado a <body>, FUERA del Content de Radix Dialog. Su
-  // DismissableLayer escucha pointerdown/focus en `document` y, al ver un evento
-  // fuera del Content, cierra el modal ANTES de que el onClick de la opción se
-  // registre (por eso "no dejaba seleccionar"). Cortamos la propagación nativa
-  // de esos eventos en el nodo del menú para que nunca lleguen a `document`:
-  // Radix no los ve, el modal no se cierra y la selección funciona. Escuchamos
-  // sobre el nodo real (no vía React) porque el portal a <body> queda fuera del
-  // árbol DOM donde React delega sus eventos.
+  // El menú está portaleado a <body>, FUERA del Content de Radix Dialog. Radix
+  // mete dos barreras a nivel `document` que golpean a cualquier cosa fuera del
+  // Content:
+  //   1. DismissableLayer: escucha pointerdown/focus y cierra el modal al ver un
+  //      evento "afuera" ANTES de que corra el onClick de la opción.
+  //   2. react-remove-scroll: escucha wheel/touchmove y hace preventDefault a
+  //      todo scroll fuera del Content, así el menú no scrollea.
+  // Ambas escuchan en fase de burbujeo sobre `document`. Cortamos la propagación
+  // nativa de esos eventos en el nodo del menú: nunca llegan a `document`, así
+  // Radix no los ve. El modal no se cierra Y el menú vuelve a scrollear.
+  // Escuchamos sobre el nodo real (no vía React) porque el portal a <body> queda
+  // fuera del árbol DOM donde React delega sus eventos.
   useEffect(() => {
     const node = menuRef.current
     if (!isOpen || !node) return
     const stop = (e: Event) => e.stopPropagation()
-    node.addEventListener('pointerdown', stop)
-    node.addEventListener('mousedown', stop)
-    node.addEventListener('focusin', stop)
-    return () => {
-      node.removeEventListener('pointerdown', stop)
-      node.removeEventListener('mousedown', stop)
-      node.removeEventListener('focusin', stop)
-    }
+    const events = ['pointerdown', 'mousedown', 'focusin', 'wheel', 'touchmove'] as const
+    events.forEach((name) => node.addEventListener(name, stop))
+    return () => events.forEach((name) => node.removeEventListener(name, stop))
   }, [isOpen, menuStyle])
 
   return (
