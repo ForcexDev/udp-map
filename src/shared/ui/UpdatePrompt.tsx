@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { ArrowDownToLine, CheckCircle2, AlertTriangle } from 'lucide-react'
-import changelogRaw from '../../../docs/CHANGELOG.md?raw'
-
-const fallbackImprovements = changelogRaw
-  .split('\n')
-  .filter((line) => line.trim().startsWith('-'))
-  .map((line) => line.replace(/^\s*-\s*/, '').trim())
 
 export function UpdatePrompt() {
-  const [improvements, setImprovements] = useState(fallbackImprovements)
+  // Las novedades vienen de /update-info.json, emitido por el plugin
+  // udp-map-update-info desde docs/CHANGELOG.md en este mismo build.
+  const [improvements, setImprovements] = useState<string[]>([])
   const [newVersion, setNewVersion] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState(
     () => sessionStorage.getItem('udp-update-dismissed') === 'true'
@@ -39,7 +35,7 @@ export function UpdatePrompt() {
   // but don't block the prompt from appearing.
   useEffect(() => {
     if (!needRefresh && !isDevTesting) {
-      setImprovements(fallbackImprovements)
+      setImprovements([])
       sessionStorage.removeItem('udp-update-dismissed')
       setDismissed(false)
       return
@@ -91,11 +87,6 @@ export function UpdatePrompt() {
     }, 10_000)
 
     try {
-      if (!('serviceWorker' in navigator)) {
-        await updateServiceWorker(true)
-        return
-      }
-      
       // Let the vite-plugin-pwa library handle the skip waiting and reload mechanism
       await updateServiceWorker(true)
     } catch (err) {

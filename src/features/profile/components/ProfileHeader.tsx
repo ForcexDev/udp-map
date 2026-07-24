@@ -4,23 +4,25 @@ import type { Role } from '@/shared/types/database'
 import { ShieldAlert } from 'lucide-react'
 
 interface ProfileHeaderProps {
-  user: { name: string | null; email: string | null; avatarUrl?: string | null; avatar_url?: string | null }
+  name: string | null
+  email: string | null
+  avatarUrl: string | null
   role: Role
   onEditProfile?: () => void
   onAdminPanel?: () => void
 }
 
-export function ProfileHeader({ user, role, onEditProfile, onAdminPanel }: ProfileHeaderProps) {
+export function ProfileHeader({ name, email, avatarUrl, role, onEditProfile, onAdminPanel }: ProfileHeaderProps) {
   return (
     <div className="px-[22px] pt-[22px]">
       <div className="flex items-center gap-4">
-        <UserAvatar name={user.name} src={user.avatarUrl || user.avatar_url} className="w-[54px] h-[54px] text-[20px] font-display font-semibold" />
+        <UserAvatar name={name} src={avatarUrl} className="w-[54px] h-[54px] text-[20px] font-display font-semibold" />
         <div>
           <p className="font-display text-[18px] font-semibold text-neutral-900 dark:text-profile-text m-0 mb-0.5">
-            {user.name}
+            {name}
           </p>
           <p className="font-mono text-[12px] text-neutral-500 dark:text-profile-faint m-0">
-            {handleFromEmail(user.email, user.name)}
+            {handleFromEmail(email, name)}
           </p>
           <p className={`mt-1.5 text-[12px] font-medium ${ROLE_COLORS[role]}`}>
             {role === 'guest' ? 'Invitado' : role === 'student' ? 'Estudiante' : role === 'moderator' ? 'Moderador' : 'Admin'}

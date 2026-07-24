@@ -70,9 +70,9 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
       onOpenChange={onOpenChange}
       title={t('profile.editProfile')}
       description={t('profile.editProfileDesc')}
-      contentClassName="!bg-white dark:!bg-neutral-900 sm:max-w-md shadow-2xl rounded-2xl ultra-lock-h overflow-x-hidden max-w-full overscroll-x-none touch-pan-y"
+      contentClassName="!bg-white dark:!bg-neutral-900 sm:max-w-md shadow-2xl rounded-2xl overflow-x-hidden max-w-full overscroll-x-none touch-pan-y"
     >
-      <div className="flex flex-col gap-5 py-2 ultra-lock-h overflow-x-hidden max-w-full overscroll-x-none touch-pan-y">
+      <div className="flex flex-col gap-5 py-2 overflow-x-hidden max-w-full overscroll-x-none touch-pan-y">
         {/* Nombre */}
         <div className="flex flex-col gap-2">
           <label className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ReportCardWithVote } from '@/features/reports/components/ReportCardWithVote'
+import { ReportCardWithVote } from './ReportCardWithVote'
 import { FACULTIES } from '@/shared/data/campusData'
 import { relativeTime } from '@/shared/utils/datetime'
 import type { Pin } from '@/shared/types/database'
@@ -56,7 +56,6 @@ export function ReportTimeline({ pins, loading, onViewOnMap }: ReportTimelinePro
                 location={facultyName}
                 photoUrl={pin.pin_photos?.[0]?.url}
                 photoCount={pin.pin_photos?.length}
-                commentsCount={0}
                 showTimeline={true}
                 onViewOnMap={() => onViewOnMap(pin)}
               />

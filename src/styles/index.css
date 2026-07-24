@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+/* Las webfonts (Inter, Space Grotesk, JetBrains Mono) se cargan con un <link>
+   en index.html: un @import aquí bloquea y serializa la petición. */
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -612,14 +613,6 @@ body {
   display: none; /* Chrome, Safari and Opera */
 }
 
-/* ── Ultra Horizontal Scroll Lock ────────────────────────── */
-.ultra-lock-h {
-  overflow-x: hidden !important;
-  overscroll-behavior-x: none !important;
-  touch-action: pan-y !important;
-  max-width: 100% !important;
-}
-
 /* ── Report Timeline ──────────────────────────────────── */
 .report-timeline {
   position: relative;
@@ -633,10 +626,6 @@ body {
   top: 8px;
   bottom: 8px;
   width: 1px;
-  background: var(--color-profile-line);
-}
-
-.dark .report-timeline::before {
   background: var(--color-profile-line);
 }
 

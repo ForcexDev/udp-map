@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { CustomSelect } from '@/shared/ui/CustomSelect'
+import { UserAvatar } from '@/shared/ui/UserAvatar'
 import { FACULTIES } from '@/shared/data/campusData'
 import type { Profile } from '@/shared/types/database'
 
@@ -81,17 +82,7 @@ export function LeaderboardTable({ data, currentUserId, loading, faculty, onFacu
                         onClick={() => onViewProfile(profile.id)}
                         className="flex items-center gap-2.5 text-left hover:underline bg-transparent border-none p-0 cursor-pointer text-neutral-900 dark:text-profile-text"
                       >
-                        {profile.avatar_url ? (
-                          <img
-                            src={profile.avatar_url}
-                            alt={profile.name || 'User'}
-                            className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-neutral-800 text-[11px] font-bold text-neutral-400 flex items-center justify-center border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
-                            {(profile.name || 'U').charAt(0).toUpperCase()}
-                          </div>
-                        )}
+                        <UserAvatar name={profile.name} src={profile.avatar_url} className="w-7 h-7 text-[26px]" />
                         <span className="truncate max-w-[140px] sm:max-w-none">
                           {profile.name || 'Estudiante UDP'}
                         </span>

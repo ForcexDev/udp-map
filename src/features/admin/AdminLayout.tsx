@@ -1,7 +1,7 @@
 import { Link, Outlet, Navigate } from 'react-router-dom'
 import { ShieldAlert, ArrowLeft } from 'lucide-react'
 import { Toast } from '@/shared/ui/Toast'
-import { LoginModal } from '@/features/auth/LoginModal'
+import { UserAvatar } from '@/shared/ui/UserAvatar'
 import { useAuthStore } from '@/features/auth/authStore'
 
 export function AdminLayout() {
@@ -51,9 +51,7 @@ export function AdminLayout() {
 
         {/* Current Admin User Info */}
         <div className="hidden sm:flex items-center gap-2 bg-neutral-100 dark:bg-neutral-800/80 rounded-full px-3 py-1.5">
-          <div className="w-6 h-6 rounded-full bg-[#D41F2D] text-white text-[10px] font-black flex items-center justify-center">
-            {user?.name?.charAt(0).toUpperCase() || 'A'}
-          </div>
+          <UserAvatar name={user?.name} src={user?.avatarUrl} className="w-6 h-6 text-[24px]" />
           <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">{user?.name}</span>
           <span className="text-[9px] font-black uppercase bg-red-100 dark:bg-red-950/60 text-[#D41F2D] px-2 py-0.5 rounded-full">ADMIN</span>
         </div>
@@ -65,7 +63,6 @@ export function AdminLayout() {
       </main>
 
       <Toast />
-      <LoginModal />
     </div>
   )
 }

@@ -43,27 +43,21 @@ const DEFAULT_ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || ''
-  const envOriginsStr = Deno.env.get('ALLOWED_ORIGINS') || ''
-  const envOrigins = envOriginsStr ? envOriginsStr.split(',').map((o) => o.trim()) : []
-  const allowedList = [...DEFAULT_ALLOWED_ORIGINS, ...envOrigins]
-
-  const isAllowed = allowedList.includes(origin)
-  const matchedOrigin = isAllowed ? origin : DEFAULT_ALLOWED_ORIGINS[0]
+  const envOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((o) => o.trim()).filter(Boolean)
+  const allowed = [...DEFAULT_ALLOWED_ORIGINS, ...envOrigins].includes(origin)
 
   return {
-    'Access-Control-Allow-Origin': matchedOrigin,
+    // Origen no permitido: se omite el header y el navegador bloquea la respuesta.
+    ...(allowed ? { 'Access-Control-Allow-Origin': origin } : {}),
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   }
 }
 
-function json(req: Request, body: unknown, status = 200) {
+function json(cors: Record<string, string>, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      ...getCorsHeaders(req),
-      'content-type': 'application/json; charset=utf-8',
-    },
+    headers: { ...cors, 'content-type': 'application/json; charset=utf-8' },
   })
 }
 
@@ -87,12 +81,12 @@ async function isAuthorized(req: Request): Promise<boolean> {
 }
 
 Deno.serve(async (req) => {
-  const headers = getCorsHeaders(req)
+  const cors = getCorsHeaders(req)
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers })
+    return new Response('ok', { headers: cors })
   }
-  if (req.method !== 'POST') return json(req, { error: 'Method not allowed' }, 405)
-  if (!await isAuthorized(req)) return json(req, { error: 'Unauthorized' }, 401)
+  if (req.method !== 'POST') return json(cors, { error: 'Method not allowed' }, 405)
+  if (!await isAuthorized(req)) return json(cors, { error: 'Unauthorized' }, 401)
 
   const { data: remindersCreated, error: reminderError } = await supabase
     .rpc('enqueue_upcoming_event_notifications')
@@ -114,7 +108,7 @@ Deno.serve(async (req) => {
     .order('created_at', { ascending: true })
     .limit(100)
 
-  if (error) return json(req, { error: error.message }, 500)
+  if (error) return json(cors, { error: error.message }, 500)
 
   let sent = 0
   let failed = 0
@@ -183,7 +177,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json(req, {
+  return json(cors, {
     remindersCreated: remindersCreated ?? 0,
     processed: data?.length ?? 0,
     sent,

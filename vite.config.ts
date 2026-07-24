@@ -28,36 +28,31 @@ function computeAppVersion(): string {
   }
 }
 
+function updateInfoJson(version: string): string {
+  const changelog = readFileSync(path.resolve(__dirname, 'docs/CHANGELOG.md'), 'utf8')
+  const improvements = changelog
+    .split('\n')
+    .filter((line) => line.trim().startsWith('-'))
+    .map((line) => line.replace(/^\s*-\s*/, '').trim())
+
+  return JSON.stringify({ version, improvements })
+}
+
 function updateInfoPlugin(version: string): Plugin {
   return {
     name: 'udp-map-update-info',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if (req.url?.startsWith('/update-info.json')) {
-          const changelog = readFileSync(path.resolve(__dirname, 'docs/CHANGELOG.md'), 'utf8')
-          const improvements = changelog
-            .split('\n')
-            .filter((line) => line.trim().startsWith('-'))
-            .map((line) => line.replace(/^\s*-\s*/, '').trim())
-
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ version, improvements }))
-          return
-        }
-        next()
+        if (!req.url?.startsWith('/update-info.json')) return next()
+        res.setHeader('Content-Type', 'application/json')
+        res.end(updateInfoJson(version))
       })
     },
     generateBundle() {
-      const changelog = readFileSync(path.resolve(__dirname, 'docs/CHANGELOG.md'), 'utf8')
-      const improvements = changelog
-        .split('\n')
-        .filter((line) => line.trim().startsWith('-'))
-        .map((line) => line.replace(/^\s*-\s*/, '').trim())
-
       this.emitFile({
         type: 'asset',
         fileName: 'update-info.json',
-        source: JSON.stringify({ version, improvements }),
+        source: updateInfoJson(version),
       })
     },
   }

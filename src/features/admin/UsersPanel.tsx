@@ -5,6 +5,15 @@ import type { Role, Profile } from '@/shared/types/database'
 import { fetchAdminUsers, adminSetUserRole } from './api'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
+import { UserAvatar } from '@/shared/ui/UserAvatar'
+import { FilterPills } from '@/shared/ui/FilterPills'
+
+const ROLE_OPTIONS: readonly { value: Role | 'all'; label: string }[] = [
+  { value: 'all', label: 'Todos' },
+  { value: 'student', label: 'Student' },
+  { value: 'moderator', label: 'Moderator' },
+  { value: 'admin', label: 'Admin' },
+]
 
 export function UsersPanel() {
   const queryClient = useQueryClient()
@@ -44,22 +53,13 @@ export function UsersPanel() {
         </div>
 
         {/* Role Filters */}
-        <div className="flex gap-1 overflow-x-auto w-full sm:w-auto">
-          {(['all', 'student', 'moderator', 'admin'] as const).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRoleFilter(r)}
-              className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                roleFilter === r
-                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                  : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-              }`}
-            >
-              {r === 'all' ? 'Todos' : r}
-            </button>
-          ))}
-        </div>
+        <FilterPills
+          label="Filtrar usuarios por rol"
+          options={ROLE_OPTIONS}
+          value={roleFilter}
+          onChange={setRoleFilter}
+          className="w-full sm:w-auto"
+        />
       </div>
 
       {/* Users Table */}
@@ -86,9 +86,7 @@ export function UsersPanel() {
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-neutral-50/60 dark:hover:bg-neutral-800/30 transition-colors">
                   <td className="py-3 px-4 font-bold text-neutral-900 dark:text-white flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-200 text-xs font-black grid place-items-center shrink-0">
-                      {u.name?.charAt(0).toUpperCase() || 'U'}
-                    </div>
+                    <UserAvatar name={u.name} src={u.avatar_url} className="w-7 h-7 text-[28px]" />
                     <span>{u.name || 'Sin nombre'}</span>
                   </td>
                   <td className="py-3 px-4 text-neutral-500 dark:text-neutral-400 font-mono">{u.email}</td>

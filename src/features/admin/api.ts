@@ -6,7 +6,7 @@ import { demoDb } from '@/features/pins/demoStore'
 /** Sanitizador estricto contra inyecciones de sintaxis PostgREST (.or, .ilike, etc.) */
 function sanitizePostgrestSearch(input?: string): string {
   if (!input) return ''
-  return input.replace(/[%(),.:'"/]/g, '').replace(/\\/g, '').trim()
+  return input.replace(/[%(),.:'"/\\]/g, '').trim()
 }
 
 // Datos Mock para Modo Demo
@@ -110,7 +110,6 @@ export async function fetchAdminPins(filter?: AdminPinFilter): Promise<Pin[]> {
   if (!supabase) {
     let list = [...demoDb.pins]
     if (filter?.type && filter.type !== 'all') list = list.filter(p => p.type === filter.type)
-    if (filter?.facultyId && filter.facultyId !== 'all') list = list.filter(p => p.faculty_id === filter.facultyId)
     if (safeSearch) {
       const q = safeSearch.toLowerCase()
       list = list.filter(p => p.title.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q))
@@ -120,7 +119,6 @@ export async function fetchAdminPins(filter?: AdminPinFilter): Promise<Pin[]> {
 
   let query = supabase.from('pins').select('*, pin_photos(*)').order('created_at', { ascending: false })
   if (filter?.type && filter.type !== 'all') query = query.eq('type', filter.type)
-  if (filter?.facultyId && filter.facultyId !== 'all') query = query.eq('faculty_id', filter.facultyId)
   if (safeSearch) query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`)
 
   const { data, error } = await query
@@ -140,40 +138,30 @@ export async function adminDeletePin(pinId: string): Promise<void> {
 export async function fetchRecentActivity(): Promise<ActivityEntry[]> {
   if (!supabase) {
     return [
-      { id: '1', type: 'pin_created', title: 'Nuevo reporte de Sala Libre en FIC', actorName: 'Estudiante Demo', timestamp: new Date(Date.now() - 5 * 60000).toISOString(), badgeColor: 'bg-emerald-500' },
-      { id: '2', type: 'report_submitted', title: 'Reporte de contenido inapropiado', actorName: 'Sofía Valdés', timestamp: new Date(Date.now() - 25 * 60000).toISOString(), badgeColor: 'bg-[#D41F2D]' },
-      { id: '3', type: 'user_registered', title: 'Nuevo usuario registrado (@mail.udp.cl)', actorName: 'Martín Silva', timestamp: new Date(Date.now() - 2 * 3600000).toISOString(), badgeColor: 'bg-blue-500' },
+      { id: '1', type: 'pin_created', title: 'Nuevo reporte de Sala Libre en FIC', timestamp: new Date(Date.now() - 5 * 60000).toISOString() },
+      { id: '2', type: 'report_submitted', title: 'Reporte de contenido inapropiado', timestamp: new Date(Date.now() - 25 * 60000).toISOString() },
     ]
   }
 
   const [pinsRes, reportsRes] = await Promise.all([
-    supabase.from('pins').select('id, title, creator_id, created_at').order('created_at', { ascending: false }).limit(15),
-    supabase.from('content_reports').select('id, reason, reporter_id, created_at').order('created_at', { ascending: false }).limit(15),
+    supabase.from('pins').select('id, title, created_at').order('created_at', { ascending: false }).limit(15),
+    supabase.from('content_reports').select('id, reason, created_at').order('created_at', { ascending: false }).limit(15),
   ])
 
-  const activity: ActivityEntry[] = []
-
-  ;(pinsRes.data ?? []).forEach(p => {
-    activity.push({
+  const activity: ActivityEntry[] = [
+    ...(pinsRes.data ?? []).map((p): ActivityEntry => ({
       id: `pin-${p.id}`,
       type: 'pin_created',
       title: `Pin publicado: "${p.title}"`,
-      actorName: 'Usuario UDP',
       timestamp: p.created_at,
-      badgeColor: 'bg-emerald-500',
-    })
-  })
-
-  ;(reportsRes.data ?? []).forEach(r => {
-    activity.push({
+    })),
+    ...(reportsRes.data ?? []).map((r): ActivityEntry => ({
       id: `rep-${r.id}`,
       type: 'report_submitted',
       title: `Reporte de moderación enviado (${r.reason})`,
-      actorName: 'Usuario UDP',
       timestamp: r.created_at,
-      badgeColor: 'bg-[#D41F2D]',
-    })
-  })
+    })),
+  ]
 
   return activity.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 }

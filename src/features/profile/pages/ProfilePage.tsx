@@ -15,11 +15,10 @@ import { ReportTimeline } from '../components/ReportTimeline'
 import { BadgesGrid } from '../components/BadgesGrid'
 import { LeaderboardTable } from '../components/LeaderboardTable'
 
-import { Tabs } from '@/shared/ui/Tabs'
+import * as Tabs from '@radix-ui/react-tabs'
 import { EditProfileModal } from '../EditProfileModal'
 import { PublicProfileModal } from '../PublicProfileModal'
-import { useMyPins } from '../hooks/useMyPins'
-import { fetchPublicProfile, fetchUserBadges, fetchBadges, fetchLeaderboard } from '../publicProfileApi'
+import { fetchPublicProfile, fetchUserPins, fetchUserBadges, fetchBadges, fetchLeaderboard } from '../publicProfileApi'
 import { FACULTIES } from '@/shared/data/campusData'
 
 export function ProfilePage() {
@@ -44,8 +43,12 @@ export function ProfilePage() {
     enabled: Boolean(user),
   })
 
-  const pinsQuery = useMyPins(user?.id)
-  
+  const pinsQuery = useQuery({
+    queryKey: ['user-pins', user?.id],
+    queryFn: () => fetchUserPins(user!.id),
+    enabled: Boolean(user),
+  })
+
   const badgesQuery = useQuery({
     queryKey: ['user-badges', user?.id],
     queryFn: () => user ? fetchUserBadges(user.id) : [],
@@ -92,7 +95,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto ultra-lock-h overflow-x-hidden max-w-full w-full overscroll-x-none touch-pan-y bg-white dark:bg-profile-bg">
+    <div className="h-full overflow-y-auto overflow-x-hidden max-w-full w-full overscroll-x-none touch-pan-y bg-white dark:bg-profile-bg">
       <div className="mx-auto w-full max-w-2xl min-h-full bg-white dark:bg-profile-bg pt-safe overflow-x-hidden">
         
         {/* Topbar */}
@@ -108,11 +111,13 @@ export function ProfilePage() {
           </button>
         </div>
 
-        <ProfileHeader 
-          user={user} 
-          role={role} 
-          onEditProfile={() => setEditOpen(true)} 
-          onAdminPanel={() => navigate('/admin')} 
+        <ProfileHeader
+          name={user.name}
+          email={user.email}
+          avatarUrl={user.avatarUrl}
+          role={role}
+          onEditProfile={() => setEditOpen(true)}
+          onAdminPanel={() => navigate('/admin')}
         />
         
         <ProfileStatsLine 
@@ -127,7 +132,7 @@ export function ProfilePage() {
         />
 
         <ProfileTabs value={activeTab} onValueChange={handleTabChange}>
-          <Tabs.Content value="reports">
+          <Tabs.Content value="reports" className="outline-none">
             <ReportTimeline 
               pins={pinsQuery.data ?? []} 
               loading={pinsQuery.isLoading} 
@@ -135,7 +140,7 @@ export function ProfilePage() {
             />
           </Tabs.Content>
           
-          <Tabs.Content value="badges">
+          <Tabs.Content value="badges" className="outline-none">
             <BadgesGrid 
               badges={allBadgesQuery.data ?? []} 
               userBadges={badgesQuery.data ?? []} 
@@ -143,7 +148,7 @@ export function ProfilePage() {
             />
           </Tabs.Content>
           
-          <Tabs.Content value="leaderboard">
+          <Tabs.Content value="leaderboard" className="outline-none">
             <LeaderboardTable 
               data={leaderboardQuery.data} 
               currentUserId={user.id} 

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Dialog } from '@/shared/ui/Dialog'
-import { Tabs } from '@/shared/ui/Tabs'
+import * as Tabs from '@radix-ui/react-tabs'
 import { ProfileHeader } from './components/ProfileHeader'
 import { ProfileStatsLine } from './components/ProfileStatsLine'
 import { ProfileFacultyTag } from './components/ProfileFacultyTag'
@@ -9,7 +10,7 @@ import { ReportTimeline } from './components/ReportTimeline'
 import { BadgesGrid } from './components/BadgesGrid'
 
 import { fetchPublicProfile, fetchUserPins, fetchUserBadges, fetchBadges } from './publicProfileApi'
-import type { Profile, Pin, UserBadge, Badge } from '@/shared/types/database'
+import type { Pin } from '@/shared/types/database'
 import { FACULTIES } from '@/shared/data/campusData'
 import { useTranslation } from 'react-i18next'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -20,51 +21,39 @@ interface PublicProfileModalProps {
   onClose: () => void
 }
 
+// Cerrado no monta nada: sin userId no hay queries ni estado que mantener.
 export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps) {
+  if (!userId) return null
+  return <PublicProfileModalContent userId={userId} onClose={onClose} />
+}
+
+function PublicProfileModalContent({ userId, onClose }: { userId: string; onClose: () => void }) {
   const { i18n } = useTranslation()
   const navigate = useNavigate()
   const selectPin = useUIStore((s) => s.selectPin)
 
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [pins, setPins] = useState<Pin[]>([])
-  const [userBadges, setUserBadges] = useState<UserBadge[]>([])
-  const [allBadges, setAllBadges] = useState<Badge[]>([])
-  const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'reports' | 'badges'>('reports')
 
-  useEffect(() => {
-    if (!userId) {
-      setProfile(null)
-      setPins([])
-      setUserBadges([])
-      setAllBadges([])
-      setActiveTab('reports')
-      return
-    }
+  const profileQuery = useQuery({
+    queryKey: ['profile', userId],
+    queryFn: () => fetchPublicProfile(userId),
+  })
+  const pinsQuery = useQuery({
+    queryKey: ['user-pins', userId],
+    queryFn: () => fetchUserPins(userId),
+  })
+  const userBadgesQuery = useQuery({
+    queryKey: ['user-badges', userId],
+    queryFn: () => fetchUserBadges(userId),
+  })
+  const allBadgesQuery = useQuery({
+    queryKey: ['badges'],
+    queryFn: () => fetchBadges(),
+  })
 
-    let isMounted = true
-    setLoading(true)
-    
-    Promise.all([
-      fetchPublicProfile(userId),
-      fetchUserPins(userId),
-      fetchUserBadges(userId),
-      fetchBadges()
-    ]).then(([fetchedProfile, fetchedPins, fetchedUserBadges, fetchedAllBadges]) => {
-      if (!isMounted) return
-      setProfile(fetchedProfile)
-      setPins(fetchedPins)
-      setUserBadges(fetchedUserBadges)
-      setAllBadges(fetchedAllBadges)
-      setLoading(false)
-    })
-
-    return () => {
-      isMounted = false
-    }
-  }, [userId])
-
-  if (!userId) return null
+  const profile = profileQuery.data
+  const pins = pinsQuery.data ?? []
+  const loading = profileQuery.isLoading || pinsQuery.isLoading || userBadgesQuery.isLoading || allBadgesQuery.isLoading
 
   const myFaculty = profile?.faculty_id ? FACULTIES.find((f) => f.id === profile.faculty_id) : null
   const facultyName = myFaculty ? (i18n.language === 'en' ? myFaculty.name_en : myFaculty.name) : null
@@ -76,49 +65,53 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
   }
 
   return (
-    <Dialog 
-      open={!!userId} 
+    <Dialog
+      open
       onOpenChange={(open) => !open && onClose()}
       title="Perfil de Usuario"
       contentClassName="flex flex-col h-[90vh] sm:h-auto sm:max-h-[85vh] p-0 overflow-x-hidden w-full sm:max-w-2xl overscroll-x-none touch-pan-y bg-white dark:bg-profile-bg"
     >
-      <div className="overflow-y-auto flex-1 ultra-lock-h overflow-x-hidden max-w-full overscroll-x-none touch-pan-y hide-scrollbar">
+      <div className="overflow-y-auto flex-1 overflow-x-hidden max-w-full overscroll-x-none touch-pan-y hide-scrollbar">
         {loading ? (
           <div className="flex justify-center items-center h-40">
             <div className="w-6 h-6 border-2 border-[#D41F2D] dark:border-profile-accent border-t-transparent rounded-full animate-spin" />
           </div>
         ) : profile ? (
           <div className="pb-4 pt-2">
-            <ProfileHeader 
-              user={profile} 
-              role={profile.role} 
+            {/* profiles_public no expone email (ver PROFILE_PUBLIC_FIELDS):
+                el handle se deriva del nombre. */}
+            <ProfileHeader
+              name={profile.name}
+              email={null}
+              avatarUrl={profile.avatar_url}
+              role={profile.role}
             />
-            
-            <ProfileStatsLine 
-              postCount={pins.length} 
-              karma={profile.karma} 
-              createdAt={profile.created_at} 
+
+            <ProfileStatsLine
+              postCount={pins.length}
+              karma={profile.karma}
+              createdAt={profile.created_at}
             />
-            
-            <ProfileFacultyTag 
-              career={profile.career} 
-              facultyName={facultyName} 
+
+            <ProfileFacultyTag
+              career={profile.career}
+              facultyName={facultyName}
             />
 
             <ProfileTabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'reports' | 'badges')} hideLeaderboard>
-              <Tabs.Content value="reports">
-                <ReportTimeline 
-                  pins={pins} 
-                  loading={loading} 
-                  onViewOnMap={openOnMap} 
+              <Tabs.Content value="reports" className="outline-none">
+                <ReportTimeline
+                  pins={pins}
+                  loading={pinsQuery.isLoading}
+                  onViewOnMap={openOnMap}
                 />
               </Tabs.Content>
-              
-              <Tabs.Content value="badges">
-                <BadgesGrid 
-                  badges={allBadges} 
-                  userBadges={userBadges} 
-                  loading={loading} 
+
+              <Tabs.Content value="badges" className="outline-none">
+                <BadgesGrid
+                  badges={allBadgesQuery.data ?? []}
+                  userBadges={userBadgesQuery.data ?? []}
+                  loading={allBadgesQuery.isLoading}
                 />
               </Tabs.Content>
             </ProfileTabs>

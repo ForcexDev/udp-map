@@ -3,9 +3,8 @@ import { supabase } from '@/shared/lib/supabase'
 import { useAuthStore } from '@/features/auth/authStore'
 import { usePinActions } from '@/features/pins/usePinActions'
 import { useGuard } from '@/features/auth/useGuard'
-import { ReportCard } from './ReportCard'
+import { ReportCard, type ReportCardProps } from './ReportCard'
 import type { Pin } from '@/shared/types/database'
-import type { ReportCardProps } from '../types'
 
 interface ReportCardWithVoteProps extends Omit<ReportCardProps, 'userVote' | 'onVote' | 'votesScore'> {
   pin: Pin

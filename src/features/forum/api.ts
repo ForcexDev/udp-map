@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
+import { fetchPublicProfiles, type PublicProfile } from '@/shared/lib/publicProfiles'
 import type { ForumThread, ForumComment } from '@/shared/types/database'
 import { applyVoteTransition } from '@/shared/utils/vote'
 import { demoForumDb } from './demoStore'
@@ -7,23 +8,6 @@ const nowIso = () => new Date().toISOString()
 
 type ForumThreadRow = ForumThread & {
   forum_comments?: { count?: number | null }[] | null
-}
-
-type PublicProfile = { name?: string | null; avatar_url?: string | null }
-
-// profiles_public: RLS solo deja leer el perfil propio o el de un admin en la
-// tabla base, así que el autor de contenido ajeno se resuelve aparte via vista.
-async function fetchAuthorProfiles(authorIds: (string | null | undefined)[]): Promise<Map<string, PublicProfile>> {
-  const ids = [...new Set(authorIds.filter((id): id is string => !!id))]
-  if (!supabase || ids.length === 0) return new Map()
-
-  const { data, error } = await supabase
-    .from('profiles_public')
-    .select('id, name, avatar_url')
-    .in('id', ids)
-
-  if (error) throw error
-  return new Map((data || []).map((p) => [p.id as string, p as PublicProfile]))
 }
 
 function mapThread(row: ForumThreadRow, profile: PublicProfile | undefined): ForumThread {
@@ -83,7 +67,7 @@ export async function fetchThreads(
   if (error) throw error
 
   const rows = (data || []) as unknown as ForumThreadRow[]
-  const profiles = await fetchAuthorProfiles(rows.map((r) => r.author_id))
+  const profiles = await fetchPublicProfiles(rows.map((r) => r.author_id))
   const threads = rows.map((thread) => mapThread(thread, profiles.get(thread.author_id)))
 
   // Ordenamos en memoria
@@ -119,7 +103,7 @@ export async function fetchThreadById(threadId: string): Promise<ForumThread | n
   }
 
   const row = data as unknown as ForumThreadRow
-  const profiles = await fetchAuthorProfiles([row.author_id])
+  const profiles = await fetchPublicProfiles([row.author_id])
   return mapThread(row, profiles.get(row.author_id))
 }
 
@@ -226,7 +210,7 @@ export async function fetchComments(threadId: string): Promise<ForumComment[]> {
   if (error) throw error
 
   const rows = (data || []) as unknown as ForumComment[]
-  const profiles = await fetchAuthorProfiles(rows.map((c) => c.author_id))
+  const profiles = await fetchPublicProfiles(rows.map((c) => c.author_id))
 
   return rows.map((c) => ({
     ...c,

@@ -16,12 +16,9 @@ export interface DashboardStats {
 
 export interface ActivityEntry {
   id: string
-  type: 'pin_created' | 'report_submitted' | 'user_registered' | 'report_resolved'
+  type: 'pin_created' | 'report_submitted'
   title: string
-  actorName: string
   timestamp: string
-  targetUrl?: string
-  badgeColor?: string
 }
 
 export interface AdminUserFilter {
@@ -31,7 +28,5 @@ export interface AdminUserFilter {
 
 export interface AdminPinFilter {
   type?: PinType | 'all'
-  status?: 'all' | 'active' | 'expired' | 'permanent'
-  facultyId?: string | 'all'
   search?: string
 }

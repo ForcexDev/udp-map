@@ -4,6 +4,14 @@ import { Trash2, ShieldCheck } from 'lucide-react'
 import type { PinType } from '@/shared/types/database'
 import { fetchAdminPins, adminDeletePin } from './api'
 import { useUIStore } from '@/shared/stores/uiStore'
+import { FilterPills } from '@/shared/ui/FilterPills'
+
+const TYPE_OPTIONS: readonly { value: PinType | 'all'; label: string }[] = [
+  { value: 'all', label: 'Todos los tipos' },
+  { value: 'report', label: 'Report' },
+  { value: 'event', label: 'Event' },
+  { value: 'place', label: 'Place' },
+]
 
 export function ContentPanel() {
   const queryClient = useQueryClient()
@@ -26,23 +34,14 @@ export function ContentPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Type Tabs */}
-      <div className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex gap-2">
-        {(['all', 'report', 'event', 'place'] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTypeFilter(t)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer ${
-              typeFilter === t
-                ? 'bg-[#D41F2D] text-white'
-                : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-            }`}
-          >
-            {t === 'all' ? 'Todos los tipos' : t}
-          </button>
-        ))}
-      </div>
+      {/* Type Filter */}
+      <FilterPills
+        label="Filtrar pines por tipo"
+        options={TYPE_OPTIONS}
+        value={typeFilter}
+        onChange={setTypeFilter}
+        className="p-3 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
+      />
 
       {/* Pins List */}
       {isLoading ? (

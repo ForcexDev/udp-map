@@ -23,11 +23,8 @@ export function ActivityLogPanel() {
         {activity.map((item) => (
           <div key={item.id} className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-sm flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.badgeColor || 'bg-neutral-400'}`} />
-              <div>
-                <p className="text-xs font-extrabold text-neutral-900 dark:text-white">{item.title}</p>
-                <span className="text-[10px] font-semibold text-neutral-400">{item.actorName}</span>
-              </div>
+              <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.type === 'pin_created' ? 'bg-emerald-500' : 'bg-[#D41F2D]'}`} />
+              <p className="text-xs font-extrabold text-neutral-900 dark:text-white">{item.title}</p>
             </div>
             <span className="text-[10px] font-mono text-neutral-400 flex items-center gap-1 shrink-0">
               <Clock size={12} />

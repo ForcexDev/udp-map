@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import * as Tabs from '@radix-ui/react-tabs'
 import {
   X, LogOut, Search,
   Globe, HelpCircle, MapPinOff, MapPin, Bell, Settings, Info
 } from 'lucide-react'
-import { useSidebarStore } from '@/shared/stores/sidebarStore'
+import { useSidebarStore, type SidebarTab } from '@/shared/stores/sidebarStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { setLanguage } from '@/shared/lib/i18n'
@@ -63,6 +64,13 @@ export function Sidebar() {
     close()
   }
 
+  const TABS = [
+    { key: 'places', label: t('sidebar.places', 'Lugares'), Icon: MapPin },
+    { key: 'notifications', label: t('sidebar.notificationsShort', 'Avisos'), Icon: Bell },
+    { key: 'settings', label: t('sidebar.settings', 'Ajustes'), Icon: Settings },
+  ] as const
+  const tabActiveIndex = TABS.findIndex((tItem) => tItem.key === tab)
+
   if (!isOpen) return null
 
   return (
@@ -75,6 +83,11 @@ export function Sidebar() {
 
       {/* Panel */}
       <div className="sidebar-panel relative w-full max-w-sm sm:max-w-md h-full bg-white dark:bg-neutral-900 flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.1)] border-l border-neutral-100 dark:border-neutral-800">
+      <Tabs.Root
+        value={tab}
+        onValueChange={(v) => setTab(v as SidebarTab)}
+        className="flex min-h-0 flex-1 flex-col"
+      >
         {/* Header */}
         <div className="sidebar-header p-6 sm:p-8">
           <div className="flex items-center justify-between mb-8">
@@ -98,52 +111,38 @@ export function Sidebar() {
             </button>
           </div>
 
-          {/* Tabs Menu on Top with Sliding Animation */}
-          {(() => {
-            const TABS = [
-              { key: 'places', label: t('sidebar.places', 'Lugares'), Icon: MapPin },
-              { key: 'notifications', label: t('sidebar.notificationsShort', 'Avisos'), Icon: Bell },
-              { key: 'settings', label: t('sidebar.settings', 'Ajustes'), Icon: Settings },
-            ] as const
-            const tabActiveIndex = TABS.findIndex((tItem) => tItem.key === tab)
-            return (
-              <div className="grid grid-cols-3 p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-2xl w-full select-none mt-2 relative">
-                <div
-                  className="absolute top-1 bottom-1 bg-white dark:bg-neutral-700 rounded-[14px] shadow-sm transition-all duration-300 ease-out pointer-events-none"
-                  style={{
-                    width: 'calc((100% - 8px) / 3)',
-                    left: `calc(4px + ${tabActiveIndex} * ((100% - 8px) / 3))`,
-                  }}
-                />
-                {TABS.map(({ key, label, Icon }) => {
-                  const isActive = tab === key
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setTab(key)}
-                      className={`relative z-10 py-2.5 rounded-[14px] text-[10px] font-black tracking-wider transition-colors duration-200 flex items-center justify-center gap-1.5 uppercase cursor-pointer ${
-                        isActive
-                          ? 'text-neutral-900 dark:text-white'
-                          : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
-                      }`}
-                    >
-                      <Icon size={14} className="flex-shrink-0" />
-                      <span className="truncate">{label}</span>
-                      {key === 'notifications' && unreadNotifications > 0 && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#D41F2D] flex-shrink-0 animate-pulse" />
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            )
-          })()}
+          {/* Tabs Menu on Top with Sliding Animation.
+              La pastilla es hermana de Tabs.List (no hija) para no meter nodos
+              ajenos dentro del role="tablist". */}
+          <div className="relative mt-2 p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-2xl w-full select-none">
+            <div
+              className="absolute top-1 bottom-1 bg-white dark:bg-neutral-700 rounded-[14px] shadow-sm transition-all duration-300 ease-out pointer-events-none"
+              style={{
+                width: 'calc((100% - 8px) / 3)',
+                left: `calc(4px + ${tabActiveIndex} * ((100% - 8px) / 3))`,
+              }}
+            />
+            <Tabs.List className="relative z-10 grid grid-cols-3">
+              {TABS.map(({ key, label, Icon }) => (
+                <Tabs.Trigger
+                  key={key}
+                  value={key}
+                  className="py-2.5 rounded-[14px] text-[10px] font-black tracking-wider transition-colors duration-200 flex items-center justify-center gap-1.5 uppercase cursor-pointer outline-none text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 data-[state=active]:text-neutral-900 dark:data-[state=active]:text-white focus-visible:ring-2 focus-visible:ring-[#D41F2D]"
+                >
+                  <Icon size={14} className="flex-shrink-0" />
+                  <span className="truncate">{label}</span>
+                  {key === 'notifications' && unreadNotifications > 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#D41F2D] flex-shrink-0 animate-pulse" />
+                  )}
+                </Tabs.Trigger>
+              ))}
+            </Tabs.List>
+          </div>
         </div>
 
         {/* Content */}
         <div className="sidebar-content min-h-0 flex-1 overflow-y-auto px-6 sm:px-8 py-6 no-scrollbar">
-          {tab === 'places' && (
+          <Tabs.Content value="places" className="outline-none">
             <div className="space-y-6 pb-12">
               <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em] mb-1">
                 {t('sidebar.faculties', 'Facultades')}
@@ -197,11 +196,13 @@ export function Sidebar() {
                 )}
               </div>
             </div>
-          )}
+          </Tabs.Content>
 
-          {tab === 'notifications' && <NotificationCenter onNavigate={close} />}
+          <Tabs.Content value="notifications" className="outline-none">
+            <NotificationCenter onNavigate={close} />
+          </Tabs.Content>
 
-          {tab === 'settings' && (
+          <Tabs.Content value="settings" className="outline-none">
             <div className="space-y-8 pb-12">
               {/* Language toggle */}
               <section className="space-y-4">
@@ -378,8 +379,9 @@ export function Sidebar() {
                 )}
               </section>
             </div>
-          )}
+          </Tabs.Content>
         </div>
+      </Tabs.Root>
       </div>
     </div>
   )

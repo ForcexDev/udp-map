@@ -1,4 +1,5 @@
 import { supabase, PHOTOS_BUCKET } from '@/shared/lib/supabase'
+import { fetchPublicProfiles, type PublicProfile } from '@/shared/lib/publicProfiles'
 import type { Pin, PinComment, PinType } from '@/shared/types/database'
 import type { Bounds } from '@/shared/utils/geo'
 import { isInBounds } from '@/shared/utils/geo'
@@ -78,22 +79,16 @@ export async function fetchPins(bounds: Bounds | null, filters: PinFilters): Pro
     
     const rows = (data ?? []) as Pin[]
 
-    // profiles_public: RLS solo deja leer el perfil propio o el de un admin en
-    // la tabla base, así que el nombre del creador de un pin ajeno se resuelve aparte.
-    const creatorIds = [...new Set(rows.map((p) => p.creator_id).filter((id): id is string => !!id))]
-    const creatorNames = new Map<string, string | null>()
-    if (creatorIds.length > 0) {
-      const { data: creators, error: creatorsError } = await supabase
-        .from('profiles_public')
-        .select('id, name')
-        .in('id', creatorIds)
-      if (creatorsError) console.error('Error fetching pin creator names:', creatorsError)
-      for (const c of creators ?? []) creatorNames.set(c.id, c.name)
-    }
+    // Un fallo resolviendo nombres no debe dejar el mapa sin pines: se degrada a
+    // creator_name null, igual que antes de existir la vista profiles_public.
+    const creators = await fetchPublicProfiles(rows.map((p) => p.creator_id)).catch((err) => {
+      console.error('Error fetching pin creator names:', err)
+      return new Map<string, PublicProfile>()
+    })
 
     return rows.map((p) => ({
       ...p,
-      creator_name: (p.creator_id ? creatorNames.get(p.creator_id) : undefined) ?? null,
+      creator_name: (p.creator_id ? creators.get(p.creator_id)?.name : undefined) ?? null,
     }))
   } catch (err) {
     console.error('Unexpected error fetching pins:', err)
@@ -446,19 +441,7 @@ export async function fetchComments(pinId: string, before?: string): Promise<Pin
   const { data, error } = await query
   if (error) throw error
   const rows = (data ?? []) as PinComment[]
-
-  // profiles_public: RLS solo deja leer el perfil propio o el de un admin en
-  // la tabla base, así que el autor de un comentario ajeno se resuelve aparte.
-  const authorIds = [...new Set(rows.map((c) => c.author_id).filter((id): id is string => !!id))]
-  const profiles = new Map<string, { name: string | null; avatar_url: string | null }>()
-  if (authorIds.length > 0) {
-    const { data: authors, error: authorsError } = await supabase
-      .from('profiles_public')
-      .select('id, name, avatar_url')
-      .in('id', authorIds)
-    if (authorsError) throw authorsError
-    for (const a of authors ?? []) profiles.set(a.id, a)
-  }
+  const profiles = await fetchPublicProfiles(rows.map((c) => c.author_id))
 
   return rows
     .map((c) => ({

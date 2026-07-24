@@ -1,6 +1,21 @@
-import { MapPin, MessageCircle, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { MapPin, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { UserAvatar } from '@/shared/ui/UserAvatar'
-import type { ReportCardProps } from '../types'
+
+export interface ReportCardProps {
+  title: string
+  description: string | null
+  authorName: string
+  authorAvatarUrl: string | null
+  timeAgo: string
+  location: string | null
+  photoUrl?: string | null
+  photoCount?: number
+  votesScore: number
+  userVote?: 1 | -1 | 0
+  onVote?: (value: 1 | -1) => void
+  onViewOnMap?: () => void
+  showTimeline?: boolean
+}
 
 export function ReportCard({
   title,
@@ -13,10 +28,8 @@ export function ReportCard({
   photoCount = 0,
   votesScore,
   userVote = 0,
-  commentsCount,
   onVote,
   onViewOnMap,
-  onCommentClick,
   showTimeline = false,
 }: ReportCardProps) {
   return (
@@ -83,13 +96,6 @@ export function ReportCard({
           </button>
         </div>
 
-        <button
-          onClick={onCommentClick}
-          className="flex items-center gap-1.5 text-[12.5px] font-medium text-neutral-500 dark:text-profile-faint hover:text-neutral-900 dark:hover:text-profile-text transition-colors cursor-pointer"
-        >
-          <MessageCircle size={15} />
-          {commentsCount}
-        </button>
         {onViewOnMap && (
           <button
             onClick={onViewOnMap}
