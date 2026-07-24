@@ -145,7 +145,13 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
       // cerca del medio del mapa, usando en su lugar rotación puramente lineal.
       aroundCenter: false,
     } as unknown as maplibregl.MapOptions)
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left')
+    
+    // Mostramos la atribución como texto estático (watermark) en lugar de un botón/menú desplegable
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: false }),
+      'bottom-left',
+    )
+    
     // No native controls — our custom FABs handle navigation/geolocation
 
     if (!show3D && map.touchPitch) {

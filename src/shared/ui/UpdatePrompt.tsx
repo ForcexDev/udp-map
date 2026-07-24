@@ -117,10 +117,14 @@ export function UpdatePrompt() {
         }
 
         navigator.serviceWorker.addEventListener('controllerchange', reloadOnce)
-        waitingWorker.postMessage({ type: 'SKIP_WAITING' })
+        
+        waitingWorker.addEventListener('statechange', () => {
+          if (waitingWorker.state === 'activated') {
+            reloadOnce()
+          }
+        })
 
-        // iOS can fail to emit controllerchange while the PWA is foregrounded.
-        window.setTimeout(reloadOnce, 2500)
+        waitingWorker.postMessage({ type: 'SKIP_WAITING' })
         return
       }
 
