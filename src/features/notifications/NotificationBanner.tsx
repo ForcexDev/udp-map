@@ -47,7 +47,10 @@ export function NotificationBanner() {
   }
 
   return (
-    <div className="fixed top-3 left-3 right-3 z-[3500] pointer-events-auto sm:left-auto sm:right-4 sm:w-96 animate-fade-up">
+    <div
+      className="fixed left-3 right-3 z-[3500] pointer-events-auto sm:left-auto sm:right-4 sm:w-96 animate-fade-up"
+      style={{ top: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
+    >
       <div className="glass-hud p-4 rounded-2xl shadow-2xl border border-neutral-200/80 dark:border-neutral-700/80 flex items-start gap-3">
         <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center flex-shrink-0 mt-0.5">
           {getCategoryIcon()}
