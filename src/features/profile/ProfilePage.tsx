@@ -155,8 +155,8 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
-      <div className="mx-auto w-full max-w-xl md:max-w-3xl px-4 pt-safe">
+    <div className="h-full overflow-y-auto ultra-lock-h overflow-x-hidden max-w-full w-full overscroll-x-none touch-pan-y bg-neutral-50 dark:bg-neutral-950">
+      <div className="mx-auto w-full max-w-xl md:max-w-3xl px-4 pt-safe ultra-lock-h overflow-x-hidden">
 
         {/* ── Barra superior ── */}
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pt-4 pb-3 md:pt-6">

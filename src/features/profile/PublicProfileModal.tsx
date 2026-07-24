@@ -95,9 +95,9 @@ export function PublicProfileModal({ userId, onClose }: PublicProfileModalProps)
       open={!!userId} 
       onOpenChange={(open) => !open && onClose()}
       title="Perfil de Usuario"
-      contentClassName="flex flex-col h-[90vh] sm:h-auto sm:max-h-[85vh] p-4 sm:p-6"
+      contentClassName="flex flex-col h-[90vh] sm:h-auto sm:max-h-[85vh] p-4 sm:p-6 ultra-lock-h overflow-x-hidden max-w-full overscroll-x-none touch-pan-y"
     >
-      <div className="overflow-y-auto flex-1 -mx-2 px-2 sm:mx-0 sm:px-0">
+      <div className="overflow-y-auto flex-1 -mx-2 px-2 sm:mx-0 sm:px-0 ultra-lock-h overflow-x-hidden max-w-full overscroll-x-none touch-pan-y">
           {loading ? (
             <div className="flex justify-center items-center h-40">
               <div className="w-6 h-6 border-2 border-[#D41F2D] border-t-transparent rounded-full animate-spin" />

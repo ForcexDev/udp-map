@@ -576,3 +576,12 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
+
+/* ── Ultra Horizontal Scroll Lock ────────────────────────── */
+.ultra-lock-h {
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
+  touch-action: pan-y !important;
+  max-width: 100% !important;
+}
+
