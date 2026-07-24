@@ -47,8 +47,9 @@ Configuración requerida:
 1. Generar un par VAPID.
 2. Configurar `VITE_VAPID_PUBLIC_KEY` en el frontend.
 3. Configurar como secretos de `send-push`: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
-   `VAPID_SUBJECT`, `CRON_SECRET`, `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`.
+   `VAPID_SUBJECT`, `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y opcionalmente `ALLOWED_ORIGINS` (lista de dominios separados por coma).
 4. Servir producción por HTTPS.
+5. **Configuración de CORS estricto:** La Edge Function autoriza por defecto únicamente coincidencias exactas con `http://localhost:5173` y `https://udp-map.vercel.app`. Si el dominio cambia en el futuro, se puede configurar en Supabase la variable de entorno `ALLOWED_ORIGINS=https://nuevo-dominio.cl`.
 
 ### Definition of Done
 

@@ -34,10 +34,36 @@ interface DeliveryRow {
   }
 }
 
-function json(body: unknown, status = 200) {
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://localhost:3000',
+  'https://udp-map.vercel.app',
+]
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  const envOriginsStr = Deno.env.get('ALLOWED_ORIGINS') || ''
+  const envOrigins = envOriginsStr ? envOriginsStr.split(',').map((o) => o.trim()) : []
+  const allowedList = [...DEFAULT_ALLOWED_ORIGINS, ...envOrigins]
+
+  const isAllowed = allowedList.includes(origin)
+  const matchedOrigin = isAllowed ? origin : DEFAULT_ALLOWED_ORIGINS[0]
+
+  return {
+    'Access-Control-Allow-Origin': matchedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  }
+}
+
+function json(req: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8' },
+    headers: {
+      ...getCorsHeaders(req),
+      'content-type': 'application/json; charset=utf-8',
+    },
   })
 }
 
@@ -61,8 +87,12 @@ async function isAuthorized(req: Request): Promise<boolean> {
 }
 
 Deno.serve(async (req) => {
-  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
-  if (!await isAuthorized(req)) return json({ error: 'Unauthorized' }, 401)
+  const headers = getCorsHeaders(req)
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers })
+  }
+  if (req.method !== 'POST') return json(req, { error: 'Method not allowed' }, 405)
+  if (!await isAuthorized(req)) return json(req, { error: 'Unauthorized' }, 401)
 
   const { data: remindersCreated, error: reminderError } = await supabase
     .rpc('enqueue_upcoming_event_notifications')
@@ -84,7 +114,7 @@ Deno.serve(async (req) => {
     .order('created_at', { ascending: true })
     .limit(100)
 
-  if (error) return json({ error: error.message }, 500)
+  if (error) return json(req, { error: error.message }, 500)
 
   let sent = 0
   let failed = 0
@@ -153,7 +183,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({
+  return json(req, {
     remindersCreated: remindersCreated ?? 0,
     processed: data?.length ?? 0,
     sent,

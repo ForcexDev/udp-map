@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "deploy:push": "npx --yes supabase functions deploy send-push",
+    "supabase:login": "npx --yes supabase login"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
