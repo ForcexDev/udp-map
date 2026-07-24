@@ -1,5 +1,32 @@
 /* global self, URL */
 
+// Debe coincidir con VITE_VAPID_PUBLIC_KEY (clave pública, no es secreta).
+// Si se rota el par VAPID, actualizar acá también.
+const VAPID_PUBLIC_KEY = 'BMsTXlUoAaxx9brDhqgGzaboSa-kzRSaUYHpXZAenxCWA6-rwTNes_iRUtr7wQtZsC_AIuMUSvXrYsNOFFjQuZQ'
+
+function urlBase64ToUint8Array(value) {
+  const padding = '='.repeat((4 - (value.length % 4)) % 4)
+  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(base64)
+  const output = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i)
+  return output
+}
+
+// El navegador puede invalidar/rotar el endpoint sin avisar a la página
+// (frecuente en iOS). Sin este listener, la suscripción local queda huérfana
+// y el servidor sigue mandando al endpoint muerto hasta que expira solo.
+// La sincronización con el backend (RPC autenticada) ocurre la próxima vez
+// que la app se abre en primer plano — ver usePushSubscription.ts.
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    self.registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    }).catch((err) => console.error('[push-sw] No se pudo re-suscribir tras pushsubscriptionchange:', err))
+  )
+})
+
 self.addEventListener('push', (event) => {
   let data = {}
   try {

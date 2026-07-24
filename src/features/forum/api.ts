@@ -6,13 +6,28 @@ import { demoForumDb } from './demoStore'
 const nowIso = () => new Date().toISOString()
 
 type ForumThreadRow = ForumThread & {
-  profiles?: { name?: string | null; avatar_url?: string | null } | { name?: string | null; avatar_url?: string | null }[] | null
   forum_comments?: { count?: number | null }[] | null
 }
 
-function mapThread(row: ForumThreadRow): ForumThread {
-  const { profiles, forum_comments, ...thread } = row
-  const profile = Array.isArray(profiles) ? profiles[0] : profiles
+type PublicProfile = { name?: string | null; avatar_url?: string | null }
+
+// profiles_public: RLS solo deja leer el perfil propio o el de un admin en la
+// tabla base, así que el autor de contenido ajeno se resuelve aparte via vista.
+async function fetchAuthorProfiles(authorIds: (string | null | undefined)[]): Promise<Map<string, PublicProfile>> {
+  const ids = [...new Set(authorIds.filter((id): id is string => !!id))]
+  if (!supabase || ids.length === 0) return new Map()
+
+  const { data, error } = await supabase
+    .from('profiles_public')
+    .select('id, name, avatar_url')
+    .in('id', ids)
+
+  if (error) throw error
+  return new Map((data || []).map((p) => [p.id as string, p as PublicProfile]))
+}
+
+function mapThread(row: ForumThreadRow, profile: PublicProfile | undefined): ForumThread {
+  const { forum_comments, ...thread } = row
   return {
     ...thread,
     author_name: profile?.name || 'Estudiante UDP',
@@ -55,8 +70,8 @@ export async function fetchThreads(
   // Consulta en Supabase
   let query = supabase
     .from('forum_threads')
-    .select('*, profiles:author_id(name, avatar_url), forum_comments(count)')
-    
+    .select('*, forum_comments(count)')
+
   if (facultyId) {
     query = query.eq('faculty_id', facultyId)
   } else {
@@ -67,7 +82,9 @@ export async function fetchThreads(
 
   if (error) throw error
 
-  const threads = (data || []).map((thread) => mapThread(thread as unknown as ForumThreadRow))
+  const rows = (data || []) as unknown as ForumThreadRow[]
+  const profiles = await fetchAuthorProfiles(rows.map((r) => r.author_id))
+  const threads = rows.map((thread) => mapThread(thread, profiles.get(thread.author_id)))
 
   // Ordenamos en memoria
   threads.sort((a, b) => {
@@ -92,7 +109,7 @@ export async function fetchThreadById(threadId: string): Promise<ForumThread | n
 
   const { data, error } = await supabase
     .from('forum_threads')
-    .select('*, profiles:author_id(name, avatar_url), forum_comments(count)')
+    .select('*, forum_comments(count)')
     .eq('id', threadId)
     .single()
 
@@ -101,7 +118,9 @@ export async function fetchThreadById(threadId: string): Promise<ForumThread | n
     throw error
   }
 
-  return mapThread(data as unknown as ForumThreadRow)
+  const row = data as unknown as ForumThreadRow
+  const profiles = await fetchAuthorProfiles([row.author_id])
+  return mapThread(row, profiles.get(row.author_id))
 }
 
 export interface CreateThreadInput {
@@ -200,17 +219,20 @@ export async function fetchComments(threadId: string): Promise<ForumComment[]> {
 
   const { data, error } = await supabase
     .from('forum_comments')
-    .select('*, profiles:author_id(name, avatar_url)')
+    .select('*')
     .eq('thread_id', threadId)
     .order('created_at', { ascending: true })
 
   if (error) throw error
 
-  return (data || []).map((c: Record<string, unknown> & { profiles?: { name?: string; avatar_url?: string | null } }) => ({
-    ...(c as unknown as ForumComment),
-    author_name: c.profiles?.name || 'Estudiante UDP',
-    author_avatar_url: c.profiles?.avatar_url ?? null,
-  })) as ForumComment[]
+  const rows = (data || []) as unknown as ForumComment[]
+  const profiles = await fetchAuthorProfiles(rows.map((c) => c.author_id))
+
+  return rows.map((c) => ({
+    ...c,
+    author_name: profiles.get(c.author_id)?.name || 'Estudiante UDP',
+    author_avatar_url: profiles.get(c.author_id)?.avatar_url ?? null,
+  }))
 }
 
 export interface CreateCommentInput {

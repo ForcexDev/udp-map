@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 
 export interface CustomSelectOption {
@@ -27,27 +28,57 @@ export function CustomSelect({
   dropdownClassName = '',
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; width: number; openUp: boolean } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const selectedOption = options.find((opt) => opt.value === value)
 
+  // El botón vive dentro de modales con overflow-y-auto: un menú `absolute`
+  // se recorta contra ese borde. Portal a <body> + posición `fixed` calculada
+  // desde el botón lo saca de ese contenedor y lo deja siempre visible.
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    const menuHeight = 240 // max-h-60
+    const openUp = rect.bottom + menuHeight > window.innerHeight && rect.top > menuHeight
+    setMenuStyle({
+      top: openUp ? rect.top : rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      openUp,
+    })
+  }, [isOpen])
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (
+        containerRef.current && !containerRef.current.contains(target)
+        && menuRef.current && !menuRef.current.contains(target)
+      ) {
         setIsOpen(false)
       }
     }
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setIsOpen(false)
     }
+    function handleScroll(e: Event) {
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) return
+      setIsOpen(false)
+    }
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       document.addEventListener('keydown', handleKeyDown)
+      window.addEventListener('scroll', handleScroll, true)
+      window.addEventListener('resize', handleScroll)
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('scroll', handleScroll, true)
+      window.removeEventListener('resize', handleScroll)
     }
   }, [isOpen])
 
@@ -69,10 +100,18 @@ export function CustomSelect({
         />
       </button>
 
-      {/* Menú Flotante Personalizado */}
-      {isOpen && (
+      {/* Menú Flotante Personalizado — portal a <body> para no recortarse contra modales con overflow */}
+      {isOpen && menuStyle && createPortal(
         <div
-          className={`absolute left-0 right-0 top-full mt-1 z-50 max-h-60 overflow-y-auto bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-xl shadow-2xl p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
+          ref={menuRef}
+          style={{
+            position: 'fixed',
+            top: menuStyle.openUp ? undefined : menuStyle.top + 4,
+            bottom: menuStyle.openUp ? window.innerHeight - menuStyle.top + 4 : undefined,
+            left: menuStyle.left,
+            width: menuStyle.width,
+          }}
+          className={`z-50 max-h-60 overflow-y-auto bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-xl shadow-2xl p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
         >
           {options.map((option) => {
             const isSelected = option.value === value
@@ -98,7 +137,8 @@ export function CustomSelect({
               </button>
             )
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

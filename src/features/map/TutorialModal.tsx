@@ -4,6 +4,7 @@ import { Download, MapPin, Compass, GraduationCap, Hand, Check, Share, PlusSquar
 import { Dialog } from '@/shared/ui/Dialog'
 import { Button } from '@/shared/ui/Button'
 import { useUIStore } from '@/shared/stores/uiStore'
+import { isIOSDevice, isStandaloneDisplay } from '@/shared/utils/pwa'
 
 export function TutorialModal() {
   const { t } = useTranslation()
@@ -14,14 +15,10 @@ export function TutorialModal() {
   const [isStandalone, setIsStandalone] = useState(false)
   const [showSafariGuide, setShowSafariGuide] = useState(false)
 
-  const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+  const isIOS = isIOSDevice()
 
   useEffect(() => {
-    const isStandaloneMode =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true
-
-    setIsStandalone(isStandaloneMode)
+    setIsStandalone(isStandaloneDisplay())
   }, [])
 
   const handleInstallClick = async () => {

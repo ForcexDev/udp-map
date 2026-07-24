@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { deletePushSubscription, registerPushSubscription } from './api'
+import { isIOSDevice, isStandaloneDisplay } from '@/shared/utils/pwa'
 
-export type PushState = 'unsupported' | 'idle' | 'subscribed' | 'denied' | 'loading' | 'error'
+export type PushState = 'unsupported' | 'idle' | 'subscribed' | 'denied' | 'loading' | 'error' | 'ios-not-installed'
 
 function pushErrorMessage(cause: unknown): string {
   const technicalMessage = cause instanceof Error ? cause.message : String(cause)
@@ -35,21 +36,41 @@ function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
 }
 
 export function usePushSubscription(enabled: boolean) {
-  const supported = typeof window !== 'undefined'
+  const apiSupported = typeof window !== 'undefined'
     && 'serviceWorker' in navigator
     && 'PushManager' in window
     && 'Notification' in window
-  const [state, setState] = useState<PushState>(supported ? 'idle' : 'unsupported')
+  // iOS solo entrega push de forma confiable a la PWA instalada en pantalla de
+  // inicio (standalone). Desde una pestaña de Safari normal, subscribe() puede
+  // "funcionar" pero las notificaciones no llegan con el navegador cerrado.
+  const iosNotInstalled = apiSupported && isIOSDevice() && !isStandaloneDisplay()
+  const supported = apiSupported && !iosNotInstalled
+  const [state, setState] = useState<PushState>(iosNotInstalled ? 'ios-not-installed' : supported ? 'idle' : 'unsupported')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!supported || !enabled) return
     let active = true
     void navigator.serviceWorker.ready.then((registration) => registration.pushManager.getSubscription())
-      .then((subscription) => {
+      .then(async (subscription) => {
         if (!active) return
-        if (Notification.permission === 'denied') setState('denied')
-        else setState(subscription ? 'subscribed' : 'idle')
+        if (Notification.permission === 'denied') {
+          setState('denied')
+          return
+        }
+        if (!subscription) {
+          setState('idle')
+          return
+        }
+        // Re-sincroniza siempre con el servidor: si el endpoint rotó en
+        // silencio (frecuente en iOS), esto lo vuelve a registrar en vez de
+        // dejar al servidor mandando a una suscripción muerta.
+        try {
+          await registerPushSubscription(subscription)
+        } catch (cause) {
+          console.error('[web-push] No se pudo resincronizar la suscripción existente:', cause)
+        }
+        if (active) setState('subscribed')
       })
       .catch((cause: unknown) => {
         if (!active) return

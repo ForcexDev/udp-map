@@ -53,7 +53,7 @@ export async function fetchPins(bounds: Bounds | null, filters: PinFilters): Pro
 
   let query = supabase
     .from('pins')
-    .select('*, pin_photos(*), profiles!pins_creator_id_fkey(name)')
+    .select('*, pin_photos(*)')
     .in('type', filters.types)
     .or(`is_permanent.eq.true,expires_at.gt.${nowIso()}`)
     .order('created_at', { ascending: false })
@@ -76,16 +76,25 @@ export async function fetchPins(bounds: Bounds | null, filters: PinFilters): Pro
       return []
     }
     
-    type PinRow = Pin & { profiles?: { name: string | null } | null | { name: string | null }[] }
-    return (data ?? []).map((row) => {
-      const { profiles, ...p } = row as PinRow
-      const creatorName = Array.isArray(profiles) ? profiles[0]?.name : profiles?.name
-      
-      return {
-        ...p,
-        creator_name: creatorName ?? null,
-      }
-    }) as Pin[]
+    const rows = (data ?? []) as Pin[]
+
+    // profiles_public: RLS solo deja leer el perfil propio o el de un admin en
+    // la tabla base, así que el nombre del creador de un pin ajeno se resuelve aparte.
+    const creatorIds = [...new Set(rows.map((p) => p.creator_id).filter((id): id is string => !!id))]
+    const creatorNames = new Map<string, string | null>()
+    if (creatorIds.length > 0) {
+      const { data: creators, error: creatorsError } = await supabase
+        .from('profiles_public')
+        .select('id, name')
+        .in('id', creatorIds)
+      if (creatorsError) console.error('Error fetching pin creator names:', creatorsError)
+      for (const c of creators ?? []) creatorNames.set(c.id, c.name)
+    }
+
+    return rows.map((p) => ({
+      ...p,
+      creator_name: (p.creator_id ? creatorNames.get(p.creator_id) : undefined) ?? null,
+    }))
   } catch (err) {
     console.error('Unexpected error fetching pins:', err)
     return []
@@ -429,19 +438,33 @@ export async function fetchComments(pinId: string, before?: string): Promise<Pin
   }
   let query = supabase
     .from('pin_comments')
-    .select('*, profiles(name, avatar_url)')
+    .select('*')
     .eq('pin_id', pinId)
     .order('created_at', { ascending: false })
     .limit(COMMENTS_PAGE_SIZE)
   if (before) query = query.lt('created_at', before)
   const { data, error } = await query
   if (error) throw error
-  type Row = PinComment & { profiles: { name: string | null; avatar_url: string | null } | null }
-  return ((data ?? []) as Row[])
-    .map(({ profiles, ...c }) => ({
+  const rows = (data ?? []) as PinComment[]
+
+  // profiles_public: RLS solo deja leer el perfil propio o el de un admin en
+  // la tabla base, así que el autor de un comentario ajeno se resuelve aparte.
+  const authorIds = [...new Set(rows.map((c) => c.author_id).filter((id): id is string => !!id))]
+  const profiles = new Map<string, { name: string | null; avatar_url: string | null }>()
+  if (authorIds.length > 0) {
+    const { data: authors, error: authorsError } = await supabase
+      .from('profiles_public')
+      .select('id, name, avatar_url')
+      .in('id', authorIds)
+    if (authorsError) throw authorsError
+    for (const a of authors ?? []) profiles.set(a.id, a)
+  }
+
+  return rows
+    .map((c) => ({
       ...c,
-      author_name: profiles?.name ?? null,
-      author_avatar_url: profiles?.avatar_url ?? null,
+      author_name: (c.author_id ? profiles.get(c.author_id) : undefined)?.name ?? null,
+      author_avatar_url: (c.author_id ? profiles.get(c.author_id) : undefined)?.avatar_url ?? null,
     }))
     .reverse()
 }

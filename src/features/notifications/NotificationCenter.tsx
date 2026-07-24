@@ -16,6 +16,7 @@ import {
   useNotifications
 } from './useNotifications'
 import { usePushSubscription } from './usePushSubscription'
+import { useUIStore } from '@/shared/stores/uiStore'
 
 const CATEGORY_TABS: Array<{ category: NotificationCategory | 'all'; label: string; icon: typeof Trophy }> = [
   { category: 'all', label: 'Todas', icon: Bell },
@@ -109,6 +110,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
   const deleteSingle = useDeleteNotification()
   const markCategory = useMarkCategoryRead()
   const push = usePushSubscription(Boolean(user))
+  const openTutorial = useUIStore((s) => s.openTutorial)
 
   const [activeFilter, setActiveFilter] = useState<NotificationCategory | 'all'>('all')
 
@@ -163,12 +165,16 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
                     ? 'Bloqueadas por el navegador'
                     : push.state === 'unsupported'
                       ? 'Este navegador no admite Web Push'
-                      : 'Recíbelas aunque la app esté cerrada'}
+                      : push.state === 'ios-not-installed'
+                        ? 'En iPhone solo funcionan con la app instalada en tu pantalla de inicio'
+                        : 'Recíbelas aunque la app esté cerrada'}
               </p>
             </div>
           </div>
           {push.state === 'subscribed' ? (
             <button type="button" onClick={() => void push.unsubscribe()} className="text-[10px] font-black text-neutral-400 hover:text-red-600 transition-colors cursor-pointer">Desactivar</button>
+          ) : push.state === 'ios-not-installed' ? (
+            <button type="button" onClick={openTutorial} className="rounded-xl bg-[#D41F2D] px-3 py-1.5 text-[10px] font-black text-white active:scale-95 transition-all cursor-pointer">Instalar app</button>
           ) : (
             <button type="button" onClick={() => void push.subscribe()} disabled={push.state === 'loading' || push.state === 'unsupported' || push.state === 'denied'} className="rounded-xl bg-[#D41F2D] px-3 py-1.5 text-[10px] font-black text-white active:scale-95 transition-all disabled:opacity-40 cursor-pointer">
               {push.state === 'loading' ? 'Activando…' : push.state === 'error' ? 'Reintentar' : 'Activar'}
