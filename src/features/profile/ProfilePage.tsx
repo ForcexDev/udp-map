@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
-import { UserRound, MapPin, LogOut, Share2 } from 'lucide-react'
+import { UserRound, MapPin, LogOut, Share2, ShieldAlert } from 'lucide-react'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { Button } from '@/shared/ui/Button'
@@ -195,12 +195,25 @@ export function ProfilePage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setEditOpen(true)}
-            className="w-full sm:w-auto flex-shrink-0 border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white font-semibold text-[13px] px-3.5 py-2 rounded-[10px] hover:border-[#D41F2D] transition-colors"
-          >
-            {t('profile.editProfile')}
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto shrink-0">
+            {role === 'admin' && (
+              <button
+                type="button"
+                onClick={() => navigate('/admin')}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-[#D41F2D] font-bold text-[13px] px-3.5 py-2 rounded-[10px] hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors cursor-pointer"
+              >
+                <ShieldAlert size={15} />
+                Panel Admin
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="flex-1 sm:flex-initial border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white font-semibold text-[13px] px-3.5 py-2 rounded-[10px] hover:border-[#D41F2D] transition-colors cursor-pointer"
+            >
+              {t('profile.editProfile')}
+            </button>
+          </div>
         </div>
 
         {/* ── Datos de cuenta ── */}
