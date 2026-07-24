@@ -38,7 +38,7 @@ export function AdminLayout() {
             <span>Volver al mapa</span>
           </Link>
           <div className="h-4 w-px bg-neutral-200 dark:bg-neutral-800 hidden sm:block" />
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-950/40 text-[#D41F2D] flex items-center justify-center">
               <ShieldAlert size={18} strokeWidth={2.5} />
             </div>
@@ -50,11 +50,11 @@ export function AdminLayout() {
         </div>
 
         {/* Current Admin User Info */}
-        <div className="flex items-center gap-2 bg-neutral-100 dark:bg-neutral-800/80 rounded-full px-3 py-1.5">
+        <div className="hidden sm:flex items-center gap-2 bg-neutral-100 dark:bg-neutral-800/80 rounded-full px-3 py-1.5">
           <div className="w-6 h-6 rounded-full bg-[#D41F2D] text-white text-[10px] font-black flex items-center justify-center">
             {user?.name?.charAt(0).toUpperCase() || 'A'}
           </div>
-          <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 hidden sm:inline">{user?.name}</span>
+          <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">{user?.name}</span>
           <span className="text-[9px] font-black uppercase bg-red-100 dark:bg-red-950/60 text-[#D41F2D] px-2 py-0.5 rounded-full">ADMIN</span>
         </div>
       </header>
