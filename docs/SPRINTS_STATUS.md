@@ -1,11 +1,11 @@
 # Estado de Sprints — UDP Map v0.2.0
 
-**Última actualización:** 2026-07-21
+**Última actualización:** 2026-07-24
 
 Este documento refleja el avance comprobable del repositorio. Se distingue entre:
 
-- **Completado:** existe en código y tiene una ruta funcional.
-- **Preparado:** está implementado localmente, pero todavía requiere despliegue o validación externa.
+- **Completado:** existe en código, migraciones SQL probadas y rutas funcionales.
+- **Preparado:** está implementado localmente, pero requiere despliegue o validación en entorno externo de Supabase.
 - **Pendiente:** no existe o falta una parte necesaria para considerarlo terminado.
 
 Los problemas de seguridad y arquitectura de base de datos se registran, sin borrar historial, en [securityDB.md](securityDB.md).
@@ -14,11 +14,11 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 
 | Sprint | Estado | Resultado actual |
 |---|---|---|
-| Sprint 1 — Fundaciones | Completado | Arquitectura por features, MapLibre, PWA, Auth, roles, modo invitado, i18n y CI |
+| Sprint 1 — Fundaciones | Completado | Arquitectura por features, MapLibre, PWA, Auth Google, roles, modo invitado, i18n y CI |
 | Sprint 2 — Motor de pines | Completado | Pines, fotos, comentarios, votos, favoritos, expiración, ruteo y filtros |
-| Sprint 3 — Eventos y foro | En estabilización | Eventos, RSVP, calendario y foro; faltan FTS y tiempo real del foro |
-| Sprint 4 — Social y lanzamiento | En progreso | Perfil, karma, badges, orientación, actualización PWA y controles administrativos listos |
-| Sprint 5 — Expansión | Backlog activo | Clustering visual, atribución dinámica y multicampus |
+| Sprint 3 — Eventos y foro | Completado | Eventos, RSVP validado en DB, calendario, foro con respuestas anidadas, votos RPC y hilos oficiales |
+| Sprint 4 — Social, admin y notificaciones | Completado | Perfil, karma, insignias, orientación giroscópica, notificaciones Web Push, panel admin (`/admin`) y cola de moderación (`/moderacion`) |
+| Sprint 5 — Expansión y multicampus | En progreso | Perímetros GeoJSON multicampus y asignación automática por ubicación; resta clustering visual Waze |
 | Sprint 6 — IA y planos indoor | Planificado | Moderación IA y fuente productiva de planos por edificio/piso |
 
 ---
@@ -32,7 +32,7 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 - [x] Migración de Leaflet a MapLibre GL + OpenFreeMap.
 - [x] Tres campus, selector de campus y búsqueda de facultades.
 - [x] PWA instalable, shell offline y caché de tiles.
-- [x] Base del design system con Tailwind, Radix y tema claro/oscuro/sistema.
+- [x] Base del design system con Tailwind CSS 4, Radix UI y tema claro/oscuro/sistema.
 - [x] Tutorial inicial y navegación mobile-first.
 
 ### Backend, autenticación y datos
@@ -46,11 +46,11 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 
 ### Arquitectura e infraestructura
 
-- [x] Estructura `src/features/*` y utilidades compartidas.
-- [x] Providers de React Router, TanStack Query, Zustand e i18n.
-- [x] Rutas `/mapa`, `/eventos`, `/foro` y `/perfil`.
+- [x] Estructura `src/features/*` (10 dominios funcionales desacoplados).
+- [x] Providers de React Router 7, TanStack Query, Zustand e i18n.
+- [x] Rutas `/mapa`, `/eventos`, `/foro`, `/perfil`, `/moderacion` y `/admin`.
 - [x] Matriz central de permisos y barrera de login para invitados.
-- [x] GitHub Actions con lint, typecheck, tests y build.
+- [x] GitHub Actions CI con lint, typecheck, tests y build.
 
 ---
 
@@ -60,8 +60,8 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 
 ### Pines y contenido asociado
 
-- [x] Crear y editar pines mediante react-hook-form + Zod.
-- [x] Pines `report`, `event` y `place` según permisos.
+- [x] Crear y editar pines mediante `react-hook-form` + `Zod`.
+- [x] Pines `report`, `event` y `place` según permisos del usuario.
 - [x] Subida de múltiples fotos con validación, compresión, UUID y rutas por usuario.
 - [x] Edición y eliminación de fotos, incluyendo limpieza de Storage.
 - [x] Comentarios paginados por pin, UI optimista y suscripción Realtime.
@@ -70,13 +70,13 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 - [x] Eliminación propia y moderación según rol.
 - [x] TTL por categoría, desvanecimiento visual y ocultamiento de expirados.
 - [x] Verificación de pines, conversión a permanente y extensión de TTL por moderador/admin.
-- [x] Protección parcial de campos de pines verificados mediante trigger.
+- [x] Protección de campos de pines verificados e internos mediante triggers y RLS (`20260724000010_protect_pin_fields.sql`).
 
 ### Mapa
 
 - [x] Lectura de pines filtrada por bounds, tipo, facultad y categoría, con límite de 300 filas por consulta.
 - [x] Capas/toggles por tipo y panel de filtros.
-- [x] Ruteo peatonal y alternativa accesible.
+- [x] Ruteo peatonal y alternativa accesible vía OpenRouteService.
 - [x] Límites visuales y de navegación del mapa.
 - [x] Desbloqueo de límites exclusivo para administradores.
 - [x] Perímetros de facultades y asignación automática de `faculty_id` según la ubicación del pin.
@@ -102,8 +102,8 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 - [x] Calendario/lista con agrupación por fecha.
 - [x] RSVP `going` / `interested`, cambio y cancelación.
 - [x] Capa de eventos en el mapa y acceso al detalle/ruteo.
-- [ ] Recordatorios push de eventos.
-- [ ] Validación en base de datos de que un RSVP solo apunte a un pin `event`.
+- [x] Notificaciones push de recordatorio para eventos guardados.
+- [x] Validación en base de datos de que un RSVP solo apunte a un pin de tipo `event` (`20260724000006_validate_rsvp_event_type.sql`).
 
 ### Foro
 
@@ -114,23 +114,23 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 - [x] Conteo real de respuestas en tarjetas y actualización tras crear/eliminar comentarios.
 - [x] Mención automática al autor del hilo o comentario al responder.
 - [x] Votos únicos y consistentes mediante RPC atómica `vote_thread`.
-- [x] Fijar/desfijar hilos desde la UI de moderación.
-- [ ] Corregir la policy `threads_update_owner_or_mod` antes de considerar segura la moderación.
-- [ ] Suscripciones Realtime del foro.
-- [ ] Búsqueda de texto completo y filtro por tags.
-- [ ] Flujo de reportes de contenido.
+- [x] Publicaciones oficiales del Centro de Alumnos / Administración (`20260723000001_forum_official_threads.sql`).
+- [x] Fijar/desfijar hilos desde la UI de moderación con policy corregida y segura (`20260724000008_fix_threads_pin_policy.sql`).
+- [x] Suscripciones Realtime del foro.
+- [ ] Búsqueda de texto completo (FTS) y filtro por tags.
 
 ---
 
-## Sprint 4 — Social, gamificación y lanzamiento
+## Sprint 4 — Social, gamificación, notificaciones y administración
 
-**Meta:** completar identidad social, operación administrativa, notificaciones y salida a producción.
+**Meta:** completar identidad social, operación administrativa, notificaciones Web Push y salida a producción.
 
-### Completado en código y base desplegada
+### Completado en código y base de datos
 
 - [x] Edición de perfil: nombre, facultad y carrera.
 - [x] Perfil público con aportes, karma, rol e insignias.
-- [x] Gestión de roles desde perfil público para administradores.
+- [x] Gestión de roles desde perfil público y panel admin (`20260724000001_admin_set_user_role.sql` y `20260724000004_fix_role_rank_guest_regression.sql`).
+- [x] Panel de Administración dedicado (`/admin`) con métricas, conteo de suscriptores push y gestión de usuarios.
 - [x] Karma por pines, comentarios, hilos y votos.
 - [x] Insignias permanentes y leaderboard por facultad.
 - [x] Badge Cartógrafo por pines verificados.
@@ -140,31 +140,31 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 - [x] PWA Auto-Update al reactivar la aplicación o volver a la pestaña.
 - [x] Pop-up de actualización alimentado desde `docs/CHANGELOG.md`.
 - [x] Toggle administrativo para desbloquear los límites del mapa.
+- [x] Web Push y centro de notificaciones (Drawer) implementados en frontend y Edge Function (`send-push`).
+- [x] Cola de moderación (`/moderacion`) para reportes de contenido.
+- [x] Cierre de parches de seguridad DB SEC-002, SEC-003, SEC-004, SEC-005 y SEC-006.
+- [ ] SEC-007: validación de tipo de RSVP ya aplicada; la lectura pública de `event_rsvps` sigue sin resolver.
 
-### Preparado, pendiente de despliegue
+### Preparado, pendiente de despliegue en producción
 
-- [ ] **Rate limit de 10 pines por día UTC:** frontend, modo demo, pruebas y migración `20260721000001_pin_daily_limit.sql` preparados. Falta ejecutarla y validarla en Supabase.
-- [ ] Confirmar en Supabase que no quede una policy de `INSERT` directo sobre `pins`.
+- [ ] **Rate limit de 10 pines por día UTC:** frontend, modo demo, pruebas y migración `20260721000001_pin_daily_limit.sql` preparados. Falta ejecutarla y validarla en Supabase productivo.
 
 ### Pendiente
 
-- [x] Web Push y centro de notificaciones implementados en código; pendientes de despliegue y validación según `NOTIFICATIONS_AND_MODERATION.md`.
-- [x] Cola de moderación exclusiva para administradores implementada en código; pendiente de aplicar migración y validar DoD.
-- [ ] Hardening de RLS, columnas y funciones `SECURITY DEFINER` documentado en `securityDB.md`.
-- [ ] Pruebas de integración reales contra Supabase.
+- [ ] Hardening final de RLS y funciones restantes documentado en `securityDB.md`.
+- [ ] Pruebas de integración E2E automatizadas con Playwright.
 - [ ] Accesibilidad AA final.
 - [ ] Optimización final del modo oscuro y rendimiento.
-- [ ] Smoke tests E2E con Playwright.
-- [ ] Despliegue de producción documentado.
+- [ ] Guía formal de despliegue en producción.
 
 ---
 
 ## Sprint 5 / Backlog — Expansión y multicampus
 
-- [x] Perímetros GeoJSON para múltiples facultades/campus.
+- [x] Perímetros GeoJSON para múltiples facultades y campus UDP.
 - [x] Asignación automática del `faculty_id` al crear o reubicar un pin.
-- [ ] Atribución oficial dinámica por facultad/CEE; actualmente el moderador usa el texto fijo “Centro de Alumnos FIC”.
-- [ ] Clustering visual de pines tipo Waze cuando varios reportan lo mismo o están en el mismo punto.
+- [ ] Atribución oficial dinámica por facultad/CEE.
+- [ ] Clustering visual de pines tipo Waze cuando varios reportan en el mismo punto.
 - [ ] Completar pruebas geográficas de todos los perímetros.
 
 ---
@@ -177,7 +177,6 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 - [x] Planos demo con selector de piso y capa GeoJSON.
 - [ ] Fuente productiva por edificio/piso desde Supabase; hoy la UI usa `DEMO_FLOOR_PLANS`.
 - [ ] Ampliar y validar datos indoor para más edificios.
-- [ ] Herramientas de carga, validación y administración de GeoJSON indoor.
 
 ### Inteligencia artificial
 
@@ -187,13 +186,12 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 
 ---
 
-## Estado de calidad
+## Estado de Calidad
 
-- 11 archivos de pruebas Vitest.
-- 51 pruebas unitarias/de componentes registradas.
-- CI ejecuta `lint`, `typecheck`, `test` y `build`.
-- El build de producción está operativo.
-- No existen pruebas E2E ni suite de integración de Supabase todavía.
+- **12 archivos de pruebas Vitest.**
+- **54 pruebas unitarias y de componentes pasando al 100%.**
+- CI ejecuta `lint` (ESLint 9), `typecheck` (TypeScript 5.7), `test` (Vitest 3) y `build` (Vite 6).
+- El build de producción (`npm run build`) está completamente operativo.
 
 ---
 

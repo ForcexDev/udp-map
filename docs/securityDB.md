@@ -52,7 +52,7 @@ Cómo demostrar que quedó resuelto.
 | SEC-004 | Alta | Completado | Lectura pública de todas las columnas de perfiles |
 | SEC-005 | Crítica | Completado | Dueños pueden modificar campos internos de sus pines |
 | SEC-006 | Alta | Completado | Policy defectuosa para fijar hilos del foro |
-| SEC-007 | Media | Pendiente | RSVP públicos y sin validación del tipo de pin |
+| SEC-007 | Media | En progreso | RSVP públicos y sin validación del tipo de pin |
 | SEC-008 | Alta | En progreso | Escrituras directas de votos pueden desincronizar contadores |
 | SEC-009 | Alta | En progreso | Estandarizar permisos y `search_path` de funciones privilegiadas |
 | SEC-010 | Media | Pendiente | Agregar pruebas de regresión de seguridad de base de datos |
@@ -221,7 +221,7 @@ El dueño puede editar el contenido permitido de su hilo, pero no puede cambiar 
 
 ## SEC-007 — RSVP públicos y sin validación del tipo de pin
 
-- Estado: Pendiente
+- Estado: En progreso
 - Severidad: Media
 - Fecha de detección: 2026-07-21
 - Fecha de finalización: —
@@ -242,6 +242,7 @@ La API revela únicamente la información de asistencia aprobada y rechaza RSVP 
 ### Historial
 
 - 2026-07-21: Exposición y ausencia de validación detectadas al revisar las policies actuales.
+- 2026-07-24: Verificado contra prod: la mitad de tipo ya está resuelta por `supabase/migrations/20260724000006_validate_rsvp_event_type.sql` (trigger `trg_validate_rsvp_targets_event`, rechaza RSVP hacia pines que no son `event`). Sigue pendiente la exposición pública: `event_rsvps_read USING (true)` continúa activa, confirmado con consulta directa a `pg_policy`. No se toca en esta corrida.
 
 ## SEC-008 — Escrituras directas de votos pueden desincronizar contadores
 
@@ -270,7 +271,7 @@ No existe una ruta que modifique un voto sin actualizar en la misma transacción
 
 ## SEC-009 — Estandarizar permisos y `search_path` de funciones privilegiadas
 
-- Estado: Pendiente
+- Estado: En progreso
 - Severidad: Alta
 - Fecha de detección: 2026-07-21
 - Fecha de finalización: —
@@ -297,7 +298,7 @@ La revisión del catálogo no encuentra funciones privilegiadas con permisos o `
 ### Historial
 
 - 2026-07-21: Pendiente creado después de confirmar que todas las funciones privilegiadas revisadas eran ejecutables por clientes.
-- 2026-07-24: Parte de permisos resuelta junto con SEC-002 (ver su historial). Pendiente: `extend_pin_ttl`, `protect_pin_sensitive_fields` y `verify_and_make_permanent` siguen sin `search_path` fijo (`proconfig` vacío); falta `ALTER DEFAULT PRIVILEGES` para que funciones nuevas no nazcan ejecutables por `PUBLIC`. Queda `En progreso`.
+- 2026-07-24: Parte de permisos resuelta junto con SEC-002 (ver su historial). Pendiente: `extend_pin_ttl`, `protect_pin_sensitive_fields` y `verify_and_make_permanent` siguen sin `search_path` fijo (`proconfig` vacío, reconfirmado); falta `ALTER DEFAULT PRIVILEGES` para que funciones nuevas no nazcan ejecutables por `PUBLIC`. Queda `En progreso`.
 
 ## SEC-010 — Pruebas de regresión de seguridad de base de datos
 
