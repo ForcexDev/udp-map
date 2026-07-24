@@ -18,19 +18,6 @@ export function PushTestPanel() {
     queryFn: fetchDashboardStats,
   })
 
-  const handleLocalTest = () => {
-    if (!('Notification' in window)) {
-      showToast('Tu navegador no soporta Notificaciones.')
-      return
-    }
-    if (Notification.permission !== 'granted') {
-      void subscribe()
-      return
-    }
-    new Notification(title, { body, icon: '/favicon.svg' })
-    showToast('Notificación local enviada.')
-  }
-
   const handleServerTest = async () => {
     setSendingServer(true)
     setLastResult(null)
@@ -39,7 +26,7 @@ export function PushTestPanel() {
       setLastResult(`Respuesta Edge Function: Entregas procesadas: ${res.processed}, Enviadas con éxito: ${res.sent}, Fallidas: ${res.failed}`)
       showToast(`Prueba completada: ${res.sent} notificación(es) enviada(s).`)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : (typeof err === 'object' && err !== null && 'message' in err ? String((err as { message?: string }).message) : String(err))
+      const msg = err instanceof Error ? err.message : String(err)
       setLastResult(`Error: ${msg}`)
       showToast(`Fallo en el servidor: ${msg}`)
     } finally {
@@ -102,13 +89,6 @@ export function PushTestPanel() {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleLocalTest}
-            className="flex-1 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-xs font-extrabold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-          >
-            Test Local (Navegador)
-          </button>
           <button
             type="button"
             onClick={handleServerTest}

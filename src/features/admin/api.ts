@@ -36,13 +36,13 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     supabase.from('profiles').select('role, karma'),
     supabase.from('pins').select('id, type, expires_at, created_at, starts_at'),
     supabase.from('content_reports').select('status'),
-    supabase.from('push_subscriptions').select('id', { count: 'exact', head: true }),
+    supabase.rpc('admin_count_push_subscribers'),
   ])
 
   const profiles = usersRes.data ?? []
   const pins = pinsRes.data ?? []
   const reports = reportsRes.data ?? []
-  const pushSubscribersCount = pushSubsRes.count ?? 0
+  const pushSubscribersCount = pushSubsRes.data ?? 0
 
   const roleCounts: Record<Role, number> = { admin: 0, moderator: 0, student: 0, guest: 0 }
   let totalKarma = 0
