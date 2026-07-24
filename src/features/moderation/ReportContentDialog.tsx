@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Megaphone, UserX, AlertTriangle, EyeOff, HelpCircle, CheckCircle2, ShieldAlert, Loader2, Sparkles } from 'lucide-react'
+import { Megaphone, UserX, AlertTriangle, EyeOff, HelpCircle, CheckCircle2, ShieldAlert, Loader2 } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -11,7 +11,6 @@ const REASONS: Array<{ value: ModerationReason; label: string; icon: typeof Mega
   { value: 'harassment', label: 'Acoso o ataques personales', icon: UserX },
   { value: 'misinformation', label: 'Información falsa', icon: AlertTriangle },
   { value: 'inappropriate', label: 'Contenido inapropiado', icon: EyeOff },
-  { value: 'easter_eggs', label: 'Easter Eggs / Secretos', icon: Sparkles },
   { value: 'other', label: 'Otro motivo', icon: HelpCircle },
 ]
 

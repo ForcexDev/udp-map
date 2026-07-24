@@ -162,6 +162,7 @@ export const CATEGORIES: Category[] = [
   // Otros / Objetos
   { id: 'objeto-perdido', kind: 'report', name: 'Objeto perdido', name_en: 'Lost item', emoji: '🎒', color: '#8b5cf6', svgPath: 'M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14zm-5-1c.83 0 1.5-.67 1.5-1.5S12.83 15 12 15s-1.5.67-1.5 1.5S11.17 18 12 18z', ttl_hours: 72 },
   { id: 'objeto-encontrado', kind: 'report', name: 'Objeto encontrado', name_en: 'Found item', emoji: '🧢', color: '#10b981', svgPath: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z', ttl_hours: 72 },
+  { id: 'easter-egg', kind: 'report', name: 'Easter Egg', name_en: 'Easter Egg', emoji: '🥚', color: '#a855f7', svgPath: 'M12 2C8 2 5 6 5 12c0 5 3 10 7 10s7-5 7-10c0-6-3-10-7-10z', ttl_hours: null },
   { id: 'otro', kind: 'report', name: 'Otro', name_en: 'Other', emoji: '✨', color: '#ec4899', svgPath: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z', ttl_hours: 24 },
   // Categorías de eventos (Sprint 3, ya en la taxonomía)
   { id: 'charla', kind: 'event', name: 'Charla', name_en: 'Talk', emoji: '🎤', color: '#6366f1', svgPath: 'M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z', ttl_hours: null },
