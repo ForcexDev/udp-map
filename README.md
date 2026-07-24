@@ -21,7 +21,7 @@
 
 **UDP Map** permite a la comunidad de la Universidad Diego Portales interactuar en tiempo real mediante un **mapa colaborativo de pines**, un **calendario de eventos**, un **foro social por facultades**, un **sistema de notificaciones Web Push** y un **panel de administración y moderación**. Todo en una Progressive Web App (PWA) gratuita, mobile-first y bilingüe.
 
-> **Estado del Proyecto (v0.2.0):** Sprints 1 (Fundaciones), 2 (Motor de Pines), 3 (Eventos y Foro) y 4 (Social, Notificaciones, Moderación y Administración) completados y operativos.
+> **Estado del Proyecto (v0.3.0):** Sprints 1 (Fundaciones), 2 (Motor de Pines), 3 (Eventos y Foro) y 4 (Social, Notificaciones, Moderación y Administración) completados y operativos.
 
 ### 🚀 Funcionalidades Principales
 

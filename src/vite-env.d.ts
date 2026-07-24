@@ -15,3 +15,5 @@ interface BeforeInstallPromptEvent extends Event {
 interface Window {
   __deferredPwaPrompt?: BeforeInstallPromptEvent
 }
+
+declare const __APP_VERSION__: string

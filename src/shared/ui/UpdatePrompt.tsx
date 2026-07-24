@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
-import { ArrowDownToLine, CheckCircle2 } from 'lucide-react'
+import { ArrowDownToLine, CheckCircle2, AlertTriangle } from 'lucide-react'
 import changelogRaw from '../../../docs/CHANGELOG.md?raw'
 
 const fallbackImprovements = changelogRaw
@@ -8,62 +8,42 @@ const fallbackImprovements = changelogRaw
   .filter((line) => line.trim().startsWith('-'))
   .map((line) => line.replace(/^\s*-\s*/, '').trim())
 
-const configuredRegistrations = new WeakSet<ServiceWorkerRegistration>()
-
-function configureUpdateChecks(registration: ServiceWorkerRegistration) {
-  if (configuredRegistrations.has(registration)) return
-  configuredRegistrations.add(registration)
-
-  let checking = false
-  const checkForUpdate = async () => {
-    if (checking || registration.installing || !navigator.onLine) return
-
-    checking = true
-    try {
-      await registration.update()
-    } catch (error) {
-      console.error('No se pudo comprobar la actualización de la aplicación.', error)
-    } finally {
-      checking = false
-    }
-  }
-
-  void checkForUpdate()
-
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void checkForUpdate()
-  })
-  window.addEventListener('focus', () => void checkForUpdate())
-  window.addEventListener('online', () => void checkForUpdate())
-
-  // Detecta publicaciones nuevas incluso si la app permanece abierta.
-  window.setInterval(() => void checkForUpdate(), 60 * 1000)
-}
-
 export function UpdatePrompt() {
   const [improvements, setImprovements] = useState(fallbackImprovements)
-  const [updateInfoReady, setUpdateInfoReady] = useState(false)
+  const [dismissed, setDismissed] = useState(
+    () => sessionStorage.getItem('udp-update-dismissed') === 'true'
+  )
   const [isUpdating, setIsUpdating] = useState(false)
+  const [error, setError] = useState(false)
+  
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     immediate: true,
     onRegisteredSW(_swUrl, registration) {
-      if (registration) configureUpdateChecks(registration)
+      if (registration) {
+        setInterval(() => {
+          if (!registration.installing && navigator.onLine) {
+            registration.update().catch(() => {})
+          }
+        }, 5 * 60 * 1000)
+      }
     },
   })
 
   const isDevTesting = import.meta.env.DEV && window.location.search.includes('test-pwa')
 
+  // Load update-info.json in the background to replace fallback improvements,
+  // but don't block the prompt from appearing.
   useEffect(() => {
     if (!needRefresh) {
       setImprovements(fallbackImprovements)
-      setUpdateInfoReady(false)
+      sessionStorage.removeItem('udp-update-dismissed')
+      setDismissed(false)
       return
     }
 
-    setImprovements([])
     const controller = new AbortController()
 
     async function loadLatestUpdateInfo() {
@@ -81,12 +61,10 @@ export function UpdatePrompt() {
           )
           if (latestImprovements.length > 0) setImprovements(latestImprovements)
         }
-      } catch (error) {
+      } catch (err) {
         if (!controller.signal.aborted) {
-          console.error('No se pudieron cargar las novedades de la actualización.', error)
+          console.error('No se pudieron cargar las novedades de la actualización.', err)
         }
-      } finally {
-        if (!controller.signal.aborted) setUpdateInfoReady(true)
       }
     }
 
@@ -97,98 +75,104 @@ export function UpdatePrompt() {
   const handleUpdate = async () => {
     if (isUpdating) return
     setIsUpdating(true)
+    setError(false)
+
+    const timeout = setTimeout(() => {
+      setIsUpdating(false)
+      setError(true)
+    }, 10_000)
 
     try {
       if (!('serviceWorker' in navigator)) {
         await updateServiceWorker(true)
         return
       }
-
-      const registration = await navigator.serviceWorker.getRegistration()
-      const waitingWorker = registration?.waiting
-
-      if (waitingWorker) {
-        let reloaded = false
-        const reloadOnce = () => {
-          if (reloaded) return
-          reloaded = true
-          navigator.serviceWorker.removeEventListener('controllerchange', reloadOnce)
-          window.location.reload()
-        }
-
-        navigator.serviceWorker.addEventListener('controllerchange', reloadOnce)
-        
-        waitingWorker.addEventListener('statechange', () => {
-          if (waitingWorker.state === 'activated') {
-            reloadOnce()
-          }
-        })
-
-        waitingWorker.postMessage({ type: 'SKIP_WAITING' })
-        return
-      }
-
+      
+      // Let the vite-plugin-pwa library handle the skip waiting and reload mechanism
       await updateServiceWorker(true)
-    } catch (error) {
-      console.error('No se pudo aplicar la actualizaciÃ³n.', error)
+    } catch (err) {
+      clearTimeout(timeout)
+      console.error('No se pudo aplicar la actualización.', err)
       setIsUpdating(false)
+      setError(true)
     }
   }
 
-  if ((!needRefresh && !isDevTesting) || (needRefresh && !updateInfoReady)) return null
+  const handleDismiss = () => {
+    sessionStorage.setItem('udp-update-dismissed', 'true')
+    setDismissed(true)
+  }
+
+  // Show immediately when needRefresh is true
+  if ((!needRefresh && !isDevTesting) || dismissed) return null
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="w-full max-w-[340px] max-h-[85dvh] rounded-[22px] p-5 shadow-3xl flex flex-col gap-4 bg-white dark:bg-neutral-900 animate-in zoom-in-95 duration-300 border border-neutral-200/50 dark:border-neutral-800/50 overflow-hidden">
         
         <div className="flex flex-col items-center text-center mt-1 gap-2.5 flex-shrink-0">
-          <div className="w-12 h-12 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-neutral-900 dark:text-white flex-shrink-0">
-            <ArrowDownToLine size={24} strokeWidth={2} />
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${error ? 'bg-red-100 dark:bg-red-900/30 text-[#D41F2D]' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'}`}>
+            {error ? <AlertTriangle size={24} strokeWidth={2} /> : <ArrowDownToLine size={24} strokeWidth={2} />}
           </div>
           <div>
             <h3 className="text-[18px] font-black tracking-tight text-neutral-900 dark:text-white leading-tight">
-              Actualización disponible
+              {error ? 'Error al actualizar' : 'Actualización disponible'}
             </h3>
-            <p className="text-[13px] text-neutral-500 font-medium mt-0.5 leading-snug px-2">
-              Se descargó una nueva versión de la aplicación.
+            <p className={`text-[13px] font-medium mt-0.5 leading-snug px-2 ${error ? 'text-red-600 dark:text-red-400' : 'text-neutral-500'}`}>
+              {error 
+                ? 'No se pudo aplicar la actualización. Por favor, recarga la página o intenta de nuevo.' 
+                : 'Se descargó una nueva versión de la aplicación.'}
             </p>
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-3.5 border border-neutral-100 dark:border-neutral-800 pr-2">
-          <ul className="flex flex-col gap-2.5">
-            {improvements.length > 0 ? (
-              improvements.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <CheckCircle2 size={16} className="text-[#D41F2D] mt-0.5 flex-shrink-0" strokeWidth={2.5} />
-                  <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 leading-snug">
-                    {item}
-                  </span>
-                </li>
-              ))
-            ) : (
-              <li className="text-[13px] text-neutral-500 text-center font-medium">Mejoras de rendimiento.</li>
-            )}
-          </ul>
-        </div>
+        {!error && (
+          <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-3.5 border border-neutral-100 dark:border-neutral-800 pr-2">
+            <ul className="flex flex-col gap-2.5">
+              {improvements.length > 0 ? (
+                improvements.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <CheckCircle2 size={16} className="text-[#D41F2D] mt-0.5 flex-shrink-0" strokeWidth={2.5} />
+                    <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 leading-snug">
+                      {item}
+                    </span>
+                  </li>
+                ))
+              ) : (
+                <li className="text-[13px] text-neutral-500 text-center font-medium">Mejoras de rendimiento.</li>
+              )}
+            </ul>
+          </div>
+        )}
 
-        <button
-          type="button"
-          onClick={() => {
-            if (isDevTesting) {
-              const url = new URL(window.location.href)
-              url.searchParams.delete('test-pwa')
-              window.location.href = url.toString()
-            } else {
-              void handleUpdate()
-            }
-          }}
-          disabled={isUpdating}
-          aria-busy={isUpdating}
-          className="flex-shrink-0 w-full py-3 px-4 bg-[#D41F2D] hover:bg-[#b01a25] text-white rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm disabled:cursor-wait disabled:opacity-70"
-        >
-          {isUpdating ? 'Actualizando…' : 'Actualizar ahora'}
-        </button>
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              if (isDevTesting) {
+                const url = new URL(window.location.href)
+                url.searchParams.delete('test-pwa')
+                window.location.href = url.toString()
+              } else {
+                void handleUpdate()
+              }
+            }}
+            disabled={isUpdating}
+            aria-busy={isUpdating}
+            className="w-full py-3 px-4 bg-[#D41F2D] hover:bg-[#b01a25] text-white rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm disabled:cursor-wait disabled:opacity-70"
+          >
+            {isUpdating ? 'Actualizando…' : (error ? 'Reintentar' : 'Actualizar ahora')}
+          </button>
+          {!isUpdating && (
+            <button
+              type="button"
+              onClick={handleDismiss}
+              className="w-full py-2.5 px-4 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded-full text-sm font-semibold transition-colors"
+            >
+              Más tarde
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

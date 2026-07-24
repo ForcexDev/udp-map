@@ -1,4 +1,4 @@
-# Estado de Sprints — UDP Map v0.2.0
+# Estado de Sprints — UDP Map v0.3.0
 
 **Última actualización:** 2026-07-24
 
@@ -163,6 +163,7 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 
 - [x] Perímetros GeoJSON para múltiples facultades y campus UDP.
 - [x] Asignación automática del `faculty_id` al crear o reubicar un pin.
+- [x] Categorías de easter eggs por campus.
 - [ ] Atribución oficial dinámica por facultad/CEE.
 - [ ] Clustering visual de pines tipo Waze cuando varios reportan en el mismo punto.
 - [ ] Completar pruebas geográficas de todos los perímetros.

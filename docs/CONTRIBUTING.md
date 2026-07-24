@@ -1,10 +1,10 @@
-# Contribuir a UDP Map v0.2.0
+# Contribuir a UDP Map v0.3.0
 
 **Última actualización:** 2026-07-24
 
 ¡Gracias por tu interés en contribuir a UDP Map! 🎉 Estamos construyendo el mapa vivo, calendario de eventos, foro estudiantil, sistema de notificaciones y panel de administración de la comunidad UDP.
 
-Este documento refleja la arquitectura y estándares actuales de la versión 0.2.0. Los Sprints 1, 2, 3 y 4 están completados y operativos en el repositorio. Para consultar el estado de cada componente, revisa [PLAN.md](PLAN.md), [SPRINTS_STATUS.md](SPRINTS_STATUS.md) y [securityDB.md](securityDB.md).
+Este documento refleja la arquitectura y estándares actuales de la versión 0.3.0. Los Sprints 1, 2, 3 y 4 están completados y operativos en el repositorio. Para consultar el estado de cada componente, revisa [PLAN.md](PLAN.md), [SPRINTS_STATUS.md](SPRINTS_STATUS.md) y [securityDB.md](securityDB.md).
 
 ---
 

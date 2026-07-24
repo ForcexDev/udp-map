@@ -89,6 +89,10 @@ export function AboutModal() {
             </article>
           ))}
         </div>
+
+        <div className="mt-2 text-center text-[10px] font-medium text-neutral-400 dark:text-neutral-500">
+          UDP Map v{__APP_VERSION__}
+        </div>
       </div>
     </Dialog>
   )
