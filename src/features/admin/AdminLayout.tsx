@@ -28,7 +28,7 @@ export function AdminLayout() {
   return (
     <div className="app-shell relative h-full w-full flex flex-col overflow-hidden bg-neutral-50 dark:bg-neutral-950">
       {/* Top Header Bar */}
-      <header className="z-30 h-16 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between">
+      <header className="z-30 min-h-16 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-4 sm:px-6 pt-safe flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
             to="/mapa"

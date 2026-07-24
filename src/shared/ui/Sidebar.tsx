@@ -12,6 +12,7 @@ import { CAMPUSES, FACULTIES } from '@/shared/data/campusData'
 import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher'
 import { NotificationCenter } from '@/features/notifications/NotificationCenter'
 import { useNotifications } from '@/features/notifications/useNotifications'
+import { usePushSubscription } from '@/features/notifications/usePushSubscription'
 
 export function Sidebar() {
   const { t, i18n } = useTranslation()
@@ -31,6 +32,8 @@ export function Sidebar() {
   const setDevUnlockMap = useUIStore((s) => s.setDevUnlockMap)
 
   const [searchQuery, setSearchQuery] = useState('')
+  const showToast = useUIStore((s) => s.showToast)
+  const { subscribe: subscribeToPush } = usePushSubscription(false)
   const { data: notifications = [] } = useNotifications()
   const unreadNotifications = notifications.filter((notification) => !notification.read_at).length
   const langActiveIndex = i18n.language.startsWith('en') ? 1 : 0
@@ -315,6 +318,42 @@ export function Sidebar() {
                   </button>
                 </section>
               )}
+
+              {/* Notifications: Local Test */}
+              <section className="space-y-4">
+                <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em]">
+                  {t('sidebar.notifications', 'Notificaciones')}
+                </h4>
+                <button
+                  onClick={async () => {
+                    if (!('Notification' in window)) {
+                      showToast('Tu navegador no soporta notificaciones.')
+                      return
+                    }
+                    if (Notification.permission !== 'granted') {
+                      await subscribeToPush()
+                      return
+                    }
+                    new Notification('Notificación de prueba UDP Map', {
+                      body: 'Así se ven las notificaciones en este dispositivo.',
+                      icon: '/favicon.svg',
+                    })
+                  }}
+                  className="w-full p-4 rounded-[18px] bg-neutral-50/50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-700 flex items-center gap-3 font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 active:scale-[0.98] transition-all"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center flex-shrink-0">
+                    <Bell size={18} />
+                  </div>
+                  <div className="flex flex-col flex-1 text-left">
+                    <span className="text-sm font-bold">
+                      Probar notificación
+                    </span>
+                    <span className="text-[10px] font-medium opacity-60">
+                      Envía una notificación de prueba a este dispositivo
+                    </span>
+                  </div>
+                </button>
+              </section>
 
               {/* Auth */}
               <section className="pt-2">
