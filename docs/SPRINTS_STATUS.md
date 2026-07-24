@@ -8,7 +8,7 @@ Este documento refleja el avance comprobable del repositorio. Se distingue entre
 - **Preparado:** está implementado localmente, pero todavía requiere despliegue o validación externa.
 - **Pendiente:** no existe o falta una parte necesaria para considerarlo terminado.
 
-Los problemas de seguridad y arquitectura de base de datos se registran, sin borrar historial, en [securytyDB.md](securytyDB.md).
+Los problemas de seguridad y arquitectura de base de datos se registran, sin borrar historial, en [securityDB.md](securityDB.md).
 
 ## Resumen
 
@@ -150,7 +150,7 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 
 - [x] Web Push y centro de notificaciones implementados en código; pendientes de despliegue y validación según `NOTIFICATIONS_AND_MODERATION.md`.
 - [x] Cola de moderación exclusiva para administradores implementada en código; pendiente de aplicar migración y validar DoD.
-- [ ] Hardening de RLS, columnas y funciones `SECURITY DEFINER` documentado en `securytyDB.md`.
+- [ ] Hardening de RLS, columnas y funciones `SECURITY DEFINER` documentado en `securityDB.md`.
 - [ ] Pruebas de integración reales contra Supabase.
 - [ ] Accesibilidad AA final.
 - [ ] Optimización final del modo oscuro y rendimiento.
@@ -197,4 +197,4 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 
 ---
 
-*Documento vivo: actualizar al cerrar una tarea, distinguir código local de despliegue real y conservar los pendientes de seguridad en `securytyDB.md`.*
+*Documento vivo: actualizar al cerrar una tarea, distinguir código local de despliegue real y conservar los pendientes de seguridad en `securityDB.md`.*

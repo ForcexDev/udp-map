@@ -4,7 +4,7 @@
 
 ¡Gracias por tu interés en contribuir! 🎉 Estamos construyendo el mapa vivo, calendario de eventos y foro de la UDP.
 
-Este documento refleja la arquitectura y estándares actuales de la versión 0.2.0. Los Sprints 1 y 2 están terminados, el núcleo del Sprint 3 está operativo y el Sprint 4 está en progreso. Para distinguir lo implementado, lo preparado y lo pendiente, revisa [PLAN.md](PLAN.md), [SPRINTS_STATUS.md](SPRINTS_STATUS.md) y [securytyDB.md](securytyDB.md).
+Este documento refleja la arquitectura y estándares actuales de la versión 0.2.0. Los Sprints 1 y 2 están terminados, el núcleo del Sprint 3 está operativo y el Sprint 4 está en progreso. Para distinguir lo implementado, lo preparado y lo pendiente, revisa [PLAN.md](PLAN.md), [SPRINTS_STATUS.md](SPRINTS_STATUS.md) y [securityDB.md](securityDB.md).
 
 ## Inicio Rápido
 
@@ -45,7 +45,7 @@ supabase/
 docs/
 ├── PLAN.md               → Documento maestro y roadmap vivo.
 ├── SPRINTS_STATUS.md     → Estado comprobable por sprint.
-├── securytyDB.md         → Registro histórico de seguridad y base de datos.
+├── securityDB.md         → Registro histórico de seguridad y base de datos.
 └── CHANGELOG.md          → Novedades mostradas por el pop-up de actualización PWA.
 ```
 
@@ -61,7 +61,7 @@ Existen 4 roles controlados vía base de datos y `features/auth/permissions.ts`:
 3. **`moderator`**: Estudiantes promovidos. Pueden gestionar contenido (eliminar pines ajenos, fijar hilos), crear lugares permanentes (`place`) y publicar hilos como Centro de Alumnos FIC.
 4. **`admin`**: Acceso total. Además de la moderación, pueden asignar roles a otros perfiles, crear facultades o categorías y publicar hilos como Administración UDP.
 
-La aplicación usa **Row Level Security (RLS)** y validaciones dentro de RPCs. No asumas que una restricción del frontend es una medida de seguridad. Existen tareas de hardening confirmadas y documentadas en [securytyDB.md](securytyDB.md); una contribución que toque tablas, policies, triggers o funciones privilegiadas debe revisar ese registro.
+La aplicación usa **Row Level Security (RLS)** y validaciones dentro de RPCs. No asumas que una restricción del frontend es una medida de seguridad. Existen tareas de hardening confirmadas y documentadas en [securityDB.md](securityDB.md); una contribución que toque tablas, policies, triggers o funciones privilegiadas debe revisar ese registro.
 
 ## Modelo de Datos Unificado (Pines & Foro)
 
@@ -79,7 +79,7 @@ La aplicación usa **Row Level Security (RLS)** y validaciones dentro de RPCs. N
 - RLS controla filas, no columnas. Protege campos administrados por el servidor mediante privilegios de columnas, triggers o RPCs.
 - Las operaciones que actualizan contadores o karma deben tener una sola vía transaccional.
 - Nunca agregues una policy permisiva sin revisar cómo se combina con las demás; las policies permisivas se evalúan con `OR`.
-- Registra nuevos hallazgos y su cierre en `securytyDB.md` sin borrar el historial.
+- Registra nuevos hallazgos y su cierre en `securityDB.md` sin borrar el historial.
 
 ## Guías de Estilo y Desarrollo
 
@@ -124,5 +124,5 @@ Asegúrate de correr los cuatro comandos localmente antes de hacer push. Si modi
 3. Haz tus cambios, respetando la estructura de carpetas y guías de estilo.
 4. Verifica todo localmente ejecutando `npm run lint`, `npm run typecheck`, `npm run test` y `npm run build`. Si algo falla, la PR será rechazada automáticamente.
 5. Abre el PR con un título claro. Si resuelve un Issue, menciónalo (`Closes #12`).
-6. Actualiza `SPRINTS_STATUS.md`, `PLAN.md`, `CHANGELOG.md` o `securytyDB.md` cuando el cambio altere su estado real.
+6. Actualiza `SPRINTS_STATUS.md`, `PLAN.md`, `CHANGELOG.md` o `securityDB.md` cuando el cambio altere su estado real.
 7. Espera la revisión de otro desarrollador para hacer merge.

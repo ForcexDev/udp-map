@@ -3,7 +3,7 @@
 > **Documento vivo.** Conserva la visión y el plan original, pero refleja el estado real del
 > repositorio v0.2.0. Para el seguimiento operativo consulta también
 > [SPRINTS_STATUS.md](SPRINTS_STATUS.md) y, para los pendientes de seguridad y base de datos,
-> [securytyDB.md](securytyDB.md).
+> [securityDB.md](securityDB.md).
 
 - **Producto:** Mapa colaborativo de pines + eventos + foro social para la comunidad UDP.
 - **Plan base original:** 8 semanas / 4 sprints de 2 semanas / 3 developers; el roadmap activo se amplía hasta Sprint 6.
@@ -52,7 +52,7 @@ La reestructuración v1 → v0.2.0 ya ocurrió. El repositorio actual usa:
 - E2E con Playwright e integración automatizada contra Supabase.
 - Accesibilidad AA y despliegue final documentado.
 
-Los detalles, evidencia y criterios de cierre de seguridad viven en [securytyDB.md](securytyDB.md).
+Los detalles, evidencia y criterios de cierre de seguridad viven en [securityDB.md](securityDB.md).
 
 ---
 
@@ -345,7 +345,7 @@ migraciones son la fuente de verdad; este documento no duplica las policies comp
 - Al desplegar el rate limit debe eliminarse `pins_insert`; toda creación pasará por
   `create_pin_with_daily_limit`.
 - Las correcciones pendientes de perfiles, pines, foro, RSVP, votos y funciones privilegiadas
-  están registradas en `securytyDB.md` y evitan considerar cerrado el hardening de seguridad.
+  están registradas en `securityDB.md` y evitan considerar cerrado el hardening de seguridad.
 
 ### Votos seguros (RPC) y expiración (job)
 ```sql
@@ -376,7 +376,7 @@ delete from pins where is_permanent = false and expires_at < now();
 - **Comentarios:** hilo bajo cada pin, en **tiempo real** (Realtime filtrado por `pin_id`),
   paginado y con UI optimista. Se eliminan en cascada con el pin. La moderación IA sigue pendiente.
 - **Votos:** `vote_pin` RPC (1 por usuario, atómico). Separado de "reportar contenido".
-  Falta cerrar la vía de DML directo documentada en `securytyDB.md`.
+  Falta cerrar la vía de DML directo documentada en `securityDB.md`.
 - **Carga eficiente:** pines por **bounds del mapa** y/o **facultad** con TanStack Query (no traer todo).
 - **Rate limit:** máximo de 10 creaciones por estudiante/día UTC; implementado localmente y pendiente
   de despliegue/validación en Supabase. Moderadores y administradores quedan exentos.
@@ -545,7 +545,7 @@ fallbacks, evaluación y operación administrativa se implementarán en este spr
 | Spam en pines/comentarios/foro | Moderación IA + reportes + rate limit + solo `@mail.udp.cl` |
 | Costo IA | Gemini free + Groq respaldo; degradar a filtro de palabras |
 | 3 devs = poco margen | Alcance por sprint es *must-have*; extras a backlog |
-| Funciones privilegiadas expuestas | Revocar `EXECUTE` y aplicar mínimo privilegio según `securytyDB.md` |
+| Funciones privileged expuestas | Revocar `EXECUTE` y aplicar mínimo privilegio según `securityDB.md` |
 | Policies/columnas demasiado permisivas | Migraciones de hardening + pruebas de integración por rol |
 | Rate limit aún no desplegado | Ejecutar la migración completa y validar estudiante/mod/admin en Supabase |
 | Contadores de votos inconsistentes | Unificar escrituras en RPC o triggers transaccionales |
