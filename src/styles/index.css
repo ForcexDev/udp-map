@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -16,6 +16,20 @@
   --color-udp-800: #831f31;
   --color-udp-900: #701d2e;
   --color-udp-950: #3e0b15;
+
+  /* Profile redesign tokens */
+  --color-profile-bg: #08090b;
+  --color-profile-text: #eeeeec;
+  --color-profile-muted: #8a8f96;
+  --color-profile-faint: #55595f;
+  --color-profile-line: #232629;
+  --color-profile-accent: #ef6a4c;
+  --color-profile-gold: #d9a94e;
+  --color-profile-purple: #9d84d6;
+  --color-profile-green: #5fb389;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 /* ── Variables globales ─────────────────────────────────── */
@@ -604,5 +618,35 @@ body {
   overscroll-behavior-x: none !important;
   touch-action: pan-y !important;
   max-width: 100% !important;
+}
+
+/* ── Report Timeline ──────────────────────────────────── */
+.report-timeline {
+  position: relative;
+  padding-left: 20px;
+}
+
+.report-timeline::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--color-profile-line);
+}
+
+.dark .report-timeline::before {
+  background: var(--color-profile-line);
+}
+
+.report-timeline-dot {
+  position: absolute;
+  left: -20px;
+  top: 22px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-profile-accent);
 }
 
