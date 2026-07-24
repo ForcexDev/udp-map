@@ -31,7 +31,7 @@ body,
 #root {
   width: 100%;
   height: 100%;
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -420,7 +420,7 @@ body {
 .app-shell {
   width: 100%;
   height: 100%;
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
   overflow: hidden;
   overscroll-behavior: none;
 }
