@@ -31,7 +31,22 @@ function computeAppVersion(): string {
 function updateInfoPlugin(version: string): Plugin {
   return {
     name: 'udp-map-update-info',
-    apply: 'build',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.startsWith('/update-info.json')) {
+          const changelog = readFileSync(path.resolve(__dirname, 'docs/CHANGELOG.md'), 'utf8')
+          const improvements = changelog
+            .split('\n')
+            .filter((line) => line.trim().startsWith('-'))
+            .map((line) => line.replace(/^\s*-\s*/, '').trim())
+
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ version, improvements }))
+          return
+        }
+        next()
+      })
+    },
     generateBundle() {
       const changelog = readFileSync(path.resolve(__dirname, 'docs/CHANGELOG.md'), 'utf8')
       const improvements = changelog

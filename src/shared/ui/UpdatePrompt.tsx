@@ -10,6 +10,7 @@ const fallbackImprovements = changelogRaw
 
 export function UpdatePrompt() {
   const [improvements, setImprovements] = useState(fallbackImprovements)
+  const [newVersion, setNewVersion] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState(
     () => sessionStorage.getItem('udp-update-dismissed') === 'true'
   )
@@ -32,17 +33,21 @@ export function UpdatePrompt() {
     },
   })
 
-  const isDevTesting = import.meta.env.DEV && window.location.search.includes('test-pwa')
+  const [isDevTesting] = useState(() => import.meta.env.DEV && window.location.search.includes('test-pwa'))
 
   // Load update-info.json in the background to replace fallback improvements,
   // but don't block the prompt from appearing.
   useEffect(() => {
-    if (!needRefresh) {
+    if (!needRefresh && !isDevTesting) {
       setImprovements(fallbackImprovements)
       sessionStorage.removeItem('udp-update-dismissed')
       setDismissed(false)
       return
     }
+
+    // Ensure it's not dismissed if we are actively prompting (e.g. testing)
+    setDismissed(false)
+    sessionStorage.removeItem('udp-update-dismissed')
 
     const controller = new AbortController()
 
@@ -54,7 +59,10 @@ export function UpdatePrompt() {
         })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
-        const data = await response.json() as { improvements?: unknown }
+        const data = await response.json() as { improvements?: unknown; version?: string }
+        if (typeof data.version === 'string') {
+          setNewVersion(data.version)
+        }
         if (Array.isArray(data.improvements)) {
           const latestImprovements = data.improvements.filter(
             (item): item is string => typeof item === 'string' && item.trim().length > 0,
@@ -70,7 +78,7 @@ export function UpdatePrompt() {
 
     void loadLatestUpdateInfo()
     return () => controller.abort()
-  }, [needRefresh])
+  }, [needRefresh, isDevTesting])
 
   const handleUpdate = async () => {
     if (isUpdating) return
@@ -116,7 +124,7 @@ export function UpdatePrompt() {
           </div>
           <div>
             <h3 className="text-[18px] font-black tracking-tight text-neutral-900 dark:text-white leading-tight">
-              {error ? 'Error al actualizar' : 'Actualización disponible'}
+              {error ? 'Error al actualizar' : (newVersion ? `Actualización disponible (${newVersion})` : 'Actualización disponible')}
             </h3>
             <p className={`text-[13px] font-medium mt-0.5 leading-snug px-2 ${error ? 'text-red-600 dark:text-red-400' : 'text-neutral-500'}`}>
               {error 
