@@ -37,15 +37,19 @@ async function fetchUpdateInfo(signal: AbortSignal): Promise<UpdateInfo | null> 
 // activar, la recarga la sirve el worker viejo y el aviso vuelve a aparecer; el
 // segundo intento sí entra. Subir el plazo solo si eso se observa en dispositivo.
 async function applyUpdate() {
-  const registration = await navigator.serviceWorker?.getRegistration()
-  registration?.waiting?.postMessage({ type: 'SKIP_WAITING' })
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration()
+    registration?.waiting?.postMessage({ type: 'SKIP_WAITING' })
 
-  await new Promise<void>((resolve) => {
-    navigator.serviceWorker?.addEventListener('controllerchange', () => resolve(), { once: true })
-    setTimeout(resolve, 1500)
-  })
-
-  location.reload()
+    await new Promise<void>((resolve) => {
+      navigator.serviceWorker?.addEventListener('controllerchange', () => resolve(), { once: true })
+      setTimeout(resolve, 1500)
+    })
+  } catch (err) {
+    console.error('Error applying SW update:', err)
+  } finally {
+    location.reload()
+  }
 }
 
 export function UpdatePrompt() {
@@ -126,6 +130,7 @@ export function UpdatePrompt() {
             onClick={() => {
               setIsUpdating(true)
               void applyUpdate()
+              setTimeout(() => setIsUpdating(false), 3000)
             }}
             disabled={isUpdating}
             aria-busy={isUpdating}
