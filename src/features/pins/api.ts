@@ -15,7 +15,7 @@ import { hasReachedDailyPinLimit } from '@/shared/utils/rateLimit'
 import { isPinLocationOccupied } from '@/shared/utils/pinLocation'
 import { applyVoteTransition } from '@/shared/utils/vote'
 
-export interface CreatePinInput {
+interface CreatePinInput {
   type: PinType
   title: string
   description: string | null
@@ -300,7 +300,7 @@ export async function deletePin(pin: Pin): Promise<void> {
 
 // ── Votos: RPC atómico (1 voto por usuario, reemplaza localStorage v1) ──
 
-export interface PinVoteResult {
+interface PinVoteResult {
   votesUp: number
   votesDown: number
   userVote: 1 | -1 | null
@@ -424,7 +424,7 @@ export async function toggleFavorite(pinId: string, userId: string, next: boolea
 
 // ── Comentarios paginados ──
 
-export const COMMENTS_PAGE_SIZE = 20
+const COMMENTS_PAGE_SIZE = 20
 
 export async function fetchComments(pinId: string, before?: string): Promise<PinComment[]> {
   if (!supabase) {

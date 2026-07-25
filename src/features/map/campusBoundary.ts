@@ -83,7 +83,7 @@ function rectRing(clockwise = false): [number, number][] {
 }
 
 /** Polígono del rectángulo como Feature (para el borde). */
-export function boundaryRectGeoJSON(): Feature<Polygon> {
+function boundaryRectGeoJSON(): Feature<Polygon> {
   return {
     type: 'Feature',
     properties: {},

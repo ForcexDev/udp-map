@@ -9,7 +9,7 @@ import { isPointInPolygon } from '@/shared/utils/geo'
 // Paseo Ejército). Coordenadas GeoJSON [lng, lat].
 // ─────────────────────────────────────────────────────────────────
 
-export const ENGINEERING_PERIMETER: Polygon = {
+const ENGINEERING_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -32,7 +32,7 @@ export const ENGINEERING_PERIMETER: Polygon = {
   ],
 }
 
-export const BIBLIOTECA_HISTORIA_PERIMETER: Polygon = {
+const BIBLIOTECA_HISTORIA_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -48,7 +48,7 @@ export const BIBLIOTECA_HISTORIA_PERIMETER: Polygon = {
   ],
 }
 
-export const PSICOLOGIA_PERIMETER: Polygon = {
+const PSICOLOGIA_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -63,7 +63,7 @@ export const PSICOLOGIA_PERIMETER: Polygon = {
 
 
 
-export const COMUNICACION_PERIMETER: Polygon = {
+const COMUNICACION_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -82,7 +82,7 @@ export const COMUNICACION_PERIMETER: Polygon = {
   ],
 }
 
-export const AULARIO_PERIMETER: Polygon = {
+const AULARIO_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -95,7 +95,7 @@ export const AULARIO_PERIMETER: Polygon = {
   ],
 }
 
-export const COMERCIO_PERIMETER: Polygon = {
+const COMERCIO_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -108,7 +108,7 @@ export const COMERCIO_PERIMETER: Polygon = {
   ],
 }
 
-export const SALUD_PERIMETER: Polygon = {
+const SALUD_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -129,7 +129,7 @@ export const SALUD_PERIMETER: Polygon = {
   ],
 }
 
-export const FILOSOFIA_PERIMETER: Polygon = {
+const FILOSOFIA_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -142,7 +142,7 @@ export const FILOSOFIA_PERIMETER: Polygon = {
   ],
 }
 
-export const EDUCACION_PERIMETER: Polygon = {
+const EDUCACION_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -155,7 +155,7 @@ export const EDUCACION_PERIMETER: Polygon = {
   ],
 }
 
-export const DEPORTES_PERIMETER: Polygon = {
+const DEPORTES_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -169,7 +169,7 @@ export const DEPORTES_PERIMETER: Polygon = {
   ],
 }
 
-export const DTI_PERIMETER: Polygon = {
+const DTI_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -192,7 +192,7 @@ export const DTI_PERIMETER: Polygon = {
   ],
 }
 
-export const MEDICINA_PERIMETER: Polygon = {
+const MEDICINA_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -205,7 +205,7 @@ export const MEDICINA_PERIMETER: Polygon = {
   ],
 }
 
-export const HUECHURABA_PERIMETER: Polygon = {
+const HUECHURABA_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -224,7 +224,7 @@ export const HUECHURABA_PERIMETER: Polygon = {
   ],
 }
 
-export const DERECHO_PERIMETER: Polygon = {
+const DERECHO_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
@@ -240,7 +240,7 @@ export const DERECHO_PERIMETER: Polygon = {
   ],
 }
 
-export const ARQUITECTURA_PERIMETER: Polygon = {
+const ARQUITECTURA_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [

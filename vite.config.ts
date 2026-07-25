@@ -35,7 +35,7 @@ function updateInfoJson(version: string): string {
     .filter((line) => line.trim().startsWith('-'))
     .map((line) => line.replace(/^\s*-\s*/, '').trim())
 
-  return JSON.stringify({ version, improvements })
+  return JSON.stringify({ version, buildId: BUILD_ID, improvements })
 }
 
 function updateInfoPlugin(version: string): Plugin {
@@ -60,10 +60,19 @@ function updateInfoPlugin(version: string): Plugin {
 
 const APP_VERSION = computeAppVersion()
 
+// Identifies the deployment. The version string can repeat across deploys
+// (Vercel builds from a shallow clone, so the commit count is not the real one),
+// so update detection uses this instead.
+// ponytail: local builds share the literal 'dev', so the banner never fires
+// outside Vercel. Techo: probar en local exige dos builds con id distinto —
+// `VERCEL_GIT_COMMIT_SHA=a npm run build`, servirlo, y reconstruir con `=b`.
+const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev'
+
 export default defineConfig({
   define: {
-    // Injected at build-time; available globally as __APP_VERSION__
+    // Injected at build-time; available globally as __APP_VERSION__ / __BUILD_ID__
     __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
   },
   plugins: [
     react(),

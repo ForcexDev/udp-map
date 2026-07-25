@@ -13,7 +13,7 @@ export const CAMPUSES: Campus[] = [
 ]
 
 /** Cuadrado GeoJSON de ~2·d grados alrededor de un punto (huella aproximada). */
-export function squareAround(lat: number, lng: number, d = 0.00045): Polygon {
+function squareAround(lat: number, lng: number, d = 0.00045): Polygon {
   return {
     type: 'Polygon',
     coordinates: [

@@ -2,10 +2,9 @@ import { create } from 'zustand'
 import { supabase, isSupabaseConfigured } from '@/shared/lib/supabase'
 import type { Role } from '@/shared/types/database'
 import { isUdpEmail } from './permissions'
-import i18n from '@/shared/lib/i18n'
 import { removeCurrentBrowserPushSubscription } from '@/features/notifications/api'
 
-export interface AuthUser {
+interface AuthUser {
   id: string
   email: string
   name: string
@@ -190,7 +189,3 @@ export const useAuthStore = create<AuthState>((set) => ({
     }))
   },
 }))
-
-export function currentUserName(): string {
-  return useAuthStore.getState().user?.name ?? i18n.t('auth.guest')
-}

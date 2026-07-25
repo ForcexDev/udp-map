@@ -1,4 +1,4 @@
-export interface RelativeTime {
+interface RelativeTime {
   direction: 'past' | 'future'
   unit: 'minute' | 'hour' | 'day'
   value: number

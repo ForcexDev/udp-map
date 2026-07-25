@@ -112,16 +112,6 @@ export const demoPinCreationEvents = demoDb.pins
   .filter((pin) => pin.creator_id !== null)
   .map((pin) => ({ creator_id: pin.creator_id as string, created_at: pin.created_at }))
 
-export function demoRecountVotes(pin: Pin) {
-  const votes = demoDb.votes.get(pin.id)
-  if (!votes) return
-  let up = 0
-  let down = 0
-  votes.forEach((v) => (v === 1 ? up++ : down++))
-  pin.votes_up = up
-  pin.votes_down = down
-}
-
 export function demoAddPhotos(pinId: string, files: File[]): PinPhoto[] {
   const pin = demoDb.pins.find((p) => p.id === pinId)
   if (!pin) return []

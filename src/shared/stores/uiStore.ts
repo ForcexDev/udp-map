@@ -7,7 +7,7 @@ interface DraftLocation {
   lng: number
 }
 
-export type DraftPinType = 'report' | 'place' | 'event' | null
+type DraftPinType = 'report' | 'place' | 'event' | null
 
 interface UIState {
   theme: Theme

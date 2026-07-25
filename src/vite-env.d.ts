@@ -1,5 +1,4 @@
 /// <reference types="vite/client" />
-/// <reference types="vite-plugin-pwa/react" />
 
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string
@@ -17,3 +16,4 @@ interface Window {
 }
 
 declare const __APP_VERSION__: string
+declare const __BUILD_ID__: string

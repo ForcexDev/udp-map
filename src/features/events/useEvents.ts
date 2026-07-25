@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/features/auth/authStore'
-import { fetchUserRSVPs, fetchRSVPCounts, setRSVP } from './api'
+import { fetchUserRSVPs, setRSVP } from './api'
 
 export function useUserRSVPs() {
   const userId = useAuthStore((s) => s.user?.id)
@@ -9,13 +9,6 @@ export function useUserRSVPs() {
     queryKey: ['user-rsvps', userId],
     queryFn: () => (userId ? fetchUserRSVPs(userId) : Promise.resolve([])),
     enabled: Boolean(userId),
-  })
-}
-
-export function useRSVPCounts(pinId: string) {
-  return useQuery({
-    queryKey: ['rsvp-counts', pinId],
-    queryFn: () => fetchRSVPCounts(pinId),
   })
 }
 

@@ -2,9 +2,9 @@
 export const FADE_WINDOW_MS = 2 * 60 * 60 * 1000 // últimas 2 horas
 export const MIN_FADE_OPACITY = 0.35
 
-export type ExpiryStatus = 'permanent' | 'active' | 'fading' | 'expired'
+type ExpiryStatus = 'permanent' | 'active' | 'fading' | 'expired'
 
-export interface ExpiryState {
+interface ExpiryState {
   status: ExpiryStatus
   /** Opacidad sugerida para el marcador (1 → MIN_FADE_OPACITY al acercarse al fin) */
   opacity: number

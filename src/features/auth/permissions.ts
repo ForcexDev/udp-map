@@ -58,7 +58,7 @@ export function can(role: Role, action: Action): boolean {
   return ROLE_RANK[role] >= ROLE_RANK[MIN_ROLE[action]]
 }
 
-export const UDP_EMAIL_DOMAIN = 'mail.udp.cl'
+const UDP_EMAIL_DOMAIN = 'mail.udp.cl'
 
 export function isUdpEmail(email: string): boolean {
   return email.toLowerCase().endsWith(`@${UDP_EMAIL_DOMAIN}`)

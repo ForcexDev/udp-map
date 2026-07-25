@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 
-export interface CustomSelectOption {
+interface CustomSelectOption {
   value: string
   label: string
   icon?: ReactNode

@@ -1,10 +1,10 @@
 export const MAX_PHOTO_BYTES = 20 * 1024 * 1024
-export const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 export const MAX_PHOTOS_PER_PIN = 5
-export const COMPRESS_MAX_DIM = 1200
-export const COMPRESS_QUALITY = 0.75
+const COMPRESS_MAX_DIM = 1200
+const COMPRESS_QUALITY = 0.75
 
-export type PhotoValidationError = 'too-large' | 'bad-type' | null
+type PhotoValidationError = 'too-large' | 'bad-type' | null
 
 export function validatePhoto(file: { type: string; size: number }): PhotoValidationError {
   if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) return 'bad-type'
@@ -12,7 +12,7 @@ export function validatePhoto(file: { type: string; size: number }): PhotoValida
   return null
 }
 
-export interface CompressedPhoto {
+interface CompressedPhoto {
   blob: Blob
   width: number
   height: number

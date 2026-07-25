@@ -291,7 +291,7 @@ export async function deleteComment(commentId: string): Promise<void> {
 
 // ── Votos (Votes) ──
 
-export interface ThreadVoteResult {
+interface ThreadVoteResult {
   votesUp: number
   votesDown: number
   userVote: 1 | -1 | null

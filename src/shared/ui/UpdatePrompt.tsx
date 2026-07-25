@@ -1,166 +1,137 @@
 import { useEffect, useState } from 'react'
-import { useRegisterSW } from 'virtual:pwa-register/react'
-import { ArrowDownToLine, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { ArrowDownToLine, CheckCircle2 } from 'lucide-react'
+import { shouldShowUpdate } from '@/shared/utils/pwa'
 
-export function UpdatePrompt() {
-  // Las novedades vienen de /update-info.json, emitido por el plugin
-  // udp-map-update-info desde docs/CHANGELOG.md en este mismo build.
-  const [improvements, setImprovements] = useState<string[]>([])
-  const [newVersion, setNewVersion] = useState<string | null>(null)
-  const [dismissed, setDismissed] = useState(
-    () => sessionStorage.getItem('udp-update-dismissed') === 'true'
-  )
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [error, setError] = useState(false)
-  
-  const {
-    needRefresh: [needRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
-    immediate: true,
-    onRegisteredSW(_swUrl, registration) {
-      if (registration) {
-        setInterval(() => {
-          if (!registration.installing && navigator.onLine) {
-            registration.update().catch(() => {})
-          }
-        }, 5 * 60 * 1000)
-      }
-    },
+const DISMISSED_KEY = 'udp-update-dismissed-build'
+
+type UpdateInfo = {
+  buildId: string
+  version: string | null
+  improvements: string[]
+}
+
+// /update-info.json lo emite el plugin udp-map-update-info en cada build. No entra
+// al precache del service worker (globPatterns no incluye .json) y se pide con
+// cache: 'no-store', así que siempre refleja el despliegue vivo, no el instalado.
+async function fetchUpdateInfo(signal: AbortSignal): Promise<UpdateInfo | null> {
+  try {
+    const response = await fetch('/update-info.json', { cache: 'no-store', signal })
+    if (!response.ok) return null
+
+    const data = await response.json() as Partial<UpdateInfo>
+    if (typeof data.buildId !== 'string') return null
+
+    return {
+      buildId: data.buildId,
+      version: typeof data.version === 'string' ? data.version : null,
+      improvements: Array.isArray(data.improvements)
+        ? data.improvements.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        : [],
+    }
+  } catch {
+    return null
+  }
+}
+
+// ponytail: recarga incondicional tras 1500 ms. Techo: si el worker tarda más en
+// activar, la recarga la sirve el worker viejo y el aviso vuelve a aparecer; el
+// segundo intento sí entra. Subir el plazo solo si eso se observa en dispositivo.
+async function applyUpdate() {
+  const registration = await navigator.serviceWorker?.getRegistration()
+  registration?.waiting?.postMessage({ type: 'SKIP_WAITING' })
+
+  await new Promise<void>((resolve) => {
+    navigator.serviceWorker?.addEventListener('controllerchange', () => resolve(), { once: true })
+    setTimeout(resolve, 1500)
   })
 
-  const [isDevTesting] = useState(() => import.meta.env.DEV && window.location.search.includes('test-pwa'))
+  location.reload()
+}
 
-  // Load update-info.json in the background to replace fallback improvements,
-  // but don't block the prompt from appearing.
+export function UpdatePrompt() {
+  const [info, setInfo] = useState<UpdateInfo | null>(null)
+  const [dismissedBuildId, setDismissedBuildId] = useState(() => localStorage.getItem(DISMISSED_KEY))
+  const [isUpdating, setIsUpdating] = useState(false)
+
   useEffect(() => {
-    if (!needRefresh && !isDevTesting) {
-      setImprovements([])
-      sessionStorage.removeItem('udp-update-dismissed')
-      setDismissed(false)
-      return
-    }
-
-    // Ensure it's not dismissed if we are actively prompting (e.g. testing)
-    setDismissed(false)
-    sessionStorage.removeItem('udp-update-dismissed')
-
     const controller = new AbortController()
 
-    async function loadLatestUpdateInfo() {
-      try {
-        const response = await fetch(`/update-info.json?v=${Date.now()}`, {
-          cache: 'no-store',
-          signal: controller.signal,
-        })
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-
-        const data = await response.json() as { improvements?: unknown; version?: string }
-        if (typeof data.version === 'string') {
-          setNewVersion(data.version)
-        }
-        if (Array.isArray(data.improvements)) {
-          const latestImprovements = data.improvements.filter(
-            (item): item is string => typeof item === 'string' && item.trim().length > 0,
-          )
-          if (latestImprovements.length > 0) setImprovements(latestImprovements)
-        }
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          console.error('No se pudieron cargar las novedades de la actualización.', err)
-        }
-      }
+    const check = () => {
+      if (document.visibilityState !== 'visible') return
+      void fetchUpdateInfo(controller.signal).then((data) => {
+        if (data) setInfo(data)
+      })
     }
 
-    void loadLatestUpdateInfo()
-    return () => controller.abort()
-  }, [needRefresh, isDevTesting])
-
-  const handleUpdate = async () => {
-    if (isUpdating) return
-    setIsUpdating(true)
-    setError(false)
-
-    const timeout = setTimeout(() => {
-      setIsUpdating(false)
-      setError(true)
-    }, 10_000)
-
-    try {
-      // Let the vite-plugin-pwa library handle the skip waiting and reload mechanism
-      await updateServiceWorker(true)
-    } catch (err) {
-      clearTimeout(timeout)
-      console.error('No se pudo aplicar la actualización.', err)
-      setIsUpdating(false)
-      setError(true)
+    check()
+    document.addEventListener('visibilitychange', check)
+    return () => {
+      controller.abort()
+      document.removeEventListener('visibilitychange', check)
     }
-  }
+  }, [])
 
   const handleDismiss = () => {
-    sessionStorage.setItem('udp-update-dismissed', 'true')
-    setDismissed(true)
+    if (!info) return
+    localStorage.setItem(DISMISSED_KEY, info.buildId)
+    setDismissedBuildId(info.buildId)
   }
 
-  // Show immediately when needRefresh is true
-  if ((!needRefresh && !isDevTesting) || dismissed) return null
+  if (!info) return null
+  if (!shouldShowUpdate({ currentBuildId: __BUILD_ID__, serverBuildId: info.buildId, dismissedBuildId })) {
+    return null
+  }
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="w-full max-w-[340px] max-h-[85dvh] rounded-[22px] p-5 shadow-3xl flex flex-col gap-4 bg-white dark:bg-neutral-900 animate-in zoom-in-95 duration-300 border border-neutral-200/50 dark:border-neutral-800/50 overflow-hidden">
-        
+    <div
+      className="fixed inset-x-0 bottom-0 z-[999] flex justify-center p-4 pointer-events-none"
+      style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
+    >
+      <div className="w-full max-w-[340px] max-h-[70dvh] rounded-[22px] p-5 shadow-3xl flex flex-col gap-4 bg-white dark:bg-neutral-900 animate-in slide-in-from-bottom-4 duration-300 border border-neutral-200/50 dark:border-neutral-800/50 overflow-hidden pointer-events-auto">
+
         <div className="flex flex-col items-center text-center mt-1 gap-2.5 flex-shrink-0">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${error ? 'bg-red-100 dark:bg-red-900/30 text-[#D41F2D]' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white'}`}>
-            {error ? <AlertTriangle size={24} strokeWidth={2} /> : <ArrowDownToLine size={24} strokeWidth={2} />}
+          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white">
+            <ArrowDownToLine size={24} strokeWidth={2} />
           </div>
           <div>
             <h3 className="text-[18px] font-black tracking-tight text-neutral-900 dark:text-white leading-tight">
-              {error ? 'Error al actualizar' : (newVersion ? `Actualización disponible (${newVersion})` : 'Actualización disponible')}
+              {info.version ? `Actualización disponible (${info.version})` : 'Actualización disponible'}
             </h3>
-            <p className={`text-[13px] font-medium mt-0.5 leading-snug px-2 ${error ? 'text-red-600 dark:text-red-400' : 'text-neutral-500'}`}>
-              {error 
-                ? 'No se pudo aplicar la actualización. Por favor, recarga la página o intenta de nuevo.' 
-                : 'Se descargó una nueva versión de la aplicación.'}
+            <p className="text-[13px] font-medium mt-0.5 leading-snug px-2 text-neutral-500">
+              Hay una nueva versión de la aplicación.
             </p>
           </div>
         </div>
 
-        {!error && (
-          <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-3.5 border border-neutral-100 dark:border-neutral-800 pr-2">
-            <ul className="flex flex-col gap-2.5">
-              {improvements.length > 0 ? (
-                improvements.map((item, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <CheckCircle2 size={16} className="text-[#D41F2D] mt-0.5 flex-shrink-0" strokeWidth={2.5} />
-                    <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 leading-snug">
-                      {item}
-                    </span>
-                  </li>
-                ))
-              ) : (
-                <li className="text-[13px] text-neutral-500 text-center font-medium">Mejoras de rendimiento.</li>
-              )}
-            </ul>
-          </div>
-        )}
+        <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-3.5 border border-neutral-100 dark:border-neutral-800 pr-2">
+          <ul className="flex flex-col gap-2.5">
+            {info.improvements.length > 0 ? (
+              info.improvements.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2">
+                  <CheckCircle2 size={16} className="text-[#D41F2D] mt-0.5 flex-shrink-0" strokeWidth={2.5} />
+                  <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 leading-snug">
+                    {item}
+                  </span>
+                </li>
+              ))
+            ) : (
+              <li className="text-[13px] text-neutral-500 text-center font-medium">Mejoras de rendimiento.</li>
+            )}
+          </ul>
+        </div>
 
         <div className="flex flex-col gap-2 flex-shrink-0">
           <button
             type="button"
             onClick={() => {
-              if (isDevTesting) {
-                const url = new URL(window.location.href)
-                url.searchParams.delete('test-pwa')
-                window.location.href = url.toString()
-              } else {
-                void handleUpdate()
-              }
+              setIsUpdating(true)
+              void applyUpdate()
             }}
             disabled={isUpdating}
             aria-busy={isUpdating}
             className="w-full py-3 px-4 bg-[#D41F2D] hover:bg-[#b01a25] text-white rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm disabled:cursor-wait disabled:opacity-70"
           >
-            {isUpdating ? 'Actualizando…' : (error ? 'Reintentar' : 'Actualizar ahora')}
+            {isUpdating ? 'Actualizando…' : 'Actualizar ahora'}
           </button>
           {!isUpdating && (
             <button

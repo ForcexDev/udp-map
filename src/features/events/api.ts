@@ -29,31 +29,6 @@ export async function fetchUserRSVPs(userId: string): Promise<EventRsvp[]> {
   return data as EventRsvp[]
 }
 
-export async function fetchRSVPCounts(pinId: string): Promise<{ going: number; interested: number }> {
-  if (!supabase) {
-    const rsvps = demoRSVPs.get(pinId) ?? []
-    return {
-      going: rsvps.filter((r) => r.status === 'going').length,
-      interested: rsvps.filter((r) => r.status === 'interested').length,
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('event_rsvps')
-    .select('status')
-    .eq('pin_id', pinId)
-
-  if (error) {
-    console.error('Error fetching RSVP counts:', error)
-    return { going: 0, interested: 0 }
-  }
-
-  return {
-    going: data.filter((r) => r.status === 'going').length,
-    interested: data.filter((r) => r.status === 'interested').length,
-  }
-}
-
 export async function setRSVP(
   pinId: string,
   userId: string,

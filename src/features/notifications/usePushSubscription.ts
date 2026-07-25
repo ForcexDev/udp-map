@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { deletePushSubscription, registerPushSubscription } from './api'
 import { isIOSDevice, isStandaloneDisplay } from '@/shared/utils/pwa'
 
-export type PushState = 'unsupported' | 'idle' | 'subscribed' | 'denied' | 'loading' | 'error' | 'ios-not-installed'
+type PushState = 'unsupported' | 'idle' | 'subscribed' | 'denied' | 'loading' | 'error' | 'ios-not-installed'
 
 function pushErrorMessage(cause: unknown): string {
   const technicalMessage = cause instanceof Error ? cause.message : String(cause)

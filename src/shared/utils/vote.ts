@@ -1,6 +1,6 @@
-export type VoteValue = 1 | -1
+type VoteValue = 1 | -1
 
-export interface VoteTransition {
+interface VoteTransition {
   votesUp: number
   votesDown: number
   userVote: VoteValue | null

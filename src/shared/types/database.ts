@@ -5,7 +5,7 @@ import type { Polygon, FeatureCollection } from 'geojson'
 
 export type PinType = 'place' | 'event' | 'report'
 export type Role = 'guest' | 'student' | 'moderator' | 'admin'
-export type CategoryKind = 'report' | 'event'
+type CategoryKind = 'report' | 'event'
 
 export interface Profile {
   id: string
@@ -36,13 +36,6 @@ export interface Faculty {
   lng: number
   polygon: Polygon | null
   image: string | null
-}
-
-export interface Career {
-  id: number
-  faculty_id: string
-  name: string
-  name_en: string
 }
 
 export interface Category {
@@ -105,12 +98,6 @@ export interface PinComment {
   created_at: string
 }
 
-export interface PinVote {
-  pin_id: string
-  user_id: string
-  value: 1 | -1
-}
-
 export interface Favorite {
   user_id: string
   pin_id: string
@@ -163,12 +150,6 @@ export interface ForumComment {
   author_avatar_url?: string | null
 }
 
-export interface ForumVote {
-  thread_id: string
-  user_id: string
-  value: 1 | -1
-}
-
 export interface Badge {
   id: string
   name: string
@@ -185,8 +166,8 @@ export interface UserBadge {
 }
 
 export type NotificationCategory = 'profile' | 'forum' | 'events' | 'moderation'
-export type NotificationAudience = 'personal' | 'admin'
-export type NotificationType =
+type NotificationAudience = 'personal' | 'admin'
+type NotificationType =
   | 'achievement'
   | 'forum_reply'
   | 'event_reminder'

@@ -1,3 +1,12 @@
+export function shouldShowUpdate({ currentBuildId, serverBuildId, dismissedBuildId }: {
+  currentBuildId: string
+  serverBuildId: string | null
+  dismissedBuildId: string | null
+}): boolean {
+  if (!serverBuildId || serverBuildId === currentBuildId) return false
+  return serverBuildId !== dismissedBuildId
+}
+
 export function isIOSDevice(): boolean {
   if (typeof navigator === 'undefined') return false
   return /iPad|iPhone|iPod/.test(navigator.userAgent)
