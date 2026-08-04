@@ -1,6 +1,6 @@
 import { supabase, PHOTOS_BUCKET } from '@/shared/lib/supabase'
 import { fetchPublicProfiles, type PublicProfile } from '@/shared/lib/publicProfiles'
-import type { Pin, PinComment, PinType } from '@/shared/types/database'
+import type { Pin, PinComment, PinScheduleDraft, PinScheduleItem, PinType } from '@/shared/types/database'
 import type { Bounds } from '@/shared/utils/geo'
 import { isInBounds } from '@/shared/utils/geo'
 import { expiresAtFromTtl } from '@/shared/utils/expiry'
@@ -8,7 +8,7 @@ import { categoryById } from '@/shared/data/campusData'
 import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import type { PinFilters } from '@/shared/stores/filterStore'
 import { compressImage, photoStoragePath } from './photos'
-import { demoDb, demoAddPhotos, demoRemovePhotos, demoVerifyPin, demoUnverifyPin, demoExtendPinTTL, demoPinCreationEvents } from './demoStore'
+import { demoDb, demoAddPhotos, demoRemovePhotos, demoVerifyPin, demoUnverifyPin, demoExtendPinTTL, demoPinCreationEvents, demoSchedules, demoReplaceSchedule } from './demoStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
 import { hasReachedDailyPinLimit } from '@/shared/utils/rateLimit'
@@ -139,10 +139,17 @@ async function uploadPinPhotos(pinId: string, userId: string, files: File[]): Pr
 
 // ── Creación con N fotos (compresión + manejo de error + UUID) ──
 
-/** El pin creado. `photosFailed` marca que el pin existe pero sus fotos no. */
-export type CreatedPin = Pin & { photosFailed?: boolean }
+/**
+ * El pin creado. `photosFailed` / `scheduleFailed` marcan que el pin existe
+ * pero esa parte accesoria no llegó a guardarse.
+ */
+export type CreatedPin = Pin & { photosFailed?: boolean; scheduleFailed?: boolean }
 
-export async function createPin(input: CreatePinInput, photos: File[]): Promise<CreatedPin> {
+export async function createPin(
+  input: CreatePinInput,
+  photos: File[],
+  schedule: PinScheduleDraft[] = [],
+): Promise<CreatedPin> {
   const category = input.categoryId ? categoryById(input.categoryId) : undefined
   const isPlace = input.type === 'place'
   // Este cálculo solo manda en MODO DEMO, donde arma el pin en memoria más
@@ -194,6 +201,7 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
     demoDb.pins.unshift(pin)
     demoPinCreationEvents.push({ creator_id: input.userId, created_at: pin.created_at })
     demoAddPhotos(pin.id, photos)
+    if (schedule.length > 0) demoReplaceSchedule(pin.id, schedule)
     return pin
   }
 
@@ -224,25 +232,110 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
   // la creación entera hubiera fallado: el usuario reintentaría y crearía un
   // segundo pin, que además chocaría contra prevent_occupied_pin_location por
   // estar en la misma coordenada. Se informa del fallo parcial y quien llama
-  // decide qué contar.
+  // decide qué contar. El programa sigue el mismo criterio.
+  let scheduleFailed = false
+  if (schedule.length > 0) {
+    try {
+      await replacePinSchedule(pin.id, schedule)
+    } catch (err) {
+      console.error('El pin se creó pero su programa no pudo guardarse', err)
+      scheduleFailed = true
+    }
+  }
+
   try {
     await uploadPinPhotos(pin.id, input.userId, photos)
   } catch (err) {
     console.error('El pin se creó pero sus fotos no pudieron subirse', err)
-    return { ...pin, photosFailed: true }
+    return { ...pin, photosFailed: true, ...(scheduleFailed ? { scheduleFailed } : {}) }
   }
-  return pin
+  return scheduleFailed ? { ...pin, scheduleFailed } : pin
+}
+
+// ── Programa (schedule) de un evento ──────────────────────────────────────
+//
+// pin_schedule_items no tiene policy de update: el autor reemplaza el set
+// entero. Reconciliar filas una a una no aporta nada aquí (son cuatro campos
+// sin identidad propia para el usuario) y sí abre la puerta a ediciones
+// parciales a medio aplicar.
+
+export async function fetchPinSchedule(pinId: string): Promise<PinScheduleItem[]> {
+  if (!supabase) {
+    return [...(demoSchedules.get(pinId) ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+  }
+
+  const { data, error } = await supabase
+    .from('pin_schedule_items')
+    .select('*')
+    .eq('pin_id', pinId)
+    .order('starts_at', { ascending: true })
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching pin schedule:', error)
+    return []
+  }
+  return (data ?? []) as PinScheduleItem[]
+}
+
+/** Cuántos bloques tiene cada pin, en una sola consulta (para la agenda). */
+export async function fetchScheduleCounts(pinIds: string[]): Promise<Record<string, number>> {
+  if (pinIds.length === 0) return {}
+
+  if (!supabase) {
+    return Object.fromEntries(pinIds.map((id) => [id, demoSchedules.get(id)?.length ?? 0]))
+  }
+
+  const { data, error } = await supabase
+    .from('pin_schedule_items')
+    .select('pin_id')
+    .in('pin_id', pinIds)
+
+  if (error || !data) {
+    console.error('Error fetching schedule counts:', error)
+    return {}
+  }
+  return (data as { pin_id: string }[]).reduce<Record<string, number>>((acc, row) => {
+    acc[row.pin_id] = (acc[row.pin_id] ?? 0) + 1
+    return acc
+  }, {})
+}
+
+export async function replacePinSchedule(pinId: string, items: PinScheduleDraft[]): Promise<void> {
+  if (!supabase) {
+    demoReplaceSchedule(pinId, items)
+    return
+  }
+
+  const { error: delErr } = await supabase.from('pin_schedule_items').delete().eq('pin_id', pinId)
+  if (delErr) throw delErr
+
+  if (items.length === 0) return
+
+  const { error: insErr } = await supabase.from('pin_schedule_items').insert(
+    items.map((item, i) => ({
+      pin_id: pinId,
+      starts_at: item.starts_at,
+      ends_at: item.ends_at,
+      title: item.title,
+      subtitle: item.subtitle,
+      sort_order: item.sort_order ?? i,
+    })),
+  )
+  if (insErr) throw insErr
 }
 
 export async function updatePin(
-  pinId: string, 
+  pinId: string,
   input: Partial<CreatePinInput>,
   options?: {
     newPhotos?: File[]
     deletedPhotoIds?: string[]
+    /** undefined = no tocar el programa; [] = borrarlo. */
+    schedule?: PinScheduleDraft[]
   }
 ): Promise<void> {
-  const { newPhotos = [], deletedPhotoIds = [] } = options ?? {}
+  const { newPhotos = [], deletedPhotoIds = [], schedule } = options ?? {}
 
   if (!supabase) {
     const pin = demoDb.pins.find((p) => p.id === pinId)
@@ -269,6 +362,7 @@ export async function updatePin(
       }
       if (deletedPhotoIds.length > 0) demoRemovePhotos(pinId, deletedPhotoIds)
       if (newPhotos.length > 0) demoAddPhotos(pinId, newPhotos)
+      if (schedule !== undefined) demoReplaceSchedule(pinId, schedule)
     }
     return
   }
@@ -301,7 +395,12 @@ export async function updatePin(
     if (delErr) throw delErr
   }
 
-  // 3. Subir nuevas fotos
+  // 3. Reemplazar el programa si se envió uno
+  if (schedule !== undefined) {
+    await replacePinSchedule(pinId, schedule)
+  }
+
+  // 4. Subir nuevas fotos
   if (input.userId) {
     await uploadPinPhotos(pinId, input.userId, newPhotos)
   }
@@ -314,6 +413,7 @@ export async function deletePin(pin: Pin): Promise<void> {
     demoDb.pins = demoDb.pins.filter((p) => p.id !== pin.id)
     demoDb.comments.delete(pin.id)
     demoDb.votes.delete(pin.id)
+    demoSchedules.delete(pin.id)
     return
   }
   // Los archivos de Storage ya no se borran desde aquí. Al caer el pin, sus

@@ -7,7 +7,9 @@ import type { FloorPlan } from '@/shared/types/database'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { CAMPUSES, FACULTIES, categoryById, EVENT_COLOR, PLACE_COLOR } from '@/shared/data/campusData'
-import { expiryState } from '@/shared/utils/expiry'
+import { expiryState, FADE_WINDOW_MS } from '@/shared/utils/expiry'
+import { eventPhase } from '@/shared/utils/eventState'
+import { useNowTick } from '@/shared/lib/useNowTick'
 import { publishBounds } from '@/features/pins/usePins'
 import { MAP_STYLE_LIGHT, MAP_STYLE_DARK, DEFAULT_ZOOM } from './mapConfig'
 import { addFacultyLayers } from './facultyLayers'
@@ -101,6 +103,10 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
 
   const [bearing, setBearing] = useState(0)
   const [pitch, setPitch] = useState(0)
+
+  // Un evento que empieza a las 14:00 debe ponerse en vivo a las 14:00, no la
+  // próxima vez que el usuario mueva el mapa.
+  const now = useNowTick()
 
   // ── Instancia del mapa (una sola vez) ──
   useEffect(() => {
@@ -382,8 +388,8 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
     }
 
     for (const pin of pins) {
-      const expiry = expiryState(pin.expires_at, pin.is_permanent)
-      if (expiry.status === 'expired') continue
+      if (expiryState(pin.expires_at, pin.is_permanent).status === 'expired') continue
+
       let marker = markers.get(pin.id)
       if (!marker) {
         const el = document.createElement('button')
@@ -407,14 +413,56 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
       // Render SVG icon inside the marker
       el.innerHTML = markerSvgContent(pin)
       el.style.setProperty('--pin-color', markerColor(pin))
-      el.style.opacity = String(expiry.opacity)
       el.setAttribute('aria-label', pin.title)
       el.title = pin.title
-      el.classList.toggle('pin-marker--fading', expiry.status === 'fading')
       el.classList.toggle('pin-marker--selected', pin.id === selectedPinId)
       marker.setLngLat([pin.lng, pin.lat])
     }
   }, [pins, selectedPinId])
+
+  // ── Estado temporal del marcador (en vivo / por vencer) ──
+  //
+  // Aparte del efecto de arriba porque corre con cada tick del reloj: rehacer
+  // ahí el innerHTML de 300 marcadores cada 30 s sería tirar el icono a la
+  // basura para volver a pintarlo idéntico. Aquí solo se tocan clases y
+  // variables CSS, que es lo único que cambia al pasar el tiempo.
+  useEffect(() => {
+    const markers = markersRef.current
+
+    for (const pin of pins) {
+      const el = markers.get(pin.id)?.getElement()
+      if (!el) continue
+
+      // Un evento no "se está agotando": pasa, ocurre y termina. Aplicarle el
+      // estado de expiración lo hacía parpadear en su última hora, que es
+      // justo la señal que ahora se reserva para "está ocurriendo".
+      const isEvent = pin.type === 'event'
+      const expiry = expiryState(pin.expires_at, pin.is_permanent, now)
+      const isLive = isEvent && eventPhase(pin.starts_at, pin.ends_at, now) === 'live'
+      const isExpiring = !isEvent && expiry.status === 'fading'
+
+      // El desvanecido va por variables CSS, NO por el.style.opacity.
+      //
+      // MapLibre es dueño del `opacity` en línea del elemento del marcador:
+      // Marker._updateOpacity() lo reescribe a su propio valor (1 por defecto)
+      // en cada move/moveend. Escribirlo aquí daba un efecto fantasma —
+      // aparecía con el mapa quieto y se borraba al primer paneo—. El CSS lo
+      // aplica con filter: opacity(), que MapLibre no toca.
+      //
+      // Los eventos no se atenúan: uno de mañana debe verse tan sólido como
+      // uno de hoy (siguen apareciendo en el mapa desde que se crean).
+      el.style.setProperty('--pin-fade', isExpiring ? String(expiry.opacity) : '1')
+      // Fracción de vida restante (1 → 0), que gradúa el desaturado.
+      el.style.setProperty(
+        '--pin-remaining',
+        isExpiring && expiry.remainingMs !== null
+          ? String(Math.max(0, Math.min(1, expiry.remainingMs / FADE_WINDOW_MS)))
+          : '1',
+      )
+      el.classList.toggle('pin-marker--expiring', isExpiring)
+      el.classList.toggle('pin-marker--live', isLive)
+    }
+  }, [pins, now])
 
   // ── Centrado automático de Pin ──
   useEffect(() => {

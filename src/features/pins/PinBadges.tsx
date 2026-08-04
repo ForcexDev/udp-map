@@ -4,6 +4,8 @@ import { BadgeCheck, Clock, User, Flag, MapPin } from 'lucide-react'
 import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import type { Pin } from '@/shared/types/database'
 import { expiryState } from '@/shared/utils/expiry'
+import { eventPhase } from '@/shared/utils/eventState'
+import { useNowTick } from '@/shared/lib/useNowTick'
 import { relativeTime } from '@/shared/utils/datetime'
 
 const UNIT_KEY = { minute: 'Minutes', hour: 'Hours', day: 'Days' } as const
@@ -15,8 +17,10 @@ const UNIT_FALLBACK = { minute: 'min', hour: 'h', day: 'd' } as const
 export function PinBadges({ pin }: { pin: Pin }) {
   const { t } = useTranslation()
   const [profileId, setProfileId] = useState<string | null>(null)
-  const expiry = expiryState(pin.expires_at, pin.is_permanent)
+  const now = useNowTick()
+  const expiry = expiryState(pin.expires_at, pin.is_permanent, now)
   const { unit, value } = relativeTime(pin.expires_at ?? '')
+  const phase = pin.type === 'event' ? eventPhase(pin.starts_at, pin.ends_at, now) : null
 
   const TypeIcon = pin.type === 'place' ? MapPin : pin.type === 'event' ? Clock : Flag
   const typeLabel =
@@ -40,6 +44,20 @@ export function PinBadges({ pin }: { pin: Pin }) {
       <span>{typeLabel}</span>
     </div>
   )
+
+  // En vivo: va en la línea de identidad, pegado al tipo, porque es lo primero
+  // que hay que saber del evento. Mismo punto latiendo que el marcador del mapa.
+  if (phase === 'live') {
+    badges.push(
+      <div
+        key="live"
+        className="flex items-center gap-1.5 rounded-full bg-[#D41F2D] px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-white"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+        {t('events.live', 'En vivo')}
+      </div>
+    )
+  }
 
   // Expiración (solo si no es permanente y no es evento)
   if (!pin.is_permanent && pin.type !== 'event' && expiry.remainingMs !== null && pin.expires_at) {

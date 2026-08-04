@@ -18,16 +18,8 @@
   --color-udp-900: #701d2e;
   --color-udp-950: #3e0b15;
 
-  /* Profile redesign tokens */
-  --color-profile-bg: #08090b;
-  --color-profile-text: #eeeeec;
-  --color-profile-muted: #8a8f96;
-  --color-profile-faint: #55595f;
-  --color-profile-line: #232629;
-  --color-profile-accent: #ef6a4c;
-  --color-profile-gold: #d9a94e;
-  --color-profile-purple: #9d84d6;
-  --color-profile-green: #5fb389;
+  /* El perfil no tiene paleta propia: usa la escala neutral + el rojo UDP,
+     igual que Mapa, Eventos y Foro. */
 
   --font-display: 'Space Grotesk', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -353,14 +345,19 @@ body {
     0 0 0 4px rgba(212, 31, 45, 0.12);
 }
 
-.pin-marker--fading {
-  /* El filtro de opacidad se multiplica con la opacidad inline que pone JS, 
-     creando un "respiro" suave que simula desvanecimiento constante */
+/* ── Evento EN VIVO ──────────────────────────────────────
+   El latido + sonar es la única cosa que se mueve en el mapa, y significa
+   una sola cosa: esto está ocurriendo ahora mismo. Antes marcaba lo
+   contrario (un pin a punto de vencer), que es justo lo que no hay que
+   mirar con urgencia. */
+.pin-marker--live {
   animation: pin-breathe 2s ease-in-out infinite;
+  /* Por encima del resto: si algo tapa al evento en curso, se pierde. */
+  z-index: 2;
 }
 
 /* El pseudo-elemento crea la onda expansiva (sonar) suave sin interferir con MapLibre */
-.pin-marker--fading::after {
+.pin-marker--live::after {
   content: '';
   position: absolute;
   inset: -2px;
@@ -393,6 +390,47 @@ body {
   100% {
     transform: scale(1.8);
     opacity: 0;
+  }
+}
+
+/* ── Pin por vencer ──────────────────────────────────────
+   Se desvanece, y nada más. Hubo aquí un anillo que se vaciaba como un
+   reloj: a 26 px de marcador no se leía como cuenta atrás sino como un
+   halo decorativo, y encima a dos horas del final salía completo, así que
+   el pin más urgente era el que más adorno tenía.
+
+   Ahora el marcador pierde color y cuerpo: la opacidad la calcula
+   expiryState y aquí se le suma el desaturado, que es lo que hace que se
+   lea como algo apagándose y no como algo simplemente claro.
+   Sin animación: el latido está reservado a los eventos en vivo.
+   Nada de transform sobre .pin-marker: lo usa MapLibre para posicionar.
+
+   Y ojo con la opacidad: va dentro de `filter: opacity()`, no en la
+   propiedad `opacity`. El `style.opacity` en línea del marcador es de
+   MapLibre — Marker._updateOpacity() lo reescribe a 1 en cada move— así que
+   escribirlo desde JS daba un efecto fantasma: se desvanecía con el mapa
+   quieto y volvía a la normalidad al primer paneo. `filter` no lo toca
+   nadie más. */
+.pin-marker--expiring {
+  filter: grayscale(calc((1 - var(--pin-remaining, 1)) * 0.8)) opacity(var(--pin-fade, 1));
+}
+
+/* El hover no debe "revivir" un pin agonizante. */
+.pin-marker--expiring:hover {
+  filter: grayscale(calc((1 - var(--pin-remaining, 1)) * 0.8)) opacity(var(--pin-fade, 1))
+    brightness(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .pin-marker--live,
+  .pin-marker--live::after {
+    animation: none;
+  }
+
+  /* Sin latido hace falta otra marca para el evento en curso. */
+  .pin-marker--live::after {
+    opacity: 0.9;
   }
 }
 
@@ -472,6 +510,21 @@ body {
 
 .dark .bottom-nav {
   box-shadow: 0 200px 0 0 #171717;
+}
+
+/* ── Aviso de actualización ─────────────────────────────────
+   En móvil es una hoja inferior y hay que dejar libre la barra de navegación,
+   que mide 56px más el área segura. En escritorio la tarjeta se centra en la
+   pantalla, así que ese hueco sobra: sin este reset quedaría desplazada hacia
+   arriba la mitad del relleno. */
+.update-prompt-anchor {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
+@media (min-width: 640px) {
+  .update-prompt-anchor {
+    padding-bottom: 1rem;
+  }
 }
 
 /* ── Scrollbar Utilities ────────────────────────────────── */
@@ -588,6 +641,10 @@ body {
     margin-top: env(safe-area-inset-top, 0px);
   }
 
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
   .pt-safe-hud {
     padding-top: calc(12px + env(safe-area-inset-top, 0px));
   }
@@ -611,31 +668,5 @@ body {
 
 .hide-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
-}
-
-/* ── Report Timeline ──────────────────────────────────── */
-.report-timeline {
-  position: relative;
-  padding-left: 20px;
-}
-
-.report-timeline::before {
-  content: '';
-  position: absolute;
-  left: 5px;
-  top: 8px;
-  bottom: 8px;
-  width: 1px;
-  background: var(--color-profile-line);
-}
-
-.report-timeline-dot {
-  position: absolute;
-  left: -20px;
-  top: 22px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--color-profile-accent);
 }
 

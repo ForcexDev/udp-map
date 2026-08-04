@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import * as RadixDialog from '@radix-ui/react-dialog'
 import { Camera, MapPin, Sparkles, X, Trash2, ArrowRight, Loader2, BadgeCheck, DoorOpen } from 'lucide-react'
@@ -12,7 +12,9 @@ import { can } from '@/features/auth/permissions'
 import { CATEGORIES, FACULTIES } from '@/shared/data/campusData'
 import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import type { Pin, PinType } from '@/shared/types/database'
-import { createPin, updatePin } from './api'
+import { createPin, updatePin, fetchPinSchedule } from './api'
+import { EventScheduleEditor } from './EventScheduleEditor'
+import { draftsFromRows, rowsFromItems, validateRows, type ScheduleRow } from './eventScheduleRows'
 import { CustomDateTimePicker } from '@/shared/ui/CustomDateTimePicker'
 import { validatePhoto, MAX_PHOTOS_PER_PIN } from './photos'
 import { nextDailyPinReset } from '@/shared/utils/rateLimit'
@@ -68,11 +70,20 @@ export function CreatePinModal() {
   const [photos, setPhotos] = useState<File[]>([])
   const [deletedPhotoIds, setDeletedPhotoIds] = useState<string[]>([])
   const [facultyDropdownOpen, setFacultyDropdownOpen] = useState(false)
+  const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([])
+  const [scheduleError, setScheduleError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const pinToEdit = useUIStore((s) => s.pinToEdit)
   const pinsData = queryClient.getQueriesData<Pin[]>({ queryKey: ['pins'] })
   const editingPin = pinToEdit ? pinsData.flatMap(d => d[1] ?? []).find(p => p.id === pinToEdit) : null
+
+  // Al editar un evento hay que traer su programa para poder modificarlo.
+  const editingSchedule = useQuery({
+    queryKey: ['pin-schedule', editingPin?.id],
+    queryFn: () => fetchPinSchedule(editingPin!.id),
+    enabled: open && Boolean(editingPin) && editingPin?.type === 'event',
+  })
 
   const isModerator = can(role, 'pin.moderate')
   const reportCategories = useMemo(
@@ -122,6 +133,8 @@ export function CreatePinModal() {
     if (open) {
       setPhotos([])
       setDeletedPhotoIds([])
+      setScheduleRows([])
+      setScheduleError(null)
       if (editingPin) {
         form.setValue('type', editingPin.type as 'report' | 'place' | 'event')
         form.setValue('title', editingPin.title)
@@ -151,6 +164,14 @@ export function CreatePinModal() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, draftLocation, draftPinType, editingPin])
+
+  // El programa llega después que el resto del formulario (va por su propia
+  // consulta), así que se vuelca cuando aterriza y no en el reset de arriba.
+  useEffect(() => {
+    if (open && editingSchedule.data) {
+      setScheduleRows(rowsFromItems(editingSchedule.data))
+    }
+  }, [open, editingSchedule.data])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -195,6 +216,11 @@ export function CreatePinModal() {
         ? (role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP')
         : null
 
+      // El programa solo existe para eventos. Si el pin deja de serlo, se envía
+      // vacío para que no queden bloques huérfanos de un evento que ya no lo es.
+      const isEvent = values.type === 'event'
+      const scheduleDrafts = isEvent ? draftsFromRows(scheduleRows) : []
+
       if (editingPin) {
         await updatePin(
           editingPin.id, 
@@ -213,6 +239,9 @@ export function CreatePinModal() {
           {
             newPhotos: photos,
             deletedPhotoIds,
+            // Solo se toca el programa si el pin es (o era) un evento: para un
+            // reporte no hay nada que reemplazar y sobra la consulta.
+            ...(isEvent || editingPin.type === 'event' ? { schedule: scheduleDrafts } : {}),
           }
         )
         return
@@ -236,6 +265,7 @@ export function CreatePinModal() {
           endsAt: endsAtIso,
         },
         photos,
+        scheduleDrafts,
       )
     },
     onSuccess: (result) => {
@@ -244,11 +274,17 @@ export function CreatePinModal() {
       // fotos se añaden después editando el pin.
       if (result?.photosFailed) {
         showToast(t('pin.createdWithoutPhotos', 'Pin creado, pero las fotos no se pudieron subir'))
+      } else if (result?.scheduleFailed) {
+        showToast(t('pin.createdWithoutSchedule', 'Evento creado, pero su programa no se pudo guardar'))
       } else {
         showToast(editingPin ? t('pin.updated', 'Pin actualizado') : t('pin.created'))
       }
+      void queryClient.invalidateQueries({ queryKey: ['pin-schedule'] })
+      void queryClient.invalidateQueries({ queryKey: ['schedule-counts'] })
       form.reset()
       setPhotos([])
+      setScheduleRows([])
+      setScheduleError(null)
       close()
     },
     onError: (error) => {
@@ -278,6 +314,25 @@ export function CreatePinModal() {
       showToast(isUserFacingDbError(error) ? message : t('common.error'))
     },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),
+  })
+
+  /**
+   * El programa se valida aquí y no en el schema de zod porque depende de dos
+   * campos del formulario (las fechas del evento) y de un estado que vive
+   * fuera de react-hook-form. Corta el envío antes de tocar la base.
+   */
+  const submit = form.handleSubmit((values) => {
+    if (values.type === 'event') {
+      const startIso = values.startsAt ? new Date(values.startsAt).toISOString() : null
+      const endIso = values.endsAt ? new Date(values.endsAt).toISOString() : null
+      const problem = validateRows(scheduleRows, startIso, endIso)
+      if (problem) {
+        setScheduleError(problem)
+        return
+      }
+    }
+    setScheduleError(null)
+    create.mutate(values)
   })
 
   const availableTypes: ('report' | 'place' | 'event')[] = ['report', 'event']
@@ -320,7 +375,7 @@ export function CreatePinModal() {
 
           {/* Body */}
           <form
-            onSubmit={form.handleSubmit((values) => create.mutate(values))}
+            onSubmit={submit}
             className="flex-1 overflow-y-auto px-5 sm:px-7 py-5 space-y-5 sm:space-y-6 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-400"
           >
             {/* Type selector (Sleek Capsule Tabs) */}
@@ -377,11 +432,13 @@ export function CreatePinModal() {
             {/* Description */}
             <div className="space-y-2">
               <label className="text-[11px] font-black text-neutral-400 uppercase tracking-wider">{t('pin.description')}</label>
+              {/* El campo admite 500 caracteres; con dos filas no se veía ni la
+                  primera frase completa al editar. */}
               <textarea
-                rows={2}
+                rows={6}
                 {...form.register('description')}
                 placeholder={t('pin.descriptionPlaceholder', '¿Qué está pasando? (opcional)')}
-                className="w-full bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl px-4 py-3 text-sm font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 outline-none focus:border-[#D41F2D] focus:bg-white dark:focus:bg-neutral-900 transition-all resize-none shadow-sm"
+                className="w-full min-h-[132px] bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl px-4 py-3 text-sm font-medium leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 outline-none focus:border-[#D41F2D] focus:bg-white dark:focus:bg-neutral-900 transition-all resize-y shadow-sm"
               />
             </div>
 
@@ -640,6 +697,21 @@ export function CreatePinModal() {
               </div>
             )}
 
+            {/* Programa del evento: va pegado a las fechas porque es una
+                subdivisión de ellas, no un campo independiente. */}
+            {type === 'event' && (
+              <EventScheduleEditor
+                rows={scheduleRows}
+                onChange={(rows) => {
+                  setScheduleRows(rows)
+                  if (scheduleError) setScheduleError(null)
+                }}
+                eventStartsAt={form.watch('startsAt') ?? ''}
+                eventEndsAt={form.watch('endsAt') ?? ''}
+                error={scheduleError}
+              />
+            )}
+
             {/* Coordinates */}
             {!editingPin && draftLocation && (
               <div className="space-y-6">
@@ -709,7 +781,7 @@ export function CreatePinModal() {
           {/* Submit Button Sticky Bottom (Mobile only) */}
           <div className="sm:hidden px-5 pt-3 pb-[max(1.2rem,env(safe-area-inset-bottom))] bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 shrink-0">
             <button
-              onClick={form.handleSubmit((values) => create.mutate(values))}
+              onClick={submit}
               disabled={!title?.trim() || create.isPending || (!editingPin && !draftLocation)}
               className="w-full h-11 bg-[#D41F2D] hover:bg-[#b11a25] text-white rounded-full font-extrabold uppercase text-xs tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-20 disabled:grayscale cursor-pointer"
             >

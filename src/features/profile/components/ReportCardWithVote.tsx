@@ -6,7 +6,7 @@ import { useGuard } from '@/features/auth/useGuard'
 import { ReportCard, type ReportCardProps } from './ReportCard'
 import type { Pin } from '@/shared/types/database'
 
-interface ReportCardWithVoteProps extends Omit<ReportCardProps, 'userVote' | 'onVote' | 'votesScore'> {
+interface ReportCardWithVoteProps extends Omit<ReportCardProps, 'userVote' | 'onVote' | 'votesUp' | 'votesDown'> {
   pin: Pin
 }
 
@@ -39,7 +39,8 @@ export function ReportCardWithVote({ pin, ...props }: ReportCardWithVoteProps) {
   return (
     <ReportCard
       {...props}
-      votesScore={pin.votes_up - pin.votes_down}
+      votesUp={pin.votes_up}
+      votesDown={pin.votes_down}
       userVote={userVote}
       onVote={onVote}
     />

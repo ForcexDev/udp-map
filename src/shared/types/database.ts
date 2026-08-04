@@ -104,6 +104,21 @@ export interface PinComment {
   created_at: string
 }
 
+/** Bloque del programa de un evento ("14:00 · Charla con X"). Opcional. */
+export interface PinScheduleItem {
+  id: string
+  pin_id: string
+  starts_at: string
+  ends_at: string | null
+  title: string
+  subtitle: string | null
+  sort_order: number
+  created_at?: string
+}
+
+/** Lo que la interfaz envía al guardar; el id y created_at los pone la base. */
+export type PinScheduleDraft = Omit<PinScheduleItem, 'id' | 'pin_id' | 'created_at'>
+
 export interface Favorite {
   user_id: string
   pin_id: string

@@ -20,5 +20,5 @@ export const ROLE_COLORS: Record<Role, string> = {
   guest: 'text-neutral-500',
   student: 'text-blue-600 dark:text-blue-400',
   moderator: 'text-amber-600 dark:text-amber-500',
-  admin: 'text-[#D41F2D] dark:text-profile-accent',
+  admin: 'text-[#D41F2D] dark:text-red-400',
 }

@@ -13,7 +13,7 @@ export function BadgesGrid({ badges, userBadges, loading }: BadgesGridProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="w-6 h-6 border-2 border-[#D41F2D] dark:border-profile-accent border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[#D41F2D] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -25,12 +25,12 @@ export function BadgesGrid({ badges, userBadges, loading }: BadgesGridProps) {
   })
 
   return (
-    <div className="px-[22px] pb-6">
+    <div className="px-5 pb-6">
       <div className="mb-4">
-        <h2 className="text-[17px] font-display font-bold text-neutral-900 dark:text-profile-text m-0">
+        <h2 className="text-[11px] font-black text-neutral-400 uppercase tracking-widest m-0">
           {t('profile.badges', 'Insignias')}
         </h2>
-        <p className="text-xs text-neutral-500 dark:text-profile-faint mt-0.5">
+        <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mt-1 mb-0">
           {t('profile.badgesDesc', 'Logros y reconocimientos en la comunidad')}
         </p>
       </div>
@@ -45,10 +45,10 @@ export function BadgesGrid({ badges, userBadges, loading }: BadgesGridProps) {
           return (
             <div
               key={badge.id}
-              className={`relative flex items-start gap-3.5 p-4 rounded-[14px] border transition-all ${
+              className={`relative flex items-start gap-3.5 p-4 rounded-3xl border transition-all ${
                 isUnlocked
-                  ? 'bg-white dark:bg-[#161719] border-neutral-200 dark:border-profile-line shadow-sm'
-                  : 'bg-neutral-50 dark:bg-profile-bg border-neutral-200 dark:border-profile-line opacity-50'
+                  ? 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 shadow-sm'
+                  : 'bg-neutral-50 dark:bg-neutral-900/40 border-neutral-200 dark:border-neutral-800 opacity-50'
               }`}
             >
               <div
@@ -64,7 +64,7 @@ export function BadgesGrid({ badges, userBadges, loading }: BadgesGridProps) {
                   xmlns="http://www.w3.org/2000/svg"
                   className={`w-7 h-7 ${
                     isUnlocked
-                      ? 'text-amber-600 dark:text-profile-gold'
+                      ? 'text-amber-600 dark:text-amber-400'
                       : 'text-neutral-400 dark:text-neutral-600'
                   }`}
                 >
@@ -95,20 +95,20 @@ export function BadgesGrid({ badges, userBadges, loading }: BadgesGridProps) {
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <h3 className={`text-sm font-bold m-0 ${isUnlocked ? 'text-neutral-900 dark:text-profile-text' : 'text-neutral-500 dark:text-profile-faint'}`}>
+                  <h3 className={`text-sm font-extrabold m-0 ${isUnlocked ? 'text-neutral-900 dark:text-white' : 'text-neutral-500 dark:text-neutral-400'}`}>
                     {badgeName}
                   </h3>
                   {isUnlocked && (
-                    <span className="inline-block px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-[10px] font-bold text-emerald-600 dark:text-profile-green">
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                       Obtenida
                     </span>
                   )}
                 </div>
-                <p className="mt-1 mb-0 text-xs text-neutral-500 dark:text-profile-muted leading-snug">
+                <p className="mt-1 mb-0 text-xs font-medium text-neutral-500 dark:text-neutral-400 leading-snug">
                   {badgeDesc}
                 </p>
                 {isUnlocked && unlockedBadge.awarded_at && (
-                  <p className="mt-2 mb-0 text-[10px] font-mono text-neutral-400 dark:text-profile-faint">
+                  <p className="mt-2 mb-0 text-[10px] font-semibold text-neutral-400">
                     {t('profile.unlockedAt', 'Desbloqueada el')}: {new Date(unlockedBadge.awarded_at).toLocaleDateString(i18n.language)}
                   </p>
                 )}

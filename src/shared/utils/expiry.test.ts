@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { expiresAtFromTtl, expiryState, FADE_WINDOW_MS, MIN_FADE_OPACITY } from './expiry'
+import {
+  expiresAtFromTtl,
+  expiryState,
+  FADE_START_OPACITY,
+  FADE_WINDOW_MS,
+  MIN_FADE_OPACITY,
+} from './expiry'
 
 const NOW = Date.parse('2026-07-08T12:00:00Z')
 const iso = (offsetMs: number) => new Date(NOW + offsetMs).toISOString()
@@ -27,6 +33,17 @@ describe('expiryState — ciclo de vida efímero (plan §2)', () => {
     const almost = expiryState(iso(60_000), false, NOW)
     expect(almost.opacity).toBeLessThan(half.opacity)
     expect(almost.opacity).toBeGreaterThanOrEqual(MIN_FADE_OPACITY)
+  })
+
+  it('entrar en la ventana da un escalón visible, no un cambio imperceptible', () => {
+    const justOutside = expiryState(iso(FADE_WINDOW_MS + 1000), false, NOW)
+    const justInside = expiryState(iso(FADE_WINDOW_MS - 1000), false, NOW)
+
+    expect(justOutside.opacity).toBe(1)
+    expect(justInside.opacity).toBeCloseTo(FADE_START_OPACITY, 2)
+    // El salto tiene que notarse de un vistazo, sin un pin al lado con que
+    // compararlo: por eso arranca en FADE_START_OPACITY y no en 1.
+    expect(justOutside.opacity - justInside.opacity).toBeGreaterThan(0.2)
   })
 
   it('expirado: se oculta', () => {

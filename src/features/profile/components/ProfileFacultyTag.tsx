@@ -9,9 +9,9 @@ export function ProfileFacultyTag({ career, facultyName }: ProfileFacultyTagProp
   if (!career && !facultyName) return null
 
   return (
-    <div className="flex items-center gap-2 mt-3.5 mx-[22px] text-[12.5px] text-neutral-500 dark:text-profile-muted">
-      <Home size={13} className="opacity-60 shrink-0" />
-      {[career, facultyName].filter(Boolean).join(' · ')}
+    <div className="flex items-start gap-2 mt-3 mx-5 text-[12.5px] font-medium text-neutral-500 dark:text-neutral-400">
+      <Home size={13} className="opacity-60 shrink-0 mt-0.5" />
+      <span>{[career, facultyName].filter(Boolean).join(' · ')}</span>
     </div>
   )
 }

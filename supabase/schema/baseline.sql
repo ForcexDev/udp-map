@@ -180,6 +180,19 @@ create table if not exists public.pin_comments (
   created_at  timestamptz  not null default now()
 );
 
+-- Programa opcional de un evento (bloques horarios). La interfaz edita esto
+-- reemplazando el set completo (delete + insert), no hay policy de update.
+create table if not exists public.pin_schedule_items (
+  id          uuid         primary key default gen_random_uuid(),
+  pin_id      uuid         not null references public.pins(id) on delete cascade,
+  starts_at   timestamptz  not null,
+  ends_at     timestamptz,
+  title       text         not null check (char_length(title) between 1 and 120),
+  subtitle    text         check (subtitle is null or char_length(subtitle) <= 160),
+  sort_order  integer      not null default 0,
+  created_at  timestamptz  not null default now()
+);
+
 create table if not exists public.floor_plans (
   id             uuid   primary key default gen_random_uuid(),
   place_pin_id   uuid   references public.pins(id) on delete set null,
@@ -373,6 +386,7 @@ create index if not exists pins_type_idx     on public.pins (type);
 
 create index if not exists pin_photos_pin_idx         on public.pin_photos (pin_id);
 create index if not exists pin_comments_pin_created_idx on public.pin_comments (pin_id, created_at desc);
+create index if not exists pin_schedule_items_pin_starts_idx on public.pin_schedule_items (pin_id, starts_at);
 
 create index if not exists pin_creation_events_creator_day_idx
   on public.pin_creation_events (creator_id, created_at desc);
@@ -2141,6 +2155,7 @@ alter table public.profiles                     enable row level security;
 alter table public.pins                         enable row level security;
 alter table public.pin_photos                   enable row level security;
 alter table public.pin_comments                 enable row level security;
+alter table public.pin_schedule_items            enable row level security;
 alter table public.floor_plans                  enable row level security;
 alter table public.pin_votes                    enable row level security;
 alter table public.favorites                    enable row level security;
@@ -2278,6 +2293,31 @@ drop policy if exists comments_delete on public.pin_comments;
 create policy comments_delete on public.pin_comments
   for delete using (
     author_id = auth.uid()
+    or public.user_role() = any (array['moderator', 'admin'])
+  );
+
+
+-- ── 8.5.1 Programa de eventos ───────────────────────────────────────────────
+-- Sin policy de update: el autor reemplaza el set completo (delete + insert),
+-- igual que con las fotos del pin.
+
+drop policy if exists schedule_read on public.pin_schedule_items;
+create policy schedule_read on public.pin_schedule_items for select using (true);
+
+drop policy if exists schedule_insert on public.pin_schedule_items;
+create policy schedule_insert on public.pin_schedule_items
+  for insert with check (
+    public.user_role() <> 'guest'
+    and (
+      exists (select 1 from public.pins where pins.id = pin_schedule_items.pin_id and pins.creator_id = auth.uid())
+      or public.user_role() = any (array['moderator', 'admin'])
+    )
+  );
+
+drop policy if exists schedule_delete on public.pin_schedule_items;
+create policy schedule_delete on public.pin_schedule_items
+  for delete using (
+    exists (select 1 from public.pins where pins.id = pin_schedule_items.pin_id and pins.creator_id = auth.uid())
     or public.user_role() = any (array['moderator', 'admin'])
   );
 
@@ -2439,6 +2479,7 @@ grant all on public.floor_plans   to anon, authenticated;
 grant all on public.pins          to anon, authenticated;
 grant all on public.pin_photos    to anon, authenticated;
 grant all on public.pin_comments  to anon, authenticated;
+grant all on public.pin_schedule_items to anon, authenticated;
 grant all on public.favorites     to anon, authenticated;
 grant all on public.event_rsvps   to anon, authenticated;
 grant all on public.forum_threads to anon, authenticated;

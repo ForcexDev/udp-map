@@ -202,6 +202,7 @@ nombre del autor de un pin o de un hilo.
 | `pins` | Ver la sección 3 |
 | `pin_photos` | Fotos de un pin. `ON DELETE CASCADE` desde `pins` |
 | `pin_comments` | Comentarios, entre 1 y 400 caracteres |
+| `pin_schedule_items` | Programa opcional de un evento: bloques horarios. Sin política de `update`, la interfaz reemplaza el set completo |
 | `pin_votes` | Un voto por persona y pin, `+1` o `-1` |
 | `favorites` | Marcadores personales |
 | `event_rsvps` | Asistencia a eventos. Un trigger comprueba que el pin sea de tipo `event` |

@@ -87,11 +87,16 @@ export function UpdatePrompt() {
   }
 
   return (
-    <div
-      className="fixed inset-x-0 bottom-0 z-[999] flex justify-center p-4 pointer-events-none"
-      style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
-    >
-      <div className="w-full max-w-[340px] max-h-[70dvh] rounded-[22px] p-5 shadow-3xl flex flex-col gap-4 bg-white dark:bg-neutral-900 animate-in slide-in-from-bottom-4 duration-300 border border-neutral-200/50 dark:border-neutral-800/50 overflow-hidden pointer-events-auto">
+    // Móvil: hoja inferior por encima de la barra de navegación, como el resto
+    // de la aplicación. Escritorio: tarjeta centrada — anclada abajo se veía
+    // como una cajita perdida en la esquina de una pantalla ancha. El relleno
+    // inferior que esquiva la barra vive en .update-prompt-anchor, que lo anula
+    // a partir de 640px.
+    <div className="update-prompt-anchor fixed inset-0 z-[999] flex justify-center items-end sm:items-center p-4 pointer-events-none">
+      {/* animate-fade-in es la de la casa (index.css). Antes había aquí
+          `animate-in slide-in-from-bottom-4`, de tailwindcss-animate, que este
+          proyecto no usa: eran clases muertas y el aviso aparecía de golpe. */}
+      <div className="w-full max-w-[340px] sm:max-w-[400px] max-h-[70dvh] rounded-[22px] p-5 shadow-3xl flex flex-col gap-4 bg-white dark:bg-neutral-900 animate-fade-in border border-neutral-200/50 dark:border-neutral-800/50 overflow-hidden pointer-events-auto">
 
         <div className="flex flex-col items-center text-center mt-1 gap-2.5 flex-shrink-0">
           <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white">

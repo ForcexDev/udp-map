@@ -7,22 +7,15 @@ import { useUIStore } from '@/shared/stores/uiStore'
 import type { Pin } from '@/shared/types/database'
 
 import { GuestGate } from '../components/GuestGate'
-import { ProfileHeader } from '../components/ProfileHeader'
-import { ProfileStatsLine } from '../components/ProfileStatsLine'
-import { ProfileFacultyTag } from '../components/ProfileFacultyTag'
-import { ProfileTabs } from '../components/ProfileTabs'
-import { ReportTimeline } from '../components/ReportTimeline'
-import { BadgesGrid } from '../components/BadgesGrid'
+import { ProfileView } from '../components/ProfileView'
 import { LeaderboardTable } from '../components/LeaderboardTable'
 
-import * as Tabs from '@radix-ui/react-tabs'
 import { EditProfileModal } from '../EditProfileModal'
 import { PublicProfileModal } from '../PublicProfileModal'
 import { fetchPublicProfile, fetchUserPins, fetchUserBadges, fetchBadges, fetchLeaderboard } from '../publicProfileApi'
-import { FACULTIES } from '@/shared/data/campusData'
 
 export function ProfilePage() {
-  const { i18n } = useTranslation()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const user = useAuthStore((s) => s.user)
@@ -86,79 +79,58 @@ export function ProfilePage() {
     return <GuestGate />
   }
 
-  const myFaculty = user.faculty_id ? FACULTIES.find((f) => f.id === user.faculty_id) : null
-  const facultyName = myFaculty ? (i18n.language === 'en' ? myFaculty.name_en : myFaculty.name) : null
-
   const openOnMap = (pin: Pin) => {
     selectPin(pin.id)
     navigate('/mapa')
   }
 
   return (
-    <div className="h-full overflow-y-auto overflow-x-hidden max-w-full w-full overscroll-x-none touch-pan-y bg-white dark:bg-profile-bg">
-      <div className="mx-auto w-full max-w-2xl min-h-full bg-white dark:bg-profile-bg pt-safe overflow-x-hidden">
-        
+    <div className="h-full overflow-y-auto overflow-x-hidden max-w-full w-full overscroll-x-none touch-pan-y bg-neutral-50 dark:bg-neutral-950">
+      <div className="mx-auto w-full max-w-2xl min-h-full pt-safe overflow-x-hidden">
+
         {/* Topbar */}
-        <div className="flex items-center justify-between px-[22px] py-2.5">
-          <h1 className="font-display text-[21px] font-semibold tracking-[-0.01em] text-neutral-900 dark:text-profile-text m-0">
-            Perfil
+        <div className="flex items-center justify-between px-5 py-3">
+          <h1 className="text-[21px] font-black tracking-tight text-neutral-900 dark:text-white m-0">
+            {t('profile.title', 'Perfil')}
           </h1>
           <button
             onClick={() => void signOut()}
-            className="font-display text-[13px] font-semibold text-neutral-500 dark:text-profile-muted hover:text-neutral-900 dark:hover:text-profile-text bg-transparent border-none p-0 cursor-pointer transition-colors"
+            className="text-[12.5px] font-bold text-neutral-500 dark:text-neutral-400 hover:text-[#D41F2D] bg-transparent border-none p-0 cursor-pointer transition-colors"
           >
-            Cerrar sesión
+            {t('auth.signOut', 'Cerrar sesión')}
           </button>
         </div>
 
-        <ProfileHeader
+        <ProfileView
           name={user.name}
           email={user.email}
           avatarUrl={user.avatarUrl}
           role={role}
+          karma={profileQuery.data?.karma ?? 0}
+          createdAt={user.createdAt}
+          career={user.career}
+          facultyId={user.faculty_id}
+          pins={pinsQuery.data ?? []}
+          pinsLoading={pinsQuery.isLoading}
+          badges={allBadgesQuery.data ?? []}
+          userBadges={badgesQuery.data ?? []}
+          badgesLoading={allBadgesQuery.isLoading}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onViewOnMap={openOnMap}
           onEditProfile={() => setEditOpen(true)}
           onAdminPanel={() => navigate('/admin')}
-        />
-        
-        <ProfileStatsLine 
-          postCount={pinsQuery.data?.length ?? 0} 
-          karma={profileQuery.data?.karma ?? 0} 
-          createdAt={user.createdAt} 
-        />
-        
-        <ProfileFacultyTag 
-          career={user.career} 
-          facultyName={facultyName} 
-        />
-
-        <ProfileTabs value={activeTab} onValueChange={handleTabChange}>
-          <Tabs.Content value="reports" className="outline-none">
-            <ReportTimeline 
-              pins={pinsQuery.data ?? []} 
-              loading={pinsQuery.isLoading} 
-              onViewOnMap={openOnMap} 
-            />
-          </Tabs.Content>
-          
-          <Tabs.Content value="badges" className="outline-none">
-            <BadgesGrid 
-              badges={allBadgesQuery.data ?? []} 
-              userBadges={badgesQuery.data ?? []} 
-              loading={allBadgesQuery.isLoading} 
-            />
-          </Tabs.Content>
-          
-          <Tabs.Content value="leaderboard" className="outline-none">
-            <LeaderboardTable 
-              data={leaderboardQuery.data} 
-              currentUserId={user.id} 
+          leaderboard={
+            <LeaderboardTable
+              data={leaderboardQuery.data}
+              currentUserId={user.id}
               loading={leaderboardQuery.isLoading}
               faculty={leaderboardFaculty}
               onFacultyChange={setLeaderboardFaculty}
               onViewProfile={setPublicProfileId}
             />
-          </Tabs.Content>
-        </ProfileTabs>
+          }
+        />
 
       </div>
 

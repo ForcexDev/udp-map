@@ -1,4 +1,4 @@
-import type { Pin, PinComment, PinPhoto } from '@/shared/types/database'
+import type { Pin, PinComment, PinPhoto, PinScheduleDraft, PinScheduleItem } from '@/shared/types/database'
 import { FACULTIES } from '@/shared/data/campusData'
 
 // ─────────────────────────────────────────────────────────────────
@@ -125,6 +125,25 @@ export function demoAddPhotos(pinId: string, files: File[]): PinPhoto[] {
   }))
   pin.pin_photos = [...(pin.pin_photos ?? []), ...photos]
   return photos
+}
+
+/** Programa por pin. Espeja pin_schedule_items: sin update, se reemplaza entero. */
+export const demoSchedules = new Map<string, PinScheduleItem[]>()
+
+export function demoReplaceSchedule(pinId: string, items: PinScheduleDraft[]): PinScheduleItem[] {
+  if (items.length === 0) {
+    demoSchedules.delete(pinId)
+    return []
+  }
+  const rows: PinScheduleItem[] = items.map((item, i) => ({
+    ...item,
+    id: crypto.randomUUID(),
+    pin_id: pinId,
+    sort_order: item.sort_order ?? i,
+    created_at: new Date().toISOString(),
+  }))
+  demoSchedules.set(pinId, rows)
+  return rows
 }
 
 export function demoRemovePhotos(pinId: string, photoIds: string[]): void {

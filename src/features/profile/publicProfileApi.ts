@@ -36,24 +36,67 @@ export async function fetchPublicProfile(userId: string): Promise<Profile | null
   return data as unknown as Profile
 }
 
+/** Mismo criterio de "vivo" que el mapa (fetchPins): permanente o sin vencer. */
+function isLivePin(p: Pin, now = Date.now()): boolean {
+  if (p.is_permanent || !p.expires_at) return true
+  return new Date(p.expires_at).getTime() > now
+}
+
+/**
+ * El perfil muestra lo que la persona tiene publicado *ahora*, no su historial
+ * completo: un reporte vencido ya no existe en el mapa, así que listarlo en el
+ * perfil prometía un "Ver en mapa" que no llevaba a ninguna parte.
+ */
 export async function fetchUserPins(userId: string): Promise<Pin[]> {
   if (!supabase) {
-    return demoDb.pins.filter(p => p.creator_id === userId)
+    return demoDb.pins.filter((p) => p.creator_id === userId && isLivePin(p))
   }
 
   const { data, error } = await supabase
     .from('pins')
     .select('*, pin_photos(*)')
     .eq('creator_id', userId)
+    .or(`is_permanent.eq.true,expires_at.gt.${new Date().toISOString()}`)
     .order('created_at', { ascending: false })
     .limit(30)
-  
+
   if (error || !data) {
     console.error('Error fetching user pins:', error)
     return []
   }
-  
-  return data as unknown as Pin[]
+
+  // El filtro del servidor usa la hora de la petición; al reusarse la respuesta
+  // desde caché algo puede haber vencido mientras tanto.
+  return (data as unknown as Pin[]).filter((p) => isLivePin(p))
+}
+
+/**
+ * Comentarios por pin, en una sola consulta para toda la lista del perfil:
+ * pedir un count por tarjeta serían 30 peticiones para pintar 30 números.
+ * pin_comments es de lectura pública (política comments_read) y tiene índice
+ * por (pin_id, created_at).
+ */
+export async function fetchPinCommentCounts(pinIds: string[]): Promise<Record<string, number>> {
+  if (pinIds.length === 0) return {}
+
+  if (!supabase) {
+    return Object.fromEntries(pinIds.map((id) => [id, demoDb.comments.get(id)?.length ?? 0]))
+  }
+
+  const { data, error } = await supabase
+    .from('pin_comments')
+    .select('pin_id')
+    .in('pin_id', pinIds)
+
+  if (error || !data) {
+    console.error('Error fetching pin comment counts:', error)
+    return {}
+  }
+
+  return (data as { pin_id: string }[]).reduce<Record<string, number>>((acc, row) => {
+    acc[row.pin_id] = (acc[row.pin_id] ?? 0) + 1
+    return acc
+  }, {})
 }
 
 export async function fetchUserBadges(userId: string): Promise<UserBadge[]> {

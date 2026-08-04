@@ -30,7 +30,10 @@ import { can } from '@/features/auth/permissions'
 import { FACULTIES, DEMO_FLOOR_PLANS } from '@/shared/data/campusData'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { PinBadges } from './PinBadges'
+import { EventSchedule } from './EventSchedule'
 import { CommentSection } from './CommentSection'
+import { isEventLive } from '@/shared/utils/eventState'
+import { useNowTick } from '@/shared/lib/useNowTick'
 import { usePinActions } from './usePinActions'
 import { DraggableBottomSheet } from '@/shared/ui/DraggableBottomSheet'
 import { BOUNDARY_RECT } from '@/features/map/campusBoundary'
@@ -108,6 +111,9 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const hasIndoor =
     pin.type === 'place' && DEMO_FLOOR_PLANS.some((fp) => fp.faculty_id === pin.faculty_id)
   const photos = pin.pin_photos ?? []
+
+  const now = useNowTick()
+  const isLive = pin.type === 'event' && isEventLive(pin.starts_at, pin.ends_at, now)
 
   const { data: userVote = 0 } = useQuery({
     queryKey: ['pin_vote', pin.id, user?.id],
@@ -284,6 +290,11 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
               </div>
             </div>
           )}
+
+          {/* Programa: justo tras las fotos, porque hoy el programa se sube
+              como foto y ahí es donde la gente lo busca. Antes de la fila de
+              acciones para que "Cómo llegar" siga siendo lo último. */}
+          {pin.type === 'event' && <EventSchedule pinId={pin.id} isLive={isLive} />}
 
           <div className="mt-4 flex items-center gap-2">
             {pin.type !== 'event' && (
