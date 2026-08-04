@@ -8,7 +8,7 @@ import { categoryById } from '@/shared/data/campusData'
 import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import type { PinFilters } from '@/shared/stores/filterStore'
 import { compressImage, photoStoragePath } from './photos'
-import { demoDb, demoAddPhotos, demoRemovePhotos, demoVerifyPin, demoExtendPinTTL, demoPinCreationEvents } from './demoStore'
+import { demoDb, demoAddPhotos, demoRemovePhotos, demoVerifyPin, demoUnverifyPin, demoExtendPinTTL, demoPinCreationEvents } from './demoStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
 import { hasReachedDailyPinLimit } from '@/shared/utils/rateLimit'
@@ -96,11 +96,59 @@ export async function fetchPins(bounds: Bounds | null, filters: PinFilters): Pro
   }
 }
 
+// ── Subida de fotos: todo o nada ──
+//
+// Antes esto era un bucle que subía y registraba foto por foto y cortaba al
+// primer error, sin deshacer lo ya hecho. Como el modal conserva los archivos
+// elegidos cuando falla, volver a guardar los subía todos otra vez: los que sí
+// se habían registrado quedaban duplicados en el pin, y los de la primera
+// tanda, huérfanos en Storage.
+//
+// Ahora se suben todos, se registran en un único insert, y si algo falla se
+// retiran los archivos recién subidos. Un reintento arranca siempre limpio.
+async function uploadPinPhotos(pinId: string, userId: string, files: File[]): Promise<void> {
+  if (!supabase || files.length === 0) return
+
+  const uploaded: { path: string; url: string; width: number; height: number }[] = []
+
+  try {
+    for (const file of files) {
+      const { blob, width, height } = await compressImage(file)
+      const path = photoStoragePath(userId)
+      const { error: upErr } = await supabase.storage
+        .from(PHOTOS_BUCKET)
+        .upload(path, blob, { contentType: 'image/jpeg' })
+      if (upErr) throw upErr
+      const { data: pub } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path)
+      uploaded.push({ path, url: pub.publicUrl, width, height })
+    }
+
+    const { error: photoErr } = await supabase.from('pin_photos').insert(
+      uploaded.map(({ url, width, height }) => ({ pin_id: pinId, url, width, height })),
+    )
+    if (photoErr) throw photoErr
+  } catch (err) {
+    // Nada quedó registrado en la tabla, así que estos archivos no los va a
+    // recoger nadie: se retiran aquí mismo.
+    if (uploaded.length > 0) {
+      await supabase.storage.from(PHOTOS_BUCKET).remove(uploaded.map((p) => p.path))
+    }
+    throw err
+  }
+}
+
 // ── Creación con N fotos (compresión + manejo de error + UUID) ──
 
-export async function createPin(input: CreatePinInput, photos: File[]): Promise<Pin> {
+/** El pin creado. `photosFailed` marca que el pin existe pero sus fotos no. */
+export type CreatedPin = Pin & { photosFailed?: boolean }
+
+export async function createPin(input: CreatePinInput, photos: File[]): Promise<CreatedPin> {
   const category = input.categoryId ? categoryById(input.categoryId) : undefined
   const isPlace = input.type === 'place'
+  // Este cálculo solo manda en MODO DEMO, donde arma el pin en memoria más
+  // abajo. Contra la base real se envía como p_expires_at y el servidor lo
+  // ignora: desde la migración 20260803120300 el plazo lo deduce él mismo de
+  // categories.ttl_hours, para que no lo decida el navegador.
   let expires_at = isPlace ? null : expiresAtFromTtl(category?.ttl_hours ?? 24)
   if (input.type === 'event' && input.endsAt) {
     expires_at = input.endsAt
@@ -166,22 +214,22 @@ export async function createPin(input: CreatePinInput, photos: File[]): Promise<
     })
     .select()
     .single()
-  if (error) throw new Error(error.message)
+  // Se propaga el error tal cual y no envuelto en un Error: envolverlo perdía el
+  // SQLSTATE, que es lo que distingue un mensaje escrito para el usuario de un
+  // fallo técnico (ver shared/utils/dbError.ts).
+  if (error) throw error
   const pin = data as Pin
 
-  // Subida de N fotos; si una falla, el pin queda creado y se reporta el error
-  for (const file of photos) {
-    const { blob, width, height } = await compressImage(file)
-    const path = photoStoragePath(input.userId)
-    const { error: upErr } = await supabase.storage
-      .from(PHOTOS_BUCKET)
-      .upload(path, blob, { contentType: 'image/jpeg' })
-    if (upErr) throw upErr
-    const { data: pub } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path)
-    const { error: photoErr } = await supabase
-      .from('pin_photos')
-      .insert({ pin_id: pin.id, url: pub.publicUrl, width, height })
-    if (photoErr) throw photoErr
+  // El pin ya existe. Si las fotos fallan no se puede propagar el error como si
+  // la creación entera hubiera fallado: el usuario reintentaría y crearía un
+  // segundo pin, que además chocaría contra prevent_occupied_pin_location por
+  // estar en la misma coordenada. Se informa del fallo parcial y quien llama
+  // decide qué contar.
+  try {
+    await uploadPinPhotos(pin.id, input.userId, photos)
+  } catch (err) {
+    console.error('El pin se creó pero sus fotos no pudieron subirse', err)
+    return { ...pin, photosFailed: true }
   }
   return pin
 }
@@ -243,40 +291,19 @@ export async function updatePin(
     .eq('id', pinId)
   if (error) throw error
 
-  // 2. Eliminar fotos de Storage y tabla
+  // 2. Eliminar fotos. Solo la fila: al borrarse, un trigger encola la ruta del
+  //    archivo y el recolector (Edge Function storage-gc) lo retira de Storage.
   if (deletedPhotoIds.length > 0) {
-    const { data: photosToDelete } = await supabase
+    const { error: delErr } = await supabase
       .from('pin_photos')
-      .select('id, url')
+      .delete()
       .in('id', deletedPhotoIds)
-
-    if (photosToDelete && photosToDelete.length > 0) {
-      const storagePaths = photosToDelete
-        .map((ph) => ph.url.split(`/${PHOTOS_BUCKET}/`)[1])
-        .filter((p): p is string => Boolean(p))
-
-      if (storagePaths.length > 0) {
-        await supabase.storage.from(PHOTOS_BUCKET).remove(storagePaths)
-      }
-      await supabase.from('pin_photos').delete().in('id', deletedPhotoIds)
-    }
+    if (delErr) throw delErr
   }
 
   // 3. Subir nuevas fotos
-  if (newPhotos.length > 0 && input.userId) {
-    for (const file of newPhotos) {
-      const { blob, width, height } = await compressImage(file)
-      const path = photoStoragePath(input.userId)
-      const { error: upErr } = await supabase.storage
-        .from(PHOTOS_BUCKET)
-        .upload(path, blob, { contentType: 'image/jpeg' })
-      if (upErr) throw upErr
-      const { data: pub } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path)
-      const { error: photoErr } = await supabase
-        .from('pin_photos')
-        .insert({ pin_id: pinId, url: pub.publicUrl, width, height })
-      if (photoErr) throw photoErr
-    }
+  if (input.userId) {
+    await uploadPinPhotos(pinId, input.userId, newPhotos)
   }
 }
 
@@ -289,11 +316,11 @@ export async function deletePin(pin: Pin): Promise<void> {
     demoDb.votes.delete(pin.id)
     return
   }
-  // Borrar archivos del Storage ANTES del row (evita fugas, plan §0 auditoría)
-  const paths = (pin.pin_photos ?? [])
-    .map((ph) => ph.url.split(`/${PHOTOS_BUCKET}/`)[1])
-    .filter((p): p is string => Boolean(p))
-  if (paths.length > 0) await supabase.storage.from(PHOTOS_BUCKET).remove(paths)
+  // Los archivos de Storage ya no se borran desde aquí. Al caer el pin, sus
+  // filas de pin_photos caen en cascada y el trigger encola cada ruta para el
+  // recolector. Así queda un único dueño de esa limpieza, que además cubre los
+  // otros tres caminos de borrado —panel de admin, moderación y el cron de
+  // expiración— que antes dejaban los archivos colgando.
   const { error } = await supabase.from('pins').delete().eq('id', pin.id)
   if (error) throw error
 }
@@ -348,6 +375,27 @@ export async function verifyPin(pinId: string, verifierName: string = 'Centro de
   const { error } = await supabase.rpc('verify_and_make_permanent', { 
     p_pin: pinId, 
     p_verifier_name: verifierName 
+  })
+  if (error) throw error
+}
+
+/**
+ * Deshace una verificación: el pin vuelve a ser un reporte con plazo y el autor
+ * devuelve los 25 de karma que le dio la verificación. La insignia de
+ * Cartógrafo no se retira: los badges de este proyecto son permanentes.
+ *
+ * Existe porque verificar es un juicio humano sobre cada pin —la misma
+ * categoría puede describir un sitio fijo o algo que está pasando ahora— y sin
+ * vuelta atrás un moderador equivocado solo podía borrar el aporte.
+ */
+export async function unverifyPin(pinId: string, hours: number = 24): Promise<void> {
+  if (!supabase) {
+    demoUnverifyPin(pinId, hours)
+    return
+  }
+  const { error } = await supabase.rpc('unverify_pin', {
+    p_pin: pinId,
+    p_hours: hours,
   })
   if (error) throw error
 }

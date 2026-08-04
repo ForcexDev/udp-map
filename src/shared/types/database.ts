@@ -1,7 +1,13 @@
 import type { Polygon, FeatureCollection } from 'geojson'
 
-// Tipos espejo del esquema Postgres (supabase/migrations/*).
+// Tipos espejo del esquema Postgres. La fuente de verdad es
+// supabase/schema/baseline.sql; docs/DATABASE.md explica qué hace cada tabla.
 // Regenerar con `supabase gen types typescript` cuando el proyecto esté linkeado.
+//
+// Aquí solo están las tablas que consulta el cliente. Las internas
+// (pin_creation_events, notification_push_deliveries, storage_cleanup_queue)
+// no aparecen a propósito: tienen RLS sin ninguna política y solo las tocan
+// funciones SECURITY DEFINER y service_role.
 
 export type PinType = 'place' | 'event' | 'report'
 export type Role = 'guest' | 'student' | 'moderator' | 'admin'

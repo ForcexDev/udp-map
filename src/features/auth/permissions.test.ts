@@ -46,7 +46,7 @@ describe('can() — matriz de permisos del plan §3', () => {
 
 describe('isUdpEmail — solo comunidad UDP', () => {
   it('acepta @mail.udp.cl (case-insensitive)', () => {
-    expect(isUdpEmail('maximiliano.solorza@mail.udp.cl')).toBe(true)
+    expect(isUdpEmail('nombre.apellido@mail.udp.cl')).toBe(true)
     expect(isUdpEmail('ALGUIEN@MAIL.UDP.CL')).toBe(true)
   })
   it('rechaza otros dominios (incluidos parecidos)', () => {

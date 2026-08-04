@@ -16,6 +16,7 @@ import {
   Share2,
   Calendar,
   BadgeCheck,
+  BadgeX,
   Clock,
   Flag,
 } from 'lucide-react'
@@ -81,7 +82,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const setIndoor = useUIStore((s) => s.setIndoor)
   const startMovingPin = useUIStore((s) => s.startMovingPin)
   const openCreateModal = useUIStore((s) => s.openCreateModal)
-  const { vote, remove, promote, extendTTL, favorite } = usePinActions()
+  const { vote, remove, promote, unverify, extendTTL, favorite } = usePinActions()
 
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -92,9 +93,17 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const isOwner = user !== null && pin.creator_id === user.id
   const canDelete = isOwner || can(role, 'pin.moderate')
   const canEdit = isOwner || can(role, 'pin.moderate')
-  const isTemporalCategory = ['objeto-perdido', 'objeto-encontrado', 'sala-libre', 'food-truck', 'comida'].includes(pin.category_id ?? '')
-  const canPromote = can(role, 'pin.makePermanent') && !pin.is_permanent && pin.type === 'report' && !isTemporalCategory
-  const canExtend = can(role, 'pin.extendTime') && !pin.is_permanent && pin.type === 'report' && isTemporalCategory
+  // Verificar o extender no lo decide la categoría, sino el pin concreto: la
+  // misma categoría puede describir algo fijo del campus ("el casino está acá")
+  // o algo que está pasando ahora ("hay fila en el casino"). Eso solo lo sabe
+  // quien lee el pin, así que al moderador se le ofrecen las dos opciones y
+  // decide él. Antes había aquí una lista de cinco categorías escrita a mano
+  // que las repartía por adelantado, y que además no existía en la base.
+  const canPromote = can(role, 'pin.makePermanent') && !pin.is_permanent && pin.type === 'report'
+  const canExtend = can(role, 'pin.extendTime') && !pin.is_permanent && pin.type === 'report'
+  // Solo se deshace lo que salió de una verificación: un lugar creado
+  // directamente por un moderador nunca fue un reporte.
+  const canUnverify = can(role, 'pin.makePermanent') && pin.is_permanent && !!pin.verifier_entity_name
   const canMove = can(role, 'pin.update.location')
   const hasIndoor =
     pin.type === 'place' && DEMO_FLOOR_PLANS.some((fp) => fp.faculty_id === pin.faculty_id)
@@ -351,7 +360,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
             <Navigation size={15} strokeWidth={2.5} /> {t('pin.directions', 'Cómo llegar')}
           </button>
 
-          {(canDelete || canPromote || canExtend || canEdit || hasIndoor) && (
+          {(canDelete || canPromote || canExtend || canUnverify || canEdit || hasIndoor) && (
             <div className="mt-3 flex flex-wrap gap-2">
               {hasIndoor && (
                 <button onClick={() => setIndoor(pin.faculty_id)} className={ACTION_CHIP}>
@@ -382,6 +391,11 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
               {canExtend && (
                 <button onClick={() => extendTTL.mutate({ pinId: pin.id, hours: 24 })} className={ACTION_CHIP}>
                   <Clock size={14} className="text-amber-500" /> {t('pin.extendTime', 'Extender (+24h)')}
+                </button>
+              )}
+              {canUnverify && (
+                <button onClick={() => unverify.mutate({ pinId: pin.id, hours: 24 })} className={ACTION_CHIP}>
+                  <BadgeX size={14} className="text-amber-500" /> {t('pin.unverify', 'Quitar verificación')}
                 </button>
               )}
               {canDelete && (

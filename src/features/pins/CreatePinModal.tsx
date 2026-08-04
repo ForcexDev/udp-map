@@ -16,6 +16,7 @@ import { createPin, updatePin } from './api'
 import { CustomDateTimePicker } from '@/shared/ui/CustomDateTimePicker'
 import { validatePhoto, MAX_PHOTOS_PER_PIN } from './photos'
 import { nextDailyPinReset } from '@/shared/utils/rateLimit'
+import { dbErrorMessage, isUserFacingDbError } from '@/shared/utils/dbError'
 
 const pinSchema = z.object({
   type: z.enum(['report', 'place', 'event']),
@@ -218,7 +219,7 @@ export function CreatePinModal() {
       }
       
       if (!user || !draftLocation) throw new Error('missing user or location')
-      await createPin(
+      return createPin(
         {
           type: values.type as PinType,
           title: values.title,
@@ -237,14 +238,21 @@ export function CreatePinModal() {
         photos,
       )
     },
-    onSuccess: () => {
-      showToast(editingPin ? t('pin.updated', 'Pin actualizado') : t('pin.created'))
+    onSuccess: (result) => {
+      // El pin se creó pero sus fotos no subieron. Se cierra igual: reabrir el
+      // formulario invitaría a reintentar y eso crearía un pin duplicado. Las
+      // fotos se añaden después editando el pin.
+      if (result?.photosFailed) {
+        showToast(t('pin.createdWithoutPhotos', 'Pin creado, pero las fotos no se pudieron subir'))
+      } else {
+        showToast(editingPin ? t('pin.updated', 'Pin actualizado') : t('pin.created'))
+      }
       form.reset()
       setPhotos([])
       close()
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : String(error)
+      const message = dbErrorMessage(error)
       if (message.includes('DAILY_PIN_LIMIT_REACHED')) {
         const locale = i18n.language === 'en' ? 'en-US' : 'es-CL'
         const resetAt = new Intl.DateTimeFormat(locale, {
@@ -258,9 +266,16 @@ export function CreatePinModal() {
         }))
         return
       }
-      showToast(message.includes('PIN_LOCATION_OCCUPIED')
-        ? t('pin.locationOccupied')
-        : t('common.error'))
+      if (message.includes('PIN_LOCATION_OCCUPIED')) {
+        showToast(t('pin.locationOccupied'))
+        return
+      }
+      // Las funciones de la base explican por qué rechazan algo ("No puedes
+      // cambiar la categoría de un pin verificado", "Un pin no puede tener más
+      // de 5 fotos"). Ese mensaje vale más que un genérico, pero solo se enseña
+      // si viene de un `raise exception` nuestro: un fallo técnico no debe
+      // salir de los logs.
+      showToast(isUserFacingDbError(error) ? message : t('common.error'))
     },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),
   })

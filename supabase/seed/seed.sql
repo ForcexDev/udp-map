@@ -134,7 +134,11 @@ insert into floor_plans (faculty_id, building, floor, geojson)
 select 'ingenieria', 'Edificio FIC', 2, '{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"Sala 201","kind":"room"},"geometry":{"type":"Polygon","coordinates":[[[-70.65465,-33.45015],[-70.65445,-33.45015],[-70.65445,-33.45],[-70.65465,-33.45],[-70.65465,-33.45015]]]}},{"type":"Feature","properties":{"name":"Sala 202","kind":"room"},"geometry":{"type":"Polygon","coordinates":[[[-70.65445,-33.45015],[-70.65425,-33.45015],[-70.65425,-33.45],[-70.65445,-33.45],[-70.65445,-33.45015]]]}},{"type":"Feature","properties":{"name":"Laboratorio de Computación","kind":"room"},"geometry":{"type":"Polygon","coordinates":[[[-70.65425,-33.45015],[-70.65405,-33.45015],[-70.65405,-33.44985],[-70.65425,-33.44985],[-70.65425,-33.45015]]]}},{"type":"Feature","properties":{"name":"Sala de estudio","kind":"hall"},"geometry":{"type":"Polygon","coordinates":[[[-70.65465,-33.45],[-70.65425,-33.45],[-70.65425,-33.44985],[-70.65465,-33.44985],[-70.65465,-33.45]]]}}]}'::jsonb
 where not exists (select 1 from floor_plans where faculty_id = 'ingenieria' and floor = 2);
 
--- ── Admins iniciales (se aplican al registrarse) ──
-insert into admin_emails (email) values
-  ('maximiliano.solorza@mail.udp.cl')
-on conflict do nothing;
+-- ── Admins iniciales ──
+-- No van aquí: son correos de personas reales y este archivo está en el
+-- repositorio. Se insertan a mano tras un reset, y ANTES de que esas personas
+-- se registren, porque el rol admin se asigna en el alta y no después:
+--
+--   insert into admin_emails (email) values ('alguien@mail.udp.cl');
+--
+-- Ver el runbook en docs/DATABASE.md, sección 10.

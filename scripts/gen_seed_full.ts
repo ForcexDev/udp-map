@@ -51,10 +51,16 @@ for (const fp of DEMO_FLOOR_PLANS) {
   sql += `where not exists (select 1 from floor_plans where faculty_id = '${fp.faculty_id}' and floor = ${fp.floor});\n\n`
 }
 
-sql += `-- ── Admins iniciales (se aplican al registrarse) ──\n`
-sql += `insert into admin_emails (email) values\n`
-sql += `  ('maximiliano.solorza@mail.udp.cl')\n`
-sql += `on conflict do nothing;\n`
+// Los correos de admin no se generan: son datos personales y el seed vive en el
+// repositorio. Se insertan a mano tras un reset (ver docs/DATABASE.md, §10).
+sql += `-- ── Admins iniciales ──\n`
+sql += `-- No van aquí: son correos de personas reales y este archivo está en el\n`
+sql += `-- repositorio. Se insertan a mano tras un reset, y ANTES de que esas personas\n`
+sql += `-- se registren, porque el rol admin se asigna en el alta y no después:\n`
+sql += `--\n`
+sql += `--   insert into admin_emails (email) values ('alguien@mail.udp.cl');\n`
+sql += `--\n`
+sql += `-- Ver el runbook en docs/DATABASE.md, sección 10.\n`
 
 fs.writeFileSync(seedPath, sql)
 console.log('✅ seed.sql REGENERADO COMPLETAMENTE con toda la data de campusData.ts.')

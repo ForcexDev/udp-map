@@ -142,6 +142,15 @@ export function demoVerifyPin(pinId: string, verifierName: string = 'Centro de A
   pin.verifier_entity_name = verifierName
 }
 
+export function demoUnverifyPin(pinId: string, hours: number = 24): void {
+  const pin = demoDb.pins.find((p) => p.id === pinId)
+  if (!pin || !pin.is_permanent || !pin.verifier_entity_name) return
+  pin.is_permanent = false
+  pin.type = 'report'
+  pin.verifier_entity_name = null
+  pin.expires_at = new Date(Date.now() + hours * 3600 * 1000).toISOString()
+}
+
 export function demoExtendPinTTL(pinId: string, hours: number = 24): void {
   const pin = demoDb.pins.find((p) => p.id === pinId)
   if (!pin) return

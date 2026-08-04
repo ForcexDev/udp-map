@@ -2,8 +2,19 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import type { Pin } from '@/shared/types/database'
 import { useUIStore } from '@/shared/stores/uiStore'
+import { dbErrorMessage, isUserFacingDbError } from '@/shared/utils/dbError'
 import { useAuthStore } from '@/features/auth/authStore'
-import { deletePin, extendPinTTL, toggleFavorite, verifyPin, votePin } from './api'
+import { deletePin, extendPinTTL, toggleFavorite, unverifyPin, verifyPin, votePin } from './api'
+
+/**
+ * Las RPC de moderación devuelven mensajes pensados para leerse ("Este pin ya
+ * está verificado", "Solo se pueden verificar reportes"). Antes se tapaban
+ * todos con un genérico, así que una operación rechazada era indistinguible de
+ * un fallo de red.
+ */
+function messageOf(err: unknown, fallback: string): string {
+  return isUserFacingDbError(err) ? dbErrorMessage(err) : fallback
+}
 
 export function usePinActions() {
   const queryClient = useQueryClient()
@@ -60,14 +71,21 @@ export function usePinActions() {
       verifyPin(pinId, verifierName),
     onSuccess: () => showToast(t('pin.verifiedSuccess', '¡Pin verificado y fijado!')),
     onSettled: () => void invalidatePins(),
-    onError: () => showToast(t('common.error')),
+    onError: (err) => showToast(messageOf(err, t('common.error'))),
+  })
+
+  const unverify = useMutation({
+    mutationFn: ({ pinId, hours }: { pinId: string; hours?: number }) => unverifyPin(pinId, hours ?? 24),
+    onSuccess: () => showToast(t('pin.unverified', 'Verificación retirada; el pin vuelve a tener plazo')),
+    onSettled: () => void invalidatePins(),
+    onError: (err) => showToast(messageOf(err, t('common.error'))),
   })
 
   const extendTTL = useMutation({
     mutationFn: ({ pinId, hours }: { pinId: string; hours?: number }) => extendPinTTL(pinId, hours ?? 24),
     onSuccess: () => showToast(t('pin.timeExtended', 'Tiempo extendido +24h')),
     onSettled: () => void invalidatePins(),
-    onError: () => showToast(t('common.error')),
+    onError: (err) => showToast(messageOf(err, t('common.error'))),
   })
 
   const favorite = useMutation({
@@ -79,5 +97,5 @@ export function usePinActions() {
     onError: () => showToast(t('common.error')),
   })
 
-  return { vote, remove, promote, extendTTL, favorite }
+  return { vote, remove, promote, unverify, extendTTL, favorite }
 }

@@ -1,4 +1,11 @@
 project_id = "udp-map"
 
+# Las dos las invoca pg_cron, que manda x-cron-secret y no una cabecera
+# Authorization. Con verify_jwt activo la pasarela responde 401 antes de que la
+# función llegue a ejecutarse. El control de acceso lo hace cada función por su
+# cuenta: compara el secreto de cron, o valida el token y exige rol admin.
 [functions.send-push]
+verify_jwt = false
+
+[functions.storage-gc]
 verify_jwt = false
