@@ -7,6 +7,7 @@ import { ProfilePage } from '@/features/profile/pages/ProfilePage'
 import { ModerationPage } from '@/features/moderation/ModerationPage'
 import { AdminLayout } from '@/features/admin/AdminLayout'
 import { AdminPage } from '@/features/admin/AdminPage'
+import { MappingPage } from '@/features/mapping/MappingPage'
 
 import { UpdatePrompt } from '@/shared/ui/UpdatePrompt'
 
@@ -26,6 +27,7 @@ export function App() {
 
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminPage />} />
+          <Route path="mapeo" element={<MappingPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/mapa" replace />} />

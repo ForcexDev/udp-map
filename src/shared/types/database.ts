@@ -1,4 +1,4 @@
-import type { Polygon, FeatureCollection } from 'geojson'
+import type { Polygon } from 'geojson'
 
 // Tipos espejo del esquema Postgres. La fuente de verdad es
 // supabase/schema/baseline.sql; docs/DATABASE.md explica qué hace cada tabla.
@@ -66,7 +66,14 @@ export interface Pin {
   faculty_id: string | null
   lat: number
   lng: number
+  /** Lo elige quien publica: desde arriba, el piso 1 y el 3 son el mismo punto. */
   floor: number | null
+  /** Se deduce del punto al crear y al mover. */
+  building_id: string | null
+  area_id: string | null
+  /** Código de sala de la universidad. Texto libre; no decide nada. */
+  room_code: string | null
+  /** @deprecated columna de la v1, siempre null. La reemplaza `building_id`. */
   building: string | null
   creator_id: string | null
   creator_name?: string | null
@@ -124,15 +131,61 @@ export interface Favorite {
   pin_id: string
 }
 
-export interface FloorPlan {
+// ── Mapeo interior ──────────────────────────────────────────────────────────
+// Facultad → Edificio → Planta → Área. La tabla `floor_plans` sigue existiendo
+// en la base, reservada para un plano de piso como imagen superpuesta
+// (docs/PLAN_PISOS_Y_ONBOARDING.md §13); no se declara su tipo mientras nada la
+// consuma.
+
+export type AreaKind =
+  | 'hall'
+  | 'corridor'
+  | 'cafeteria'
+  | 'kiosk'
+  | 'lab'
+  | 'office'
+  | 'service'
+  | 'courtyard'
+  | 'sports'
+  | 'parking'
+  | 'green'
+  | 'other'
+
+export interface Building {
   id: string
-  place_pin_id: string | null
-  faculty_id: string | null
-  building: string
-  floor: number
-  geojson: FeatureCollection
-  bounds: [[number, number], [number, number]] | null
-  image_overlay: string | null
+  faculty_id: string
+  name: string
+  short_name: string | null
+  /** Nombres de pasillo ("el edificio del KAEA"), para la búsqueda. */
+  aliases: string[]
+  footprint: Polygon
+  default_floor: number
+  /** Solo para edificios que faltan en OpenStreetMap; al resto los levanta el estilo. */
+  height_m: number | null
+  color: string | null
+  sort_order: number
+}
+
+export interface BuildingFloor {
+  building_id: string
+  /** 1 = planta baja, -1 = primer subterráneo. El 0 no existe. */
+  level: number
+  label: string | null
+}
+
+export interface Area {
+  id: string
+  faculty_id: string
+  /** null ⇔ `floor` null: es un área exterior (patio, cancha). */
+  building_id: string | null
+  floor: number | null
+  kind: AreaKind
+  /** Nombre del tipo cuando `kind` es 'other'. La lista cerrada siempre se queda corta. */
+  custom_kind: string | null
+  name: string
+  polygon: Polygon
+  color: string | null
+  sort_order: number
 }
 
 export interface EventRsvp {

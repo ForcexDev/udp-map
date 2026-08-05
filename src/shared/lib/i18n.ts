@@ -58,7 +58,10 @@ const es = {
       submitting: 'Publicando…',
       created: '¡Pin publicado!',
       dailyLimitReached: '{{name}}, superaste el límite de 10 pines diarios. Regresa mañana a las {{resetAt}}.',
-      locationOccupied: 'Esta ubicación ya tiene un pin. Mueve el mapa y elige otro punto.',
+      // La cerradura de ubicación única incluye la planta: dos pines del mismo
+      // punto en pisos distintos conviven. Sin nombrar el piso, el aviso parece
+      // mentir cuando el que estorba está en otra planta.
+      locationOccupied: 'Ya hay un pin en este punto de esta planta. Muévelo un poco o cambia de piso.',
       delete: 'Eliminar pin',
       deleted: 'Pin eliminado',
       confirmDelete: '¿Eliminar este pin? Sus fotos y comentarios se borran también.',
@@ -120,6 +123,11 @@ const es = {
       aboutUs: 'Sobre nosotros',
     },
     map: { campus: 'Campus' },
+    faculty: {
+      empty: 'No hay publicaciones activas aquí.',
+      publishHere: 'Publicar algo aquí',
+      allPlaces: 'Todo',
+    },
     events: {
       title: 'Eventos',
       comingSoon: 'El calendario de eventos con RSVP llega en el Sprint 3.',
@@ -298,7 +306,7 @@ const en = {
       submitting: 'Publishing…',
       created: 'Pin published!',
       dailyLimitReached: '{{name}}, you exceeded the daily limit of 10 pins. Come back tomorrow at {{resetAt}}.',
-      locationOccupied: 'This location already has a pin. Move the map and choose another spot.',
+      locationOccupied: 'There is already a pin at this spot on this floor. Move it slightly or change floor.',
       delete: 'Delete pin',
       deleted: 'Pin deleted',
       confirmDelete: 'Delete this pin? Its photos and comments will be removed too.',
@@ -360,6 +368,11 @@ const en = {
       aboutUs: 'About us',
     },
     map: { campus: 'Campus' },
+    faculty: {
+      empty: 'Nothing posted here yet.',
+      publishHere: 'Post something here',
+      allPlaces: 'All',
+    },
     events: {
       title: 'Events',
       comingSoon: 'The event calendar with RSVP arrives in Sprint 3.',

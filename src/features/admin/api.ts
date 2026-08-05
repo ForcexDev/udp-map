@@ -126,6 +126,36 @@ export async function fetchAdminPins(filter?: AdminPinFilter): Promise<Pin[]> {
   return (data ?? []) as Pin[]
 }
 
+/**
+ * Asigna planta a varios pines de una vez, desde el editor de mapeo.
+ *
+ * `floor` no está entre los campos que protege protect_pin_sensitive_fields, y
+ * la policy pins_mod_update deja a moderadores y admins escribir sobre
+ * cualquier pin: no hace falta ninguna RPC para esto.
+ *
+ * Las actualizaciones van en serie y no en un upsert masivo porque un upsert
+ * sobre `pins` exigiría mandar la fila completa, y con ella campos protegidos
+ * que el trigger revertiría en silencio.
+ */
+export async function adminSetPinFloors(
+  updates: { pinId: string; floor: number | null }[],
+): Promise<void> {
+  if (updates.length === 0) return
+
+  if (!supabase) {
+    for (const { pinId, floor } of updates) {
+      const pin = demoDb.pins.find((p) => p.id === pinId)
+      if (pin) pin.floor = floor
+    }
+    return
+  }
+
+  for (const { pinId, floor } of updates) {
+    const { error } = await supabase.from('pins').update({ floor }).eq('id', pinId)
+    if (error) throw error
+  }
+}
+
 export async function adminDeletePin(pinId: string): Promise<void> {
   if (!supabase) {
     demoDb.pins = demoDb.pins.filter(p => p.id !== pinId)

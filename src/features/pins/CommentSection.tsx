@@ -8,6 +8,7 @@ import { can } from '@/features/auth/permissions'
 import { relativeTime } from '@/shared/utils/datetime'
 import { Spinner } from '@/shared/ui/Spinner'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
+import { LinkedText } from '@/shared/ui/LinkedText'
 import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import { UserAvatar } from '@/shared/ui/UserAvatar'
 import { ReportContentDialog, type ReportTarget } from '@/features/moderation/ReportContentDialog'
@@ -69,9 +70,10 @@ export function CommentSection({ pinId }: { pinId: string }) {
                     {c.author_name ?? t('auth.guest')}
                   </button>
                   
-                  <p className="pr-6 text-[14px] leading-snug text-neutral-800 dark:text-neutral-200 break-words">
-                    {c.body}
-                  </p>
+                  <LinkedText
+                    text={c.body}
+                    className="pr-6 text-[14px] leading-snug text-neutral-800 dark:text-neutral-200"
+                  />
                   
                   <span className="mt-0.5 text-[11.5px] text-neutral-500">
                     {t(`time.${AGO_KEY[rel.unit]}`, { n: rel.value })}

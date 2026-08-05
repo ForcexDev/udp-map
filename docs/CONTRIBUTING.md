@@ -1,4 +1,4 @@
-# Contribuir a UDP Map v0.3.0
+# Contribuir a UDP Map v0.6.0
 
 **Última actualización:** 2026-07-24
 

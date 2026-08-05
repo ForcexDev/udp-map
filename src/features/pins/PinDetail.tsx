@@ -8,7 +8,6 @@ import {
   ThumbsUp,
   Trash2,
   X,
-  Layers,
   Pencil,
   Move,
   ChevronLeft,
@@ -27,8 +26,11 @@ import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useGuard } from '@/features/auth/useGuard'
 import { can } from '@/features/auth/permissions'
-import { FACULTIES, DEMO_FLOOR_PLANS } from '@/shared/data/campusData'
+import { FACULTIES } from '@/shared/data/campusData'
+import { floorName } from '@/features/mapping/areaStyles'
+import { locationBreadcrumb, useMapping } from '@/features/mapping/useMapping'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
+import { LinkedText } from '@/shared/ui/LinkedText'
 import { PinBadges } from './PinBadges'
 import { EventSchedule } from './EventSchedule'
 import { CommentSection } from './CommentSection'
@@ -82,7 +84,6 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const role = useAuthStore((s) => s.role)
   const selectPin = useUIStore((s) => s.selectPin)
   const setRouteTarget = useUIStore((s) => s.setRouteTarget)
-  const setIndoor = useUIStore((s) => s.setIndoor)
   const startMovingPin = useUIStore((s) => s.startMovingPin)
   const openCreateModal = useUIStore((s) => s.openCreateModal)
   const { vote, remove, promote, unverify, extendTTL, favorite } = usePinActions()
@@ -93,6 +94,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null)
 
   const faculty = FACULTIES.find((f) => f.id === pin.faculty_id)
+  const { mapping } = useMapping()
+  const indoorParts = locationBreadcrumb(mapping, pin, floorName)
   const isOwner = user !== null && pin.creator_id === user.id
   const canDelete = isOwner || can(role, 'pin.moderate')
   const canEdit = isOwner || can(role, 'pin.moderate')
@@ -108,8 +111,6 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   // directamente por un moderador nunca fue un reporte.
   const canUnverify = can(role, 'pin.makePermanent') && pin.is_permanent && !!pin.verifier_entity_name
   const canMove = can(role, 'pin.update.location')
-  const hasIndoor =
-    pin.type === 'place' && DEMO_FLOOR_PLANS.some((fp) => fp.faculty_id === pin.faculty_id)
   const photos = pin.pin_photos ?? []
 
   const now = useNowTick()
@@ -211,10 +212,26 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
 
           <PinBadges pin={pin} />
 
-          {faculty && (
-            <div className="mt-2 flex items-center gap-1.5 text-[12.5px] font-bold uppercase tracking-wide text-[#9d2235] dark:text-red-400">
-              <MapPin size={13} />
-              <span>{faculty.name}</span>
+          {/* Dónde está, de fuera hacia dentro: facultad · edificio · piso ·
+              área. Va degradando conforme falten datos, hasta quedarse solo con
+              la facultad, que es lo que había antes del mapeo interior. */}
+          {(faculty || indoorParts.length > 0) && (
+            <div className="mt-2 flex items-start gap-1.5 text-[12.5px] font-bold uppercase tracking-wide text-[#9d2235] dark:text-red-400">
+              <MapPin size={13} className="mt-0.5 shrink-0" />
+              <span className="min-w-0">
+                {faculty?.name}
+                {indoorParts.length > 0 && (
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    {faculty ? ' · ' : ''}
+                    {indoorParts.join(' · ')}
+                  </span>
+                )}
+                {pin.room_code && (
+                  <span className="ml-1.5 rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[10px] normal-case text-neutral-500 dark:bg-neutral-800">
+                    {pin.room_code}
+                  </span>
+                )}
+              </span>
             </div>
           )}
 
@@ -223,9 +240,10 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
               <h3 className="mb-1 text-[12px] font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 {t('pin.description', 'Descripción')}
               </h3>
-              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
-                {pin.description}
-              </p>
+              <LinkedText
+                text={pin.description}
+                className="text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300"
+              />
             </div>
           )}
 
@@ -371,13 +389,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
             <Navigation size={15} strokeWidth={2.5} /> {t('pin.directions', 'Cómo llegar')}
           </button>
 
-          {(canDelete || canPromote || canExtend || canUnverify || canEdit || hasIndoor) && (
+          {(canDelete || canPromote || canExtend || canUnverify || canEdit) && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {hasIndoor && (
-                <button onClick={() => setIndoor(pin.faculty_id)} className={ACTION_CHIP}>
-                  <Layers size={14} /> {t('indoor.title', 'Interior')}
-                </button>
-              )}
               {canEdit && (
                 <button onClick={() => openCreateModal(pin.id)} className={ACTION_CHIP}>
                   <Pencil size={14} /> {t('pin.edit', 'Editar')}

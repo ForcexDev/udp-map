@@ -1,7 +1,7 @@
 {
   "name": "udp-map-v0.1",
   "private": true,
-  "version": "0.5.170",
+  "version": "0.6.0",
   "type": "module",
   "description": "Mapa colaborativo de pines + eventos + foro para la comunidad UDP",
   "scripts": {

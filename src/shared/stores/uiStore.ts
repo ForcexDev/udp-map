@@ -9,6 +9,20 @@ interface DraftLocation {
 
 type DraftPinType = 'report' | 'place' | 'event' | null
 
+/**
+ * Qué lugar mapeado se tocó para abrir la ficha de la facultad.
+ *
+ * NO abre un panel propio. Antes cada edificio y cada área tenían su tarjeta
+ * ("Edificio Ejército 441 · Nada publicado aquí todavía"), que competía con el
+ * feed de la facultad y repartía los posts en fichas casi siempre vacías. Ahora
+ * hay una sola ficha, la de la facultad, y esto solo dice por dónde se entró
+ * para preseleccionar ese lugar en su filtro.
+ */
+export interface PlaceFocus {
+  kind: 'area' | 'building'
+  id: string
+}
+
 interface UIState {
   theme: Theme
   setTheme: (theme: Theme) => void
@@ -58,10 +72,33 @@ interface UIState {
   accessibleRoute: boolean
   setAccessibleRoute: (v: boolean) => void
 
-  /** Plano indoor activo */
-  indoorFacultyId: string | null
-  indoorFloor: number
-  setIndoor: (facultyId: string | null, floor?: number) => void
+  /**
+   * Planta que se está mirando, y en qué FACULTAD.
+   *
+   * La planta es de la facultad entera, no de un edificio. "Piso 2" quiere
+   * decir el segundo piso de los cuatro edificios a la vez: los que lo tengan
+   * enseñan lo suyo y el que no, nada. Atarla a un edificio hacía que cruzar de
+   * uno a otro cambiara de piso solo, y dejaba al resto de la facultad
+   * enseñando todos sus pisos superpuestos.
+   *
+   * Es una dimensión de la VISTA, no un filtro de contenido: por eso vive aquí
+   * y no en filterStore. Un filtro sobrevive al cambiar de pantalla ("solo
+   * comida"); esto se resetea al salir de la facultad, porque "estar en el piso
+   * 3" no significa nada desde el Foro.
+   *
+   * `activeFloor` null = "Todo": cada edificio enseña su planta por defecto.
+   */
+  activeFacultyId: string | null
+  activeFloor: number | null
+  setActiveMappingFaculty: (facultyId: string | null, floor?: number | null) => void
+  setActiveFloor: (floor: number | null) => void
+
+  /**
+   * Edificio o área por el que se entró al feed de la facultad, para
+   * preseleccionarlo en su filtro. No abre panel propio: ver `PlaceFocus`.
+   */
+  placeFocus: PlaceFocus | null
+  setPlaceFocus: (place: PlaceFocus | null) => void
 
   toast: string | null
   showToast: (msg: string) => void
@@ -143,19 +180,37 @@ export const useUIStore = create<UIState>((set) => {
     cancelMovingPin: () => set({ movingPinId: null }),
 
     selectedPinId: null,
-    selectPin: (id) => set({ selectedPinId: id, selectedFacultyId: null, movingPinId: null }),
+    selectPin: (id) =>
+      set({ selectedPinId: id, selectedFacultyId: null, movingPinId: null, placeFocus: null }),
 
     selectedFacultyId: null,
-    selectFaculty: (id) => set({ selectedFacultyId: id, selectedPinId: null, movingPinId: null }),
+    // Los dos paneles del mapa —el pin y la facultad— se excluyen entre sí: son
+    // dos respuestas a la misma pregunta ("¿qué toqué?"), y enseñar las dos
+    // deja una asomando por detrás de la otra.
+    //
+    // Cerrar la ficha (id null) también suelta el lugar enfocado: si no, al
+    // reabrirla volvería filtrada por un edificio que ya nadie eligió.
+    selectFaculty: (id) =>
+      set({
+        selectedFacultyId: id,
+        selectedPinId: null,
+        movingPinId: null,
+        ...(id === null ? { placeFocus: null } : {}),
+      }),
 
     routeTargetPinId: null,
     setRouteTarget: (id) => set({ routeTargetPinId: id }),
     accessibleRoute: false,
     setAccessibleRoute: (v) => set({ accessibleRoute: v }),
 
-    indoorFacultyId: null,
-    indoorFloor: 1,
-    setIndoor: (facultyId, floor = 1) => set({ indoorFacultyId: facultyId, indoorFloor: floor }),
+    activeFacultyId: null,
+    activeFloor: null,
+    setActiveMappingFaculty: (facultyId, floor = null) =>
+      set({ activeFacultyId: facultyId, activeFloor: facultyId === null ? null : floor }),
+    setActiveFloor: (floor) => set({ activeFloor: floor }),
+
+    placeFocus: null,
+    setPlaceFocus: (place) => set({ placeFocus: place }),
 
     toast: null,
     showToast: (msg) => {

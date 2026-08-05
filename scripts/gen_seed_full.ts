@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { CAMPUSES, FACULTIES, CAREERS, CATEGORIES, DEMO_FLOOR_PLANS } from '../src/shared/data/campusData'
+import { CAMPUSES, FACULTIES, CAREERS, CATEGORIES } from '../src/shared/data/campusData'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const seedPath = path.join(__dirname, '../supabase/seed/seed.sql')
@@ -44,12 +44,8 @@ sql += `where not exists (\n`
 sql += `  select 1 from pins p where p.type = 'place' and p.faculty_id = f.id\n`
 sql += `);\n\n`
 
-sql += `-- ── Plano indoor demo ──\n`
-for (const fp of DEMO_FLOOR_PLANS) {
-  sql += `insert into floor_plans (faculty_id, building, floor, geojson)\n`
-  sql += `select '${fp.faculty_id}', '${fp.building}', ${fp.floor}, '${JSON.stringify(fp.geojson)}'::jsonb\n`
-  sql += `where not exists (select 1 from floor_plans where faculty_id = '${fp.faculty_id}' and floor = ${fp.floor});\n\n`
-}
+// El mapeo interior (buildings, building_floors, areas) no se siembra: se traza
+// a mano desde /admin/mapeo y se exporta desde ahí.
 
 // Los correos de admin no se generan: son datos personales y el seed vive en el
 // repositorio. Se insertan a mano tras un reset (ver docs/DATABASE.md, §10).

@@ -52,6 +52,29 @@ begin
   end if;
 end $$;
 
+-- Tipo de área del mapeo interior. Determina el color por defecto en el mapa;
+-- `areas.color` lo sobreescribe cuando el automático no convenga.
+
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'area_kind') then
+    create type public.area_kind as enum (
+      'hall',       -- hall de acceso, recepción
+      'corridor',   -- pasillo
+      'cafeteria',  -- casino, cafetería
+      'kiosk',      -- quiosco
+      'lab',        -- laboratorio
+      'office',     -- secretaría, oficinas
+      'service',    -- baños, ascensores, escaleras
+      'courtyard',  -- patio, explanada        (exterior)
+      'sports',     -- cancha                  (exterior)
+      'parking',    -- estacionamiento         (exterior)
+      'green',      -- jardín                  (exterior)
+      'other'
+    );
+  end if;
+end $$;
+
 
 -- =============================================================================
 -- 3. TABLAS
@@ -84,6 +107,70 @@ create table if not exists public.careers (
   faculty_id  text    not null references public.faculties(id),
   name        text    not null,
   name_en     text    not null
+);
+
+-- ── Mapeo interior: edificio → planta → área ────────────────────────────────
+-- Le dan a un punto del mapa los contenedores que le faltan por debajo de la
+-- facultad. Se trazan a mano desde /admin/mapeo.
+--
+-- Las plantas son una TABLA y no un rango min/max en el edificio: con un rango,
+-- añadir un subterráneo a un edificio ya mapeado obliga a recalcular y no hay
+-- dónde poner "Zócalo". Los edificios de una facultad varían mucho entre sí.
+-- El nivel 0 no existe: la planta baja es el 1 y el primer subterráneo el -1.
+--
+-- `buildings.code` es el prefijo del código de sala UDP: en E441.1.S101 el
+-- edificio es E441. `height_m` solo se rellena para edificios que faltan en
+-- OpenStreetMap; al resto ya los levanta en 3D el estilo del mapa.
+create table if not exists public.buildings (
+  id             text         primary key,
+  faculty_id     text         not null references public.faculties(id) on delete cascade,
+  name           text         not null check (char_length(name) between 1 and 120),
+  short_name     text         check (short_name is null or char_length(short_name) <= 40),
+  aliases        text[]       not null default '{}',
+  footprint      jsonb        not null,
+  default_floor  integer      not null default 1 check (default_floor <> 0),
+  height_m       numeric      check (height_m is null or (height_m > 0 and height_m <= 500)),
+  color          text         check (color is null or color ~ '^#[0-9a-fA-F]{6}$'),
+  sort_order     integer      not null default 0,
+  created_at     timestamptz  not null default now(),
+  updated_at     timestamptz  not null default now()
+);
+
+create table if not exists public.building_floors (
+  building_id  text     not null references public.buildings(id) on delete cascade,
+  level        integer  not null check (level <> 0),
+  label        text     check (label is null or char_length(label) <= 40),
+  primary key (building_id, level)
+);
+
+-- El exterior no es una excepción sino un caso del mismo modelo: el patio es un
+-- área con building_id y floor en null, y areas_floor_coherent obliga a que
+-- esos dos vayan siempre juntos. La clave foránea compuesta impide que un área
+-- cuelgue de una planta que no existe; con MATCH SIMPLE no se evalúa cuando
+-- building_id es null, que es justo lo que hace falta para el exterior.
+create table if not exists public.areas (
+  id           uuid         primary key default gen_random_uuid(),
+  faculty_id   text         not null references public.faculties(id) on delete cascade,
+  building_id  text         references public.buildings(id) on delete cascade,
+  floor        integer,
+  kind         public.area_kind not null default 'other',
+  -- La lista de tipos siempre se queda corta en un edificio real. Con
+  -- kind = 'other' este texto lleva el nombre del tipo y es el que se muestra.
+  custom_kind  text         check (custom_kind is null or char_length(custom_kind) between 1 and 40),
+  name         text         not null check (char_length(name) between 1 and 120),
+  polygon      jsonb        not null,
+  color        text         check (color is null or color ~ '^#[0-9a-fA-F]{6}$'),
+  sort_order   integer      not null default 0,
+  created_at   timestamptz  not null default now(),
+  updated_at   timestamptz  not null default now(),
+
+  constraint areas_floor_coherent check (
+    (building_id is null and floor is null) or
+    (building_id is not null and floor is not null)
+  ),
+
+  constraint areas_floor_fkey foreign key (building_id, floor)
+    references public.building_floors(building_id, level) on delete cascade
 );
 
 -- ttl_hours: cuánto vive un reporte de esta categoría antes de expirar.
@@ -147,7 +234,17 @@ create table if not exists public.pins (
   faculty_id            text              references public.faculties(id),
   lat                   double precision  not null,
   lng                   double precision  not null,
+  -- floor NO se deduce del punto: desde arriba, el piso 1 y el 3 son el mismo
+  -- sitio. Lo elige quien publica. building_id y area_id sí se deducen.
   floor                 integer,
+  building_id           text              references public.buildings(id) on delete set null,
+  area_id               uuid              references public.areas(id) on delete set null,
+  -- Código de sala de la universidad (E441.1.S101, SMV-03). Texto libre: no
+  -- decide edificio ni planta, solo sirve para buscar y para cruzar con el
+  -- sistema de horarios. Vive en el pin porque un edificio hospeda salas con
+  -- esquemas distintos y hay salas sin código.
+  room_code             text              check (room_code is null or char_length(room_code) between 1 and 40),
+  -- Heredada de la v1, siempre null. La reemplaza building_id.
   building              text,
   creator_id            uuid              references public.profiles(id) on delete set null,
   votes_up              integer           not null default 0,
@@ -383,6 +480,11 @@ create index if not exists pins_expires_idx  on public.pins (expires_at);
 create index if not exists pins_faculty_idx  on public.pins (faculty_id);
 create index if not exists pins_lat_lng_idx  on public.pins (lat, lng);
 create index if not exists pins_type_idx     on public.pins (type);
+create index if not exists pins_building_floor_idx on public.pins (building_id, floor);
+create index if not exists pins_area_idx           on public.pins (area_id);
+-- Quien escribe "s101" espera encontrar la S101.
+create index if not exists pins_room_code_idx on public.pins (upper(room_code))
+  where room_code is not null;
 
 create index if not exists pin_photos_pin_idx         on public.pin_photos (pin_id);
 create index if not exists pin_comments_pin_created_idx on public.pin_comments (pin_id, created_at desc);
@@ -394,6 +496,13 @@ create index if not exists pin_creation_events_creator_day_idx
 -- null (cuando el pin se borró), y de ahí el índice parcial.
 create unique index if not exists pin_creation_events_pin_uidx
   on public.pin_creation_events (pin_id) where pin_id is not null;
+
+-- Mapeo interior. El editor y el mapa siempre consultan "lo de esta facultad"
+-- o "lo de esta planta de este edificio". El índice de `code` es parcial porque
+-- la columna es opcional, y va en mayúsculas para que E441 y e441 choquen.
+create index if not exists buildings_faculty_idx on public.buildings (faculty_id);
+create index if not exists areas_faculty_idx on public.areas (faculty_id);
+create index if not exists areas_building_floor_idx on public.areas (building_id, floor);
 
 create index if not exists idx_forum_threads_created  on public.forum_threads (created_at desc);
 create index if not exists idx_forum_threads_faculty  on public.forum_threads (faculty_id);
@@ -507,6 +616,27 @@ begin
     new.type := old.type;
     new.creator_id := old.creator_id;
     new.reports := old.reports;
+    -- Derivados del punto: los calcula el servidor al crear y al mover. Si el
+    -- autor pudiera escribirlos, un pin podría afirmar que está en un edificio
+    -- en el que no está. Mover un pin es permiso de moderador, y los
+    -- moderadores no pasan por este bloque.
+    --
+    -- `floor` y `room_code` NO se protegen: esos sí los elige el autor, y
+    -- corregir en qué piso está su sala es la edición más común de todas.
+    new.building_id := old.building_id;
+
+    -- El área cuelga de una planta concreta, así que no sobrevive a un cambio
+    -- de planta: se suelta en vez de quedarse apuntando al piso anterior, que
+    -- haría que el pin dijera estar en dos plantas a la vez. Recalcularla aquí
+    -- no es posible —el punto en polígono se resuelve en el cliente, sobre
+    -- areas.polygon en jsonb— y aceptarla del navegador reabriría justo el
+    -- agujero que este campo protegido cierra. Un moderador la vuelve a fijar
+    -- moviendo el pin, que sí recalcula edificio y área.
+    if new.floor is distinct from old.floor then
+      new.area_id := null;
+    else
+      new.area_id := old.area_id;
+    end if;
 
     -- La categoría de un pin verificado forma parte de lo que se verificó.
     -- Esto lanza excepción en vez de revertir en silencio, al revés que los
@@ -629,7 +759,8 @@ as $fn$
 begin
   if tg_op = 'UPDATE'
     and new.lat is not distinct from old.lat
-    and new.lng is not distinct from old.lng then
+    and new.lng is not distinct from old.lng
+    and new.floor is not distinct from old.floor then
     return new;
   end if;
 
@@ -637,7 +768,11 @@ begin
     return new;
   end if;
 
-  perform pg_advisory_xact_lock(hashtext(new.lat::text || ':' || new.lng::text));
+  -- La cerradura incluye la planta: dos pines del mismo punto en pisos
+  -- distintos no compiten y no tienen por qué serializarse entre sí.
+  perform pg_advisory_xact_lock(
+    hashtext(new.lat::text || ':' || new.lng::text || ':' || coalesce(new.floor, 0)::text)
+  );
 
   if exists (
     select 1
@@ -645,6 +780,9 @@ begin
     where existing.id is distinct from new.id
       and existing.lat = new.lat
       and existing.lng = new.lng
+      -- Una impresora en el piso 2 y otra en el 3 de la misma esquina son dos
+      -- cosas distintas, no un duplicado.
+      and existing.floor is not distinct from new.floor
       and (
         existing.is_permanent
         or existing.expires_at is null
@@ -689,7 +827,11 @@ create or replace function public.create_pin_with_daily_limit(
   p_official_entity_name text,
   p_expires_at           timestamptz,
   p_starts_at            timestamptz,
-  p_ends_at              timestamptz
+  p_ends_at              timestamptz,
+  p_floor                integer default null,
+  p_building_id          text    default null,
+  p_area_id              uuid    default null,
+  p_room_code            text    default null
 )
 returns setof public.pins
 language plpgsql
@@ -747,6 +889,11 @@ begin
     raise exception 'Coordenadas del pin inválidas';
   end if;
 
+  -- La planta 0 no existe: la baja es el 1 y el primer subterráneo el -1.
+  if p_floor = 0 then
+    raise exception 'La planta 0 no existe: usa 1 para la planta baja y -1 para el subterráneo.';
+  end if;
+
   -- El plazo no se acepta del cliente: se deduce del tipo y de la categoría.
   -- p_expires_at se conserva en la firma pero se ignora — cambiarla obligaría a
   -- crear otra función y repartir de nuevo los permisos de EXECUTE, a cambio de
@@ -767,7 +914,8 @@ begin
 
   insert into public.pins (
     type, title, description, category_id, faculty_id, lat, lng, creator_id,
-    is_permanent, expires_at, starts_at, ends_at, is_official, official_entity_name
+    is_permanent, expires_at, starts_at, ends_at, is_official, official_entity_name,
+    floor, building_id, area_id, room_code
   ) values (
     p_type,
     p_title,
@@ -782,7 +930,11 @@ begin
     p_starts_at,
     p_ends_at,
     coalesce(p_is_official, false),
-    case when coalesce(p_is_official, false) then p_official_entity_name else null end
+    case when coalesce(p_is_official, false) then p_official_entity_name else null end,
+    p_floor,
+    p_building_id,
+    p_area_id,
+    nullif(trim(p_room_code), '')
   )
   returning * into v_pin;
 
@@ -1998,7 +2150,7 @@ create trigger trg_prevent_occupied_pin_location_insert
 
 drop trigger if exists trg_prevent_occupied_pin_location_update on public.pins;
 create trigger trg_prevent_occupied_pin_location_update
-  before update of lat, lng on public.pins
+  before update of lat, lng, floor on public.pins
   for each row execute function public.prevent_occupied_pin_location();
 
 drop trigger if exists trg_protect_pin_sensitive_fields on public.pins;
@@ -2113,6 +2265,16 @@ create trigger on_content_report_notification
   after insert on public.content_reports
   for each row execute function public.notify_admins_about_report();
 
+drop trigger if exists buildings_updated_at on public.buildings;
+create trigger buildings_updated_at
+  before update on public.buildings
+  for each row execute function public.set_notification_updated_at();
+
+drop trigger if exists areas_updated_at on public.areas;
+create trigger areas_updated_at
+  before update on public.areas
+  for each row execute function public.set_notification_updated_at();
+
 drop trigger if exists push_subscriptions_updated_at on public.push_subscriptions;
 create trigger push_subscriptions_updated_at
   before update on public.push_subscriptions
@@ -2148,6 +2310,9 @@ create or replace view public.profiles_public
 alter table public.campuses                     enable row level security;
 alter table public.faculties                    enable row level security;
 alter table public.careers                      enable row level security;
+alter table public.buildings                    enable row level security;
+alter table public.building_floors              enable row level security;
+alter table public.areas                        enable row level security;
 alter table public.categories                   enable row level security;
 alter table public.badges                       enable row level security;
 alter table public.admin_emails                 enable row level security;
@@ -2198,6 +2363,32 @@ create policy floor_plans_read on public.floor_plans for select using (true);
 drop policy if exists floor_plans_admin on public.floor_plans;
 create policy floor_plans_admin on public.floor_plans
   for all using (public.user_role() = any (array['moderator', 'admin']));
+
+-- Mapeo interior: lo lee todo el mundo, incluido un invitado, porque sin eso el
+-- mapa no puede dibujar el interior de un edificio. Lo escribe quien modera.
+drop policy if exists buildings_read on public.buildings;
+create policy buildings_read on public.buildings for select using (true);
+
+drop policy if exists buildings_write on public.buildings;
+create policy buildings_write on public.buildings
+  for all using (public.user_role() = any (array['moderator', 'admin']))
+  with check (public.user_role() = any (array['moderator', 'admin']));
+
+drop policy if exists building_floors_read on public.building_floors;
+create policy building_floors_read on public.building_floors for select using (true);
+
+drop policy if exists building_floors_write on public.building_floors;
+create policy building_floors_write on public.building_floors
+  for all using (public.user_role() = any (array['moderator', 'admin']))
+  with check (public.user_role() = any (array['moderator', 'admin']));
+
+drop policy if exists areas_read on public.areas;
+create policy areas_read on public.areas for select using (true);
+
+drop policy if exists areas_write on public.areas;
+create policy areas_write on public.areas
+  for all using (public.user_role() = any (array['moderator', 'admin']))
+  with check (public.user_role() = any (array['moderator', 'admin']));
 
 -- La lista de correos con rol admin solo la ve un admin.
 drop policy if exists admin_emails_admin on public.admin_emails;
@@ -2476,6 +2667,9 @@ grant all on public.categories    to anon, authenticated;
 grant all on public.badges        to anon, authenticated;
 grant all on public.admin_emails  to anon, authenticated;
 grant all on public.floor_plans   to anon, authenticated;
+grant all on public.buildings       to anon, authenticated;
+grant all on public.building_floors to anon, authenticated;
+grant all on public.areas           to anon, authenticated;
 grant all on public.pins          to anon, authenticated;
 grant all on public.pin_photos    to anon, authenticated;
 grant all on public.pin_comments  to anon, authenticated;
@@ -2540,7 +2734,7 @@ grant execute on function public.prevent_occupied_pin_location() to anon, authen
 grant execute on function public.validate_rsvp_targets_event() to anon, authenticated, service_role;
 grant execute on function public.create_pin_with_daily_limit(
   public.pin_type, text, text, text, text, double precision, double precision,
-  boolean, text, timestamptz, timestamptz, timestamptz
+  boolean, text, timestamptz, timestamptz, timestamptz, integer, text, uuid, text
 ) to anon, authenticated, service_role;
 
 -- Solo con sesión iniciada.

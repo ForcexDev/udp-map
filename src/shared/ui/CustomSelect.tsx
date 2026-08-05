@@ -106,14 +106,14 @@ export function CustomSelect({
   }, [isOpen, menuStyle])
 
   return (
-    <div ref={containerRef} className={`relative inline-block ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${className}`}>
       {/* Botón Desplegable Principal */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700/80 bg-neutral-50 dark:bg-neutral-800/80 text-xs sm:text-sm font-semibold text-neutral-900 dark:text-white outline-none focus:border-[#D41F2D] transition-all cursor-pointer shadow-sm active:scale-[0.99] ${buttonClassName}`}
+        className={`w-full min-w-0 flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700/80 bg-neutral-50 dark:bg-neutral-800/80 text-xs sm:text-sm font-semibold text-neutral-900 dark:text-white outline-none focus:border-[#D41F2D] transition-all cursor-pointer shadow-sm active:scale-[0.99] ${buttonClassName}`}
       >
-        <span className="flex items-center gap-2 truncate">
+        <span className="flex min-w-0 items-center gap-2 truncate">
           {selectedOption?.icon}
           <span className="truncate">{selectedOption ? selectedOption.label : placeholder || 'Seleccionar...'}</span>
         </span>

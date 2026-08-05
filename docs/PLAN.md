@@ -1,7 +1,7 @@
-# 📍 UDP Map v0.3.0 — Documento Maestro y Plan Vivo
+# 📍 UDP Map v0.6.0 — Documento Maestro y Plan Vivo
 
-> **Documento vivo.** Conserva la visión y el plan original, pero refleja el estado real del
-> repositorio v0.3.0 al **2026-07-24**. Para el seguimiento operativo consulta también
+> **Documento vivo.** Refleja la arquitectura real, la base de datos y la hoja de ruta del
+> repositorio v0.6.0 al **2026-08-05**. Para el seguimiento operativo consulta también
 > [SPRINTS_STATUS.md](SPRINTS_STATUS.md) y, para los pendientes de seguridad y base de datos,
 > [securityDB.md](securityDB.md).
 

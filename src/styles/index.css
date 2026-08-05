@@ -670,3 +670,58 @@ body {
   display: none; /* Chrome, Safari and Opera */
 }
 
+
+/* ── Editor de mapeo (/admin/mapeo) ──────────────────────
+   Los tiradores son elementos DOM que MapLibre posiciona, así que el estilo va
+   aquí y no en el componente: MapLibre reescribe el `transform` en línea de
+   cada marcador en cada movimiento del mapa, y cualquier transform propio se
+   perdería en el primer paneo. */
+.mapping-vertex {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid #2563eb;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+  cursor: grab;
+}
+
+.mapping-vertex:active {
+  cursor: grabbing;
+  background: #2563eb;
+}
+
+.mapping-rotate-handle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 5px rgb(0 0 0 / 0.35);
+  cursor: alias;
+}
+
+/* Insignia de planta sobre el marcador. Sin ella, dos pines de pisos distintos
+   en la misma vertical son indistinguibles cuando se ven todas las plantas. */
+.pin-marker__floor {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #18181b;
+  border: 1.5px solid white;
+  color: white;
+  font-size: 8.5px;
+  font-weight: 800;
+  line-height: 12px;
+  text-align: center;
+  letter-spacing: -0.02em;
+  pointer-events: none;
+}
+
+.pin-marker {
+  position: relative;
+}

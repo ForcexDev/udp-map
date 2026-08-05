@@ -1,5 +1,5 @@
-import { Link, Outlet, Navigate } from 'react-router-dom'
-import { ShieldAlert, ArrowLeft } from 'lucide-react'
+import { Link, Outlet, Navigate, NavLink } from 'react-router-dom'
+import { ShieldAlert, ArrowLeft, LayoutDashboard, PenTool } from 'lucide-react'
 import { Toast } from '@/shared/ui/Toast'
 import { UserAvatar } from '@/shared/ui/UserAvatar'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -28,7 +28,7 @@ export function AdminLayout() {
   return (
     <div className="app-shell relative h-full w-full flex flex-col overflow-hidden bg-neutral-50 dark:bg-neutral-950">
       {/* Top Header Bar */}
-      <header className="z-30 min-h-16 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-4 sm:px-6 pt-safe flex items-center justify-between">
+      <header className="z-30 min-h-16 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-4 sm:px-6 pt-safe flex items-center justify-between relative">
         <div className="flex items-center gap-3">
           <Link
             to="/mapa"
@@ -49,6 +49,13 @@ export function AdminLayout() {
           </div>
         </div>
 
+        {/* El editor de mapeo es pantalla completa, así que no cabe como
+            pestaña dentro de AdminPage: va como sección hermana. */}
+        <nav className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+          <AdminNavLink to="/admin" end icon={<LayoutDashboard size={14} />} label="Panel" />
+          <AdminNavLink to="/admin/mapeo" icon={<PenTool size={14} />} label="Mapeo" />
+        </nav>
+
         {/* Current Admin User Info */}
         <div className="hidden sm:flex items-center gap-2 bg-neutral-100 dark:bg-neutral-800/80 rounded-full px-3 py-1.5">
           <UserAvatar name={user?.name} src={user?.avatarUrl} className="w-6 h-6 text-[24px]" />
@@ -64,5 +71,34 @@ export function AdminLayout() {
 
       <Toast />
     </div>
+  )
+}
+
+function AdminNavLink({
+  to,
+  end,
+  icon,
+  label,
+}: {
+  to: string
+  end?: boolean
+  icon: React.ReactNode
+  label: string
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        `flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wider transition-colors ${
+          isActive
+            ? 'bg-[#D41F2D] text-white'
+            : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white'
+        }`
+      }
+    >
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
+    </NavLink>
   )
 }

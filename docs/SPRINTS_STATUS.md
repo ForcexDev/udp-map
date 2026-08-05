@@ -1,6 +1,6 @@
-# Estado de Sprints — UDP Map v0.3.0
+# Estado de Sprints — UDP Map v0.6.0
 
-**Última actualización:** 2026-07-24
+**Última actualización:** 2026-08-05
 
 Este documento refleja el avance comprobable del repositorio. Se distingue entre:
 
@@ -18,8 +18,8 @@ Los problemas de seguridad y arquitectura de base de datos se registran, sin bor
 | Sprint 2 — Motor de pines | Completado | Pines, fotos, comentarios, votos, favoritos, expiración, ruteo y filtros |
 | Sprint 3 — Eventos y foro | Completado | Eventos, RSVP validado en DB, calendario, foro con respuestas anidadas, votos RPC y hilos oficiales |
 | Sprint 4 — Social, admin y notificaciones | Completado | Perfil, karma, insignias, orientación giroscópica, notificaciones Web Push, panel admin (`/admin`) y cola de moderación (`/moderacion`) |
-| Sprint 5 — Expansión y multicampus | En progreso | Perímetros GeoJSON multicampus y asignación automática por ubicación; resta clustering visual Waze |
-| Sprint 6 — IA y planos indoor | Planificado | Moderación IA y fuente productiva de planos por edificio/piso |
+| Sprint 5 — Expansión y multicampus | Completado | Perímetros GeoJSON multicampus y asignación automática por ubicación |
+| Sprint 6 — Mapeo interior y salas | Completado | Mapeo interior de edificios, plantas y salas, selector vertical de pisos, deducción UDP y editor administrativo (`/admin/mapeo`) |
 
 ---
 

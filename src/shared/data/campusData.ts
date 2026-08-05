@@ -1,5 +1,5 @@
 import type { Polygon } from 'geojson'
-import type { Campus, Category, Faculty, FloorPlan } from '@/shared/types/database'
+import type { Campus, Category, Faculty } from '@/shared/types/database'
 import { FACULTY_PERIMETERS } from './facultyPerimeters'
 
 // ⚠️ Coordenadas aproximadas de los campus/edificios UDP (Santiago).
@@ -136,6 +136,17 @@ export const EVENT_COLOR = '#6366f1'
 export const CATEGORIES: Category[] = [
   { id: 'entrada', kind: 'report', name: 'Entrada', name_en: 'Entrance', emoji: '🚪', color: '#D41F2D', svgPath: 'M13 4h3a2 2 0 0 1 2 2v14M2 20h3M13 20h9M10 12v.01M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z', ttl_hours: null },
 
+  // Infraestructura fija. Nacen con un mes de plazo —la ventana para que un
+  // moderador las verifique— y al verificarse dejan de expirar. `sala` es la
+  // sala como LUGAR, distinta de `sala-libre`, que es el aviso de que hay una
+  // libre ahora mismo.
+  { id: 'sala', kind: 'report', name: 'Sala', name_en: 'Room', emoji: '🚪', color: '#0EA5E9', svgPath: 'M19 19V5c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v14H3v2h18v-2h-2zm-4-6h-2v-2h2v2z', ttl_hours: 720 },
+  // Ascensor y rampa son además la base del ruteo accesible: sin ellas, "cómo
+  // llegar" en silla de ruedas solo sabe de veredas y deja a la persona en la
+  // puerta de la escalera.
+  { id: 'ascensor', kind: 'report', name: 'Ascensor', name_en: 'Elevator', emoji: '🛗', color: '#6366F1', svgPath: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v16h10V4H7zm5 2.5l3.5 4h-7l3.5-4zm0 11.5l-3.5-4h7l-3.5 4z', ttl_hours: 720 },
+  { id: 'rampa', kind: 'report', name: 'Rampa', name_en: 'Ramp', emoji: '♿', color: '#0D9488', svgPath: 'M9.08 5.88c.86-.08 1.53-.82 1.53-1.69C10.61 3.26 9.85 2.5 8.92 2.5s-1.69.76-1.69 1.69c0 .28.08.58.21.82l.6 8.49h6.22l2.55 5.97 3.35-1.31-.52-1.23-1.87.68-2.47-5.69-5.78.04-.08-1.08h4.18v-1.59h-4.34L9.08 5.88zM15.33 18.06c-1.05 2.07-3.24 3.44-5.59 3.44C6.31 21.5 3.5 18.69 3.5 15.25c0-2.42 1.46-4.66 3.65-5.65l.14 1.84c-1.29.81-2.09 2.28-2.09 3.82 0 2.5 2.04 4.53 4.53 4.53 2.28 0 4.23-1.75 4.5-4l1.1 2.27z', ttl_hours: 720 },
+
   // Estudio y Trabajo
   { id: 'sala-libre', kind: 'report', name: 'Sala Libre', name_en: 'Free Room', emoji: '🟩', color: '#10B981', svgPath: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z', ttl_hours: 6 },
   { id: 'estudio', kind: 'report', name: 'Estudio', name_en: 'Study', emoji: '🎓', color: '#3B82F6', svgPath: 'M12 3L1 9l11 6 9-4.91V17h2V9L12 3z', ttl_hours: 12 },
@@ -146,7 +157,7 @@ export const CATEGORIES: Category[] = [
 
   // Alimentación e Hidratación
   { id: 'comida', kind: 'report', name: 'Comida', name_en: 'Food', emoji: '🍕', color: '#F59E0B', svgPath: 'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z', ttl_hours: 12 },
-  { id: 'casino', kind: 'report', name: 'Casino', name_en: 'Cafeteria', emoji: '🏥', color: '#D41F2D', svgPath: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z', ttl_hours: 12 },
+  { id: 'casino', kind: 'report', name: 'Casino', name_en: 'Cafeteria', emoji: '🍽️', color: '#D41F2D', svgPath: 'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z', ttl_hours: 12 },
   { id: 'food-truck', kind: 'report', name: 'Food truck', name_en: 'Food truck', emoji: '🚚', color: '#f97316', svgPath: 'M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z', ttl_hours: 8 },
   { id: 'microondas', kind: 'report', name: 'Microondas', name_en: 'Microwave', emoji: '🍱', color: '#dc2626', svgPath: 'M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1 .9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zm-4-9h-2v2h2V9zm0 4h-2v2h2v-2zM6 8h8v8H6V8z', ttl_hours: 12 },
   { id: 'agua', kind: 'report', name: 'Agua', name_en: 'Water', emoji: '💧', color: '#0ea5e9', svgPath: 'M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8zM7.83 14c.37 0 .67.26.74.62.41 2.22 2.28 2.98 3.64 2.87.43-.02.79.32.79.75s-.35.79-.78.8c-2.02.05-4.64-1.25-5.17-4.11-.08-.42.23-.93.78-.93z', ttl_hours: 24 },
@@ -169,70 +180,14 @@ export const CATEGORIES: Category[] = [
   { id: 'fiesta', kind: 'event', name: 'Fiesta', name_en: 'Party', emoji: '🎉', color: '#d946ef', svgPath: 'M12 6c1.11 0 2-.9 2-2 0-.38-.1-.73-.29-1.03L12 0l-1.71 2.97c-.19.3-.29.65-.29 1.03 0 1.1.9 2 2 2zm4.6 9.99l-1.07-1.07-1.08 1.07c-1.3 1.3-3.58 1.31-4.89 0l-1.07-1.07-1.09 1.07C6.75 16.64 5.88 17 4.96 17c-.73 0-1.4-.23-1.96-.61V21c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-4.61c-.56.38-1.23.61-1.96.61-.92 0-1.79-.36-2.44-1.01zM18 9h-5V7h-2v2H6c-1.66 0-3 1.34-3 3v1.54c0 1.08.88 1.96 1.96 1.96.52 0 1.02-.2 1.38-.57l2.14-2.13 2.13 2.13c.74.74 2.03.74 2.77 0l2.14-2.13 2.13 2.13c.37.37.86.57 1.38.57 1.08 0 1.96-.88 1.96-1.96V12c.01-1.66-1.33-3-2.99-3z', ttl_hours: null },
   { id: 'deporte-evento', kind: 'event', name: 'Deportivo', name_en: 'Sports', emoji: '🏆', color: '#16a34a', svgPath: 'M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z', ttl_hours: null },
   { id: 'ayudantia', kind: 'event', name: 'Ayudantía', name_en: 'Tutoring', emoji: '🧑‍🏫', color: '#0ea5e9', svgPath: 'M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z', ttl_hours: null },
-  { id: 'feria', kind: 'event', name: 'Feria', name_en: 'Fair', emoji: '🎪', color: '#eab308', svgPath: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z', ttl_hours: null },
+  { id: 'feria', kind: 'event', name: 'Feria', name_en: 'Fair', emoji: '🎪', color: '#eab308', svgPath: 'M12 2 3 7v2h18V7l-9-5zm-7 9v9h4v-6h6v6h4v-9H5zm7 3h-2v3h2v-3z', ttl_hours: null },
 ]
 
 export function categoryById(id: string | null): Category | undefined {
   return CATEGORIES.find((c) => c.id === id)
 }
 
-// Plano indoor demo: Facultad de Ingeniería, pisos 1 y 2 (rectángulos aproximados).
-const room = (
-  name: string,
-  kind: 'room' | 'hall' | 'service',
-  [w, s, e, n]: [number, number, number, number],
-) => ({
-  type: 'Feature' as const,
-  properties: { name, kind },
-  geometry: {
-    type: 'Polygon' as const,
-    coordinates: [
-      [
-        [w, s],
-        [e, s],
-        [e, n],
-        [w, n],
-        [w, s],
-      ],
-    ],
-  },
-})
-
-export const DEMO_FLOOR_PLANS: FloorPlan[] = [
-  {
-    id: 'fp-ing-1',
-    place_pin_id: null,
-    faculty_id: 'ingenieria',
-    building: 'Edificio FIC',
-    floor: 1,
-    geojson: {
-      type: 'FeatureCollection',
-      features: [
-        room('Hall central', 'hall', [-70.65465, -33.45015, -70.65425, -33.44985]),
-        room('Sala 101', 'room', [-70.65425, -33.45015, -70.65405, -33.45000]),
-        room('Sala 102', 'room', [-70.65425, -33.45000, -70.65405, -33.44985]),
-        room('Baños', 'service', [-70.65465, -33.45020, -70.65445, -33.45015]),
-      ],
-    },
-    bounds: null,
-    image_overlay: null,
-  },
-  {
-    id: 'fp-ing-2',
-    place_pin_id: null,
-    faculty_id: 'ingenieria',
-    building: 'Edificio FIC',
-    floor: 2,
-    geojson: {
-      type: 'FeatureCollection',
-      features: [
-        room('Sala 201', 'room', [-70.65465, -33.45015, -70.65445, -33.45000]),
-        room('Sala 202', 'room', [-70.65445, -33.45015, -70.65425, -33.45000]),
-        room('Laboratorio de Computación', 'room', [-70.65425, -33.45015, -70.65405, -33.44985]),
-        room('Sala de estudio', 'hall', [-70.65465, -33.45000, -70.65425, -33.44985]),
-      ],
-    },
-    bounds: null,
-    image_overlay: null,
-  },
-]
+// El mapeo interior (edificios, plantas y áreas) vive en las tablas `buildings`,
+// `building_floors` y `areas`, y se traza desde /admin/mapeo. Aquí no queda nada
+// de eso: los planos demo que había eran rectángulos inventados a 694 m del
+// edificio real de Ingeniería, así que se dibujaban en otra manzana.

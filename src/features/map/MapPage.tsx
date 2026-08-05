@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown, Bell } from 'lucide-react'
+import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown, Bell, Building2 } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useNotifications } from '@/features/notifications/useNotifications'
@@ -14,15 +14,50 @@ import { TutorialModal } from './TutorialModal'
 import { ProfileSetupModal } from '@/features/auth/ProfileSetupModal'
 import { updatePinLocation } from '@/features/pins/api'
 import { useAuthStore } from '@/features/auth/authStore'
-import { CAMPUSES, FACULTIES, DEMO_FLOOR_PLANS } from '@/shared/data/campusData'
+import { CAMPUSES, FACULTIES } from '@/shared/data/campusData'
 import { formatDistance, type LatLng } from '@/shared/utils/geo'
 import { MapView, getMapCenter } from './MapView'
 import { FacultyDetail } from './FacultyDetail'
 import { FiltersPanel } from './FiltersPanel'
-import { IndoorPanel } from './IndoorPanel'
+import { FloorSelector } from './FloorSelector'
 import { getWalkingRoute, type WalkingRoute } from './routing'
 import { isLocationOutOfBounds } from './campusBoundary'
 import { isPinLocationOccupied } from '@/shared/utils/pinLocation'
+import type { Polygon } from 'geojson'
+import { polygonCentroid } from '@/shared/utils/geometry'
+import { AREA_STYLES } from '@/features/mapping/areaStyles'
+import { useMapping } from '@/features/mapping/useMapping'
+
+function SearchRow({
+  icon,
+  title,
+  subtitle,
+  onClick,
+}: {
+  icon: React.ReactNode
+  title: string
+  subtitle: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2.5 text-left transition-all hover:bg-neutral-100/60 active:scale-[0.98] dark:hover:bg-neutral-800/60"
+    >
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800">
+        {icon}
+      </div>
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate text-[12px] font-extrabold leading-snug text-neutral-800 dark:text-neutral-200">
+          {title}
+        </span>
+        <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500">
+          {subtitle}
+        </span>
+      </div>
+    </button>
+  )
+}
 
 function useUserLocation() {
   const [loc, setLoc] = useState<LatLng | null>(null)
@@ -177,6 +212,7 @@ export function MapPage() {
   const { t, i18n } = useTranslation()
   const guard = useGuard()
   const { pins, favoriteIds } = usePins()
+  const { mapping } = useMapping()
   const role = useAuthStore((s) => s.role)
   const pickingLocation = useUIStore((s) => s.pickingLocation)
   const cancelPickingLocation = useUIStore((s) => s.cancelPickingLocation)
@@ -189,8 +225,6 @@ export function MapPage() {
   const setRouteTarget = useUIStore((s) => s.setRouteTarget)
   const accessibleRoute = useUIStore((s) => s.accessibleRoute)
   const setAccessibleRoute = useUIStore((s) => s.setAccessibleRoute)
-  const indoorFacultyId = useUIStore((s) => s.indoorFacultyId)
-  const indoorFloor = useUIStore((s) => s.indoorFloor)
   const campusId = useUIStore((s) => s.campusId)
   const setCampusId = useUIStore((s) => s.setCampusId)
   const showToast = useUIStore((s) => s.showToast)
@@ -228,9 +262,6 @@ export function MapPage() {
 
   const selectedPin = pins.find((p) => p.id === selectedPinId) ?? null
   const routeTarget = pins.find((p) => p.id === routeTargetPinId) ?? null
-  const floorPlan =
-    DEMO_FLOOR_PLANS.find((fp) => fp.faculty_id === indoorFacultyId && fp.floor === indoorFloor) ??
-    null
 
   // Filter faculties for search dropdown
   const filteredFaculties = useMemo(() => {
@@ -238,15 +269,40 @@ export function MapPage() {
     const q = normalize(searchQuery.trim())
     const all = FACULTIES
     if (!q) return all
-    
+
     return all.filter((f) => {
       const name = i18n.language === 'en' ? f.name_en : f.name
       const campus = CAMPUSES.find((c) => c.id === f.campus_id)
       const campusName = campus ? campus.name : ''
-      
+
       return normalize(name).includes(q) || normalize(campusName).includes(q)
     })
   }, [searchQuery, i18n.language])
+
+  /**
+   * Edificios y \u00e1reas que coinciden con la b\u00fasqueda.
+   *
+   * Los alias importan tanto como el nombre oficial: nadie busca "Edificio de
+   * Astronom\u00eda", buscan "KAEA". Se limita a ocho para que el desplegable no
+   * tape el mapa entero.
+   */
+  const searchResults = useMemo(() => {
+    const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    const q = normalize(searchQuery.trim())
+    if (q.length < 2) return { buildings: [], areas: [] }
+
+    const buildings = mapping.buildings
+      .filter((b) =>
+        [b.name, b.short_name ?? '', ...b.aliases].some((label) => normalize(label).includes(q)),
+      )
+      .slice(0, 5)
+
+    const areas = mapping.areas
+      .filter((a) => normalize(a.name).includes(q) || normalize(a.custom_kind ?? '').includes(q))
+      .slice(0, 8)
+
+    return { buildings, areas }
+  }, [searchQuery, mapping])
 
   // Close search dropdown when clicking outside
   useEffect(() => {
@@ -302,6 +358,24 @@ export function MapPage() {
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [pins, selectedPinId, selectPin])
+
+  /**
+   * Vuela al centro de un edificio o un área encontrada en la búsqueda.
+   *
+   * Se entra con zoom 19: por debajo del umbral indoor el mapa no reconocería
+   * que está dentro del edificio y el resultado sería aterrizar encima sin ver
+   * nada. Si el área tiene planta, se activa esa.
+   */
+  const handleSelectMapped = (polygon: Polygon, facultyId: string, floor?: number | null) => {
+    const [lng, lat] = polygonCentroid(polygon)
+    setCampusId(FACULTIES.find((f) => f.id === facultyId)?.campus_id ?? campusId)
+    if (floor !== undefined && floor !== null) {
+      useUIStore.getState().setActiveMappingFaculty(facultyId, floor)
+    }
+    window.dispatchEvent(new CustomEvent('faculty-flyto', { detail: { lat, lng, zoom: 19 } }))
+    setSearchQuery('')
+    setSearchOpen(false)
+  }
 
   const handleSelectFaculty = (faculty: typeof FACULTIES[0]) => {
     setCampusId(faculty.campus_id)
@@ -402,7 +476,13 @@ export function MapPage() {
     const center = getMapCenter()
     if (!center) return
 
-    if (isPinLocationOccupied(pins, center.lat, center.lng, movingPinId)) {
+    // Al mover, se compara contra la planta que el pin ya tiene; al crear,
+    // contra la planta que se está mirando en el mapa.
+    const floor = movingPinId
+      ? (pins.find((p) => p.id === movingPinId)?.floor ?? null)
+      : useUIStore.getState().activeFloor
+
+    if (isPinLocationOccupied(pins, center.lat, center.lng, floor, movingPinId)) {
       showToast(t('pin.locationOccupied'))
       return
     }
@@ -422,11 +502,10 @@ export function MapPage() {
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <MapView 
-        pins={pins} 
-        route={route} 
-        floorPlan={floorPlan} 
-        userLocation={userLocation} 
+      <MapView
+        pins={pins}
+        route={route}
+        userLocation={userLocation}
         userHeading={userHeading}
         isTrackingLocation={isTracking}
         onRequestLocation={requestLocation}
@@ -495,6 +574,53 @@ export function MapPage() {
                           </button>
                         )
                       })}
+
+                      {/* Edificios y áreas del mapeo interior. Van debajo de las
+                          facultades porque son más específicos: quien escribe
+                          "ingeniería" quiere la facultad, no una de sus salas. */}
+                      {(searchResults.buildings.length > 0 || searchResults.areas.length > 0) && (
+                        <div className="mt-1 border-t border-neutral-200/60 pt-1 dark:border-neutral-700/60">
+                          {searchResults.buildings.map((b) => (
+                            <SearchRow
+                              key={b.id}
+                              icon={<Building2 size={14} className="text-neutral-500" strokeWidth={2.5} />}
+                              title={b.name}
+                              subtitle={b.aliases[0] ?? 'Edificio'}
+                              onClick={() => handleSelectMapped(b.footprint, b.faculty_id)}
+                            />
+                          ))}
+                          {searchResults.areas.map((a) => (
+                            <SearchRow
+                              key={a.id}
+                              icon={<MapPin size={14} className="text-neutral-500" strokeWidth={2.5} />}
+                              title={a.name}
+                              subtitle={a.custom_kind ?? AREA_STYLES[a.kind].label}
+                              onClick={() => handleSelectMapped(a.polygon, a.faculty_id, a.floor)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : searchResults.buildings.length > 0 || searchResults.areas.length > 0 ? (
+                    <div className="max-h-72 overflow-y-auto p-2">
+                      {searchResults.buildings.map((b) => (
+                        <SearchRow
+                          key={b.id}
+                          icon={<Building2 size={14} className="text-neutral-500" strokeWidth={2.5} />}
+                          title={b.name}
+                          subtitle={b.aliases[0] ?? 'Edificio'}
+                          onClick={() => handleSelectMapped(b.footprint, b.faculty_id)}
+                        />
+                      ))}
+                      {searchResults.areas.map((a) => (
+                        <SearchRow
+                          key={a.id}
+                          icon={<MapPin size={14} className="text-neutral-500" strokeWidth={2.5} />}
+                          title={a.name}
+                          subtitle={a.custom_kind ?? AREA_STYLES[a.kind].label}
+                          onClick={() => handleSelectMapped(a.polygon, a.faculty_id, a.floor)}
+                        />
+                      ))}
                     </div>
                   ) : (
                     <p className="text-sm text-neutral-400 text-center py-6">
@@ -540,10 +666,8 @@ export function MapPage() {
         </div>
       )}
 
-      {/* Indoor Panel — hide during pin placement */}
-      {!pickingLocation && !movingPinId && (
-        <IndoorPanel />
-      )}
+      {/* Selector de plantas: aparece al entrar en una facultad mapeada. */}
+      {!pickingLocation && !movingPinId && !selectedPin && <FloorSelector />}
 
       {/* ── PLACEMENT MODE ──────────────────────────────── */}
       {(pickingLocation || movingPinId) && (

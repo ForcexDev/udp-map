@@ -6,6 +6,7 @@ import { isInBounds } from '@/shared/utils/geo'
 import { expiresAtFromTtl } from '@/shared/utils/expiry'
 import { categoryById } from '@/shared/data/campusData'
 import { facultyIdAt } from '@/shared/data/facultyPerimeters'
+import { indoorLocationAt } from '@/features/mapping/mappingCache'
 import type { PinFilters } from '@/shared/stores/filterStore'
 import { compressImage, photoStoragePath } from './photos'
 import { demoDb, demoAddPhotos, demoRemovePhotos, demoVerifyPin, demoUnverifyPin, demoExtendPinTTL, demoPinCreationEvents, demoSchedules, demoReplaceSchedule } from './demoStore'
@@ -29,6 +30,9 @@ interface CreatePinInput {
   officialEntityName?: string | null
   startsAt?: string | null
   endsAt?: string | null
+  /** La planta la elige quien publica; edificio y área se deducen del punto. */
+  floor?: number | null
+  roomCode?: string | null
 }
 
 const nowIso = () => new Date().toISOString()
@@ -163,6 +167,11 @@ export async function createPin(
   // Cluster automático por perímetro: si el usuario no eligió facultad y el
   // pin cae dentro de un perímetro trazado (hoy solo Ingeniería), se asigna solo.
   const facultyId = input.facultyId !== undefined ? input.facultyId : facultyIdAt(input.lat, input.lng)
+  // Edificio y área salen del punto; la planta viene del formulario. Sin la
+  // planta no se puede resolver el área: desde arriba, el piso 1 y el 3 ocupan
+  // el mismo sitio y cualquiera de los dos "contendría" el punto.
+  const floor = input.floor ?? null
+  const indoor = indoorLocationAt(input.lat, input.lng, floor)
 
   if (!supabase) {
     const role = useAuthStore.getState().role
@@ -170,7 +179,7 @@ export async function createPin(
     if (hasDailyLimit && hasReachedDailyPinLimit(demoPinCreationEvents, input.userId)) {
       throw new Error('DAILY_PIN_LIMIT_REACHED')
     }
-    if (isPinLocationOccupied(demoDb.pins, input.lat, input.lng)) {
+    if (isPinLocationOccupied(demoDb.pins, input.lat, input.lng, floor)) {
       throw new Error('PIN_LOCATION_OCCUPIED')
     }
 
@@ -183,7 +192,10 @@ export async function createPin(
       faculty_id: facultyId,
       lat: input.lat,
       lng: input.lng,
-      floor: null,
+      floor,
+      building_id: indoor.buildingId,
+      area_id: indoor.areaId,
+      room_code: input.roomCode ?? null,
       building: null,
       creator_id: input.userId,
       votes_up: 0,
@@ -219,6 +231,10 @@ export async function createPin(
       p_expires_at: expires_at,
       p_starts_at: input.startsAt ?? null,
       p_ends_at: input.endsAt ?? null,
+      p_floor: floor,
+      p_building_id: indoor.buildingId,
+      p_area_id: indoor.areaId,
+      p_room_code: input.roomCode ?? null,
     })
     .select()
     .single()
@@ -353,6 +369,19 @@ export async function updatePin(
       }
       
       if (input.type !== undefined) pin.type = input.type
+      // La planta y el código los elige el autor, verificado el pin o no:
+      // corregir en qué piso está una sala es justo la edición que hace falta.
+      if (input.floor !== undefined && input.floor !== pin.floor) {
+        // Mismo criterio que el trigger de la base: la cerradura de ubicación
+        // única incluye la planta, así que cambiar de piso puede chocar.
+        if (isPinLocationOccupied(demoDb.pins, pin.lat, pin.lng, input.floor, pin.id)) {
+          throw new Error('PIN_LOCATION_OCCUPIED')
+        }
+        // El área colgaba de la planta vieja; en la nueva ya no vale.
+        pin.area_id = null
+        pin.floor = input.floor
+      }
+      if (input.roomCode !== undefined) pin.room_code = input.roomCode
       if (input.isOfficial !== undefined) pin.is_official = input.isOfficial
       if (input.officialEntityName !== undefined) pin.official_entity_name = input.officialEntityName
       if (input.startsAt !== undefined) pin.starts_at = input.startsAt
@@ -367,7 +396,12 @@ export async function updatePin(
     return
   }
 
-  // 1. Actualizar datos base
+  // 1. Actualizar datos base.
+  //
+  // `floor` y `room_code` van aquí y no por una RPC porque el autor los puede
+  // escribir directamente: protect_pin_sensitive_fields protege building_id y
+  // area_id —que se deducen del punto— pero deja estos dos, que son decisiones
+  // de quien publica. Del area_id al cambiar de planta se encarga el trigger.
   const { error } = await supabase
     .from('pins')
     .update({
@@ -378,6 +412,8 @@ export async function updatePin(
       type: input.type,
       starts_at: input.startsAt,
       ends_at: input.endsAt,
+      ...(input.floor !== undefined ? { floor: input.floor } : {}),
+      ...(input.roomCode !== undefined ? { room_code: input.roomCode } : {}),
       ...(input.type === 'event' && input.endsAt !== undefined ? { expires_at: input.endsAt } : {}),
       ...(input.isOfficial !== undefined ? { is_official: input.isOfficial } : {}),
       ...(input.officialEntityName !== undefined ? { official_entity_name: input.officialEntityName } : {})
@@ -516,23 +552,40 @@ export async function extendPinTTL(pinId: string, hours: number = 24): Promise<v
 
 export async function updatePinLocation(pinId: string, lat: number, lng: number): Promise<void> {
   const facultyId = facultyIdAt(lat, lng)
+
   if (!supabase) {
     const pin = demoDb.pins.find((p) => p.id === pinId)
     if (pin) {
       const isModerator = can(useAuthStore.getState().role, 'pin.moderate')
       if (pin.is_permanent && !isModerator) return // Protected fields
-      if (isPinLocationOccupied(demoDb.pins, lat, lng, pinId)) {
+      if (isPinLocationOccupied(demoDb.pins, lat, lng, pin.floor, pinId)) {
         throw new Error('PIN_LOCATION_OCCUPIED')
       }
+      const indoor = indoorLocationAt(lat, lng, pin.floor)
       pin.lat = lat
       pin.lng = lng
       pin.faculty_id = facultyId
+      pin.building_id = indoor.buildingId
+      pin.area_id = indoor.areaId
     }
     return
   }
+
+  // El edificio y el área se recalculan con la planta que el pin ya tiene: al
+  // moverlo no cambia de piso, cambia de sitio dentro del mismo. Si se pasara
+  // null, un pin del tercero perdería su área al arrastrarlo un metro.
+  const { data: current } = await supabase.from('pins').select('floor').eq('id', pinId).single()
+  const indoor = indoorLocationAt(lat, lng, (current?.floor as number | null) ?? null)
+
   const { error } = await supabase
     .from('pins')
-    .update({ lat, lng, faculty_id: facultyId })
+    .update({
+      lat,
+      lng,
+      faculty_id: facultyId,
+      building_id: indoor.buildingId,
+      area_id: indoor.areaId,
+    })
     .eq('id', pinId)
   if (error) throw new Error(error.message)
 }

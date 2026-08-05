@@ -3,8 +3,7 @@ import { Locate, LocateFixed } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Pin } from '@/shared/types/database'
-import type { FloorPlan } from '@/shared/types/database'
-import { useUIStore } from '@/shared/stores/uiStore'
+import { useUIStore, type PlaceFocus } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { CAMPUSES, FACULTIES, categoryById, EVENT_COLOR, PLACE_COLOR } from '@/shared/data/campusData'
 import { expiryState, FADE_WINDOW_MS } from '@/shared/utils/expiry'
@@ -12,14 +11,26 @@ import { eventPhase } from '@/shared/utils/eventState'
 import { useNowTick } from '@/shared/lib/useNowTick'
 import { publishBounds } from '@/features/pins/usePins'
 import { MAP_STYLE_LIGHT, MAP_STYLE_DARK, DEFAULT_ZOOM } from './mapConfig'
-import { addFacultyLayers } from './facultyLayers'
+import { addFacultyLayers, PERIMETER_FILL_LAYER } from './facultyLayers'
+import {
+  addMappingLayers,
+  updateMappingData,
+  AREA_FILL_LAYER,
+  BUILDING_FILL_LAYER,
+  INDOOR_MIN_ZOOM,
+  INDOOR_EXIT_ZOOM,
+  INDOOR_EXIT_MARGIN_M,
+} from './mappingLayers'
+import { facultyLevels, useMapping } from '@/features/mapping/useMapping'
+import { closestPointOnPolygon } from '@/shared/utils/geometry'
+import { GROUND_LEVEL, pinVisibleOnFloor } from '@/shared/utils/floorVisibility'
+import { FACULTY_PERIMETERS, facultyIdAt } from '@/shared/data/facultyPerimeters'
 import { addBoundaryMask, BOUNDARY_MAX_BOUNDS, BOUNDARY_MIN_ZOOM, isLocationOutOfBounds } from './campusBoundary'
 import type { WalkingRoute } from './routing'
 
 interface MapViewProps {
   pins: Pin[]
   route: WalkingRoute | null
-  floorPlan: FloorPlan | null
   userLocation?: { lat: number; lng: number } | null
   userHeading?: number | null
   isTrackingLocation?: boolean
@@ -87,7 +98,7 @@ export function getMapCenter(): { lat: number; lng: number } | null {
   return { lat: c.lat, lng: c.lng }
 }
 
-export function MapView({ pins, route, floorPlan, userLocation, userHeading, isTrackingLocation, onRequestLocation }: MapViewProps) {
+export function MapView({ pins, route, userLocation, userHeading, isTrackingLocation, onRequestLocation }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
@@ -103,6 +114,26 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
 
   const [bearing, setBearing] = useState(0)
   const [pitch, setPitch] = useState(0)
+
+  // Cuántas veces terminó de cargarse un estilo. 0 = todavía ninguno.
+  //
+  // Sustituye al patrón `if (map.isStyleLoaded()) apply(); else map.once(
+  // 'style.load', apply)`, que perdía datos de forma intermitente y era la
+  // razón de que el mapeo interior "a veces ni apareciera":
+  // `isStyleLoaded()` devuelve false mientras QUEDE alguna tesela por cargar,
+  // no solo antes del primer 'style.load'. Si los edificios llegaban de la base
+  // en ese hueco —lo normal— se registraba un `once('style.load')` para un
+  // evento que ya había ocurrido y que no volvería a ocurrir: el `setData` no
+  // se llamaba nunca y el interior se quedaba vacío hasta que otra cosa
+  // (entrar en un edificio, cambiar de planta) volvía a disparar el efecto.
+  //
+  // Como contador y no como booleano, porque `setStyle` —el cambio a modo
+  // oscuro— vuelve a emitir 'style.load' y hay que repintarlo todo otra vez.
+  const [styleEpoch, setStyleEpoch] = useState(0)
+
+  const { mapping } = useMapping()
+  const activeFacultyId = useUIStore((s) => s.activeFacultyId)
+  const activeFloor = useUIStore((s) => s.activeFloor)
 
   // Un evento que empieza a las 14:00 debe ponerse en vivo a las 14:00, no la
   // próxima vez que el usuario mueva el mapa.
@@ -191,8 +222,10 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
     map.on('pitch', updateOrientation)
 
     map.on('style.load', () => {
+      const isDark = useUIStore.getState().theme === 'dark'
       addFacultyLayers(map)
-      addBoundaryMask(map, useUIStore.getState().theme === 'dark')
+      addMappingLayers(map, isDark)
+      addBoundaryMask(map, isDark)
 
       // Apply initial 2D/3D visibility
       setBuildingsVisible(map, useUIStore.getState().viewMode === '3d')
@@ -204,38 +237,10 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
           marker.addTo(map)
         }
       }
-    })
 
-    // Eventos de interacción con el perímetro (registrados una sola vez)
-    map.on('click', 'faculty-perimeter-fill', (e) => {
-      if (!e.features || e.features.length === 0) return
-
-      const clickedFacultyIds = e.features.map(f => f.properties?.faculty_id).filter(Boolean)
-      if (clickedFacultyIds.length === 0) return
-
-      if (clickedFacultyIds.length === 1) {
-        useUIStore.getState().selectFaculty(clickedFacultyIds[0])
-        return
-      }
-
-      // Desempate por distancia al marcador oficial si hay polígonos solapados
-      const clickLat = e.lngLat.lat
-      const clickLng = e.lngLat.lng
-      let bestMatch = clickedFacultyIds[0]
-      let minDistance = Infinity
-
-      for (const id of clickedFacultyIds) {
-        const faculty = FACULTIES.find(f => f.id === id)
-        if (faculty) {
-          const d = Math.hypot(faculty.lat - clickLat, faculty.lng - clickLng)
-          if (d < minDistance) {
-            minDistance = d
-            bestMatch = id
-          }
-        }
-      }
-
-      useUIStore.getState().selectFaculty(bestMatch)
+      // Despierta a los efectos que pintan sobre el estilo (mapeo interior y
+      // ruta). Va al final: para entonces sus capas ya existen.
+      setStyleEpoch((n) => n + 1)
     })
 
     map.on('mouseenter', 'faculty-perimeter-fill', () => {
@@ -246,26 +251,22 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
       map.getCanvas().style.cursor = ''
     })
 
-    // Map click: deselect pin (only when NOT picking location)
-    map.on('click', (e) => {
-      // Ignorar si hicimos clic en el polígono de una facultad
-      try {
-        const features = map.queryRenderedFeatures(e.point, { layers: ['faculty-perimeter-fill'] })
-        if (features.length > 0) return
-      } catch {
-        // La capa podría no existir mientras carga el estilo
-      }
-
-      const ui = useUIStore.getState()
-      if (!ui.pickingLocation) {
-        ui.selectPin(null)
-      }
-    })
+    // El clic en el mapa lo resuelve un único manejador más abajo, con la
+    // prioridad área > edificio > facultad. Antes había aquí un `click` sobre
+    // la capa del perímetro y otro genérico, los dos corrían con el mismo
+    // toque, y por eso al abrir el feed de la facultad aparecía además la
+    // ficha del edificio por detrás.
 
     // Faculty search flyTo handler
     const onFacultyFlyTo = (e: Event) => {
-      const { lat, lng } = (e as CustomEvent).detail
-      map.flyTo({ center: [lng, lat], zoom: 17, duration: 1200 })
+      const { lat, lng, zoom } = (e as CustomEvent).detail as {
+        lat: number
+        lng: number
+        zoom?: number
+      }
+      // Un área o un edificio piden más zoom que una facultad: aterrizar a 17
+      // sobre una sala deja al usuario mirando el bloque entero.
+      map.flyTo({ center: [lng, lat], zoom: zoom ?? 17, duration: 1200 })
     }
     window.addEventListener('faculty-flyto', onFacultyFlyTo)
 
@@ -389,6 +390,18 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
 
     for (const pin of pins) {
       if (expiryState(pin.expires_at, pin.is_permanent).status === 'expired') continue
+      // Con una planta activa solo se ven los de esa planta, en TODA la
+      // facultad: el piso 2 del Vergara y el del Ejército a la vez. Sin este
+      // recorte, una facultad con cuarenta salas mapeadas enseña cuarenta
+      // marcadores encimados. La regla completa está en `floorVisibility.ts`.
+      if (!pinVisibleOnFloor(pin, activeFacultyId, activeFloor)) {
+        const stale = markers.get(pin.id)
+        if (stale) {
+          stale.remove()
+          markers.delete(pin.id)
+        }
+        continue
+      }
 
       let marker = markers.get(pin.id)
       if (!marker) {
@@ -410,15 +423,34 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
         marker.addTo(map)
       }
 
-      // Render SVG icon inside the marker
-      el.innerHTML = markerSvgContent(pin)
+      // El contenido solo se rehace cuando cambia algo que se ve.
+      //
+      // Este efecto corre con cada `pins` nuevo, y `pins` cambia de identidad en
+      // cuanto React Query revalida. Rehacer el innerHTML de 30 marcadores en
+      // cada vuelta destruye y recrea el SVG: el icono desaparece un frame y
+      // vuelve, que es exactamente el parpadeo que se veía al panear. Mismo
+      // criterio que el efecto del reloj de más abajo, que por eso solo toca
+      // clases y variables CSS.
+      const renderKey = `${pin.category_id ?? ''}|${pin.type}|${pin.floor ?? ''}`
+      if (el.dataset.render !== renderKey) {
+        el.dataset.render = renderKey
+        el.innerHTML = markerSvgContent(pin)
+        // Insignia de planta: sin ella, dos pines de pisos distintos en la misma
+        // vertical son indistinguibles cuando se ven todas las plantas a la vez.
+        if (pin.floor !== null) {
+          const badge = document.createElement('span')
+          badge.className = 'pin-marker__floor'
+          badge.textContent = pin.floor < 0 ? `S${Math.abs(pin.floor)}` : String(pin.floor)
+          el.appendChild(badge)
+        }
+      }
       el.style.setProperty('--pin-color', markerColor(pin))
       el.setAttribute('aria-label', pin.title)
       el.title = pin.title
       el.classList.toggle('pin-marker--selected', pin.id === selectedPinId)
       marker.setLngLat([pin.lng, pin.lat])
     }
-  }, [pins, selectedPinId])
+  }, [pins, selectedPinId, activeFacultyId, activeFloor])
 
   // ── Estado temporal del marcador (en vivo / por vencer) ──
   //
@@ -609,7 +641,7 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
   // ── Capa de ruta ("cómo llegar") ──
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map || styleEpoch === 0) return
     const apply = () => {
       if (map.getLayer('route-line')) map.removeLayer('route-line')
       if (map.getSource('route')) map.removeSource('route')
@@ -643,48 +675,179 @@ export function MapView({ pins, route, floorPlan, userLocation, userHeading, isT
         },
       })
     }
-    if (map.isStyleLoaded()) apply()
-    else map.once('style.load', apply)
-  }, [route, mapStyleUrl])
+    apply()
+  }, [route, styleEpoch])
 
-  // ── Capa indoor (plano del piso activo) ──
+  // ── Mapeo interior: edificios y áreas de la planta activa ──
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || styleEpoch === 0) return
+    addMappingLayers(map, theme === 'dark')
+    updateMappingData(
+      map,
+      mapping.buildings,
+      mapping.floors,
+      mapping.areas,
+      activeFacultyId,
+      activeFloor,
+    )
+  }, [mapping, activeFacultyId, activeFloor, styleEpoch, theme])
+
+  // ── Entrar y salir de una FACULTAD según el zoom y el centro ──
+  //
+  // El selector de plantas no se pide: aparece al acercarte a una facultad con
+  // interior mapeado y se va al alejarte. Es el comportamiento de Apple y
+  // Google Maps, y evita un control que estorbe el 95% del tiempo.
+  //
+  // El contexto es la facultad, no el edificio. Atado al edificio, cruzar la
+  // calle de uno a otro cambiaba de piso solo —del 3 del Vergara al 1 del
+  // Ejército sin que nadie lo pidiera— y el resto de la facultad seguía
+  // enseñando todos sus pisos a la vez. Con el perímetro, el piso 2 es el piso 2
+  // de los cuatro edificios y no cambia hasta que te vas de la facultad.
+  //
+  // Con histéresis, y no por gusto. Con un único umbral —zoom ≥ 17.5 y centro
+  // dentro— un gesto de zoom que se queda rondando ese valor, o un paneo pegado
+  // al borde, entraba y salía varias veces por segundo. Cada vuelta cambiaba
+  // `activeFloor`, y con ello se borraban y recreaban los marcadores de las
+  // otras plantas: el mapa parpadeaba en una zona concreta. Ahora se entra a
+  // 17.5 y solo se sale por debajo de 17.2, y hay que estar a más de 5 m del
+  // perímetro. Dentro de esa banda el estado no cambia.
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const apply = () => {
-      for (const layerId of ['indoor-fill', 'indoor-outline']) {
-        if (map.getLayer(layerId)) map.removeLayer(layerId)
+
+    const sync = () => {
+      const ui = useUIStore.getState()
+      // Durante la colocación de un pin no se cambia de contexto solo: el mapa
+      // se está moviendo a propósito y cambiar de planta debajo desconcierta.
+      if (ui.pickingLocation || ui.movingPinId) return
+
+      const inside = ui.activeFacultyId !== null
+      const zoom = map.getZoom()
+      if (zoom < (inside ? INDOOR_EXIT_ZOOM : INDOOR_MIN_ZOOM)) {
+        if (inside) ui.setActiveMappingFaculty(null)
+        return
       }
-      if (map.getSource('indoor')) map.removeSource('indoor')
-      if (!floorPlan) return
-      map.addSource('indoor', { type: 'geojson', data: floorPlan.geojson })
-      map.addLayer({
-        id: 'indoor-fill',
-        type: 'fill',
-        source: 'indoor',
-        paint: {
-          'fill-color': [
-            'match',
-            ['get', 'kind'],
-            'hall',
-            '#fde68a',
-            'service',
-            '#a5f3fc',
-            '#fca5a5',
-          ],
-          'fill-opacity': 0.55,
-        },
-      })
-      map.addLayer({
-        id: 'indoor-outline',
-        type: 'line',
-        source: 'indoor',
-        paint: { 'line-color': '#78350f', 'line-width': 1.5 },
-      })
+
+      const centre = map.getCenter()
+      const facultyId = facultyIdAt(centre.lat, centre.lng)
+
+      if (!facultyId) {
+        if (!inside) return
+        // Salir pide margen: el perímetro corre pegado a las fachadas, y ahí un
+        // temblor de un metro bastaba para expulsarte.
+        const current = FACULTY_PERIMETERS[ui.activeFacultyId as string]
+        const edge = current ? closestPointOnPolygon(current, [centre.lng, centre.lat]) : null
+        if (edge && edge.distanceM <= INDOOR_EXIT_MARGIN_M) return
+        ui.setActiveMappingFaculty(null)
+        return
+      }
+      if (facultyId === ui.activeFacultyId) return
+
+      // Una facultad sin interior mapeado no tiene plantas que ofrecer.
+      const levels = facultyLevels(mapping, facultyId)
+      if (levels.length === 0) {
+        if (inside) ui.setActiveMappingFaculty(null)
+        return
+      }
+      // Se entra a ras de suelo, que es donde está quien llega.
+      const preferred = levels.some((l) => l.level === GROUND_LEVEL)
+        ? GROUND_LEVEL
+        : levels[levels.length - 1].level
+      ui.setActiveMappingFaculty(facultyId, preferred)
     }
-    if (map.isStyleLoaded()) apply()
-    else map.once('style.load', apply)
-  }, [floorPlan, mapStyleUrl])
+
+    // Solo `moveend`: un gesto de zoom dispara también `zoomend`, y con los dos
+    // registrados el mismo cálculo corría por duplicado en cada acercamiento.
+    map.on('moveend', sync)
+    sync()
+    return () => {
+      map.off('moveend', sync)
+    }
+  }, [mapping])
+
+  // ── Clic en el mapa: un solo panel, con prioridad ──
+  //
+  // área > edificio > perímetro de facultad > deseleccionar. Los pines ganan a
+  // todo porque son marcadores del DOM y paran la propagación.
+  //
+  // La prioridad tiene que resolverse en UN manejador. Con dos —uno atado a la
+  // capa del perímetro y otro a las del mapeo— los dos corrían con el mismo
+  // toque y se abrían el feed de la facultad y la ficha del edificio a la vez,
+  // una encima de la otra.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    const onClick = (e: maplibregl.MapMouseEvent) => {
+      const ui = useUIStore.getState()
+      if (ui.pickingLocation || ui.movingPinId) return
+
+      let hits: maplibregl.MapGeoJSONFeature[] = []
+      try {
+        const layers = [AREA_FILL_LAYER, BUILDING_FILL_LAYER, PERIMETER_FILL_LAYER].filter((id) =>
+          map.getLayer(id),
+        )
+        if (layers.length > 0) hits = map.queryRenderedFeatures(e.point, { layers })
+      } catch {
+        // La capa podría no existir mientras carga el estilo.
+        return
+      }
+
+      // Área y edificio ya NO abren ficha propia. Cada uno tenía la suya
+      // ("Edificio Ejército 441 · Nada publicado aquí todavía") y eso repartía
+      // los posts de la facultad en cuatro tarjetas casi siempre vacías, cuando
+      // el contenido es de la facultad entera. Ahora los tres caminos —área,
+      // edificio y perímetro— abren la MISMA ficha, y lo que se tocó solo
+      // preselecciona el filtro de lugar dentro de ella.
+      const area = hits.find((f) => f.layer.id === AREA_FILL_LAYER)
+      const building = hits.find((f) => f.layer.id === BUILDING_FILL_LAYER)
+
+      let facultyId: string | null = null
+      let focus: PlaceFocus | null = null
+
+      if (area) {
+        focus = { kind: 'area', id: String(area.properties?.id) }
+        facultyId = String(area.properties?.facultyId ?? '') || null
+      } else if (building) {
+        focus = { kind: 'building', id: String(building.properties?.id) }
+        facultyId = String(building.properties?.facultyId ?? '') || null
+      }
+
+      if (!facultyId) {
+        const facultyIds = hits
+          .filter((f) => f.layer.id === PERIMETER_FILL_LAYER)
+          .map((f) => f.properties?.faculty_id as string | undefined)
+          .filter((id): id is string => Boolean(id))
+
+        // Desempate por distancia al marcador oficial si hay perímetros solapados.
+        let minDistance = Infinity
+        for (const id of facultyIds) {
+          const faculty = FACULTIES.find((f) => f.id === id)
+          if (!faculty) continue
+          const d = Math.hypot(faculty.lat - e.lngLat.lat, faculty.lng - e.lngLat.lng)
+          if (d < minDistance) {
+            minDistance = d
+            facultyId = id
+          }
+        }
+        if (facultyId === null && facultyIds.length > 0) facultyId = facultyIds[0]
+      }
+
+      if (facultyId) {
+        ui.setPlaceFocus(focus)
+        ui.selectFaculty(facultyId)
+        return
+      }
+
+      ui.selectPin(null)
+    }
+
+    map.on('click', onClick)
+    return () => {
+      map.off('click', onClick)
+    }
+  }, [])
 
   const isDefaultOrientation = Math.abs(bearing) < 0.1 && Math.abs(pitch) < 0.1
 

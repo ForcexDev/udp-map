@@ -14,6 +14,7 @@ import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import type { Pin, PinType } from '@/shared/types/database'
 import { createPin, updatePin, fetchPinSchedule } from './api'
 import { EventScheduleEditor } from './EventScheduleEditor'
+import { IndoorFields } from './IndoorFields'
 import { draftsFromRows, rowsFromItems, validateRows, type ScheduleRow } from './eventScheduleRows'
 import { CustomDateTimePicker } from '@/shared/ui/CustomDateTimePicker'
 import { validatePhoto, MAX_PHOTOS_PER_PIN } from './photos'
@@ -26,6 +27,10 @@ const pinSchema = z.object({
   description: z.string().trim().max(500).optional().or(z.literal('')),
   categoryId: z.string().nullable(),
   facultyId: z.string().nullable(),
+  // La planta la elige la persona: no se puede deducir del punto, porque desde
+  // arriba el piso 1 y el 3 son el mismo sitio.
+  floor: z.number().nullable().optional(),
+  roomCode: z.string().max(40).optional(),
   isOfficial: z.boolean().optional(),
   startsAt: z.string().optional().or(z.literal('')),
   endsAt: z.string().optional().or(z.literal('')),
@@ -144,6 +149,8 @@ export function CreatePinModal() {
         form.setValue('isOfficial', editingPin.is_official)
         form.setValue('startsAt', editingPin.starts_at ? toLocalDatetimeString(editingPin.starts_at) : '')
         form.setValue('endsAt', editingPin.ends_at ? toLocalDatetimeString(editingPin.ends_at) : '')
+        form.setValue('floor', editingPin.floor)
+        form.setValue('roomCode', editingPin.room_code ?? '')
       } else {
         const initialType = draftPinType === 'event' ? 'event' : 'report'
         form.setValue('type', initialType)
@@ -152,6 +159,10 @@ export function CreatePinModal() {
         form.setValue('isOfficial', false)
         form.setValue('startsAt', '')
         form.setValue('endsAt', '')
+        // Sin esto, la planta y el código del pin anterior quedaban pegados en
+        // el formulario: `form.reset()` solo corre tras un guardado con éxito.
+        form.setValue('floor', null)
+        form.setValue('roomCode', '')
         if (initialType === 'event') {
           form.setValue('categoryId', eventCategories[0]?.id ?? null)
         } else {
@@ -234,6 +245,8 @@ export function CreatePinModal() {
             officialEntityName,
             startsAt: startsAtIso,
             endsAt: endsAtIso,
+            floor: values.floor ?? null,
+            roomCode: values.roomCode?.trim() || null,
             userId: user?.id,
           },
           {
@@ -263,6 +276,8 @@ export function CreatePinModal() {
           officialEntityName,
           startsAt: startsAtIso,
           endsAt: endsAtIso,
+          floor: values.floor ?? null,
+          roomCode: values.roomCode?.trim() || null,
         },
         photos,
         scheduleDrafts,
@@ -334,6 +349,12 @@ export function CreatePinModal() {
     setScheduleError(null)
     create.mutate(values)
   })
+
+  // El punto sobre el que se resuelven edificio, área y planta: el que se está
+  // eligiendo al crear, o el que el pin ya tiene al editar.
+  const indoorPoint = editingPin
+    ? { lat: editingPin.lat, lng: editingPin.lng }
+    : draftLocation
 
   const availableTypes: ('report' | 'place' | 'event')[] = ['report', 'event']
   if (canCreatePlace) {
@@ -432,13 +453,14 @@ export function CreatePinModal() {
             {/* Description */}
             <div className="space-y-2">
               <label className="text-[11px] font-black text-neutral-400 uppercase tracking-wider">{t('pin.description')}</label>
-              {/* El campo admite 500 caracteres; con dos filas no se veía ni la
-                  primera frase completa al editar. */}
+              {/* Tres filas: con dos no se leía ni la primera frase al editar, y
+                  con seis el campo se comía media pantalla para un texto que
+                  casi siempre son dos líneas. Sigue estirable a mano. */}
               <textarea
-                rows={6}
+                rows={3}
                 {...form.register('description')}
                 placeholder={t('pin.descriptionPlaceholder', '¿Qué está pasando? (opcional)')}
-                className="w-full min-h-[132px] bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl px-4 py-3 text-sm font-medium leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 outline-none focus:border-[#D41F2D] focus:bg-white dark:focus:bg-neutral-900 transition-all resize-y shadow-sm"
+                className="w-full min-h-[84px] bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl px-4 py-3 text-sm font-medium leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 outline-none focus:border-[#D41F2D] focus:bg-white dark:focus:bg-neutral-900 transition-all resize-y shadow-sm"
               />
             </div>
 
@@ -709,6 +731,25 @@ export function CreatePinModal() {
                 eventStartsAt={form.watch('startsAt') ?? ''}
                 eventEndsAt={form.watch('endsAt') ?? ''}
                 error={scheduleError}
+              />
+            )}
+
+            {/* Planta y código de sala.
+                También al EDITAR: corregir en qué piso está una sala es la
+                edición más probable de todas, y hasta ahora este bloque solo se
+                montaba al crear, así que no había forma de arreglarlo. La base
+                lo permite —`floor` y `room_code` no están entre los campos que
+                protege protect_pin_sensitive_fields—, faltaba el formulario. */}
+            {indoorPoint && (
+              <IndoorFields
+                lat={indoorPoint.lat}
+                lng={indoorPoint.lng}
+                floor={form.watch('floor') ?? null}
+                roomCode={form.watch('roomCode') ?? ''}
+                isRoom={form.watch('categoryId') === 'sala'}
+                autoSelectFloor={!editingPin}
+                onFloorChange={(value) => form.setValue('floor', value)}
+                onRoomCodeChange={(value) => form.setValue('roomCode', value)}
               />
             )}
 
