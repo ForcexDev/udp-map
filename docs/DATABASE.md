@@ -23,9 +23,18 @@ dashboard y solo existen en la base.
 
 La regla que evita que esto se vuelva a desordenar:
 
-> Cada cambio en la base es **una migración nueva** en `supabase/migrations/`
-> **y** la actualización de `baseline.sql`, en el mismo cambio. Si los dos se
-> separan, el baseline miente y volvemos al punto de partida.
+> Cada cambio en la base son **tres** cosas en el mismo commit: la **migración
+> nueva** en `supabase/migrations/`, la actualización de **`baseline.sql`** y la
+> de **este documento**. Si se separan, el baseline miente y la documentación
+> deja de explicar por qué el esquema es como es.
+
+La tercera se añadió después de comprobar que era la que siempre se caía: el
+mapeo interior entero —`buildings`, `building_floors`, `areas`— se implementó
+sin tocar este archivo, y reconstruir después el porqué de cada decisión costó
+más que haberlo escrito en su momento. Hay un hook en
+`.claude/hooks/check-database-docs.mjs` que avisa cuando se toca el esquema y
+este documento sigue igual, y la regla está en `CLAUDE.md` para cualquier agente
+de IA que trabaje en el repositorio.
 
 Y una consecuencia de que `seed.sql` sea generado: para tocar una categoría, un
 campus o una carrera se edita `campusData.ts` y se regenera. Editar `seed.sql`
@@ -162,7 +171,7 @@ cambiar, así que un error ahí sería solo ruido.
 
 ## 4. Las tablas
 
-23 en total, todas con RLS activo.
+29 en total, todas con RLS activo.
 
 ### Catálogo — se lee sin sesión, se escribe desde el seed
 
@@ -184,6 +193,33 @@ que las columnas `lat`/`lng` de al lado, que es una fuente clásica de errores.
 `admin_emails` solo la puede leer un admin, y hay que insertar el correo
 **antes** de que la persona se registre: el rol se asigna en el alta, no después.
 
+### Mapeo interior — se dibuja desde `/admin/mapeo`
+
+| Tabla | Qué guarda | Quién escribe |
+|---|---|---|
+| `buildings` | La huella de un edificio en GeoJSON, su altura y su planta por defecto | moderador / admin |
+| `building_floors` | Qué plantas tiene cada edificio, con etiqueta opcional | moderador / admin |
+| `areas` | Salas, halls, patios y demás recintos de una planta | moderador / admin |
+
+A diferencia del catálogo, esto **no** sale del seed: se traza a mano con el
+editor de mapeo y vive solo en la base.
+
+Tres reglas del modelo que conviene tener presentes:
+
+- **El nivel 0 no existe.** La planta baja es el `1` y el primer subterráneo el
+  `-1`, y hay un `check (level <> 0)` que lo impone. Un edificio con "planta 0"
+  y "planta 1" sería ambiguo en cuanto alguien lo tradujera.
+- **La planta es un contexto de facultad, no de edificio.** El selector del mapa
+  ofrece la unión de las plantas de todos los edificios de la facultad, no las
+  de uno solo. La regla completa vive en `src/shared/utils/floorVisibility.ts`.
+- **Un área siempre cuelga de una planta concreta**, salvo las exteriores
+  (`building_id` nulo), que son suelo y se ven desde todas.
+
+`floor_plans` guarda planos de interior como imagen georreferenciada
+(`image_overlay` y `bounds`). Las columnas existen desde el principio pero
+todavía no las usa nadie: están previstas para poder calcar áreas sobre el plano
+de una planta.
+
 ### Identidad
 
 **`profiles`** es el espejo de `auth.users` con los datos de la aplicación. La
@@ -200,7 +236,8 @@ nombre del autor de un pin o de un hilo.
 | Tabla | Notas |
 |---|---|
 | `pins` | Ver la sección 3 |
-| `pin_photos` | Fotos de un pin. `ON DELETE CASCADE` desde `pins` |
+| `pin_photos` | Fotos de un pin. `ON DELETE CASCADE` desde `pins`. Máximo 5, impuesto por trigger |
+| `place_photos` | Galería de una facultad o de un edificio. Máximo 10. Ver abajo |
 | `pin_comments` | Comentarios, entre 1 y 400 caracteres |
 | `pin_schedule_items` | Programa opcional de un evento: bloques horarios. Sin política de `update`, la interfaz reemplaza el set completo |
 | `pin_votes` | Un voto por persona y pin, `+1` o `-1` |
@@ -215,6 +252,27 @@ desincronicen depende de un mecanismo concreto: **solo las RPC `vote_pin` y
 `vote_thread` pueden escribirlos.** Antes de tocarlos ponen una marca de sesión
 (`udpmap.vote_rpc`) que el trigger `protect_vote_counters` exige ver. Cualquier
 otro intento de cambiarlos lanza una excepción.
+
+### Galerías de lugares
+
+**`place_photos`** es la galería que se ve al abrir la ficha de una facultad o al
+acotarla por un edificio. Antes una facultad tenía UNA foto (`faculties.image`) y
+un edificio ninguna.
+
+Lo que hay que saber de su forma: tiene **dos claves foráneas anulables**,
+`faculty_id` y `building_id`, con un `check (num_nonnulls(...) = 1)` que obliga a
+que vaya exactamente una. La alternativa habitual —un par `(entity_type,
+entity_id)`— es la que **no** se usó: un `text` que apunta a dos tablas no puede
+tener clave foránea, así que ni la base garantizaría que la entidad existe ni el
+borrado arrastraría sus fotos. Con dos FK reales, borrar un edificio desde el
+editor se lleva sus fotos por cascada.
+
+`sort_order` 0 es la **portada**: la que sale en la cabecera de la ficha sin
+abrir el carrusel. No hay un campo "es portada" aparte, a propósito — conviviendo
+con un orden manual daría dos verdades sobre lo mismo.
+
+Lectura pública, escritura solo admin. `faculties.image` se conserva como
+respaldo para una facultad que todavía no tenga galería.
 
 ### Foro
 
@@ -325,6 +383,14 @@ próximos 20 días, se crea el recordatorio en el acto.
 
 **Al denunciar contenido:** se notifica a **todos** los administradores.
 
+**Al subir una foto:** `enforce_pin_photo_limit` y `enforce_place_photo_limit`
+comprueban el tope (5 por pin, 10 por galería). Los dos son triggers `AFTER` y
+no `BEFORE`, y no es un descuido: dentro de un `INSERT` de varias filas, un
+`BEFORE` no ve las filas que la propia sentencia acaba de insertar y contaría de
+menos. En `AFTER` la cuenta es exacta, y la excepción revierte la sentencia
+entera igual. Los dos toman un `pg_advisory_xact_lock` para que dos subidas
+simultáneas no se pasen del tope entre las dos.
+
 Las insignias **nunca se retiran**. Todas las funciones `check_*_badge`
 insertan y ninguna borra, deliberadamente: bajar de 5 pines no te quita
 Explorador.
@@ -335,9 +401,9 @@ Explorador.
 
 Un solo bucket, `pin-photos`, público.
 
-La ruta no es libre: **`pins/{user_id}/{uuid}.jpg`**. Las políticas leen el
-segundo segmento para saber de quién es el archivo, así que cambiar el formato
-de la ruta rompe los permisos.
+La ruta no es libre. Las políticas restringen dónde y quién puede subir:
+- **`pins/{user_id}/{uuid}.jpg`**: fotos de pines. El bucket lee el segundo segmento para saber de quién es el archivo.
+- **`places/{kind}/{id}/{uuid}.jpg`**: galerías de lugares (`faculty` o `building`). Solo para administradores.
 
 | Operación | Quién |
 |---|---|
@@ -360,11 +426,11 @@ facturable. De ahí el rodeo:
 
 ```
 se borra una fila de pin_photos  (por su autor, por el panel de admin,
-        │                         al resolver una denuncia, o en cascada
-        │                         cuando el cron expira el pin)
+o de place_photos                       al resolver una denuncia, o en cascada
+        │                         cuando el cron expira el pin o entidad)
         ▼
-trigger on_pin_photo_deleted → encola la ruta en storage_cleanup_queue
-        │
+trigger on_pin_photo_deleted / on_place_photo_deleted
+        │ → encola la ruta en storage_cleanup_queue
         ▼
 cron cada 10 min → Edge Function storage-gc → borra de verdad
 ```
@@ -526,7 +592,8 @@ Y después, a mano, porque nada de esto se puede exportar:
 2. Ejecutarla en el SQL Editor. En este proyecto las migraciones se aplican a
    mano: no hay `db push` en CI ni en los scripts de npm.
 3. **Actualizar `baseline.sql` con el mismo cambio.**
-4. Si toca el catálogo, editar `campusData.ts` y regenerar el seed.
+4. **Actualizar este documento**: qué tabla o función cambió y por qué.
+5. Si toca el catálogo, editar `campusData.ts` y regenerar el seed.
 
 ### Cosas que no conviene hacer a mano
 

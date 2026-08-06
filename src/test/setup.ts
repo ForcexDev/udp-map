@@ -14,3 +14,14 @@ if (!window.matchMedia) {
       dispatchEvent: () => false,
     }) as MediaQueryList
 }
+
+// jsdom tampoco implementa ResizeObserver (lo usa MapView para avisarle al
+// mapa que su contenedor cambió de tamaño). No hay layout que observar en los
+// tests, así que basta con un doble que no haga nada.
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver
+}

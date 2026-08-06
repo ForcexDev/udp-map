@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import * as RadixDialog from '@radix-ui/react-dialog'
-import { Camera, MapPin, Sparkles, X, Trash2, ArrowRight, Loader2, BadgeCheck, DoorOpen } from 'lucide-react'
+import { Camera, MapPin, Sparkles, X, Trash2, ArrowRight, Loader2, BadgeCheck } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
@@ -648,9 +648,7 @@ export function CreatePinModal() {
                               }`}
                               style={field.value === c.id ? { backgroundColor: c.color } : {}}
                             >
-                              {c.id === 'entrada' ? (
-                                <DoorOpen size={22} strokeWidth={2.2} />
-                              ) : c.svgPath ? (
+                              {c.svgPath ? (
                                 <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                                   <path d={c.svgPath} />
                                 </svg>

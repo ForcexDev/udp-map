@@ -32,18 +32,33 @@ const ENGINEERING_PERIMETER: Polygon = {
   ],
 }
 
-const BIBLIOTECA_HISTORIA_PERIMETER: Polygon = {
+const BIBLIOTECA_PERIMETER: Polygon = {
   type: 'Polygon',
   coordinates: [
     [
-      [-70.6608448, -33.4510802],
-      [-70.6617545, -33.4511979],
-      [-70.6616931, -33.4514856],
-      [-70.6611896, -33.4514354],
-      [-70.661207, -33.45133],
-      [-70.6608077, -33.4512771],
-      [-70.6608439, -33.4510801],
-      [-70.6608448, -33.4510802],
+      [-70.6617524, -33.4511991],
+      [-70.6617027, -33.4514876],
+      [-70.6614392, -33.4514596],
+      [-70.6611724, -33.4514263],
+      [-70.6611883, -33.4513286],
+      [-70.6608072, -33.4512795],
+      [-70.6608272, -33.4511741],
+      [-70.6612107, -33.451225],
+      [-70.6612256, -33.4511297],
+      [-70.6617524, -33.4511991],
+    ],
+  ],
+}
+
+const CIENCIAS_SOCIALES_PERIMETER: Polygon = {
+  type: 'Polygon',
+  coordinates: [
+    [
+      [-70.6612107, -33.451225],
+      [-70.6608272, -33.4511741],
+      [-70.6608437, -33.4510797],
+      [-70.6612256, -33.4511297],
+      [-70.6612107, -33.451225],
     ],
   ],
 }
@@ -262,8 +277,8 @@ const ARQUITECTURA_PERIMETER: Polygon = {
 /** faculty_id → perímetro real. Agregar aquí las demás facultades cuando se tracen. */
 export const FACULTY_PERIMETERS: Record<string, Polygon> = {
   ingenieria: ENGINEERING_PERIMETER,
-  biblioteca: BIBLIOTECA_HISTORIA_PERIMETER,
-  'ciencias-sociales': BIBLIOTECA_HISTORIA_PERIMETER,
+  biblioteca: BIBLIOTECA_PERIMETER,
+  'ciencias-sociales': CIENCIAS_SOCIALES_PERIMETER,
   psicologia: PSICOLOGIA_PERIMETER,
   comunicacion: COMUNICACION_PERIMETER,
   aulario: AULARIO_PERIMETER,
@@ -305,7 +320,7 @@ export function facultyIdAt(lat: number, lng: number): string | null {
   if (matches.length === 0) return null
   if (matches.length === 1) return matches[0]
 
-  // Si cae en una zona donde varios polígonos se solapan (Biblioteca/Sociales),
+  // Si cae en una zona donde varios polígonos se solapan accidentalmente,
   // buscamos la facultad que tenga su chincheta oficial más cerca de ese punto.
   let bestMatch = matches[0]
   let minDistance = Infinity

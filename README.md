@@ -151,6 +151,8 @@ npm run lint
 
 Revisa la guía [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) para conocer el flujo de trabajo, estándares de código, seguridad en migraciones SQL y cómo enviar Pull Requests.
 
+La documentación viva son tres archivos: [docs/ROADMAP.md](docs/ROADMAP.md) (qué está hecho y qué falta), [docs/DATABASE.md](docs/DATABASE.md) (el esquema y por qué es así) y el propio CONTRIBUTING. Si trabajas con un agente de IA, las reglas del repositorio están en [CLAUDE.md](CLAUDE.md).
+
 ---
 
 ## 📄 Licencia

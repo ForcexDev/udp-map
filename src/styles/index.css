@@ -537,6 +537,58 @@ body {
   display: none;
 }
 
+/* ── Fila horizontal con barra fina, solo en escritorio ──────────────────────
+   Con el dedo una fila se desplaza sola y la barra sobra. Con un ratón no:
+   la rueda vertical no mueve en horizontal y, sin barra, no queda ninguna
+   forma de llegar al final. Así que en el teléfono se oculta y en escritorio
+   se enseña, fina y discreta. */
+.row-scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.row-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .row-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(212 212 212) transparent;
+  }
+
+  .row-scroll::-webkit-scrollbar {
+    display: block;
+    height: 6px;
+  }
+
+  .row-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .row-scroll::-webkit-scrollbar-thumb {
+    background: rgb(212 212 212);
+    border-radius: 9999px;
+  }
+
+  .row-scroll:hover::-webkit-scrollbar-thumb {
+    background: rgb(163 163 163);
+  }
+}
+
+.dark .row-scroll {
+  scrollbar-color: rgb(82 82 82) transparent;
+}
+
+.dark .row-scroll::-webkit-scrollbar-thumb {
+  background: rgb(82 82 82);
+}
+
+.dark .row-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgb(115 115 115);
+}
+
 /* ── Bottom Nav (premium) ───────────────────────────────── */
 .bottom-nav-link {
   position: relative;

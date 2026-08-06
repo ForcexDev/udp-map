@@ -1,5 +1,13 @@
 ### Novedades en esta versión (v0.6.0)
 
+- Ficha de facultad reorganizada en secciones: reportes, eventos y lugares
+- Los lugares vuelven a aparecer en las publicaciones de una facultad
+- Galería de fotos por facultad y por edificio, con carrusel
+- Orden de los reportes por más recientes o más confirmados
+- El piso elegido en la ficha y en el mapa es ahora el mismo
+- Selector de piso disponible al publicar desde el patio de una facultad
+- La categoría de evento "Deportivo" pasa a llamarse "Competencia"
+- Corregidos los pines que aparecían desplazados al abrir el mapa
 - Sistema de mapeo interior de edificios, plantas y salas
 - Selector vertical de pisos para navegación en edificios
 - Identificación automática de salas UDP (ej. E441.1.S101)

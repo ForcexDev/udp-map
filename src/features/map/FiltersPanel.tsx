@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SlidersHorizontal, Star, X, DoorOpen } from 'lucide-react'
+import { SlidersHorizontal, Star, X } from 'lucide-react'
 import { useFilterStore } from '@/shared/stores/filterStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { CATEGORIES, FACULTIES } from '@/shared/data/campusData'
@@ -114,9 +114,7 @@ export function FiltersPanel() {
                   }`}
                 style={categoryId === c.id ? { background: c.color } : {}}
               >
-                {c.id === 'entrada' ? (
-                  <DoorOpen size={14} strokeWidth={2.2} />
-                ) : c.svgPath ? (
+                {c.svgPath ? (
                   <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
                     <path d={c.svgPath} />
                   </svg>

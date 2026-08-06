@@ -8,22 +8,27 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
 
 // ---------------------------------------------------------------------------
-// Version: 0.SPRINT+COMMITS  (e.g. 0.5+170)
-// Sprint is read from SPRINTS_STATUS.md, commit count from git history.
-// Falls back to package.json version if git is unavailable (e.g. zip exports).
+// Versión: MAJOR.MINOR+COMMITS (p. ej. 0.6+180), de package.json más el número
+// de commits.
+//
+// Antes el número del medio salía de buscar en SPRINTS_STATUS.md el sprint
+// marcado "En progreso". Eso ataba el build a un documento de seguimiento, y
+// para cuando se retiró ese documento ya llevaba tiempo sin funcionar: ningún
+// sprint estaba marcado en progreso, la expresión regular no casaba y todos los
+// builds salían como "0.0+N".
+//
+// Si git no está disponible (una exportación en zip), se cae a la versión de
+// package.json a secas.
 // ---------------------------------------------------------------------------
 function computeAppVersion(): string {
+  const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'))
+  const [major, minor] = (pkg.version as string).split('.')
   try {
-    const sprintsStatus = readFileSync(path.resolve(__dirname, 'docs/SPRINTS_STATUS.md'), 'utf8')
-    const sprintMatch = sprintsStatus.match(/\|\s*Sprint (\d+).*?\|\s*En progreso\s*\|/)
-    const sprint = sprintMatch ? sprintMatch[1] : '0'
     const commits = execSync('git rev-list --count HEAD', { stdio: ['pipe', 'pipe', 'ignore'] })
       .toString()
       .trim()
-    return `0.${sprint}+${commits}`
+    return `${major}.${minor}+${commits}`
   } catch {
-    // Fallback to package.json version if git is unavailable
-    const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'))
     return pkg.version as string
   }
 }

@@ -1,10 +1,12 @@
 # Contribuir a UDP Map v0.6.0
 
-**Última actualización:** 2026-07-24
+**Última actualización:** 2026-08-05
 
 ¡Gracias por tu interés en contribuir a UDP Map! 🎉 Estamos construyendo el mapa vivo, calendario de eventos, foro estudiantil, sistema de notificaciones y panel de administración de la comunidad UDP.
 
-Este documento refleja la arquitectura y estándares actuales de la versión 0.3.0. Los Sprints 1, 2, 3 y 4 están completados y operativos en el repositorio. Para consultar el estado de cada componente, revisa [PLAN.md](PLAN.md), [SPRINTS_STATUS.md](SPRINTS_STATUS.md) y [securityDB.md](securityDB.md).
+Este documento refleja la arquitectura y los estándares de la versión 0.6.0. Para el estado de cada cosa —lo hecho y lo que falta— mira [ROADMAP.md](ROADMAP.md); para la base de datos, [DATABASE.md](DATABASE.md).
+
+Si trabajas con un agente de IA, las reglas del repositorio están en [CLAUDE.md](../CLAUDE.md), y las lee cualquier herramienta a través de `AGENTS.md`, `.cursorrules` o `.github/copilot-instructions.md`.
 
 ---
 
@@ -41,16 +43,19 @@ src/
 └── styles/               → Estilos globales en Tailwind CSS (index.css)
 
 supabase/
-├── migrations/           → Esquema SQL, RLS, triggers, RPCs y parches de seguridad
+├── schema/baseline.sql   → La fuente de verdad del esquema.
+├── migrations/           → Cambios nuevos, uno por archivo. Se aplican a mano.
 ├── seed/                 → Datos iniciales (campus, facultades, categorías)
 └── functions/            → Edge Functions desplegables (`expire-pins` y `send-push`)
 
 docs/
-├── PLAN.md               → Documento maestro y roadmap vivo.
-├── SPRINTS_STATUS.md     → Estado comprobable por sprint.
-├── securityDB.md         → Registro histórico de seguridad y base de datos.
+├── ROADMAP.md            → El plan vivo: qué está hecho y qué falta.
+├── DATABASE.md           → El esquema y por qué es así.
+├── CONTRIBUTING.md       → Este documento.
 ├── NOTIFICATIONS_AND_MODERATION.md → Etapas y Definition of Done de notificaciones y moderación.
-└── CHANGELOG.md          → Novedades mostradas por el pop-up de actualización PWA.
+├── PWA_UPDATE.md         → Cómo la app detecta y aplica una versión nueva.
+├── CHANGELOG.md          → Novedades mostradas por el pop-up de actualización PWA.
+└── _archive/             → Informes congelados. No se actualizan.
 ```
 
 **Regla de oro de arquitectura:** Una feature no debe importar detalles internos de otra feature. Para compartir lógica, expón funciones públicas en su `index.ts` o trasládala a `shared/`.
@@ -99,12 +104,13 @@ VITE_VAPID_PUBLIC_KEY=tu-vapid-public-key
 ## 🔒 Migraciones y seguridad de base de datos
 
 - No edites una migración que ya haya sido aplicada en un entorno compartido; crea una migración posterior.
-- Distingue siempre entre "archivo preparado" y "migración desplegada". Actualiza `SPRINTS_STATUS.md` cuando cambie ese estado.
+- Distingue siempre entre "archivo preparado" y "migración desplegada". Actualiza `ROADMAP.md` cuando cambie ese estado.
 - Toda función `SECURITY DEFINER` debe fijar un `search_path` seguro, validar identidad/rol internamente, revocar `EXECUTE` a `PUBLIC` y concederlo solo a los roles necesarios.
 - RLS controla filas, no columnas. Protege campos administrados por el servidor mediante privilegios de columnas, triggers o RPCs.
 - Las operaciones que actualizan contadores o karma deben tener una sola vía transaccional.
 - Nunca agregues una policy permisiva sin revisar cómo se combina con las demás; las policies permisivas se evalúan con `OR`.
-- Registra nuevos hallazgos y su cierre en `securityDB.md` sin borrar el historial. No marques un pendiente como resuelto sin verificarlo contra el catálogo real (`pg_proc`, `pg_policy`) — no basta con que otra herramienta o persona lo diga.
+- **Todo cambio en la base son tres cosas en el mismo commit:** la migración, `supabase/schema/baseline.sql` y `docs/DATABASE.md`. Hay un hook que avisa si falta la tercera.
+- Registra nuevos hallazgos y su cierre en la sección "Observaciones abiertas" de `DATABASE.md`, sin borrar el historial. No marques un pendiente como resuelto sin verificarlo contra el catálogo real (`pg_proc`, `pg_policy`) — no basta con que otra herramienta o persona lo diga.
 
 ---
 
@@ -156,5 +162,5 @@ Aún no hay una suite E2E ni pruebas de integración contra Supabase; si tu camb
 3. Haz tus cambios, respetando la estructura de carpetas y guías de estilo.
 4. Verifica todo localmente ejecutando `npm run lint`, `npm run typecheck`, `npm run test` y `npm run build`. Si algo falla, la PR será rechazada automáticamente.
 5. Abre el PR con un título claro. Si resuelve un Issue, menciónalo (`Closes #12`).
-6. Actualiza `SPRINTS_STATUS.md`, `PLAN.md`, `CHANGELOG.md` o `securityDB.md` cuando el cambio altere su estado real.
+6. Actualiza `ROADMAP.md`, `DATABASE.md` o `CHANGELOG.md` cuando el cambio altere su estado real.
 7. Espera la revisión de otro desarrollador para hacer merge.

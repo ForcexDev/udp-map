@@ -54,18 +54,18 @@ export const FACULTIES: Faculty[] = [
   f('psicologia', 'Facultad de Psicología', 'Faculty of Psychology', 'ejercito', -33.45066, -70.66232, 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=200&h=200&fit=crop&q=60'),
   f('salud', 'Facultad de Salud y Odontología', 'Faculty of Health and Dentistry', 'ejercito', -33.4502132338048, -70.6603284462864, 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=200&h=200&fit=crop&q=60'),
   f('derecho', 'Facultad de Derecho', 'Faculty of Law', 'republica', -33.4502188787352, -70.6681844018121, 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=200&h=200&fit=crop&q=60'),
-  f('postgrado-derecho', 'Facultad de Postgrado Derecho UDP', 'Postgraduate Law Faculty', 'republica', -33.4500562754381, -70.6677788388334),
+  f('postgrado-derecho', 'Facultad de Postgrado Derecho UDP', 'Postgraduate Law Faculty', 'republica', -33.4500562754381, -70.6677788388334, 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=200&h=200&fit=crop&q=60'),
   f('arquitectura', 'Facultad de Arquitectura, Arte y Diseño', 'Faculty of Architecture, Art and Design', 'republica', -33.4494756997435, -70.6669349979822, 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=200&h=200&fit=crop&q=60'),
   f('comunicacion', 'Facultad de Comunicación y Letras', 'Faculty of Communication and Letters', 'ejercito', -33.4501, -70.66166, 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=200&h=200&fit=crop&q=60'),
-  f('ciencias-sociales', 'Facultad de Ciencias Sociales e Historia', 'Faculty of Social Sciences and History', 'ejercito', -33.4511241180899, -70.6608646153093),
-  f('educacion', 'Facultad de Educación', 'Faculty of Education', 'ejercito', -33.44991, -70.66186),
+  f('ciencias-sociales', 'Facultad de Ciencias Sociales e Historia', 'Faculty of Social Sciences and History', 'ejercito', -33.4511241180899, -70.6608646153093, 'https://images.unsplash.com/photo-1531548731165-c6ae86ff6491?w=200&h=200&fit=crop&q=60'),
+  f('educacion', 'Facultad de Educación', 'Faculty of Education', 'ejercito', -33.44991, -70.66186, 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=200&h=200&fit=crop&q=60'),
   f('biblioteca', 'Biblioteca Nicanor Parra', 'Nicanor Parra Library', 'ejercito', -33.4512852716982, -70.6617168264727, 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=200&h=200&fit=crop&q=60'),
   f('economia', 'Facultad de Economía y Empresa', 'Faculty of Economics and Business', 'huechuraba', -33.39337, -70.61283, 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=200&h=200&fit=crop&q=60'),
-  f('aulario', 'Aulario UDP', 'UDP Classrooms', 'ejercito', -33.451, -70.66037),
-  f('filosofia', 'Instituto de Filosofía', 'Institute of Philosophy', 'ejercito', -33.45009, -70.6606),
-  f('deportes', 'UDP Centro de Deportes', 'UDP Sports Center', 'ejercito', -33.4513333530393, -70.6595911336277),
-  f('dti', 'UDP Oficina DTI', 'UDP IT Office (DTI)', 'ejercito', -33.4509322062588, -70.6597607833481),
-  f('comercio', 'Facultad de Comercio', 'Faculty of Commerce', 'ejercito', -33.4508949239208, -70.6606009331726),
+  f('aulario', 'Aulario UDP', 'UDP Classrooms', 'ejercito', -33.451, -70.66037, 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=200&h=200&fit=crop&q=60'),
+  f('filosofia', 'Instituto de Filosofía', 'Institute of Philosophy', 'ejercito', -33.45009, -70.6606, 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=200&h=200&fit=crop&q=60'),
+  f('deportes', 'UDP Centro de Deportes', 'UDP Sports Center', 'ejercito', -33.4513333530393, -70.6595911336277, 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=200&h=200&fit=crop&q=60'),
+  f('dti', 'UDP Oficina DTI', 'UDP IT Office (DTI)', 'ejercito', -33.4509322062588, -70.6597607833481, 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=200&h=200&fit=crop&q=60'),
+  f('comercio', 'Facultad de Comercio', 'Faculty of Commerce', 'ejercito', -33.4508949239208, -70.6606009331726, 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&h=200&fit=crop&q=60'),
 ]
 
 export const CAREERS: { faculty_id: string; name: string; name_en: string }[] = [
@@ -134,7 +134,7 @@ export const EVENT_COLOR = '#6366f1'
 
 // TTL por categoría (horas) según el plan: efímero por defecto.
 export const CATEGORIES: Category[] = [
-  { id: 'entrada', kind: 'report', name: 'Entrada', name_en: 'Entrance', emoji: '🚪', color: '#D41F2D', svgPath: 'M13 4h3a2 2 0 0 1 2 2v14M2 20h3M13 20h9M10 12v.01M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z', ttl_hours: null },
+  { id: 'entrada', kind: 'report', name: 'Entrada', name_en: 'Entrance', emoji: '🚪', color: '#D41F2D', svgPath: 'M19 3h-4v2h4v14h-4v2h4c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM10.08 15.58 11.5 17l5-5-5-5-1.42 1.41L12.67 11H3v2h9.67l-2.59 2.58z', ttl_hours: null },
 
   // Infraestructura fija. Nacen con un mes de plazo —la ventana para que un
   // moderador las verifique— y al verificarse dejan de expirar. `sala` es la
@@ -178,7 +178,7 @@ export const CATEGORIES: Category[] = [
   // Categorías de eventos (Sprint 3, ya en la taxonomía)
   { id: 'charla', kind: 'event', name: 'Charla', name_en: 'Talk', emoji: '🎤', color: '#6366f1', svgPath: 'M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z', ttl_hours: null },
   { id: 'fiesta', kind: 'event', name: 'Fiesta', name_en: 'Party', emoji: '🎉', color: '#d946ef', svgPath: 'M12 6c1.11 0 2-.9 2-2 0-.38-.1-.73-.29-1.03L12 0l-1.71 2.97c-.19.3-.29.65-.29 1.03 0 1.1.9 2 2 2zm4.6 9.99l-1.07-1.07-1.08 1.07c-1.3 1.3-3.58 1.31-4.89 0l-1.07-1.07-1.09 1.07C6.75 16.64 5.88 17 4.96 17c-.73 0-1.4-.23-1.96-.61V21c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-4.61c-.56.38-1.23.61-1.96.61-.92 0-1.79-.36-2.44-1.01zM18 9h-5V7h-2v2H6c-1.66 0-3 1.34-3 3v1.54c0 1.08.88 1.96 1.96 1.96.52 0 1.02-.2 1.38-.57l2.14-2.13 2.13 2.13c.74.74 2.03.74 2.77 0l2.14-2.13 2.13 2.13c.37.37.86.57 1.38.57 1.08 0 1.96-.88 1.96-1.96V12c.01-1.66-1.33-3-2.99-3z', ttl_hours: null },
-  { id: 'deporte-evento', kind: 'event', name: 'Deportivo', name_en: 'Sports', emoji: '🏆', color: '#16a34a', svgPath: 'M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z', ttl_hours: null },
+  { id: 'deporte-evento', kind: 'event', name: 'Competencia', name_en: 'Competition', emoji: '🏆', color: '#16a34a', svgPath: 'M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z', ttl_hours: null },
   { id: 'ayudantia', kind: 'event', name: 'Ayudantía', name_en: 'Tutoring', emoji: '🧑‍🏫', color: '#0ea5e9', svgPath: 'M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z', ttl_hours: null },
   { id: 'feria', kind: 'event', name: 'Feria', name_en: 'Fair', emoji: '🎪', color: '#eab308', svgPath: 'M12 2 3 7v2h18V7l-9-5zm-7 9v9h4v-6h6v6h4v-9H5zm7 3h-2v3h2v-3z', ttl_hours: null },
 ]

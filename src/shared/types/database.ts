@@ -101,6 +101,22 @@ export interface PinPhoto {
   created_at: string
 }
 
+/**
+ * Una foto de la galería de una facultad o de un edificio. Exactamente uno de
+ * los dos ids va relleno; lo garantiza un CHECK en la base, no este tipo.
+ * `sort_order` 0 es la PORTADA.
+ */
+export interface PlacePhoto {
+  id: string
+  faculty_id: string | null
+  building_id: string | null
+  url: string
+  width: number | null
+  height: number | null
+  sort_order: number
+  created_at: string
+}
+
 export interface PinComment {
   id: string
   pin_id: string
@@ -134,7 +150,7 @@ export interface Favorite {
 // ── Mapeo interior ──────────────────────────────────────────────────────────
 // Facultad → Edificio → Planta → Área. La tabla `floor_plans` sigue existiendo
 // en la base, reservada para un plano de piso como imagen superpuesta
-// (docs/PLAN_PISOS_Y_ONBOARDING.md §13); no se declara su tipo mientras nada la
+// (docs/ROADMAP.md §13); no se declara su tipo mientras nada la
 // consuma.
 
 export type AreaKind =

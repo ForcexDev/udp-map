@@ -10,8 +10,6 @@ import {
   X,
   Pencil,
   Move,
-  ChevronLeft,
-  ChevronRight,
   Share2,
   Calendar,
   BadgeCheck,
@@ -38,6 +36,7 @@ import { isEventLive } from '@/shared/utils/eventState'
 import { useNowTick } from '@/shared/lib/useNowTick'
 import { usePinActions } from './usePinActions'
 import { DraggableBottomSheet } from '@/shared/ui/DraggableBottomSheet'
+import { PhotoCarousel } from '@/shared/ui/PhotoCarousel'
 import { BOUNDARY_RECT } from '@/features/map/campusBoundary'
 import { ReportContentDialog, type ReportTarget } from '@/features/moderation/ReportContentDialog'
 
@@ -88,9 +87,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const openCreateModal = useUIStore((s) => s.openCreateModal)
   const { vote, remove, promote, unverify, extendTTL, favorite } = usePinActions()
 
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [photoIndex, setPhotoIndex] = useState(0)
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null)
 
   const faculty = FACULTIES.find((f) => f.id === pin.faculty_id)
@@ -144,12 +141,6 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
 
   const onDelete = () => {
     setShowDeleteConfirm(true)
-  }
-
-  const onPhotoScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget
-    if (el.clientWidth === 0) return
-    setPhotoIndex(Math.round(el.scrollLeft / el.clientWidth))
   }
 
   const devUnlockMap = useUIStore((s) => s.devUnlockMap)
@@ -247,65 +238,12 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
             </div>
           )}
 
-          {/* Fotos, debajo de la descripción */}
+          {/* Fotos, debajo de la descripción. El carrusel es el mismo que usa
+              la galería de facultades y edificios (shared/ui/PhotoCarousel),
+              con su visor a pantalla completa incluido. */}
           {photos.length > 0 && (
-            <div className="group relative mt-4 h-[220px] overflow-hidden rounded-xl sm:h-[260px]">
-              {photos.length > 1 && (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      document.getElementById('pin-photos-scroll')?.scrollBy({ left: -250, behavior: 'smooth' })
-                    }}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 hidden rounded-full bg-black/50 p-2 text-white opacity-0 shadow-lg backdrop-blur-md transition-opacity group-hover:opacity-100 sm:block"
-                    aria-label={t('pin.prevPhoto', 'Foto anterior')}
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      document.getElementById('pin-photos-scroll')?.scrollBy({ left: 250, behavior: 'smooth' })
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 hidden rounded-full bg-black/50 p-2 text-white opacity-0 shadow-lg backdrop-blur-md transition-opacity group-hover:opacity-100 sm:block"
-                    aria-label={t('pin.nextPhoto', 'Foto siguiente')}
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-
-                  {/* Contador de fotos */}
-                  <div className="absolute right-3 top-3 z-10 rounded-full bg-black/50 px-2.5 py-1 text-[12px] font-semibold text-white backdrop-blur-md">
-                    {photoIndex + 1} / {photos.length}
-                  </div>
-
-                  {/* Indicadores (puntos) */}
-                  <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
-                    {photos.map((ph, i) => (
-                      <span
-                        key={ph.id}
-                        className={`h-1.5 rounded-full transition-all ${i === photoIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'
-                          }`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-              <div
-                id="pin-photos-scroll"
-                onScroll={onPhotoScroll}
-                className="flex h-full w-full overflow-x-auto snap-x snap-mandatory no-scrollbar bg-neutral-100 dark:bg-neutral-900"
-              >
-                {photos.map((ph) => (
-                  <img
-                    key={ph.id}
-                    src={ph.url}
-                    alt=""
-                    loading="lazy"
-                    onClick={() => setSelectedPhoto(ph.url)}
-                    className="h-full w-full flex-none shrink-0 snap-center object-cover cursor-pointer"
-                  />
-                ))}
-              </div>
+            <div className="mt-4">
+              <PhotoCarousel photos={photos} />
             </div>
           )}
 
@@ -452,29 +390,6 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
 
       <ReportContentDialog target={reportTarget} onClose={() => setReportTarget(null)} />
 
-      {selectedPhoto && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 animate-fade-in"
-          onClick={() => setSelectedPhoto(null)}
-        >
-          <button
-            className="absolute right-4 top-4 rounded-full bg-neutral-800/50 p-2 text-white backdrop-blur-md hover:bg-neutral-700/80"
-            onClick={(e) => {
-              e.stopPropagation()
-              setSelectedPhoto(null)
-            }}
-            aria-label={t('common.close', 'Cerrar')}
-          >
-            <X size={24} />
-          </button>
-          <img
-            src={selectedPhoto}
-            alt={t('pin.expandedPhoto', 'Vista ampliada')}
-            className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
     </>
   )
 }

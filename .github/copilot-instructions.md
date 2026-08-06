@@ -1,0 +1,10 @@
+Las reglas de este repositorio están en [CLAUDE.md](../CLAUDE.md). Léelo antes de
+proponer cambios.
+
+Lo esencial:
+
+- Todo cambio en la base de datos son tres cosas en el mismo commit: la migración
+  en `supabase/migrations/`, `supabase/schema/baseline.sql` y `docs/DATABASE.md`.
+- Antes de dar algo por terminado: `npm run typecheck && npx vitest run && npx eslint src`.
+- Comentarios en español, explicando por qué y no qué.
+- La comprobación de rol que cuenta es la de la base (RLS), no la de la interfaz.

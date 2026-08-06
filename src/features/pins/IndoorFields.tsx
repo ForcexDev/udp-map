@@ -4,7 +4,7 @@ import { useUIStore } from '@/shared/stores/uiStore'
 import { facultyIdAt } from '@/shared/data/facultyPerimeters'
 import { floorFromRoomCode } from '@/shared/utils/roomCode'
 import { floorName } from '@/features/mapping/areaStyles'
-import { areaAt, buildingAt, floorsOf, useMapping } from '@/features/mapping/useMapping'
+import { areaAt, buildingAt, facultyLevels, floorsOf, useMapping } from '@/features/mapping/useMapping'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Planta, código de sala y confirmación de dónde va a quedar el pin.
@@ -57,13 +57,17 @@ export function IndoorFields({
   const building = buildingAt(mapping.buildings, lng, lat)
   const area = areaAt(mapping.areas, lng, lat, floor)
 
-  // Si el punto cae dentro de un edificio, se muestran SOLO las plantas de ese
-  // edificio. Fuera de todo edificio (patio, pasillo) no se ofrece selector:
-  // el pin queda en Exterior (floor = null) porque quien está al aire libre
-  // no necesita elegir entre subterráneos de edificios que no tiene debajo.
+  // Dentro de un edificio se ofrecen SOLO sus plantas, para que uno de una
+  // planta no muestre subterráneos que no tiene. Fuera de toda huella se cae a
+  // las de la FACULTAD: publicar desde el panel de una facultad deja el punto
+  // en su centroide, que casi siempre es patio, y hasta ahora eso dejaba el
+  // formulario sin ningún selector de planta. El chip Exterior sigue siendo la
+  // opción por defecto ahí, así que para el patio de verdad nada cambia.
   const levels: { level: number; label: string | null }[] = building
     ? floorsOf(mapping.floors, building.id).map((f) => ({ level: f.level, label: f.label }))
-    : []
+    : facultyId
+      ? facultyLevels(mapping, facultyId).map((l) => ({ level: l.level, label: l.label }))
+      : []
 
   // Se entra con la planta que se estaba mirando en el mapa: si alguien navegó
   // hasta el piso 3 y pulsa "+", lo que quiere publicar está en el 3. Si el

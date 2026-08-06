@@ -1,8 +1,15 @@
-# Plan de implementación — Mapeo interior, salas, pisos y onboarding
+# Hoja de ruta — UDP Map
 
-> Documento de trabajo. Última revisión: 2026-08-04.
-> **Alcance:** el editor y el motor se construyen genéricos; **el mapeo de la FIC lo haces tú a mano**.
-> No hace falta ningún dato de edificios para empezar a programar.
+> **Documento vivo.** Es el plan del repositorio: qué está hecho y qué falta. Se
+> actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-08-05.
+>
+> Nació como el plan de mapeo interior y onboarding, y absorbió el backlog que
+> antes vivía repartido entre `PLAN.md` y `SPRINTS_STATUS.md`. Los dos están en
+> [`_archive/`](_archive/): describían la v0.3 y se contradecían entre sí.
+>
+> **Alcance del bloque principal:** el editor y el motor se construyen genéricos;
+> **el mapeo de la FIC se hace a mano**. No hace falta ningún dato de edificios
+> para empezar a programar.
 
 ---
 
@@ -455,14 +462,39 @@ Los 20 pines de tu foto 1 se vuelven 4 o 5 marcadores de facultad; al acercarte,
 
 ### 9.2 Las salas se ven distinto de los avisos
 
-Un pin de sala es infraestructura fija; uno de comida es una novedad. Que compitan visualmente igual es un error. Los pines permanentes verificados —salas, ascensores, rampas, baños— se dibujan **más pequeños y con menos peso**: 18 px, sin sombra fuerte, en un tono apagado, y con la etiqueta del código de sala al lado a zoom alto. Los avisos efímeros mantienen el marcador actual de 26 px con color saturado.
+Un pin de sala es infraestructura fija; uno de comida es una novedad. Que compitan visualmente igual es un error. Los pines permanentes verificados —salas, ascensores, rampas, baños— se dibujan **más pequeños**: 18 px y con la etiqueta del código de sala al lado a zoom alto. Los avisos efímeros mantienen el marcador actual de 26 px.
 
-Así el interior de un edificio se lee como un plano —salas en gris con su número— con las novedades destacando encima, que es justamente el efecto de tu captura de referencia.
+> **Corregido el 2026-08-05: solo el tamaño, nunca el tono.** La versión anterior
+> pedía además dibujarlos "sin sombra fuerte, en un tono apagado". Eso choca de
+> frente con el lenguaje visual que ya existe: **el desvanecido significa "por
+> vencer"** (`MapView.tsx`, `expiry.status === 'fading'`, aplicado con
+> `filter: opacity()`). Atenuar un pin permanente le haría decir exactamente lo
+> contrario de la verdad, porque los permanentes son los que nunca vencen. Ya se
+> tropezó una vez con esto: a los eventos se les quitó el estado de expiración
+> porque parpadeaban en su última hora y se leía mal. La diferencia de tamaño
+> sirve y no choca con nada; el tono queda descartado.
 
-### 9.3 Remates
+Así el interior de un edificio se lee como un plano —salas pequeñas con su número— con las novedades destacando encima.
+
+### 9.3 Abanico y tamaño por zoom
 
 - **Abanico**: dos o más pines a menos de ~30 px se colapsan en un chip con el número y se abren en abanico al tocarlo.
 - **Tamaño según zoom** con `--pin-scale`: 20 px a zoom 17, 26 px a 18, 30 px a 19+.
+
+> **Repriorizado el 2026-08-05: el abanico deja de ser un remate.** Esta sección
+> estaba escrita como el adorno final de la §9.1, y es al revés. El detalle por
+> zoom resuelve el amontonamiento **de lejos**, que es un problema futuro —
+> aparece cuando hay muchos pines y hoy no los hay. El problema real y presente
+> es el de **cerca**: dos pines a un metro se tapan aunque estés al máximo zoom,
+> porque el marcador mide 26 px y ese metro son 10 px, y acercarse más ya no
+> ayuda. Eso solo lo arregla el abanico.
+>
+> Ojo al construirlo: es el punto más delicado de la fase. Hay que recalcular
+> posiciones proyectadas en cada movimiento del mapa y tocar el DOM de los
+> marcadores, y en `MapView.tsx` ya hay dos comentarios de peleas pasadas con el
+> parpadeo por rehacer marcadores de más. La insignia de planta ya distingue dos
+> pines de pisos distintos en la misma vertical: el abanico solo tiene que
+> atacar el solape del **mismo** piso.
 
 A los filtros les queda el papel que debieron tener siempre: **refinar por intención**, no salvar el mapa.
 
@@ -740,17 +772,33 @@ enseñaba mal casi todo lo que ese motor producía. Siete arreglos:
       dos. Ahora ofrece las plantas de la FACULTAD más un chip **Exterior**
       (que es `floor` null, para patio y calle), con la planta que se estaba
       mirando en el mapa ya elegida y editable. Automático y manual a la vez.
+      **Cerrado de verdad el 2026-08-05.** Estaba marcado como hecho pero solo
+      lo estaba a medias: `facultyLevels()` existía y lo consumía únicamente el
+      selector del mapa, mientras `IndoorFields` seguía usando las plantas del
+      edificio y devolvía `null` fuera de toda huella. Publicar desde el panel
+      de una facultad deja el punto en su centroide, casi siempre patio, así
+      que el formulario salía sin ningún selector de planta.
 - [x] **El selector de plantas del mapa ocupaba el doble de lo necesario.**
       Columna de ancho fijo y la sigla de la facultad en la cabecera —**FIC**,
       no "FACULTAD D…"— vía `facultyShortName()`, que arma el acrónimo
       saltándose las palabras vacías en vez de pedir un campo más en los datos.
 
-### Fase 4 — Densidad (2-3 días)
+### Fase 4 — Densidad
 
-- [ ] Detalle por zoom: facultad → edificio → pin, con transiciones.
-- [ ] Estilo diferenciado de pines permanentes vs efímeros (§9.2).
-- [ ] Abanico para colisiones a menos de 30 px; `--pin-scale` según zoom.
-- [ ] Chips de edificio y planta en `FacultyDetail`, sincronizados con el mapa.
+Repriorizada el 2026-08-05 (ver §9.2 y §9.3). El orden de abajo es el nuevo.
+
+- [ ] **Abanico para colisiones a menos de 30 px.** Lo primero: es el único
+      punto que ataca el solape a zoom alto, que es el problema que existe hoy.
+- [ ] Estilo diferenciado de pines permanentes vs efímeros: **solo tamaño**,
+      nunca tono (§9.2).
+- [ ] `--pin-scale` según zoom.
+- [ ] Detalle por zoom: facultad → edificio → pin, con transiciones. Pospuesto
+      hasta que haya más edificios mapeados: resuelve el amontonamiento de
+      lejos, que todavía no duele, y sin datos indoor no luce.
+- [x] **Chips de edificio y planta en `FacultyDetail`, sincronizados con el mapa.**
+      Entregado con la reestructuración del panel de posts: la planta es un solo
+      dato en `uiStore`, así que el chip de la ficha y el selector vertical del
+      mapa son dos vistas de lo mismo y se mueven juntos.
 
 **Verificación:** con la FIC mapeada y sus salas cargadas, la vista de campus muestra 4-5 marcadores.
 
@@ -760,6 +808,76 @@ enseñaba mal casi todo lo que ese motor producía. Siete arreglos:
 - [ ] `src/features/onboarding/` con `TourOverlay` y `tours.ts`.
 - [ ] Tour del mapa y tour de facultad; submenú en el sidebar.
 - [ ] Migrar a i18n los mensajes clavados de la §1.6.
+
+### Fase 6 — La ficha de facultad ✅ HECHA (2026-08-05)
+
+- [x] **Los lugares volvieron al feed.** Estaban excluidos con un `p.type !==
+      'place'` en `FacultyDetail`, así que los lugares que añade la
+      administración —y los reportes que ascienden a lugar al verificarse—
+      desaparecían de la ficha justo al volverse permanentes.
+- [x] **Tres secciones apiladas** en vez de una lista: Ahora (reportes, por
+      recencia o por confirmaciones), Próximo (eventos, por fecha de inicio, los
+      que están en curso arriba) y En este lugar (lugares, alfabético). Los tres
+      tipos no comparten noción de tiempo, así que no hay un orden único que
+      sirva para todos; el orden de los bloques es lo que explica la diferencia.
+- [x] **Acento de color por tipo**, porque en rojo UDP los tres se veían igual.
+- [x] **Galería por entidad** (`place_photos`): la facultad tiene la suya y cada
+      edificio la suya, y acotar por un chip de edificio cambia la portada. Sin
+      herencia: enseñar la fachada de la facultad como si fuera la del edificio
+      sería una foto que miente. Gestor de fotos para admin, con RLS que lo
+      impone en la base.
+- [x] **El carrusel salió de `PinDetail`** a `shared/ui/PhotoCarousel.tsx` y
+      ahora lo comparten la ficha de pin y la de facultad. De paso arregla un
+      bug latente: buscaba su contenedor de scroll por `getElementById`, así que
+      con dos carruseles montados las flechas de uno movían el otro.
+- [x] **Tercer punto de anclaje** en la hoja (`peekRatio`, opcional para no
+      cambiarle el gesto a `PinDetail`) y portada que se pliega al expandir.
+
+### Fase 7 — Facultades desde el editor (bloqueada, decisión pendiente)
+
+El perímetro de una facultad se sigue añadiendo a mano en `facultyPerimeters.ts`.
+La idea era dibujarlo desde el editor, y el terreno está más preparado de lo que
+parece: `faculties.polygon` ya existe, el seed ya lo puebla para varias, y
+`MappingProperties` ya lo lee para validar que los edificios caigan dentro.
+
+**Lo que lo bloquea:** el cliente **nunca consulta la tabla `faculties`**. Cero
+ocurrencias de `from('faculties')` en `src`; `fetchAllMapping` trae edificios,
+plantas y áreas, y nada más. Las facultades salen de `FACULTIES`, un array
+estático en `campusData.ts` del que dependen **26 archivos**: búsqueda, filtros,
+selector de planta, creación de pines, perfiles, foro y tabla de posiciones. Una
+facultad creada desde el editor se guardaría bien y sería invisible para todos.
+
+Dos alcances, y no son el mismo trabajo:
+
+- **A — Solo perímetros.** Un hook que consulte `faculties`, que `facultyLayers`
+  lea `polygon` de la base con el archivo como respaldo, y un modo de dibujo
+  para redibujar el perímetro de una facultad **que ya existe**. Aditivo, no
+  toca los 26 archivos, y resuelve el dolor real: no volver a pegar GeoJSON a
+  mano.
+- **B — Facultades nuevas de verdad.** Migrar `FACULTIES` de constante a dato
+  consultado, con su estado de carga en 26 archivos. Tarea propia.
+
+### Backlog heredado
+
+Lo que seguía abierto en el antiguo `SPRINTS_STATUS.md`, que está en
+[`_archive/`](_archive/).
+
+- [ ] Rate limit de 10 pines por día UTC: código y migración preparados, falta
+      validarlo en Supabase productivo.
+- [ ] Lectura pública de `event_rsvps` sin resolver (SEC-007).
+- [ ] Hardening final de RLS y funciones restantes.
+- [ ] Búsqueda de texto completo y filtro por tags en el foro.
+- [ ] Atribución oficial dinámica por facultad/CEE.
+- [ ] Pruebas E2E con Playwright.
+- [ ] Accesibilidad AA final.
+- [ ] Guía formal de despliegue en producción.
+- [ ] Moderación con IA: Edge Function con proveedor principal y respaldo,
+      evaluación de falsos positivos y cola administrativa.
+- [ ] Actualizar dependencias con vulnerabilidades altas: `react-router`
+      7.12.0–8.2.0 (bypass de CSRF), `undici`, `postcss`, `brace-expansion`,
+      `fast-uri`. Detectadas el 2026-08-05, todas con arreglo disponible.
+      `react-router` puede traer cambios de comportamiento: va en su propio
+      commit.
 
 ---
 

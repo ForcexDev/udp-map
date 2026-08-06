@@ -269,6 +269,31 @@ create table if not exists public.pin_photos (
   created_at  timestamptz  not null default now()
 );
 
+-- Galería de una facultad o de un edificio. Exactamente uno de los dos ids va
+-- relleno, y el CHECK lo garantiza. Dos FK anulables en vez del par
+-- (entity_type, entity_id) para conservar la integridad referencial y el
+-- borrado en cascada: un `text` que apunta a dos tablas no puede tener FK.
+-- `sort_order` 0 es la portada.
+create table if not exists public.place_photos (
+  id           uuid         primary key default gen_random_uuid(),
+  faculty_id   text         references public.faculties(id) on delete cascade,
+  building_id  text         references public.buildings(id) on delete cascade,
+  url          text         not null,
+  width        integer,
+  height       integer,
+  sort_order   integer      not null default 0,
+  created_at   timestamptz  not null default now(),
+  constraint place_photos_one_owner check (num_nonnulls(faculty_id, building_id) = 1)
+);
+
+create index if not exists place_photos_faculty_idx
+  on public.place_photos (faculty_id, sort_order)
+  where faculty_id is not null;
+
+create index if not exists place_photos_building_idx
+  on public.place_photos (building_id, sort_order)
+  where building_id is not null;
+
 create table if not exists public.pin_comments (
   id          uuid         primary key default gen_random_uuid(),
   pin_id      uuid         not null references public.pins(id) on delete cascade,
@@ -1094,6 +1119,38 @@ $fn$;
 -- dentro de un INSERT de varias filas, un BEFORE no ve las que la misma
 -- sentencia acaba de insertar y contaría de menos. El advisory lock cierra el
 -- hueco de dos subidas simultáneas sobre el mismo pin.
+-- Mismo criterio que el de los pines: AFTER porque un BEFORE no ve las filas
+-- que la propia sentencia acaba de insertar, y advisory lock para dos subidas
+-- simultáneas. El tope es 10 y no 5 porque una galería es material curado por
+-- la administración, no fotos sacadas al vuelo para un reporte.
+create or replace function public.enforce_place_photo_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_count integer;
+  v_owner text;
+begin
+  v_owner := coalesce('faculty:' || new.faculty_id, 'building:' || new.building_id);
+  perform pg_advisory_xact_lock(hashtext('place_photos:' || v_owner));
+
+  select count(*) into v_count
+  from public.place_photos
+  where faculty_id is not distinct from new.faculty_id
+    and building_id is not distinct from new.building_id;
+
+  if v_count > 10 then
+    raise exception 'Una galería no puede tener más de 10 fotos.';
+  end if;
+
+  return null;
+end;
+$fn$;
+
+revoke execute on function public.enforce_place_photo_limit() from public, anon, authenticated;
+
 create or replace function public.enforce_pin_photo_limit()
 returns trigger
 language plpgsql
@@ -1146,6 +1203,29 @@ begin
   return null;
 end;
 $fn$;
+
+create or replace function public.enqueue_place_photo_cleanup()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_path text;
+begin
+  v_path := split_part(old.url, '/pin-photos/', 2);
+
+  if v_path is null or v_path = '' then
+    return null;
+  end if;
+
+  insert into public.storage_cleanup_queue (bucket_id, path)
+  values ('pin-photos', v_path);
+
+  return null;
+end;
+$fn$;
+
 
 
 -- ── 5.5 Votación ────────────────────────────────────────────────────────────
@@ -2190,10 +2270,20 @@ create trigger trg_enforce_pin_photo_limit
   after insert on public.pin_photos
   for each row execute function public.enforce_pin_photo_limit();
 
+drop trigger if exists trg_enforce_place_photo_limit on public.place_photos;
+create trigger trg_enforce_place_photo_limit
+  after insert on public.place_photos
+  for each row execute function public.enforce_place_photo_limit();
+
 drop trigger if exists on_pin_photo_deleted on public.pin_photos;
 create trigger on_pin_photo_deleted
   after delete on public.pin_photos
   for each row execute function public.enqueue_pin_photo_cleanup();
+
+drop trigger if exists on_place_photo_deleted on public.place_photos;
+create trigger on_place_photo_deleted
+  after delete on public.place_photos
+  for each row execute function public.enqueue_place_photo_cleanup();
 
 -- Votos
 drop trigger if exists on_pin_vote_karma on public.pin_votes;
@@ -2319,6 +2409,7 @@ alter table public.admin_emails                 enable row level security;
 alter table public.profiles                     enable row level security;
 alter table public.pins                         enable row level security;
 alter table public.pin_photos                   enable row level security;
+alter table public.place_photos                 enable row level security;
 alter table public.pin_comments                 enable row level security;
 alter table public.pin_schedule_items            enable row level security;
 alter table public.floor_plans                  enable row level security;
@@ -2347,6 +2438,16 @@ create policy faculties_read on public.faculties for select using (true);
 
 drop policy if exists faculties_admin on public.faculties;
 create policy faculties_admin on public.faculties for all using (public.user_role() = 'admin');
+
+-- Galerías: lectura pública, escritura solo admin. La comprobación va aquí y
+-- no solo en el cliente: esconder el botón de editar no impide llamar al
+-- endpoint.
+drop policy if exists place_photos_read on public.place_photos;
+create policy place_photos_read on public.place_photos for select using (true);
+
+drop policy if exists place_photos_admin on public.place_photos;
+create policy place_photos_admin on public.place_photos
+  for all using (public.user_role() = 'admin');
 
 drop policy if exists careers_read on public.careers;
 create policy careers_read on public.careers for select using (true);
@@ -2672,6 +2773,7 @@ grant all on public.building_floors to anon, authenticated;
 grant all on public.areas           to anon, authenticated;
 grant all on public.pins          to anon, authenticated;
 grant all on public.pin_photos    to anon, authenticated;
+grant all on public.place_photos  to anon, authenticated;
 grant all on public.pin_comments  to anon, authenticated;
 grant all on public.pin_schedule_items to anon, authenticated;
 grant all on public.favorites     to anon, authenticated;
@@ -2790,6 +2892,22 @@ create policy pin_photos_delete_own on storage.objects
       (storage.foldername(name))[2] = auth.uid()::text
       or public.user_role() = any (array['moderator', 'admin'])
     )
+  );
+
+drop policy if exists place_photos_upload on storage.objects;
+create policy place_photos_upload on storage.objects
+  for insert with check (
+    bucket_id = 'pin-photos'
+    and public.user_role() = 'admin'
+    and (storage.foldername(name))[1] = 'places'
+  );
+
+drop policy if exists place_photos_delete on storage.objects;
+create policy place_photos_delete on storage.objects
+  for delete using (
+    bucket_id = 'pin-photos'
+    and public.user_role() = 'admin'
+    and (storage.foldername(name))[1] = 'places'
   );
 
 
