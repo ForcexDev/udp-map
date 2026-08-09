@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, Check, Search } from 'lucide-react'
 
 interface CustomSelectOption {
   value: string
@@ -16,6 +16,18 @@ interface CustomSelectProps {
   className?: string
   buttonClassName?: string
   dropdownClassName?: string
+  /**
+   * Añade un buscador dentro del menú. Se activa a mano y no por número de
+   * opciones: un buscador que aparece solo cuando la lista crece cambia de
+   * forma sin avisar, y con tres opciones estorba más de lo que ayuda.
+   */
+  searchable?: boolean
+  searchPlaceholder?: string
+}
+
+/** Sin tildes y en minúsculas: "psicologia" tiene que encontrar "Psicología". */
+function normalize(text: string): string {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
 export function CustomSelect({
@@ -26,13 +38,28 @@ export function CustomSelect({
   className = '',
   buttonClassName = '',
   dropdownClassName = '',
+  searchable = false,
+  searchPlaceholder = 'Buscar…',
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; width: number; openUp: boolean } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const selectedOption = options.find((opt) => opt.value === value)
+
+  const visibleOptions = useMemo(() => {
+    if (!searchable || !query.trim()) return options
+    const q = normalize(query.trim())
+    return options.filter((opt) => normalize(opt.label).includes(q))
+  }, [options, query, searchable])
+
+  // La búsqueda se descarta al cerrar. Reabrir el menú y encontrarlo filtrado
+  // por lo que escribiste hace tres minutos se lee como que faltan opciones.
+  useEffect(() => {
+    if (!isOpen) setQuery('')
+  }, [isOpen])
 
   // El botón vive dentro de modales con overflow-y-auto: un menú `absolute`
   // se recorta contra ese borde. Portal a <body> + posición `fixed` calculada
@@ -141,7 +168,41 @@ export function CustomSelect({
           }}
           className={`z-50 max-h-60 overflow-y-auto bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-xl shadow-2xl p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
         >
-          {options.map((option) => {
+          {searchable && (
+            // `sticky` y no fuera del contenedor con scroll: así el campo se
+            // queda a la vista mientras recorres una lista larga.
+            <div className="sticky top-0 z-10 -m-1.5 mb-1 border-b border-neutral-100 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-900">
+              <div className="flex items-center gap-2 rounded-lg bg-neutral-100 px-2.5 py-1.5 dark:bg-neutral-800">
+                <Search size={13} className="shrink-0 text-neutral-400" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Enter elige la primera coincidencia: escribir "psico" y
+                    // pulsar Enter es el gesto que espera quien ya sabe cuál
+                    // quiere y no viene a mirar la lista.
+                    if (e.key !== 'Enter') return
+                    e.preventDefault()
+                    const first = visibleOptions[0]
+                    if (!first) return
+                    onChange(first.value)
+                    setIsOpen(false)
+                  }}
+                  placeholder={searchPlaceholder}
+                  className="w-full min-w-0 bg-transparent text-xs font-semibold text-neutral-900 outline-none placeholder:font-medium placeholder:text-neutral-400 dark:text-white"
+                />
+              </div>
+            </div>
+          )}
+
+          {visibleOptions.length === 0 && (
+            <p className="px-3 py-4 text-center text-[11px] font-medium text-neutral-400">
+              Nada coincide con «{query.trim()}».
+            </p>
+          )}
+
+          {visibleOptions.map((option) => {
             const isSelected = option.value === value
             return (
               <button

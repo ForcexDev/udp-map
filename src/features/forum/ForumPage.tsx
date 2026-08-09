@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { BadgeCheck, MessagesSquare, Plus, Pin, MessageSquare, ThumbsUp, ThumbsDown, SlidersHorizontal, ChevronRight, ChevronDown, Megaphone, GraduationCap, Search } from 'lucide-react'
-import { FACULTIES } from '@/shared/data/campusData'
+import { useFaculties } from '@/shared/data/facultyStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useGuard } from '@/features/auth/useGuard'
@@ -11,13 +11,14 @@ import { CreateThreadModal } from './CreateThreadModal'
 import { ThreadDetailModal } from './ThreadDetailModal'
 import { Dialog } from '@/shared/ui/Dialog'
 import { CustomSelect } from '@/shared/ui/CustomSelect'
-import type { ForumThread } from '@/shared/types/database'
+import type { Faculty, ForumThread } from '@/shared/types/database'
 
 import { UserAvatar } from '@/shared/ui/UserAvatar'
 import { relativeTime } from '@/shared/utils/datetime'
 
 function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: string) => void }) {
   const { t } = useTranslation()
+  const faculties = useFaculties()
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const showToast = useUIStore((s) => s.showToast)
@@ -37,7 +38,7 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
     voteMutation.mutate({ threadId: thread.id, value: val })
   }
 
-  const faculty = FACULTIES.find((f) => f.id === thread.faculty_id)
+  const faculty = faculties.find((f) => f.id === thread.faculty_id)
 
   return (
     <div
@@ -157,6 +158,7 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
 
 export function ForumPage() {
   const { t } = useTranslation()
+  const faculties = useFaculties()
   const guard = useGuard()
   const showToast = useUIStore((s) => s.showToast)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -246,13 +248,13 @@ export function ForumPage() {
   }
 
   const filteredFaculties = useMemo(() => {
-    if (!channelSearch.trim()) return FACULTIES
+    if (!channelSearch.trim()) return faculties
     const query = channelSearch.toLowerCase()
-    return FACULTIES.filter((f) => f.name.toLowerCase().includes(query))
-  }, [channelSearch])
+    return faculties.filter((f) => f.name.toLowerCase().includes(query))
+  }, [faculties, channelSearch])
 
   const activeChannelName = activeFacultyId
-    ? FACULTIES.find((f) => f.id === activeFacultyId)?.name
+    ? faculties.find((f) => f.id === activeFacultyId)?.name
     : t('forum.generalTab', 'Tablón General')
 
   return (
@@ -284,7 +286,7 @@ export function ForumPage() {
             <ChevronRight size={14} className="opacity-50" />
           </button>
 
-          {FACULTIES.map((f) => (
+          {faculties.map((f) => (
             <button
               key={f.id}
               onClick={() => setActiveFacultyId(f.id)}
@@ -409,7 +411,7 @@ export function ForumPage() {
           setActiveFacultyId(targetFaculty)
           setSelectedThreadId(newThread.id)
           const targetName = targetFaculty
-            ? (FACULTIES.find((f) => f.id === targetFaculty)?.name ?? 'Facultad')
+            ? (faculties.find((f) => f.id === targetFaculty)?.name ?? 'Facultad')
             : t('forum.generalTab', 'Tablón General')
           showToast(`Hilo publicado exitosamente en ${targetName}`)
         }}
@@ -464,7 +466,7 @@ export function ForumPage() {
             </button>
 
             {/* Facultades */}
-            {filteredFaculties.map((f: (typeof FACULTIES)[number]) => {
+            {filteredFaculties.map((f: Faculty) => {
               const isActive = activeFacultyId === f.id
               const hasNew = recentActivityMap[f.id]
               return (

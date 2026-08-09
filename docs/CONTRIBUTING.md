@@ -1,12 +1,17 @@
-# Contribuir a UDP Map v0.6.0
+# Cómo trabajar en UDP Map
 
-**Última actualización:** 2026-08-05
+Mapa colaborativo de la Universidad Diego Portales: pines, eventos, foro,
+notificaciones y panel de administración, en una PWA bilingüe y mobile-first.
 
-¡Gracias por tu interés en contribuir a UDP Map! 🎉 Estamos construyendo el mapa vivo, calendario de eventos, foro estudiantil, sistema de notificaciones y panel de administración de la comunidad UDP.
+Este documento cuenta **cómo se trabaja aquí y por qué el código es como es**.
+Para el estado del proyecto —lo hecho y lo que falta— mira [ROADMAP.md](ROADMAP.md);
+para la base de datos, [DATABASE.md](DATABASE.md).
 
-Este documento refleja la arquitectura y los estándares de la versión 0.6.0. Para el estado de cada cosa —lo hecho y lo que falta— mira [ROADMAP.md](ROADMAP.md); para la base de datos, [DATABASE.md](DATABASE.md).
-
-Si trabajas con un agente de IA, las reglas del repositorio están en [CLAUDE.md](../CLAUDE.md), y las lee cualquier herramienta a través de `AGENTS.md`, `.cursorrules` o `.github/copilot-instructions.md`.
+> **Las reglas cortas viven en [`CLAUDE.md`](../CLAUDE.md)**, en la raíz: la regla
+> de los tres archivos, los comandos de verificación y las trampas del mapa que ya
+> costaron caro. Las lee cualquier agente de IA, y son la versión resumida de lo
+> que hay aquí. Si una regla cambia, cambia ahí y regenera con
+> `npm run gen:agents`.
 
 ---
 
@@ -21,51 +26,115 @@ Si trabajas con un agente de IA, las reglas del repositorio están en [CLAUDE.md
 
 ---
 
-## 📂 Estructura del Proyecto (Feature-Sliced Design)
+## 📂 Estructura del Proyecto
 
-El código está organizado por **funcionalidades (features)** desacopladas:
+Organizado por **dominios (features)**, no por capas técnicas. `CLAUDE.md` lleva
+la versión corta de este árbol; aquí está lo que hace cada uno.
 
 ```text
 src/
-├── app/                  → Entrada (main.tsx), router principal (App.tsx) y layout global
-├── features/             → Dominios funcionales de la aplicación:
+├── app/                  → Entrada (main.tsx), router (App.tsx) y layout global
+├── features/
 │   ├── about/            → Licencias e información institucional
-│   ├── admin/            → Panel de administración (/admin), métricas y gestión de roles
-│   ├── auth/             → Autenticación Supabase, sesión, modo invitado y permissions.ts
-│   ├── events/           → Calendario de eventos, filtros y gestión de RSVP
-│   ├── forum/            → Foro estudiantil, hilos por facultad y publicaciones oficiales
-│   ├── map/              → Componente MapLibre GL, campus, capas, ruteo peatonal e indoor
+│   ├── admin/            → Panel /admin, métricas y gestión de roles
+│   ├── auth/             → Supabase Auth, sesión, modo invitado y permissions.ts
+│   ├── events/           → Calendario de eventos, filtros y RSVP
+│   ├── forum/            → Hilos por facultad y publicaciones oficiales
+│   ├── map/              → MapLibre GL, capas, perímetros y ruteo peatonal
+│   ├── mapping/          → Editor de mapeo interior: edificios, plantas y áreas
 │   ├── moderation/       → Cola de reportes de contenido (/moderacion)
-│   ├── notifications/    → Suscripción Web Push API, service worker y sidebar/drawer
-│   ├── pins/             → Motor común de pines: creador, fotos, expiración, votos y comentarios
-│   └── profile/          → Perfil de usuario, perfil público, karma e insignias
-├── shared/               → Componentes UI (Tailwind CSS 4 + Radix UI), hooks, tipos y utilidades
-└── styles/               → Estilos globales en Tailwind CSS (index.css)
-
-supabase/
-├── schema/baseline.sql   → La fuente de verdad del esquema.
-├── migrations/           → Cambios nuevos, uno por archivo. Se aplican a mano.
-├── seed/                 → Datos iniciales (campus, facultades, categorías)
-└── functions/            → Edge Functions desplegables (`expire-pins` y `send-push`)
-
-docs/
-├── ROADMAP.md            → El plan vivo: qué está hecho y qué falta.
-├── DATABASE.md           → El esquema y por qué es así.
-├── CONTRIBUTING.md       → Este documento.
-├── NOTIFICATIONS_AND_MODERATION.md → Etapas y Definition of Done de notificaciones y moderación.
-├── PWA_UPDATE.md         → Cómo la app detecta y aplica una versión nueva.
-├── CHANGELOG.md          → Novedades mostradas por el pop-up de actualización PWA.
-└── _archive/             → Informes congelados. No se actualizan.
+│   ├── notifications/    → Web Push, service worker y centro de notificaciones
+│   ├── pins/             → Motor común: creación, fotos, expiración, votos, comentarios
+│   ├── places/           → Galerías de foto de facultades y edificios
+│   └── profile/          → Perfil propio y público, karma e insignias
+├── shared/               → UI sin dominio, stores, utilidades puras, tipos y clientes
+└── styles/               → index.css (Tailwind 4 y las clases propias)
 ```
 
-**Regla de oro de arquitectura:** Una feature no debe importar detalles internos de otra feature. Para compartir lógica, expón funciones públicas en su `index.ts` o trasládala a `shared/`.
+Dentro de un feature: `api.ts` para datos, `use*.ts` para hooks de react-query,
+`demoStore.ts` para el modo sin Supabase, componentes en PascalCase.
+
+**Regla de oro:** una feature no debería importar detalles internos de otra. Para
+compartir lógica, sácala a `shared/`. Hoy esa regla **está rota** —hay ciclos
+entre `map`, `pins` y `mapping`— y por eso la sección siguiente existe: no la
+empeores sin darte cuenta.
 
 ### Manejo del Mapa (MapLibre)
 - Toda la lógica del mapa vive en `src/features/map`.
 - Para interactuar con el mapa desde componentes externos, usa el estado global de Zustand (`useUIStore`) o propaga eventos, evitando pasar referencias directas del objeto `map` (`Map` instance) por toda la aplicación. Esto asegura que los componentes de React no fuercen re-renderizados costosos del canvas WebGL.
 - Respeta el límite geográfico definido en `campusBoundary.ts`. Solo el rol `admin` puede activar el desbloqueo guardado en `devUnlockMap`.
-- La asignación automática de facultad usa `facultyIdAt` y los polígonos de `facultyPerimeters.ts`.
+- La asignación automática de facultad usa `facultyIdAt` (`shared/data/facultyStore.ts`) y los perímetros que vienen de la tabla `faculties`.
 - Los pines todavía se renderizan como marcadores individuales; no documentes clustering visual como completado hasta que exista una fuente GeoJSON con clustering o una implementación equivalente.
+
+---
+
+## 🏛️ Por qué el proyecto es así, y dónde duele
+
+Cinco decisiones de arquitectura que nadie escribió cuando se tomaron, reconstruidas
+a posteriori. Vienen de una auditoría de julio de 2026; las cifras están
+reverificadas contra el código el 2026-08-05.
+
+Cada una separa la **intención** de lo que realmente pasó, porque en tres de las
+cinco no coinciden.
+
+### 1. Carpetas por dominio, no por capa técnica
+
+Se eligió `src/features/*` en vez de `/views`, `/services`, `/hooks`, para que
+trabajar en el foro no obligara a tocar cinco carpetas.
+
+**Lo que pasó:** la estructura está, las fronteras no. Hoy `map` importa de
+`pins`, `pins` importa de `map` y de `mapping`, y `mapping` importa de `pins`.
+Son ciclos reales, no dependencias sueltas. Se consiguió la estética del patrón
+sin el aislamiento. **Antes de añadir una importación cruzada nueva, mira si lo
+que necesitas puede vivir en `shared/`.**
+
+### 2. Zustand para lo efímero, TanStack Query para lo del servidor
+
+En vez de un árbol de estado único. **Salió bien** — es probablemente la mejor
+decisión técnica del proyecto. No hay `useEffect` haciendo fetch por su cuenta:
+los datos entran por queries y se invalidan.
+
+### 3. Supabase directo, sin API propia
+
+El frontend habla con PostgREST y la seguridad la ponen las políticas RLS.
+
+**Lo que pasó, y está bien hecho:** en vez de dejar la lógica crítica en el
+cliente, se empujó a RPC en SQL —votar, crear un pin con su límite diario—, así
+que las reglas de negocio viven donde no se pueden saltar. Es el motivo de la
+regla de seguridad de más abajo: **la comprobación que cuenta es la de la base.**
+
+### 4. Radix sin estilos + Tailwind, no MUI ni Bootstrap
+
+Para tener control total de los píxeles con la accesibilidad ya resuelta (foco,
+teclado, ARIA). El resultado es bueno.
+
+**El efecto secundario:** `react-hook-form` y `zod` entraron por un formulario y
+se quedaron. Siguen usándose en **un solo archivo**, `CreatePinModal.tsx`, a
+cambio de unos 40 kb en el bundle.
+
+### 5. PWA con caché agresiva de teselas
+
+La conectividad en los campus es mala y un mapa en gris es inservible. Workbox
+cachea las teselas de OpenFreeMap con `CacheFirst` y 30 días de expiración,
+configurado a mano en `vite.config.ts`. Funciona.
+
+### Deuda estructural conocida
+
+No es una lista de tareas: es dónde vas a chocar. Las cifras son del **2026-08-05**
+y solo sirven para ver la tendencia — si al leerlas han crecido más, el punto
+sigue en pie con más razón. Compruébalas con `wc -l` antes de citarlas.
+
+| Qué | Dónde | Por qué importa |
+|---|---|---|
+| Ciclos entre features | `map` ↔ `pins` ↔ `mapping` | Impide extraer o testear un módulo aislado. Cambiar cómo se ve un pin puede romper otra pantalla |
+| Componente que hace de todo | `map/MapPage.tsx` — **881 líneas** | Mezcla renderizado, orquestación de modales y APIs del dispositivo (giroscopio, geolocalización con parches para iOS y Brave) |
+| Formulario que hace de todo | `pins/CreatePinModal.tsx` — **835 líneas** | UI móvil y escritorio, validación, compresión de imágenes en canvas y errores de RPC, todo junto |
+| Cajón de sastre de red | `pins/api.ts` — **701 líneas** | Pines, comentarios, favoritos, votos y el camino del modo demo en un archivo |
+| Algoritmo mezclado con vista | `forum/ThreadDetailModal.tsx` — **551 líneas** | `buildCommentTree` y el renderizado recursivo conviven |
+| Store con demasiados temas | `shared/stores/uiStore.ts` | Modales, modo 2D/3D, interior, ruteo y avisos en el mismo sitio. Barato de partir, si molesta |
+
+Las cuatro primeras **crecieron** desde julio. Si tocas uno de esos archivos y
+puedes sacar algo a un módulo aparte sin desviarte de tu tarea, hazlo.
 
 ---
 
@@ -138,18 +207,11 @@ VITE_VAPID_PUBLIC_KEY=tu-vapid-public-key
 Antes de enviar un Pull Request, asegúrate de ejecutar y pasar la suite de pruebas y linters:
 
 ```bash
-# Pruebas unitarias (54 tests en 12 suites)
-npm test
-
-# Verificación de tipos TypeScript
-npm run typecheck
-
-# ESLint
-npm run lint
-
-# Build de producción
-npm run build
+npm run typecheck && npx vitest run && npx eslint src
 ```
+
+Los tres tienen que pasar. `npm run build` corre además el typecheck, así que
+sirve como comprobación final.
 
 Aún no hay una suite E2E ni pruebas de integración contra Supabase; si tu cambio depende de RLS, RPCs o triggers, agrega una validación reproducible además de las pruebas de frontend.
 
@@ -157,10 +219,9 @@ Aún no hay una suite E2E ni pruebas de integración contra Supabase; si tu camb
 
 ## 🔀 Proceso de Pull Request
 
-1. Asegúrate de estar trabajando sobre la rama principal actualizada (`git pull origin main`).
-2. Crea una rama descriptiva para tu feature o fix: `git checkout -b feature/nuevo-foro` o `fix/boton-login`.
-3. Haz tus cambios, respetando la estructura de carpetas y guías de estilo.
-4. Verifica todo localmente ejecutando `npm run lint`, `npm run typecheck`, `npm run test` y `npm run build`. Si algo falla, la PR será rechazada automáticamente.
-5. Abre el PR con un título claro. Si resuelve un Issue, menciónalo (`Closes #12`).
-6. Actualiza `ROADMAP.md`, `DATABASE.md` o `CHANGELOG.md` cuando el cambio altere su estado real.
-7. Espera la revisión de otro desarrollador para hacer merge.
+1. Trabaja sobre `main` actualizado y crea una rama: `feature/nuevo-foro`, `fix/boton-login`.
+2. Verifica en local antes de abrir nada. Si falla, CI lo rechaza igual.
+3. Título claro, y menciona el issue si lo hay (`Closes #12`).
+4. **Deja al día el documento que corresponda:** `ROADMAP.md` si cerraste un
+   pendiente o cambiaste una decisión, `DATABASE.md` si tocaste el esquema,
+   `CHANGELOG.md` si es algo que el usuario va a notar.

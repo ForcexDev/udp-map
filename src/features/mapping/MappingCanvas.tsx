@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react'
-import { Check, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Box, Check, Square, X } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Feature, FeatureCollection, Polygon, Position } from 'geojson'
 import type { Area, Building, Pin } from '@/shared/types/database'
-import { FACULTIES } from '@/shared/data/campusData'
+import { facultyPerimeter, useFaculties } from '@/shared/data/facultyStore'
 import { MAP_STYLE_LIGHT } from '@/features/map/mapConfig'
 import { useUIStore } from '@/shared/stores/uiStore'
 import {
@@ -15,7 +15,7 @@ import {
   snapToPolygons,
   orthogonalSnap,
 } from '@/shared/utils/geometry'
-import { AREA_STYLES, BUILDING_COLOR } from './areaStyles'
+import { AREA_STYLES, BUILDING_COLOR, buildingHeightM } from './areaStyles'
 import {
   activeFloorOf,
   draftPolygon,
@@ -63,11 +63,16 @@ function areaFeature(area: Area): Feature<Polygon> {
   }
 }
 
-function buildingFeature(building: Building): Feature<Polygon> {
+function buildingFeature(building: Building, height: number): Feature<Polygon> {
   return {
     type: 'Feature',
     id: building.id,
-    properties: { id: building.id, name: building.name, color: building.color ?? BUILDING_COLOR },
+    properties: {
+      id: building.id,
+      name: building.name,
+      color: building.color ?? BUILDING_COLOR,
+      height,
+    },
     geometry: building.footprint,
   }
 }
@@ -78,12 +83,18 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
   const vertexMarkersRef = useRef<maplibregl.Marker[]>([])
   const rotationMarkerRef = useRef<maplibregl.Marker | null>(null)
   const readyRef = useRef(false)
+  // Inclinada o cenital. Se sincroniza con el mapa y no solo con el botón,
+  // porque la brújula de MapLibre también inclina arrastrándola.
+  const [pitched, setPitched] = useState(false)
 
+  const faculties = useFaculties()
   const facultyId = useMappingEditor((s) => s.facultyId)
+  const facultyEdit = useMappingEditor((s) => s.facultyEdit)
   const selectedBuildingId = useMappingEditor((s) => s.selectedBuildingId)
   const selectedFloor = useMappingEditor((s) => s.selectedFloor)
   const selectedAreaId = useMappingEditor((s) => s.selectedAreaId)
   const draft = useMappingEditor((s) => s.draft)
+  const previewHeightM = useMappingEditor((s) => s.previewHeightM)
   const tool = useMappingEditor((s) => s.tool)
   const showGhostFloor = useMappingEditor((s) => s.showGhostFloor)
   const viewMode = useMappingEditor((s) => s.viewMode)
@@ -102,8 +113,11 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
   const snapReferences = (): Polygon[] => {
     const { mapping: data } = dataRef.current
     const state = useMappingEditor.getState()
-    const faculty = FACULTIES.find((f) => f.id === state.facultyId)
-    const refs: Polygon[] = faculty?.polygon ? [faculty.polygon] : []
+    // El perímetro no entra como referencia cuando es lo que se está
+    // retrazando: cada vértice nuevo se pegaría al trazo viejo, que es
+    // exactamente el que se quiere corregir.
+    const outline = state.facultyEdit ? null : facultyPerimeter(state.facultyId)
+    const refs: Polygon[] = outline ? [outline] : []
 
     const active = activeFloorOf(state)
     for (const building of data.buildings) refs.push(building.footprint)
@@ -141,7 +155,7 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
-    const faculty = FACULTIES.find((f) => f.id === useMappingEditor.getState().facultyId)
+    const faculty = faculties.find((f) => f.id === useMappingEditor.getState().facultyId)
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLE_LIGHT,
@@ -167,6 +181,8 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
       new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }),
       'top-right',
     )
+
+    map.on('pitchend', () => setPitched(map.getPitch() > 5))
 
     map.on('load', () => {
       for (const id of ['faculty', 'buildings', 'ghost', 'areas', 'draft'] as const) {
@@ -212,6 +228,30 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
           'line-opacity': ['case', ['get', 'selected'], 1, 0.8],
         },
       })
+      // El volumen 3D que se va a generar, con la MISMA regla que el mapa
+      // público (`buildingHeightM`): solo se levanta lo que tiene altura
+      // asignada, porque el resto ya lo levanta OpenStreetMap y duplicarlo
+      // dibujaría dos veces el mismo edificio.
+      //
+      // Se previsualiza aquí porque la altura era el único dato del editor que
+      // no se podía comprobar sin guardar, ir al mapa y volver.
+      map.addLayer({
+        id: 'buildings-3d',
+        type: 'fill-extrusion',
+        source: 'buildings',
+        filter: ['>', ['get', 'height'], 0],
+        paint: {
+          'fill-extrusion-color': ['get', 'color'],
+          'fill-extrusion-height': ['get', 'height'],
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': 1,
+          'fill-extrusion-vertical-gradient': false,
+          // Suaviza el tirón al escribir la altura dígito a dígito: sin esto,
+          // pasar de 4 a 40 es un salto seco que cuesta leer.
+          'fill-extrusion-height-transition': { duration: 180, delay: 0 },
+        },
+      })
+
       map.addLayer({
         id: 'buildings-label',
         type: 'symbol',
@@ -285,6 +325,27 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
         source: 'draft',
         paint: { 'line-color': '#2563eb', 'line-width': 2 },
       })
+      // Y el mismo volumen para el edificio que todavía no se ha guardado. Sin
+      // esto la vista previa solo servía para corregir alturas ya puestas, no
+      // para elegir la primera, que es justo cuando hace falta.
+      // La altura va por PAINT y no como propiedad del feature: la fuente del
+      // borrador se reescribe en cada movimiento del ratón y en cada vértice
+      // arrastrado, y meter ahí un dato del formulario obligaría a pasarlo por
+      // los cuatro sitios que la escriben.
+      map.addLayer({
+        id: 'draft-3d',
+        type: 'fill-extrusion',
+        source: 'draft',
+        paint: {
+          'fill-extrusion-color': '#2563eb',
+          'fill-extrusion-height': 0,
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': 0.55,
+          'fill-extrusion-vertical-gradient': false,
+          'fill-extrusion-height-transition': { duration: 180, delay: 0 },
+        },
+      })
+
       map.addLayer({
         id: 'draft-vertex',
         type: 'circle',
@@ -463,7 +524,10 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
 
     const state = useMappingEditor.getState()
     const { mapping: data, pins: allPins } = dataRef.current
-    const faculty = FACULTIES.find((f) => f.id === state.facultyId)
+    // Solo el perímetro TRAZADO. Pintar el cuadrado aproximado de una facultad
+    // sin trazo daría por dibujado algo que no lo está, y encima serviría de
+    // imán para pegarle los edificios.
+    const outline = state.facultyEdit === 'new' ? null : facultyPerimeter(state.facultyId)
 
     const setData = (id: string, value: FeatureCollection | Feature) => {
       const source = map.getSource(id) as maplibregl.GeoJSONSource | undefined
@@ -472,16 +536,25 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
 
     setData('faculty', {
       type: 'FeatureCollection',
-      features: faculty?.polygon
-        ? [{ type: 'Feature', properties: {}, geometry: faculty.polygon }]
-        : [],
+      features: outline ? [{ type: 'Feature', properties: {}, geometry: outline }] : [],
     })
 
     setData('buildings', {
       type: 'FeatureCollection',
       features: data.buildings.map((b) => {
-        const feature = buildingFeature(b)
-        feature.properties = { ...feature.properties, selected: b.id === state.selectedBuildingId }
+        // El edificio en edición se levanta con lo que hay en el CAMPO, no con
+        // lo guardado: es lo que convierte el número en algo que se puede
+        // juzgar de un vistazo. Y mientras se retraza su huella baja a 0, que
+        // el volumen lo lleva el borrador — si no, se verían los dos, el viejo
+        // y el nuevo, uno dentro del otro.
+        const selected = b.id === state.selectedBuildingId
+        const height = selected
+          ? state.draft !== null
+            ? 0
+            : (state.previewHeightM ?? buildingHeightM(b))
+          : buildingHeightM(b)
+        const feature = buildingFeature(b, height)
+        feature.properties = { ...feature.properties, selected }
         return feature
       }),
     })
@@ -537,15 +610,24 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
   }
 
   // ── Redibujar cuando cambian los datos o la selección ──
+  //
+  // `hasDraft` y no `draft`: durante el arrastre de un rectángulo el borrador
+  // cambia decenas de veces por segundo, y rehacer todas las fuentes en cada
+  // píxel sobra. Lo único que le importa al repintado es si hay borrador o no.
+  const hasDraft = draft !== null
   useEffect(() => {
     redrawAll()
   }, [
     mapping,
+    hasDraft,
+    previewHeightM,
     pins,
     selectedBuildingId,
     selectedFloor,
     selectedAreaId,
     facultyId,
+    facultyEdit,
+    faculties,
     showGhostFloor,
     viewMode,
     activeLevel,
@@ -554,8 +636,11 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
   // ── Volar a la facultad al cambiarla ──
   useEffect(() => {
     const map = mapRef.current
-    const faculty = FACULTIES.find((f) => f.id === facultyId)
+    const faculty = faculties.find((f) => f.id === facultyId)
     if (map && faculty) map.flyTo({ center: [faculty.lng, faculty.lat], zoom: 18, duration: 800 })
+    // Deliberadamente sin `faculties`: rehidratar el catálogo no es motivo para
+    // mover la cámara de donde la dejó quien está trazando.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [facultyId])
 
   // ── Borrador: polígono, vértices arrastrables y tirador de rotación ──
@@ -671,6 +756,15 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
     }
   }, [draft])
 
+  // La altura del borrador sigue al campo del formulario. Va por su cuenta y no
+  // dentro del efecto del borrador, que recrea todos los tiradores de vértice:
+  // hacerlo ahí tiraría el marcador que se está arrastrando en cada tecla.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current || !map.getLayer('draft-3d')) return
+    map.setPaintProperty('draft-3d', 'fill-extrusion-height', previewHeightM ?? 0)
+  }, [previewHeightM])
+
   // El cursor dice qué va a pasar al hacer clic.
   useEffect(() => {
     const map = mapRef.current
@@ -697,6 +791,24 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" aria-label="Lienzo de mapeo" />
+
+      {/* Sin inclinar, un volumen visto desde arriba es su propia huella: la
+          vista previa 3D no se vería y parecería que no funciona. La brújula de
+          MapLibre ya inclina arrastrándola, pero eso no lo adivina nadie. */}
+      <button
+        onClick={() => {
+          const map = mapRef.current
+          if (!map) return
+          const next = map.getPitch() > 5 ? 0 : 55
+          map.easeTo({ pitch: next, duration: 500 })
+          setPitched(next > 0)
+        }}
+        title={pitched ? 'Volver a la vista cenital' : 'Inclinar para ver los volúmenes 3D'}
+        className="absolute bottom-5 left-4 z-10 flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white/95 px-3 py-2 text-[11px] font-black uppercase tracking-wider text-neutral-600 shadow-lg backdrop-blur transition-colors hover:text-[#D41F2D] dark:border-neutral-700 dark:bg-neutral-900/95 dark:text-neutral-300"
+      >
+        {pitched ? <Square size={13} /> : <Box size={13} />}
+        {pitched ? '2D' : '3D'}
+      </button>
 
       {(drawingPolygon || sizingRect) && (
         <div className="pointer-events-none absolute inset-x-0 bottom-5 z-10 flex justify-center px-4">

@@ -1,4 +1,4 @@
-import { Building2, ChevronDown, ChevronRight, Layers, Minus, Plus, Trees } from 'lucide-react'
+import { Building2, ChevronDown, ChevronRight, Hexagon, Layers, Minus, Plus, Trees } from 'lucide-react'
 import type { Building, BuildingFloor } from '@/shared/types/database'
 import { floorName } from './areaStyles'
 import { floorKey, useMappingEditor, type FloorViewMode } from './editorStore'
@@ -16,6 +16,10 @@ interface MappingTreeProps {
   floors: BuildingFloor[]
   areaCounts: Map<string, number>
   outdoorCount: number
+  /** Nombre de la facultad activa, para la fila de arriba del todo. */
+  facultyName: string
+  /** true si ya tiene perímetro trazado; si no, es lo primero que falta. */
+  hasPerimeter: boolean
   onAddBuilding: () => void
   onAddFloor: (buildingId: string, level: number) => void
   onRemoveFloor: (buildingId: string, level: number) => void
@@ -30,10 +34,14 @@ export function MappingTree({
   floors,
   areaCounts,
   outdoorCount,
+  facultyName,
+  hasPerimeter,
   onAddBuilding,
   onAddFloor,
   onRemoveFloor,
 }: MappingTreeProps) {
+  const facultyEdit = useMappingEditor((s) => s.facultyEdit)
+  const setFacultyEdit = useMappingEditor((s) => s.setFacultyEdit)
   const selectedBuildingId = useMappingEditor((s) => s.selectedBuildingId)
   const selectedFloor = useMappingEditor((s) => s.selectedFloor)
   const selectBuilding = useMappingEditor((s) => s.selectBuilding)
@@ -52,6 +60,12 @@ export function MappingTree({
   if (viewMode === 'level') {
     return (
       <div className="flex h-full flex-col gap-1 overflow-y-auto p-3">
+        <FacultyRow
+          name={facultyName}
+          hasPerimeter={hasPerimeter}
+          active={facultyEdit === 'edit'}
+          onClick={() => setFacultyEdit('edit')}
+        />
         <ViewSwitch mode={viewMode} onChange={setViewMode} />
 
         <p className="mb-1 mt-2 px-1 text-[9px] font-black uppercase tracking-wider text-neutral-400">
@@ -102,6 +116,12 @@ export function MappingTree({
 
   return (
     <div className="flex h-full flex-col gap-1 overflow-y-auto p-3">
+      <FacultyRow
+        name={facultyName}
+        hasPerimeter={hasPerimeter}
+        active={facultyEdit === 'edit'}
+        onClick={() => setFacultyEdit('edit')}
+      />
       <ViewSwitch mode={viewMode} onChange={setViewMode} />
       <button
         onClick={selectOutdoor}
@@ -180,6 +200,39 @@ export function MappingTree({
         <Plus size={12} /> Nuevo edificio
       </button>
     </div>
+  )
+}
+
+/**
+ * La facultad, arriba del todo y fuera del conmutador de vistas.
+ *
+ * Está por encima de "por edificio / por planta" porque no pertenece a
+ * ninguna de las dos: el perímetro es el marco dentro del que caben las dos
+ * lecturas. Y avisa cuando falta, que es el caso que más se da con una
+ * facultad recién creada: sin perímetro no hay dónde meter un edificio, no se
+ * pinta contorno en el mapa y ningún pin cae dentro.
+ */
+function FacultyRow({
+  name,
+  hasPerimeter,
+  active,
+  onClick,
+}: {
+  name: string
+  hasPerimeter: boolean
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button onClick={onClick} className={`${ROW} mb-1 ${active ? ROW_ACTIVE : ROW_IDLE}`}>
+      <Hexagon size={14} />
+      <span className="flex-1 truncate">{name}</span>
+      {!hasPerimeter && (
+        <span className="rounded-full bg-amber-100 px-1.5 text-[9px] font-black uppercase tracking-wider text-amber-700 dark:bg-amber-950/50 dark:text-amber-400">
+          sin trazar
+        </span>
+      )}
+    </button>
   )
 }
 

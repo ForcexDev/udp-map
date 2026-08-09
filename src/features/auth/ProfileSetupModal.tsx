@@ -6,7 +6,8 @@ import { useUIStore } from '@/shared/stores/uiStore'
 import { Dialog } from '@/shared/ui/Dialog'
 import { Button } from '@/shared/ui/Button'
 import { CustomSelect } from '@/shared/ui/CustomSelect'
-import { FACULTIES, CAREERS } from '@/shared/data/campusData'
+import { CAREERS, academicFaculties } from '@/shared/data/campusData'
+import { useFaculties } from '@/shared/data/facultyStore'
 
 export function ProfileSetupModal() {
   const { t, i18n } = useTranslation()
@@ -27,11 +28,8 @@ export function ProfileSetupModal() {
     return CAREERS.filter(c => c.faculty_id === facultyId)
   }, [facultyId])
 
-  // Only show faculties that actually have careers assigned
-  const academicFaculties = useMemo(() => {
-    const validIds = new Set(CAREERS.map(c => c.faculty_id))
-    return FACULTIES.filter(f => validIds.has(f.id))
-  }, [])
+  const faculties = useFaculties()
+  const selectableFaculties = useMemo(() => academicFaculties(faculties), [faculties])
 
   const handleSave = async () => {
     if (!facultyId || (!career && availableCareers.length > 0)) return
@@ -40,7 +38,7 @@ export function ProfileSetupModal() {
       await updateProfile(facultyId, career)
       
       // Update map campus
-      const faculty = FACULTIES.find(f => f.id === facultyId)
+      const faculty = faculties.find(f => f.id === facultyId)
       if (faculty) {
         setCampusId(faculty.campus_id)
         // Fly map to faculty
@@ -75,7 +73,7 @@ export function ProfileSetupModal() {
             {t('auth.faculty', 'Facultad')}
           </label>
           <CustomSelect
-            options={academicFaculties.map((f) => ({
+            options={selectableFaculties.map((f) => ({
               value: f.id,
               label: i18n.language === 'en' ? f.name_en : f.name,
             }))}

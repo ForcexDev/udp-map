@@ -10,8 +10,13 @@ import { AdminPage } from '@/features/admin/AdminPage'
 import { MappingPage } from '@/features/mapping/MappingPage'
 
 import { UpdatePrompt } from '@/shared/ui/UpdatePrompt'
+import { useFacultiesSync } from '@/shared/data/useFaculties'
 
 export function App() {
+  // El catálogo de facultades se rehidrata desde la base una sola vez, aquí
+  // arriba: lo necesitan tanto las rutas públicas como el editor de /admin.
+  useFacultiesSync()
+
   return (
     <>
       <UpdatePrompt />

@@ -114,6 +114,21 @@ interface MappingEditorState {
   activeLevel: number | null
   setActiveLevel: (level: number | null) => void
 
+  /**
+   * Qué se está editando de la propia FACULTAD, si es que algo.
+   *
+   *   'edit'  la facultad seleccionada: su ficha y su perímetro.
+   *   'new'   una facultad que todavía no existe. `facultyId` sigue apuntando a
+   *           la anterior a propósito, para que el lienzo no se mueva de donde
+   *           estaba mientras se traza.
+   *
+   * Vive aquí y no en `MappingPage` porque el lienzo también lo necesita: al
+   * editar el perímetro hay que sacarlo de las referencias del imán, o cada
+   * vértice se pegaría al trazo que se está intentando corregir.
+   */
+  facultyEdit: 'new' | 'edit' | null
+  setFacultyEdit: (mode: 'new' | 'edit' | null) => void
+
   /** null ⇔ se está trabajando en el exterior de la facultad. */
   selectedBuildingId: string | null
   selectedFloor: number | null
@@ -131,6 +146,17 @@ interface MappingEditorState {
   /** Como setDraft, pero deja el estado anterior en el historial. */
   commitDraft: (draft: Draft | null) => void
   degradeToRing: (ring: Position[]) => void
+
+  /**
+   * Altura en metros que se está escribiendo en el formulario del edificio.
+   *
+   * Vive aquí y no en `MappingProperties` porque el volumen se previsualiza en
+   * el LIENZO mientras escribes, y los dos son hermanos. Es volátil por
+   * definición: lo guardado está en `buildings.height_m`, y esto es solo lo que
+   * hay en el campo ahora mismo. null ⇔ no hay ningún edificio en edición.
+   */
+  previewHeightM: number | null
+  setPreviewHeightM: (metres: number | null) => void
 
   /** Shift: aristas a múltiplos de 45° respecto de la veta del edificio. */
   ortho: boolean
@@ -170,7 +196,29 @@ export const useMappingEditor = create<MappingEditorState>((set, get) => {
     facultyId: 'ingenieria',
     setFacultyId: (id) => {
       clearDraft()
-      set({ facultyId: id, selectedBuildingId: null, selectedFloor: null, selectedAreaId: null })
+      set({
+        facultyId: id,
+        facultyEdit: null,
+        previewHeightM: null,
+        selectedBuildingId: null,
+        selectedFloor: null,
+        selectedAreaId: null,
+      })
+    },
+
+    facultyEdit: null,
+    setFacultyEdit: (mode) => {
+      clearDraft()
+      set({
+        facultyEdit: mode,
+        previewHeightM: null,
+        selectedBuildingId: null,
+        selectedFloor: null,
+        selectedAreaId: null,
+        // Editar la ficha no es dibujar: se entra con el puntero y se cambia a
+        // polígono solo si de verdad se va a retrazar el perímetro.
+        tool: 'select',
+      })
     },
 
     viewMode: 'building',
@@ -192,19 +240,19 @@ export const useMappingEditor = create<MappingEditorState>((set, get) => {
 
     selectBuilding: (buildingId) => {
       clearDraft()
-      set({ selectedBuildingId: buildingId, selectedFloor: null, selectedAreaId: null, tool: 'select' })
+      set({ selectedBuildingId: buildingId, selectedFloor: null, selectedAreaId: null, facultyEdit: null, tool: 'select', previewHeightM: null })
     },
     selectFloor: (buildingId, level) => {
       clearDraft()
-      set({ selectedBuildingId: buildingId, selectedFloor: level, selectedAreaId: null, tool: 'select' })
+      set({ selectedBuildingId: buildingId, selectedFloor: level, selectedAreaId: null, facultyEdit: null, tool: 'select', previewHeightM: null })
     },
     selectArea: (areaId) => {
       clearDraft()
-      set({ selectedAreaId: areaId, tool: 'select' })
+      set({ selectedAreaId: areaId, facultyEdit: null, tool: 'select', previewHeightM: null })
     },
     selectOutdoor: () => {
       clearDraft()
-      set({ selectedBuildingId: null, selectedFloor: null, selectedAreaId: null, tool: 'select' })
+      set({ selectedBuildingId: null, selectedFloor: null, selectedAreaId: null, facultyEdit: null, tool: 'select', previewHeightM: null })
     },
 
     tool: 'select',
@@ -231,6 +279,9 @@ export const useMappingEditor = create<MappingEditorState>((set, get) => {
       set({ draft: { kind: 'ring', ring, phase: 'ready' } })
       syncHistoryFlags()
     },
+
+    previewHeightM: null,
+    setPreviewHeightM: (metres) => set({ previewHeightM: metres }),
 
     ortho: false,
     setOrtho: (v) => set({ ortho: v }),

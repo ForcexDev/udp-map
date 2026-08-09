@@ -5,11 +5,12 @@ import { compressImage } from '@/features/pins/photos'
 import { FACULTIES } from '@/shared/data/campusData'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Galerías de facultades y edificios.
+// Galerías de facultades, edificios y áreas exteriores.
 //
-// Un solo módulo para las dos entidades porque en la base son una sola tabla
-// (`place_photos`, con `faculty_id` o `building_id`, nunca los dos). Ver el
-// razonamiento en supabase/migrations/20260805110000_place_photos.sql.
+// Un solo módulo para las tres entidades porque en la base son una sola tabla
+// (`place_photos`, con `faculty_id`, `building_id` o `area_id`, nunca más de
+// uno). Ver el razonamiento en
+// supabase/migrations/20260805110000_place_photos.sql.
 //
 // Igual que el resto de features: contra Supabase si hay credenciales, contra
 // un almacén en memoria si no (MODO DEMO).
@@ -22,12 +23,19 @@ import { FACULTIES } from '@/shared/data/campusData'
 export type PlaceOwner =
   | { kind: 'faculty'; id: string }
   | { kind: 'building'; id: string }
+  | { kind: 'area'; id: string }
 
 export function ownerKey(owner: PlaceOwner): string {
   return `${owner.kind}:${owner.id}`
 }
 
-const columnOf = (owner: PlaceOwner) => (owner.kind === 'faculty' ? 'faculty_id' : 'building_id')
+const COLUMN_OF = {
+  faculty: 'faculty_id',
+  building: 'building_id',
+  area: 'area_id',
+} as const
+
+const columnOf = (owner: PlaceOwner) => COLUMN_OF[owner.kind]
 
 // ── Modo demo ────────────────────────────────────────────────────────────────
 // Se siembra con la foto única que ya tenía cada facultad, que es exactamente
@@ -41,6 +49,7 @@ function demoDb(): PlacePhoto[] {
       id: `demo-photo-${i}`,
       faculty_id: f.id,
       building_id: null,
+      area_id: null,
       url: f.image as string,
       width: null,
       height: null,
@@ -52,7 +61,11 @@ function demoDb(): PlacePhoto[] {
 }
 
 const matches = (photo: PlacePhoto, owner: PlaceOwner) =>
-  owner.kind === 'faculty' ? photo.faculty_id === owner.id : photo.building_id === owner.id
+  owner.kind === 'faculty'
+    ? photo.faculty_id === owner.id
+    : owner.kind === 'building'
+      ? photo.building_id === owner.id
+      : photo.area_id === owner.id
 
 export async function fetchPlacePhotos(owner: PlaceOwner): Promise<PlacePhoto[]> {
   if (!supabase) {
@@ -85,6 +98,7 @@ export async function addPlacePhotos(owner: PlaceOwner, files: File[]): Promise<
         id: `demo-photo-${Date.now()}-${i}`,
         faculty_id: owner.kind === 'faculty' ? owner.id : null,
         building_id: owner.kind === 'building' ? owner.id : null,
+        area_id: owner.kind === 'area' ? owner.id : null,
         url: URL.createObjectURL(file),
         width: null,
         height: null,

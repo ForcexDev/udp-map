@@ -229,7 +229,7 @@ create table if not exists public.pins (
   id                    uuid              primary key default gen_random_uuid(),
   type                  public.pin_type   not null,
   title                 text              not null check (char_length(title) between 3 and 80),
-  description           text              check (char_length(description) <= 500),
+  description           text              check (char_length(description) <= 1500),
   category_id           text              references public.categories(id),
   faculty_id            text              references public.faculties(id),
   lat                   double precision  not null,
@@ -269,21 +269,22 @@ create table if not exists public.pin_photos (
   created_at  timestamptz  not null default now()
 );
 
--- Galería de una facultad o de un edificio. Exactamente uno de los dos ids va
--- relleno, y el CHECK lo garantiza. Dos FK anulables en vez del par
--- (entity_type, entity_id) para conservar la integridad referencial y el
--- borrado en cascada: un `text` que apunta a dos tablas no puede tener FK.
--- `sort_order` 0 es la portada.
+-- Galería de una facultad, de un edificio o de un área exterior (el Patio, una
+-- plaza). Exactamente uno de los tres ids va relleno, y el CHECK lo garantiza.
+-- FK anulables en vez del par (entity_type, entity_id) para conservar la
+-- integridad referencial y el borrado en cascada: un `text` que apunta a tres
+-- tablas no puede tener FK. `sort_order` 0 es la portada.
 create table if not exists public.place_photos (
   id           uuid         primary key default gen_random_uuid(),
   faculty_id   text         references public.faculties(id) on delete cascade,
   building_id  text         references public.buildings(id) on delete cascade,
+  area_id      uuid         references public.areas(id) on delete cascade,
   url          text         not null,
   width        integer,
   height       integer,
   sort_order   integer      not null default 0,
   created_at   timestamptz  not null default now(),
-  constraint place_photos_one_owner check (num_nonnulls(faculty_id, building_id) = 1)
+  constraint place_photos_one_owner check (num_nonnulls(faculty_id, building_id, area_id) = 1)
 );
 
 create index if not exists place_photos_faculty_idx
@@ -293,6 +294,10 @@ create index if not exists place_photos_faculty_idx
 create index if not exists place_photos_building_idx
   on public.place_photos (building_id, sort_order)
   where building_id is not null;
+
+create index if not exists place_photos_area_idx
+  on public.place_photos (area_id, sort_order)
+  where area_id is not null;
 
 create table if not exists public.pin_comments (
   id          uuid         primary key default gen_random_uuid(),
@@ -1133,13 +1138,21 @@ declare
   v_count integer;
   v_owner text;
 begin
-  v_owner := coalesce('faculty:' || new.faculty_id, 'building:' || new.building_id);
+  v_owner := coalesce(
+    'faculty:' || new.faculty_id,
+    'building:' || new.building_id,
+    'area:' || new.area_id
+  );
   perform pg_advisory_xact_lock(hashtext('place_photos:' || v_owner));
 
+  -- Los tres ids entran en el recuento. Con solo dos, las fotos de todas las
+  -- áreas caían en el mismo cajón (faculty_id null, building_id null) y el tope
+  -- de 10 se agotaba entre áreas que no tienen nada que ver.
   select count(*) into v_count
   from public.place_photos
   where faculty_id is not distinct from new.faculty_id
-    and building_id is not distinct from new.building_id;
+    and building_id is not distinct from new.building_id
+    and area_id is not distinct from new.area_id;
 
   if v_count > 10 then
     raise exception 'Una galería no puede tener más de 10 fotos.';
@@ -2436,8 +2449,13 @@ create policy campuses_read on public.campuses for select using (true);
 drop policy if exists faculties_read on public.faculties;
 create policy faculties_read on public.faculties for select using (true);
 
+-- El catálogo lo escribe un admin desde /admin/mapeo: crear una facultad y
+-- trazar su perímetro. El WITH CHECK va explícito aunque el FOR ALL lo derive
+-- de su USING, porque esta tabla sí se escribe desde la app.
 drop policy if exists faculties_admin on public.faculties;
-create policy faculties_admin on public.faculties for all using (public.user_role() = 'admin');
+create policy faculties_admin on public.faculties
+  for all using (public.user_role() = 'admin')
+  with check (public.user_role() = 'admin');
 
 -- Galerías: lectura pública, escritura solo admin. La comprobación va aquí y
 -- no solo en el cliente: esconder el botón de editar no impide llamar al

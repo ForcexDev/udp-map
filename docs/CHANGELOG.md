@@ -1,22 +1,12 @@
-### Novedades en esta versión (v0.6.0)
+### Novedades en esta versión (v0.7.0)
 
-- Ficha de facultad reorganizada en secciones: reportes, eventos y lugares
-- Los lugares vuelven a aparecer en las publicaciones de una facultad
-- Galería de fotos por facultad y por edificio, con carrusel
-- Orden de los reportes por más recientes o más confirmados
-- El piso elegido en la ficha y en el mapa es ahora el mismo
-- Selector de piso disponible al publicar desde el patio de una facultad
-- La categoría de evento "Deportivo" pasa a llamarse "Competencia"
-- Corregidos los pines que aparecían desplazados al abrir el mapa
-- Sistema de mapeo interior de edificios, plantas y salas
-- Selector vertical de pisos para navegación en edificios
-- Identificación automática de salas UDP (ej. E441.1.S101)
-- Contexto de planta y filtrado inteligente en zonas exteriores
-- Nuevas categorías fijas: Sala, Ascensor y Rampa accesibles
-- Editor visual de mapeo indoor para administradores
-- Cronogramas de eventos y bloques horarios en pines
-- Unificación total del sistema de perfiles de usuario
-- Nuevo selector de tiempo (Time Picker) personalizado
-- Actualizaciones en tiempo real para eventos en curso
-- Corrección visual y de espaciado en la cabecera del perfil
-- Categorías de easter eggs por campus
+- Reestructuración completa de la base de datos y documentación al día
+- Subida de fotos atómica y limpieza automática de imágenes huérfanas
+- El plazo de expiración de los reportes ahora lo calcula automáticamente el servidor
+- Mayor control para autores: ahora pueden mover la fecha de fin de sus eventos
+- La categoría de los pines verificados queda protegida contra cambios accidentales
+- Galerías de fotos dedicadas para áreas exteriores (patios, plazas, canchas)
+- Límite de texto en descripciones ampliado (1500 caracteres) para permitir enlaces largos
+- El buscador del mapa y la barra lateral ahora abren automáticamente la ficha del lugar
+- Sistema de mapeo interior de edificios, plantas y salas UDP
+- Navegación inteligente de pisos y contexto de planta en zonas exteriores

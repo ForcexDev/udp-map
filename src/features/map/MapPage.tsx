@@ -14,7 +14,9 @@ import { TutorialModal } from './TutorialModal'
 import { ProfileSetupModal } from '@/features/auth/ProfileSetupModal'
 import { updatePinLocation } from '@/features/pins/api'
 import { useAuthStore } from '@/features/auth/authStore'
-import { CAMPUSES, FACULTIES } from '@/shared/data/campusData'
+import type { Faculty } from '@/shared/types/database'
+import { CAMPUSES } from '@/shared/data/campusData'
+import { useFaculties } from '@/shared/data/facultyStore'
 import { formatDistance, type LatLng } from '@/shared/utils/geo'
 import { MapView, getMapCenter } from './MapView'
 import { FacultyDetail } from './FacultyDetail'
@@ -264,10 +266,11 @@ export function MapPage() {
   const routeTarget = pins.find((p) => p.id === routeTargetPinId) ?? null
 
   // Filter faculties for search dropdown
+  const faculties = useFaculties()
   const filteredFaculties = useMemo(() => {
     const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     const q = normalize(searchQuery.trim())
-    const all = FACULTIES
+    const all = faculties
     if (!q) return all
 
     return all.filter((f) => {
@@ -277,7 +280,7 @@ export function MapPage() {
 
       return normalize(name).includes(q) || normalize(campusName).includes(q)
     })
-  }, [searchQuery, i18n.language])
+  }, [faculties, searchQuery, i18n.language])
 
   /**
    * Edificios y \u00e1reas que coinciden con la b\u00fasqueda.
@@ -346,7 +349,7 @@ export function MapPage() {
         matched = true
       }
     } else if (facultyParam) {
-      const exists = FACULTIES.find((f) => f.id === facultyParam)
+      const exists = faculties.find((f) => f.id === facultyParam)
       if (exists) {
         useUIStore.getState().selectFaculty(facultyParam)
         matched = true
@@ -357,7 +360,7 @@ export function MapPage() {
       // Limpiamos la URL para evitar re-selecciones si el usuario lo cierra manualmente
       window.history.replaceState({}, '', window.location.pathname)
     }
-  }, [pins, selectedPinId, selectPin])
+  }, [faculties, pins, selectedPinId, selectPin])
 
   /**
    * Vuela al centro de un edificio o un área encontrada en la búsqueda.
@@ -368,7 +371,7 @@ export function MapPage() {
    */
   const handleSelectMapped = (polygon: Polygon, facultyId: string, floor?: number | null) => {
     const [lng, lat] = polygonCentroid(polygon)
-    setCampusId(FACULTIES.find((f) => f.id === facultyId)?.campus_id ?? campusId)
+    setCampusId(faculties.find((f) => f.id === facultyId)?.campus_id ?? campusId)
     if (floor !== undefined && floor !== null) {
       useUIStore.getState().setActiveMappingFaculty(facultyId, floor)
     }
@@ -377,9 +380,12 @@ export function MapPage() {
     setSearchOpen(false)
   }
 
-  const handleSelectFaculty = (faculty: typeof FACULTIES[0]) => {
+  const handleSelectFaculty = (faculty: Faculty) => {
     setCampusId(faculty.campus_id)
-    // Dispatch custom event for MapView to flyTo faculty coordinates
+    // Abre la ficha de la facultad con sus posts, igual que al tocar el
+    // perímetro en el mapa. Sin esto, el buscador solo hacía flyTo y la
+    // persona tenía que volver a tocar el mapa para ver el contenido.
+    useUIStore.getState().selectFaculty(faculty.id)
     window.dispatchEvent(
       new CustomEvent('faculty-flyto', { detail: { lat: faculty.lat, lng: faculty.lng } })
     )

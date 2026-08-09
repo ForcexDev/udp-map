@@ -109,12 +109,18 @@ export function PhotoCarousel({
           onScroll={onScroll}
           className="no-scrollbar flex h-full w-full snap-x snap-mandatory overflow-x-auto bg-neutral-100 dark:bg-neutral-900"
         >
-          {photos.map((ph) => (
+          {photos.map((ph, i) => (
             <img
               key={ph.id}
               src={ph.url}
               alt=""
-              loading="lazy"
+              // La primera se pide ya: es la que está a la vista al abrir la
+              // ficha, y con `lazy` el navegador la deja para después y se veía
+              // el hueco gris un instante. Las demás están fuera de pantalla
+              // hasta que alguien desliza, así que ahí sí conviene aplazarlas.
+              loading={i === 0 ? 'eager' : 'lazy'}
+              fetchPriority={i === 0 ? 'high' : 'auto'}
+              decoding="async"
               onClick={() => setZoomed(ph.url)}
               className="h-full w-full flex-none shrink-0 cursor-pointer snap-center object-cover"
             />

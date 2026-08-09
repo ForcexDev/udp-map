@@ -6,7 +6,8 @@ import { useUIStore } from '@/shared/stores/uiStore'
 import { Dialog } from '@/shared/ui/Dialog'
 import { Button } from '@/shared/ui/Button'
 import { CustomSelect } from '@/shared/ui/CustomSelect'
-import { FACULTIES, CAREERS } from '@/shared/data/campusData'
+import { CAREERS, academicFaculties } from '@/shared/data/campusData'
+import { useFaculties } from '@/shared/data/facultyStore'
 
 interface EditProfileModalProps {
   open: boolean
@@ -41,10 +42,8 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
     return CAREERS.filter((c) => c.faculty_id === facultyId)
   }, [facultyId])
 
-  const academicFaculties = useMemo(() => {
-    const validIds = new Set(CAREERS.map((c) => c.faculty_id))
-    return FACULTIES.filter((f) => validIds.has(f.id))
-  }, [])
+  const faculties = useFaculties()
+  const selectableFaculties = useMemo(() => academicFaculties(faculties), [faculties])
 
   const canSave =
     name.trim().length >= 2 && !!facultyId && (!!career || availableCareers.length === 0)
@@ -96,7 +95,7 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
             {t('auth.faculty', 'Facultad')}
           </label>
           <CustomSelect
-            options={academicFaculties.map((f) => ({
+            options={selectableFaculties.map((f) => ({
               value: f.id,
               label: i18n.language === 'en' ? f.name_en : f.name,
             }))}

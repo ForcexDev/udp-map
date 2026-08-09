@@ -9,7 +9,9 @@ import { useSidebarStore, type SidebarTab } from '@/shared/stores/sidebarStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { setLanguage } from '@/shared/lib/i18n'
-import { CAMPUSES, FACULTIES } from '@/shared/data/campusData'
+import type { Faculty } from '@/shared/types/database'
+import { CAMPUSES } from '@/shared/data/campusData'
+import { useFaculties } from '@/shared/data/facultyStore'
 import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher'
 import { NotificationCenter } from '@/features/notifications/NotificationCenter'
 import { useNotifications } from '@/features/notifications/useNotifications'
@@ -40,22 +42,25 @@ export function Sidebar() {
   const langActiveIndex = i18n.language.startsWith('en') ? 1 : 0
 
   // Group faculties by campus, filtered by search
+  const faculties = useFaculties()
   const groupedFaculties = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     return CAMPUSES.map((campus) => {
-      const faculties = FACULTIES.filter((f) => {
+      const inCampus = faculties.filter((f) => {
         if (f.campus_id !== campus.id) return false
         if (!q) return true
         const name = i18n.language === 'en' ? f.name_en : f.name
         return name.toLowerCase().includes(q) || campus.name.toLowerCase().includes(q)
       })
-      return { campus, faculties }
+      return { campus, faculties: inCampus }
     }).filter((g) => g.faculties.length > 0)
-  }, [searchQuery, i18n.language])
+  }, [faculties, searchQuery, i18n.language])
 
-  const handleSelectFaculty = (faculty: typeof FACULTIES[0]) => {
+  const handleSelectFaculty = (faculty: Faculty) => {
     // Switch to the faculty's campus and trigger flyTo via campusId change
     setCampusId(faculty.campus_id)
+    // Abre la ficha con los posts, igual que tocar el perímetro en el mapa.
+    useUIStore.getState().selectFaculty(faculty.id)
     // Dispatch a custom event so MapView can flyTo the faculty's exact coords
     window.dispatchEvent(
       new CustomEvent('faculty-flyto', { detail: { lat: faculty.lat, lng: faculty.lng } })

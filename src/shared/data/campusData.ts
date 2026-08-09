@@ -1,6 +1,4 @@
-import type { Polygon } from 'geojson'
 import type { Campus, Category, Faculty } from '@/shared/types/database'
-import { FACULTY_PERIMETERS } from './facultyPerimeters'
 
 // ⚠️ Coordenadas aproximadas de los campus/edificios UDP (Santiago).
 // Ajustar en supabase/seed/seed.sql al validar en terreno; este archivo alimenta
@@ -11,22 +9,6 @@ export const CAMPUSES: Campus[] = [
   { id: 'republica', name: 'Campus República', lat: -33.449695, lng: -70.667732 },
   { id: 'huechuraba', name: 'Campus Huechuraba', lat: -33.39337, lng: -70.61283 },
 ]
-
-/** Cuadrado GeoJSON de ~2·d grados alrededor de un punto (huella aproximada). */
-function squareAround(lat: number, lng: number, d = 0.00045): Polygon {
-  return {
-    type: 'Polygon',
-    coordinates: [
-      [
-        [lng - d, lat - d],
-        [lng + d, lat - d],
-        [lng + d, lat + d],
-        [lng - d, lat + d],
-        [lng - d, lat - d],
-      ],
-    ],
-  }
-}
 
 const f = (
   id: string,
@@ -43,11 +25,28 @@ const f = (
   campus_id,
   lat,
   lng,
-  // Perímetro real si está trazado (hoy solo 'ingenieria'); si no, huella aproximada.
-  polygon: FACULTY_PERIMETERS[id] ?? squareAround(lat, lng),
+  // Sin geometría a propósito: los perímetros viven SOLO en la base y llegan
+  // con `publishFaculties`. Aquí hubo una copia, y las dos discreparon durante
+  // meses sin que nadie lo notara —el cliente no consultaba la tabla, así que
+  // la copia mala era invisible— hasta que la fase 7B la destapó.
+  polygon: null,
   image,
 })
 
+/**
+ * El catálogo vivo de facultades.
+ *
+ * ⚠️ Es un array MUTABLE, no una constante congelada: nace con el catálogo de
+ * abajo y `facultyStore.publishFaculties()` lo reemplaza en el sitio con lo que
+ * hay en la base al arrancar. Se reemplaza en el sitio, y no se reasigna,
+ * porque los ~26 archivos que hacen `FACULTIES.find(...)` guardan esta misma
+ * referencia; reasignar la dejaría apuntando al catálogo viejo para siempre.
+ *
+ * Sembrarlo con el catálogo estático es lo que evita propagar estados de carga:
+ * la lista nunca está vacía, y en el peor caso —sin base, o con la consulta
+ * caída— enseña exactamente lo de siempre. Quien necesite re-renderizar cuando
+ * llegue la lista de la base usa `useFaculties()`.
+ */
 export const FACULTIES: Faculty[] = [
   f('ingenieria', 'Facultad de Ingeniería y Ciencias', 'Faculty of Engineering and Sciences', 'ejercito', -33.45276, -70.66105, '/fic.png'),
   f('medicina', 'Facultad de Medicina', 'Faculty of Medicine', 'ejercito', -33.44864, -70.66134, 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=200&h=200&fit=crop&q=60'),
@@ -67,6 +66,18 @@ export const FACULTIES: Faculty[] = [
   f('dti', 'UDP Oficina DTI', 'UDP IT Office (DTI)', 'ejercito', -33.4509322062588, -70.6597607833481, 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=200&h=200&fit=crop&q=60'),
   f('comercio', 'Facultad de Comercio', 'Faculty of Commerce', 'ejercito', -33.4508949239208, -70.6606009331726, 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&h=200&fit=crop&q=60'),
 ]
+
+/**
+ * Los ids del catálogo de arriba, congelados antes de que nadie pueda
+ * rehidratar `FACULTIES`.
+ *
+ * Sirve para distinguir "facultad de siempre" de "facultad creada desde el
+ * editor", que no es lo mismo en todas partes: el selector del perfil filtra
+ * las de siempre por si tienen carreras —la Biblioteca Nicanor Parra no es un
+ * sitio donde se estudie una carrera— y esa curaduría no se puede aplicar a
+ * una facultad que todavía no tiene ninguna cargada.
+ */
+export const STATIC_FACULTY_IDS: ReadonlySet<string> = new Set(FACULTIES.map((x) => x.id))
 
 export const CAREERS: { faculty_id: string; name: string; name_en: string }[] = [
   // Administración y Economía (ID: economia)
@@ -128,6 +139,25 @@ export const CAREERS: { faculty_id: string; name: string; name_en: string }[] = 
   // Psicología (ID: psicologia)
   { faculty_id: 'psicologia', name: 'Psicología', name_en: 'Psychology' },
 ]
+
+/**
+ * Las facultades que se pueden elegir como propia en el perfil.
+ *
+ * Del catálogo de siempre entran solo las que tienen carreras: la Biblioteca
+ * Nicanor Parra, el Centro de Deportes o la oficina DTI son sitios del campus,
+ * no facultades donde alguien estudie, y ofrecerlas ahí es ofrecer una respuesta
+ * equivocada.
+ *
+ * Esa curaduría es una lista escrita a mano, y por eso NO se le aplica a una
+ * facultad creada desde `/admin/mapeo`: "no tiene carreras" no distingue "no es
+ * académica" de "es nueva y todavía no se le cargó ninguna". Excluirla dejaría
+ * una facultad que existe en el mapa y en el foro pero que nadie puede declarar
+ * como suya.
+ */
+export function academicFaculties(faculties: Faculty[]): Faculty[] {
+  const withCareers = new Set(CAREERS.map((c) => c.faculty_id))
+  return faculties.filter((x) => withCareers.has(x.id) || !STATIC_FACULTY_IDS.has(x.id))
+}
 
 export const PLACE_COLOR = '#9d2235'
 export const EVENT_COLOR = '#6366f1'

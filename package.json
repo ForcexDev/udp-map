@@ -1,7 +1,7 @@
 {
   "name": "udp-map-v0.1",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "description": "Mapa colaborativo de pines + eventos + foro para la comunidad UDP",
   "scripts": {
@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "gen:agents": "node scripts/gen_agents.mjs",
     "deploy:push": "npx --yes supabase functions deploy send-push",
     "supabase:login": "npx --yes supabase login"
   },

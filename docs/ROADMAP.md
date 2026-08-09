@@ -4,8 +4,9 @@
 > actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-08-05.
 >
 > Nació como el plan de mapeo interior y onboarding, y absorbió el backlog que
-> antes vivía repartido entre `PLAN.md` y `SPRINTS_STATUS.md`. Los dos están en
-> [`_archive/`](_archive/): describían la v0.3 y se contradecían entre sí.
+> antes vivía repartido entre `PLAN.md` y `SPRINTS_STATUS.md`. Los dos se
+> borraron el 2026-08-05: describían la v0.3, se contradecían entre sí y su
+> contenido vivo está aquí. Git los conserva si alguna vez hicieran falta.
 >
 > **Alcance del bloque principal:** el editor y el motor se construyen genéricos;
 > **el mapeo de la FIC se hace a mano**. No hace falta ningún dato de edificios
@@ -36,7 +37,7 @@ A favor: `floor` y `building` **no** están protegidos por el trigger `protect_p
 El bug de tu foto 4/5, y no es de posición en pantalla: es geográfico.
 
 - `DEMO_FLOOR_PLANS` (`src/shared/data/campusData.ts:201-238`) dibuja el "Edificio FIC" en `lng -70.65465…-70.65405` / `lat -33.45015…-33.44985`.
-- El perímetro real de Ingeniería (`src/shared/data/facultyPerimeters.ts:12-33`) está en `lng -70.66157…-70.66053` / `lat -33.45238…-33.45313`.
+- El perímetro real de Ingeniería (hoy en `faculties.polygon`) está en `lng -70.66157…-70.66053` / `lat -33.45238…-33.45313`.
 - Distancia: **694 m** (622 m al este, 307 m al norte).
 
 Rectángulos inventados para la demo del Sprint 2, nunca georreferenciados. La UI además **no lee la tabla `floor_plans` de Supabase** en ningún punto.
@@ -315,7 +316,7 @@ Para que agregar datos no obligue a tocar código, tres invariantes que el motor
 
 1. **Todo es opcional y degrada hacia arriba.** Sin áreas, el breadcrumb muestra `Facultad · Edificio · Piso`. Sin plantas, `Facultad · Edificio`. Sin edificios, `Facultad`, que es lo que hay hoy. Ninguna pantalla se rompe por datos que faltan.
 2. **Los datos mandan sobre el código.** El selector de plantas se construye leyendo `building_floors`; nada está escrito a mano. Si mañana agregas un cuarto subterráneo, aparece solo.
-3. **Una sola fuente, dos destinos.** Dibujas en el editor → se guarda en Supabase → el botón "Exportar" vuelca `buildings.ts` y `areas.ts` a `src/shared/data/` para versionarlos en git y alimentar el modo demo. Es el mismo papel que hoy cumple `facultyPerimeters.ts`.
+3. **Una sola fuente, dos destinos.** Dibujas en el editor → se guarda en Supabase → el botón "Exportar" vuelca `buildings.ts` y `areas.ts` a `src/shared/data/` para versionarlos en git y alimentar el modo demo. Los perímetros de facultad ya no siguen ese camino: viven solo en la base (fase 7B).
 
 Con eso, cuando termines de mapear, el único ajuste previsible es afinar colores y tamaños de etiqueta, que es cosa de un rato.
 
@@ -833,55 +834,196 @@ Repriorizada el 2026-08-05 (ver §9.2 y §9.3). El orden de abajo es el nuevo.
 - [x] **Tercer punto de anclaje** en la hoja (`peekRatio`, opcional para no
       cambiarle el gesto a `PinDetail`) y portada que se pliega al expandir.
 
-### Fase 7 — Facultades desde el editor (bloqueada, decisión pendiente)
+### Fase 7 — Facultades desde el editor ✅ HECHA (2026-08-08, alcance B)
 
-El perímetro de una facultad se sigue añadiendo a mano en `facultyPerimeters.ts`.
-La idea era dibujarlo desde el editor, y el terreno está más preparado de lo que
-parece: `faculties.polygon` ya existe, el seed ya lo puebla para varias, y
-`MappingProperties` ya lo lee para validar que los edificios caigan dentro.
+Se hizo la **B** directamente. La A —solo perímetros— habría dejado el trabajo a
+medias y habría obligado a volver a pasar por aquí.
 
-**Lo que lo bloquea:** el cliente **nunca consulta la tabla `faculties`**. Cero
-ocurrencias de `from('faculties')` en `src`; `fetchAllMapping` trae edificios,
-plantas y áreas, y nada más. Las facultades salen de `FACULTIES`, un array
-estático en `campusData.ts` del que dependen **26 archivos**: búsqueda, filtros,
-selector de planta, creación de pines, perfiles, foro y tabla de posiciones. Una
-facultad creada desde el editor se guardaría bien y sería invisible para todos.
+Lo que la bloqueaba era que el cliente **nunca consultaba la tabla `faculties`**:
+las facultades salían de `FACULTIES`, un array estático de `campusData.ts` del
+que dependen 26 archivos, así que una facultad creada en el editor se guardaba
+bien y era invisible para todos.
 
-Dos alcances, y no son el mismo trabajo:
+- [x] **`FACULTIES` pasa a ser una caché de módulo sembrada con el array de
+      siempre** (`shared/data/facultyStore.ts`), rehidratada desde la base al
+      arrancar. Mismo patrón que `mappingCache.publishMapping`. Los 26 archivos
+      siguen llamando `FACULTIES.find(...)` igual que antes y no hay estados de
+      carga que propagar, porque la lista nunca está vacía: si la consulta
+      falla, la app enseña el catálogo de siempre. Se reemplaza **en el sitio**
+      con `splice` y no reasignando, porque esos 26 archivos guardan la
+      referencia.
+- [x] **`useFaculties()`** para lo que sí tiene que repintar cuando llegue la
+      lista: sidebar, búsqueda del mapa, filtros, foro, perfil y el editor.
+- [x] **Crear y editar facultades desde `/admin/mapeo`**: nombre, nombre en
+      inglés, campus, imagen de respaldo y perímetro. La chincheta sale del
+      **centroide del perímetro**, no de dos campos de coordenadas al lado del
+      polígono que un día acabarían diciendo cosas distintas.
+- [x] **`facultyIdAt()` y los contornos leen los perímetros vivos.**
+      `facultyPerimeters.ts` **se borró**: la geometría vive solo en la base y
+      `seed.sql` ya no la siembra. De paso desaparece el ciclo de importación
+      que ese archivo tenía con `campusData`. `facultyLayers` sincroniza capas
+      en vez de solo añadirlas: redibujar un perímetro tenía que quitar la capa
+      del trazo viejo, no dejarla encima.
+- [x] **Editar una forma ya guardada** arrastrando sus vértices, con el botón
+      "Editar forma". Vale igual para un área, la huella de un edificio y el
+      perímetro de una facultad: siembra el borrador con el anillo existente y
+      reutiliza la maquinaria de trazado que ya había.
+- [x] **La altura 3D se previsualiza en el editor.** Era el único dato que no se
+      podía comprobar sin guardar, ir al mapa y volver. El volumen sigue al
+      campo mientras se escribe —también en un edificio que todavía no existe— y
+      un botón 2D/3D inclina la cámara, porque desde arriba un volumen es su
+      propia huella y parecía que no funcionaba. La regla de altura
+      (`buildingHeightM`) se mudó a `mapping/areaStyles.ts` para que el mapa y
+      la vista previa no puedan discrepar.
+- [x] **Modo demo**, contra el mismo almacén en memoria que el resto.
 
-- **A — Solo perímetros.** Un hook que consulte `faculties`, que `facultyLayers`
-  lea `polygon` de la base con el archivo como respaldo, y un modo de dibujo
-  para redibujar el perímetro de una facultad **que ya existe**. Aditivo, no
-  toca los 26 archivos, y resuelve el dolor real: no volver a pegar GeoJSON a
-  mano.
-- **B — Facultades nuevas de verdad.** Migrar `FACULTIES` de constante a dato
-  consultado, con su estado de carga en 26 archivos. Tarea propia.
+**Dos cosas que el plan de arriba no había visto**, y que salieron al verificar:
 
-### Backlog heredado
+- [x] **La base mentía.** `biblioteca` y `ciencias-sociales` tenían las dos el
+      mismo polígono grande, de una versión vieja en la que compartían manzana,
+      y `postgrado-derecho` tenía un cuadrado inventado que el generador del
+      seed producía a partir de la huella aproximada. Cambiar de fuente sin
+      arreglarlo habría movido el mapa solo. La migración
+      `20260808000001_faculties_source_of_truth.sql` vuelca los perímetros
+      reales y deja en null los que no están trazados; el generador ya no
+      inventa cuadrados.
+- [x] **El mapa se contradecía consigo mismo.** El repintado de contornos se
+      descartaba si `isStyleLoaded()` daba false, y MapLibre sigue devolviendo
+      false un rato DESPUÉS de `style.load`: en una carga en frío el aviso se
+      perdía y el mapa se quedaba con la semilla, mientras que al volver desde
+      otra pestaña se remontaba y sí leía la base. Ahora se encola.
+- [x] **El catálogo y los perímetros eran dos contenedores.** El editor llegó a
+      enseñar el nombre nuevo de una facultad junto a un "sin trazar" que ya no
+      era cierto. Todo se deriva de `FACULTIES`, así que no pueden discrepar.
+- [x] **El selector de facultad del perfil filtra por `CAREERS`,** que es
+      estático, así que una facultad nueva no habría aparecido ahí — justo uno
+      de los puntos que la B prometía. Ahora el filtro se aplica solo al
+      catálogo de siempre (`academicFaculties()`): "sin carreras" significa "no
+      es un sitio donde se estudie" para la Biblioteca, pero "todavía no se le
+      cargaron" para una recién creada.
 
-Lo que seguía abierto en el antiguo `SPRINTS_STATUS.md`, que está en
-[`_archive/`](_archive/).
+**Lo que queda fuera a propósito:** borrar una facultad con vida encima. `pins`,
+`forum_threads` y `profiles` la referencian sin cascada, así que el botón solo
+aparece cuando está vacía de edificios, áreas y pines. Es para deshacer una
+recién creada por error, no para retirar una de verdad; retirar una de verdad es
+un problema de migración de datos y no de un botón.
 
-- [ ] Rate limit de 10 pines por día UTC: código y migración preparados, falta
-      validarlo en Supabase productivo.
-- [ ] Lectura pública de `event_rsvps` sin resolver (SEC-007).
-- [ ] Hardening final de RLS y funciones restantes.
-- [ ] Búsqueda de texto completo y filtro por tags en el foro.
+### Backlog
+
+Heredado del antiguo `SPRINTS_STATUS.md` y **reverificado contra el código el
+2026-08-05**, porque arrastraba cosas que ya estaban hechas y otras que nadie
+sabía qué eran.
+
+**Seguridad**
+
+- [ ] **Lectura pública de `event_rsvps`** (SEC-007). Comprobado: la política
+      `event_rsvps_read` sigue con `using (true)`, así que cualquiera puede leer
+      quién va a qué evento. Es real y es el pendiente más concreto de la lista.
+- [ ] **Dependencias con vulnerabilidades altas:** `react-router` 7.12.0–8.2.0
+      (bypass de CSRF), `undici`, `postcss`, `brace-expansion`, `fast-uri`.
+      Todas con arreglo disponible. `react-router` puede traer cambios de
+      comportamiento: va en su propio commit.
+- [ ] Repaso de RLS y funciones que queden sin endurecer.
+
+**Funcionalidad**
+
+- [ ] Búsqueda de texto completo y filtro por tags en el foro. Comprobado que no
+      existe: ni `tsvector` en la base ni filtro en la interfaz.
 - [ ] Atribución oficial dinámica por facultad/CEE.
-- [ ] Pruebas E2E con Playwright.
-- [ ] Accesibilidad AA final.
-- [ ] Guía formal de despliegue en producción.
 - [ ] Moderación con IA: Edge Function con proveedor principal y respaldo,
       evaluación de falsos positivos y cola administrativa.
-- [ ] Actualizar dependencias con vulnerabilidades altas: `react-router`
-      7.12.0–8.2.0 (bypass de CSRF), `undici`, `postcss`, `brace-expansion`,
-      `fast-uri`. Detectadas el 2026-08-05, todas con arreglo disponible.
-      `react-router` puede traer cambios de comportamiento: va en su propio
-      commit.
+- [ ] Pruebas E2E con Playwright. Comprobado que no hay ningún rastro en el
+      repositorio.
+
+**Ya estaba hecho, y el backlog viejo decía que no**
+
+- [x] **Rate limit de 10 pines por día UTC.** La migración
+      `20260721000001_pin_daily_limit.sql` está en `supabase/_archive/migrations/`
+      —o sea, aplicada en producción— y `create_pin_with_daily_limit` está en el
+      baseline. Figuraba como "preparado, falta validar" desde julio.
+
+**Retirados**
+
+"Accesibilidad AA final" y "Guía formal de despliegue en producción" salen de la
+lista. No eran tareas: no tenían definición de terminado y nadie sabía qué
+faltaba exactamente para darlas por cerradas. Un pendiente que nadie entiende no
+se hace nunca y solo ensucia el resto. Si algún día importan, se escriben con un
+alcance concreto.
 
 ---
 
-## 13. Anotado para el futuro, fuera de fases
+## 13. Lo que hay que rehacer, no parchear
+
+Aparte de las fases. Son partes que existen y funcionan a medias, y que se
+levantaron deprisa: el problema no es que les falte un arreglo, es que su diseño
+no da más de sí. Ninguna bloquea nada hoy.
+
+### 13.1 Los RSVP no llevan a ningún sitio
+
+Verificado el 2026-08-05: `event_rsvps` solo se lee **para el usuario actual**
+(`features/events/api.ts`), para saber si ya marcó. No hay conteo de asistentes,
+no hay sección "mis eventos", y **quien creó el evento no se entera de nada**.
+Marcar "Iré" guarda una fila y programa tu propio recordatorio; ahí termina.
+
+En orden de lo que más rinde:
+
+1. **Que el creador vea quién va.** Lo menos discutible y lo que de verdad
+   falta: quien organiza una feria necesita saber si van 5 o 50, porque cambia
+   lo que prepara. Utilidad real y no lo ve nadie más.
+2. **Sección "Mis eventos" en el perfil.** Hoy aprietas "Iré" y no cambia nada
+   en pantalla. Que el evento aparezca en algún sitio tuyo es lo que hace que el
+   botón se sienta como que hizo algo.
+3. **Conteo público, pero con umbral.** Enseñarlo solo a partir de cierto
+   número, o sumando "interesados" y "voy" en una cifra. **Nunca "2 personas
+   van"**: a la escala de la UDP habrá muchos eventos con números bajos, y ahí
+   el número social juega en contra — dice "esto no le importa a nadie".
+
+**Esto resuelve de paso el SEC-007 del backlog.** Hoy `event_rsvps` tiene
+lectura pública, así que cualquiera puede sacar la lista de quién va a qué. La
+salida correcta no es taparlo, es exponer el **conteo agregado** en vez de las
+filas. Un problema de seguridad y una funcionalidad que salen con el mismo
+cambio.
+
+De paso, cuestionar si "Me interesa" y "Iré" tienen que ser **dos** botones.
+Duplican la decisión y ninguno hace nada. Solo se justifican si "interesado"
+sirve para engordar el conteo del punto 3.
+
+Y la idea que probablemente vale más que las tres: **avisar a la facultad cuando
+se publica un evento oficial.** El evento de campus no falla porque se te
+olvide, falla porque nunca te enteraste; el recordatorio ya existe para quien
+marcó, y el hueco está en quien no sabe que el evento existe. La tubería está
+puesta: hay notificaciones y hay facultad en el perfil. Acotarlo a **eventos
+oficiales** para no provocar fatiga de notificaciones.
+
+### 13.2 Notificaciones, panel de administración y cola de moderación
+
+Los tres se levantaron deprisa y hay que **rehacerlos bien**, no seguir
+remendándolos. Antes de tocar nada, decidir qué tiene que hacer cada uno; el
+estado actual no sirve de especificación.
+
+Un síntoma concreto que se puede arreglar ya, por separado:
+
+**El botón "Probar notificación" está para todo el mundo, invitados incluidos.**
+Vive en `shared/ui/Sidebar.tsx` dentro de una sección sin ninguna comprobación
+de rol. Matiz importante: dispara una notificación **local** (`new
+Notification`), no una push, así que no filtra nada del servidor — es una
+herramienta de depuración enviada a todos los usuarios. Sus textos además están
+clavados en español y no pasan por i18n.
+
+### 13.3 Buscar dentro de una facultad, no solo facultades
+
+Hoy el buscador solo encuentra facultades. La idea es que, **estando dentro de
+una facultad**, sirva para encontrar lo que hay dentro: qué salas están libres
+ahora y qué ramo se está dando en cada una.
+
+Depende de conseguir acceso al repositorio de salas y horarios de la
+universidad, que es el mismo bloqueo que tiene "Salas libres" en la §14. El
+modelo ya lo soporta: `pins.room_code` existe justamente para cruzar con ese
+sistema. Cuando haya acceso, las dos cosas salen del mismo trabajo.
+
+---
+
+## 14. Anotado para el futuro, fuera de fases
 
 - **Salas libres.** Cruzar `room_code` con el repositorio de salas de la universidad, vía Edge Function que cachea horarios, para pintar en verde las que están libres ahora. El modelo ya lo soporta; falta el acceso a esa fuente.
 - **Ruteo accesible fino** (§4): destino en la entrada o rampa accesible más cercana, y continuación por ascensor hasta la planta correcta.

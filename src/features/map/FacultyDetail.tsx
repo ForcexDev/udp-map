@@ -220,10 +220,13 @@ export function FacultyDetail() {
 
   if (!selectedFacultyId || !faculty) return null
 
-  const galleryOwner: PlaceOwner =
-    place?.kind === 'building'
-      ? { kind: 'building', id: place.id }
-      : { kind: 'faculty', id: faculty.id }
+  // El chip manda: si estás mirando el Patio, la portada es la del Patio. Un
+  // área sin fotos no hereda las de la facultad, igual que un edificio: enseñar
+  // la fachada de la facultad sobre la ficha del Patio es una foto que miente
+  // sobre lo que estás mirando.
+  const galleryOwner: PlaceOwner = place
+    ? { kind: place.kind, id: place.id }
+    : { kind: 'faculty', id: faculty.id }
 
   const floorLabel =
     activeFloor !== null && activeFacultyId === selectedFacultyId

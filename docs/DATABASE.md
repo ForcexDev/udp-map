@@ -16,7 +16,7 @@ dashboard y solo existen en la base.
 | `supabase/schema/baseline.sql` | **La fuente de verdad del esquema.** Reconstruye la base entera sobre un proyecto vacío |
 | `supabase/seed/badges.sql` | Las 6 insignias. Se escribe a mano |
 | `supabase/seed/seed.sql` | Catálogo del campus. **Generado**, no editar |
-| `src/shared/data/campusData.ts` | La fuente real del catálogo: campus, facultades, carreras, categorías |
+| `src/shared/data/campusData.ts` | Campus, carreras y categorías. Y la **semilla** del catálogo de facultades: nombres, campus y chinchetas. **Sin geometría** |
 | `scripts/gen_seed_full.ts` | Regenera `seed.sql` desde `campusData.ts` |
 | `supabase/_archive/migrations/` | Las 33 migraciones históricas. Ya aplicadas. **No ejecutar** |
 | `supabase/migrations/` | Migraciones nuevas, de aquí en adelante |
@@ -133,6 +133,13 @@ límite se cuenta en días UTC sobre `pin_creation_events`, una bitácora aparte
 cuyas filas sobreviven al borrado del pin — así, borrar y volver a crear no
 reinicia el contador. Moderadores y administradores están exentos.
 
+**`description` admite hasta 1500 caracteres** (`pins_description_check`). Era
+500 hasta el 2026-08-08: la descripción enlaza URLs, y una de correo o de Drive
+mide 300 caracteres sola, así que un evento con dos párrafos y un enlace de
+inscripción ya no cabía. El mismo tope está en el esquema del formulario
+(`CreatePinModal.tsx`); si se cambia uno hay que cambiar el otro, o el navegador
+deja pasar algo que la base rechaza.
+
 Además, dos pines vivos no pueden ocupar exactamente la misma coordenada
 (`prevent_occupied_pin_location`). Un pin ya expirado no reserva su sitio.
 
@@ -178,7 +185,7 @@ cambiar, así que un error ahí sería solo ruido.
 | Tabla | Qué guarda | Quién escribe |
 |---|---|---|
 | `campuses` | Los 3 campus con sus coordenadas | seed |
-| `faculties` | 17 facultades y edificios, con su perímetro en GeoJSON | seed / admin |
+| `faculties` | 17 facultades y edificios, con su perímetro en GeoJSON | seed / **admin desde `/admin/mapeo`** |
 | `careers` | 14 carreras, colgando de una facultad | seed |
 | `categories` | 25 categorías de pin: color, icono SVG y `ttl_hours` | seed |
 | `badges` | Las 6 insignias | `badges.sql` |
@@ -189,6 +196,51 @@ El `polygon` de una facultad hace dos cosas: pinta el contorno en el mapa y
 asigna la facultad automáticamente a un pin que cae dentro cuando el estudiante
 no la eligió. Está en formato GeoJSON, o sea `[longitud, latitud]` — al revés
 que las columnas `lat`/`lng` de al lado, que es una fuente clásica de errores.
+
+**Los perímetros viven SOLO aquí.** No hay copia en el repositorio, y es
+deliberado: la hubo —`src/shared/data/facultyPerimeters.ts`— y se desincronizó
+sin que nadie lo notara, porque el cliente no consultaba la tabla y por tanto la
+copia mala era invisible. `seed.sql` tampoco los siembra. Una base nueva arranca
+sin contornos y se trazan desde `/admin/mapeo`, igual que el mapeo interior.
+
+En el cliente eso significa que `Faculty.polygon` tiene **un solo** significado:
+el perímetro trazado, o `null`. No cae a ninguna huella aproximada, y
+`facultyPerimeter(id)` no es más que un atajo para leerlo de `FACULTIES`. Si
+alguna vez te ves tentado de añadir un índice de perímetros al lado del
+catálogo, no lo hagas: ya se probó, y el editor acabó enseñando el nombre nuevo
+de una facultad junto a un "sin trazar" que ya no era verdad.
+
+**`polygon` null significa "sin perímetro trazado", y no es lo mismo que un
+perímetro cualquiera.** Una facultad sin trazo no pinta contorno, no se puede
+entrar a mapear su interior y no captura ningún pin. Durante un tiempo el
+generador del seed rellenaba ese hueco con un cuadrado de ~100 m centrado en la
+chincheta, y eso hacía que un pin en mitad de la calle se asignara a una
+facultad por un contorno que nadie dibujó. La migración
+`20260808000001_faculties_source_of_truth.sql` lo dejó en null donde
+corresponde, y el generador ya no lo produce.
+
+**Desde la fase 7B (2026-08-08) esta tabla es la fuente del catálogo.** Antes el
+cliente no la consultaba nunca: las facultades salían de `FACULTIES`, un array
+estático de `campusData.ts` del que dependen unos 26 archivos, y crear una
+facultad en la base no la hacía aparecer en ninguna parte de la app. Ahora
+`src/shared/data/facultyStore.ts` publica el catálogo en una caché de módulo
+—el mismo patrón que `mappingCache`— **sembrada con ese array** y rehidratada
+desde aquí al arrancar. Los 26 archivos siguen llamando `FACULTIES.find(...)`
+igual que antes y no hay estados de carga que propagar, porque la lista nunca
+está vacía: si la consulta falla, la app enseña el catálogo de siempre.
+
+Lo que sí hay que saber al tocar esto:
+
+- **`careers` no se crea sola.** Una facultad nueva no tiene carreras, y el
+  selector del perfil filtra las del catálogo de siempre justamente por eso —la
+  Biblioteca Nicanor Parra no es un sitio donde se estudie. A una facultad
+  creada desde el editor no se le aplica ese filtro (`academicFaculties()` en
+  `campusData.ts`), porque "sin carreras" ahí significa "todavía no se le
+  cargaron", no "no es académica".
+- **Borrarla casi nunca se puede.** `pins`, `forum_threads` y `profiles`
+  apuntan a `faculties` **sin** `on delete cascade`. El editor solo ofrece el
+  botón cuando la facultad está vacía de edificios, áreas y pines; es para
+  deshacer una recién creada por error, no para retirar una de verdad.
 
 `admin_emails` solo la puede leer un admin, y hay que insertar el correo
 **antes** de que la persona se registre: el rol se asigna en el alta, no después.
@@ -256,16 +308,21 @@ otro intento de cambiarlos lanza una excepción.
 ### Galerías de lugares
 
 **`place_photos`** es la galería que se ve al abrir la ficha de una facultad o al
-acotarla por un edificio. Antes una facultad tenía UNA foto (`faculties.image`) y
-un edificio ninguna.
+acotarla por un edificio o por un área exterior. Antes una facultad tenía UNA
+foto (`faculties.image`), y un edificio o un área, ninguna.
 
-Lo que hay que saber de su forma: tiene **dos claves foráneas anulables**,
-`faculty_id` y `building_id`, con un `check (num_nonnulls(...) = 1)` que obliga a
-que vaya exactamente una. La alternativa habitual —un par `(entity_type,
-entity_id)`— es la que **no** se usó: un `text` que apunta a dos tablas no puede
-tener clave foránea, así que ni la base garantizaría que la entidad existe ni el
-borrado arrastraría sus fotos. Con dos FK reales, borrar un edificio desde el
-editor se lleva sus fotos por cascada.
+Lo que hay que saber de su forma: tiene **tres claves foráneas anulables**,
+`faculty_id`, `building_id` y `area_id`, con un `check (num_nonnulls(...) = 1)`
+que obliga a que vaya exactamente una. La alternativa habitual —un par
+`(entity_type, entity_id)`— es la que **no** se usó: un `text` que apunta a tres
+tablas no puede tener clave foránea, así que ni la base garantizaría que la
+entidad existe ni el borrado arrastraría sus fotos. Con FK reales, borrar un
+edificio desde el editor se lleva sus fotos por cascada.
+
+El tope de 10 fotos lo impone `enforce_place_photo_limit()`, y **cuenta por los
+tres ids**. Si se añade un cuarto tipo de dueño hay que tocar esa función además
+del CHECK: mientras la columna nueva no entre en el `where`, todas las filas del
+tipo nuevo comparten un mismo cajón y se agotan el tope entre ellas.
 
 `sort_order` 0 es la **portada**: la que sale en la cabecera de la ficha sin
 abrir el carrusel. No hay un campo "es portada" aparte, a propósito — conviviendo

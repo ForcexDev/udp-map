@@ -1,7 +1,7 @@
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import type { Feature, FeatureCollection, Polygon } from 'geojson'
 import type { Area, Building, BuildingFloor } from '@/shared/types/database'
-import { AREA_STYLES, BUILDING_COLOR } from '@/features/mapping/areaStyles'
+import { AREA_STYLES, BUILDING_COLOR, buildingHeightM } from '@/features/mapping/areaStyles'
 import { areaVisibleOnFloor } from '@/shared/utils/floorVisibility'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,19 +56,7 @@ export const INDOOR_EXIT_ZOOM = 17.2
 /** Cuánto se agranda el perímetro antes de dar a alguien por fuera. */
 export const INDOOR_EXIT_MARGIN_M = 5
 
-/**
- * La altura del volumen 3D, en metros. **0 = no se levanta nada.**
- *
- * Sale exclusivamente de `height_m`, que es lo que se escribe a mano en
- * `/admin/mapeo`, y no se deduce de ningún sitio. Casi todos los edificios del
- * campus YA están en OpenStreetMap con su altura, y el estilo del mapa los
- * levanta solo: generarles encima un volumen propio sería dibujar dos veces el
- * mismo edificio, uno tapando al otro. La altura se rellena únicamente para los
- * que faltan en OSM, y hasta entonces vale 0.
- */
-export function buildingHeightM(building: Building): number {
-  return building.height_m && building.height_m > 0 ? building.height_m : 0
-}
+export { buildingHeightM }
 
 function buildingFeature(building: Building, height: number, dimmed: boolean): Feature<Polygon> {
   return {

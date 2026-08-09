@@ -10,6 +10,13 @@
             "command": "node .claude/hooks/check-database-docs.mjs",
             "statusMessage": "Comprobando docs de la base",
             "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "node scripts/gen_agents.mjs",
+            "if": "Edit(CLAUDE.md)",
+            "statusMessage": "Regenerando reglas de agentes",
+            "timeout": 15
           }
         ]
       }

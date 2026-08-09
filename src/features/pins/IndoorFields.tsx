@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Building2, Layers } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
-import { facultyIdAt } from '@/shared/data/facultyPerimeters'
+import { facultyIdAt } from '@/shared/data/facultyStore'
 import { floorFromRoomCode } from '@/shared/utils/roomCode'
 import { floorName } from '@/features/mapping/areaStyles'
 import { areaAt, buildingAt, facultyLevels, floorsOf, useMapping } from '@/features/mapping/useMapping'

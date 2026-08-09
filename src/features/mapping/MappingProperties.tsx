@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, Info, Ruler, Scissors, Trash2, X } from 'lucide-react'
+import { AlertTriangle, Check, Info, Move, Ruler, Scissors, Trash2, X } from 'lucide-react'
 import type { Polygon } from 'geojson'
 import type { Area, AreaKind, Building } from '@/shared/types/database'
-import { FACULTIES } from '@/shared/data/campusData'
-import { formatArea, polygonAreaM2 } from '@/shared/utils/geometry'
+import { CAMPUSES } from '@/shared/data/campusData'
+import { facultyPerimeter, useFaculties } from '@/shared/data/facultyStore'
+import { CustomSelect } from '@/shared/ui/CustomSelect'
+import { formatArea, polygonAreaM2, polygonCentroid } from '@/shared/utils/geometry'
 import { draftVertices, useMappingEditor } from './editorStore'
 import { AREA_STYLES, BUILDING_COLOR, INDOOR_KINDS, OUTDOOR_KINDS, floorName } from './areaStyles'
-import { hasErrors, issuesFor, validateArea, validateBuilding, type ValidationIssue } from './validation'
+import {
+  hasErrors,
+  issuesFor,
+  validateArea,
+  validateBuilding,
+  validateFaculty,
+  type ValidationIssue,
+} from './validation'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Panel derecho: el formulario de lo que esté seleccionado o dibujándose.
@@ -41,6 +50,13 @@ export interface BuildingFormValues {
   color: string
 }
 
+export interface FacultyFormValues {
+  name: string
+  name_en: string
+  campus_id: string
+  image: string
+}
+
 interface MappingPropertiesProps {
   areas: Area[]
   selectedArea: Area | null
@@ -51,9 +67,14 @@ interface MappingPropertiesProps {
   drawingBuilding: boolean
   onSaveArea: (values: AreaFormValues) => void
   onSaveBuilding: (values: BuildingFormValues) => void
+  onSaveFaculty: (values: FacultyFormValues) => void
   onDeleteArea: (areaId: string) => void
   onDeleteBuilding: (buildingId: string) => void
+  /** undefined ⇔ la facultad no está vacía y no se puede borrar. */
+  onDeleteFaculty?: () => void
   onSplit: (parts: number) => void
+  /** Convierte la forma ya guardada en borrador editable. */
+  onEditShape: () => void
   onCancel: () => void
   saving: boolean
 }
@@ -66,16 +87,22 @@ export function MappingProperties({
   drawingBuilding,
   onSaveArea,
   onSaveBuilding,
+  onSaveFaculty,
   onDeleteArea,
   onDeleteBuilding,
+  onDeleteFaculty,
   onSplit,
+  onEditShape,
   onCancel,
   saving,
 }: MappingPropertiesProps) {
+  const faculties = useFaculties()
   const facultyId = useMappingEditor((s) => s.facultyId)
+  const facultyEdit = useMappingEditor((s) => s.facultyEdit)
   const selectedBuildingId = useMappingEditor((s) => s.selectedBuildingId)
   const selectedFloor = useMappingEditor((s) => s.selectedFloor)
   const draft = useMappingEditor((s) => s.draft)
+  const setPreviewHeightM = useMappingEditor((s) => s.setPreviewHeightM)
 
   const outdoor = selectedBuildingId === null
   const kinds = outdoor ? OUTDOOR_KINDS : INDOOR_KINDS
@@ -94,6 +121,12 @@ export function MappingProperties({
     color: '',
   })
   const [splitCount, setSplitCount] = useState(2)
+  const [facultyForm, setFacultyForm] = useState<FacultyFormValues>({
+    name: '',
+    name_en: '',
+    campus_id: CAMPUSES[0].id,
+    image: '',
+  })
 
   // El formulario sigue a la selección: al elegir otra área hay que ver SUS
   // datos, no los de la anterior a medio editar.
@@ -121,27 +154,62 @@ export function MappingProperties({
       height_m: selectedBuilding.height_m === null ? '0' : String(selectedBuilding.height_m),
       color: selectedBuilding.color ?? '',
     })
-  }, [selectedBuilding])
+    setPreviewHeightM(selectedBuilding.height_m)
+  }, [selectedBuilding, setPreviewHeightM])
 
-  const faculty = FACULTIES.find((f) => f.id === facultyId)
+  const faculty = faculties.find((x) => x.id === facultyId)
+
+  // El formulario de la facultad se rellena al entrar a editarla, y se vacía al
+  // crear una nueva. Depende de `facultyEdit` y no solo de `faculty`: volver a
+  // "editar" después de haber empezado una nueva tiene que traer los datos de
+  // vuelta, y `faculty` no cambió en el camino.
+  useEffect(() => {
+    if (facultyEdit === 'edit' && faculty) {
+      setFacultyForm({
+        name: faculty.name,
+        name_en: faculty.name_en,
+        campus_id: faculty.campus_id,
+        image: faculty.image ?? '',
+      })
+    } else if (facultyEdit === 'new') {
+      setFacultyForm({ name: '', name_en: '', campus_id: CAMPUSES[0].id, image: '' })
+    }
+  }, [facultyEdit, faculty])
+
+  const facultyIssues = useMemo<ValidationIssue[]>(() => {
+    if (!facultyEdit) return []
+    const others = faculties.flatMap((x) => {
+      if (facultyEdit === 'edit' && x.id === facultyId) return []
+      const polygon = facultyPerimeter(x.id)
+      return polygon ? [{ id: x.id, name: x.name, polygon }] : []
+    })
+    return validateFaculty(facultyForm.name, activePolygon, {
+      isNew: facultyEdit === 'new',
+      others,
+    })
+  }, [facultyEdit, facultyForm.name, activePolygon, faculties, facultyId])
 
   const areaIssues = useMemo<ValidationIssue[]>(() => {
     if (drawingBuilding || (!draft && !selectedArea)) return []
     return validateArea(areaForm.name, activePolygon, {
-      container: outdoor ? (faculty?.polygon ?? null) : (selectedBuilding?.footprint ?? null),
+      container: outdoor ? facultyPerimeter(facultyId) : (selectedBuilding?.footprint ?? null),
       containerLabel: outdoor ? 'el perímetro de la facultad' : 'la huella del edificio',
       siblings: areas
         .filter((a) => a.building_id === selectedBuildingId && a.floor === selectedFloor)
         .map((a) => ({ id: a.id, name: a.name, polygon: a.polygon })),
       editingAreaId: selectedArea?.id ?? null,
     })
+    // `faculties` no se lee aquí: es la señal de que `facultyPerimeter` —una
+    // lectura de la caché de módulo— puede haber cambiado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     areaForm.name,
     activePolygon,
     areas,
     drawingBuilding,
     draft,
-    faculty,
+    faculties,
+    facultyId,
     outdoor,
     selectedArea,
     selectedBuilding,
@@ -152,12 +220,105 @@ export function MappingProperties({
   const buildingIssues = useMemo<ValidationIssue[]>(() => {
     if (!drawingBuilding && !selectedBuilding) return []
     return validateBuilding(buildingForm.name, activePolygon, {
-      perimeter: faculty?.polygon ?? null,
+      perimeter: facultyPerimeter(facultyId),
     })
-  }, [buildingForm, activePolygon, drawingBuilding, faculty, selectedBuilding])
+    // Ídem: `faculties` es la señal de cambio del perímetro cacheado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildingForm, activePolygon, drawingBuilding, faculties, facultyId, selectedBuilding])
 
   const vertices = draft ? draftVertices(draft).length : activePolygon ? activePolygon.coordinates[0].length - 1 : 0
   const canSplit = Boolean(draft && vertices === 4)
+
+  // ── Facultad ──
+  if (facultyEdit) {
+    // La chincheta sale del centro del perímetro, no de un par de campos: es un
+    // dato que se puede deducir y que nadie acierta a mano mejor que el trazo.
+    // Si no se retraza, la que ya tiene se queda como está.
+    const centre = activePolygon ? polygonCentroid(activePolygon) : null
+
+    return (
+      <Panel
+        title={facultyEdit === 'new' ? 'Facultad nueva' : 'Facultad'}
+        polygon={activePolygon}
+        vertices={vertices}
+        subtitle="Perímetro y ficha"
+        onEditShape={onEditShape}
+      >
+        <Field label="Nombre" issues={issuesFor(facultyIssues, 'name')}>
+          <input
+            className={INPUT}
+            value={facultyForm.name}
+            onChange={(e) => setFacultyForm({ ...facultyForm, name: e.target.value })}
+            placeholder="Facultad de Ingeniería y Ciencias"
+            autoFocus={facultyEdit === 'new'}
+          />
+        </Field>
+
+        <Field label="Nombre en inglés" hint="Se enseña con la app en inglés">
+          <input
+            className={INPUT}
+            value={facultyForm.name_en}
+            onChange={(e) => setFacultyForm({ ...facultyForm, name_en: e.target.value })}
+            placeholder="Faculty of Engineering and Sciences"
+          />
+        </Field>
+
+        <Field label="Campus">
+          <CustomSelect
+            options={CAMPUSES.map((c) => ({ value: c.id, label: c.name }))}
+            value={facultyForm.campus_id}
+            onChange={(value) => setFacultyForm({ ...facultyForm, campus_id: value })}
+            placeholder="Campus"
+          />
+        </Field>
+
+        {/* La galería de verdad es `place_photos` y se gestiona desde la ficha.
+            Esto es solo el respaldo que se enseña mientras no haya ninguna. */}
+        <Field label="Imagen de respaldo" hint="URL. Opcional: la galería manda si existe">
+          <input
+            className={INPUT}
+            value={facultyForm.image}
+            onChange={(e) => setFacultyForm({ ...facultyForm, image: e.target.value })}
+            placeholder="/fic.png"
+          />
+        </Field>
+
+        <div className="rounded-lg bg-neutral-50 px-2.5 py-2 dark:bg-neutral-800/60">
+          <p className={LABEL}>Chincheta</p>
+          <p className="mt-1 font-mono text-[11px] font-bold text-neutral-700 dark:text-neutral-200">
+            {centre
+              ? `${centre[1].toFixed(6)}, ${centre[0].toFixed(6)}`
+              : faculty
+                ? `${faculty.lat.toFixed(6)}, ${faculty.lng.toFixed(6)}`
+                : '—'}
+          </p>
+          <p className="mt-1 text-[10px] leading-tight text-neutral-400">
+            {centre
+              ? 'Sale del centro del perímetro trazado.'
+              : 'Se mantiene la actual. Retraza el perímetro para moverla.'}
+          </p>
+        </div>
+
+        <Issues issues={issuesFor(facultyIssues, 'shape')} />
+
+        {facultyEdit === 'edit' && !draft && (
+          <p className="text-[10px] leading-snug text-neutral-400">
+            Para redibujar el perímetro, elige la herramienta de polígono (P) y
+            traza el contorno nuevo. Reemplaza al actual al guardar.
+          </p>
+        )}
+
+        <Actions
+          onSave={() => onSaveFaculty(facultyForm)}
+          onCancel={onCancel}
+          disabled={hasErrors(facultyIssues) || saving}
+          saving={saving}
+          onDelete={onDeleteFaculty}
+          deleteLabel="Eliminar facultad"
+        />
+      </Panel>
+    )
+  }
 
   // ── Edificio ──
   if (drawingBuilding || (selectedBuilding && selectedFloor === null && !draft)) {
@@ -166,6 +327,7 @@ export function MappingProperties({
         title={drawingBuilding ? 'Edificio nuevo' : 'Edificio'}
         polygon={activePolygon}
         vertices={vertices}
+        onEditShape={onEditShape}
       >
         <Field label="Nombre" issues={issuesFor(buildingIssues, 'name')}>
           <input
@@ -209,7 +371,14 @@ export function MappingProperties({
               type="number"
               min="0"
               value={buildingForm.height_m}
-              onChange={(e) => setBuildingForm({ ...buildingForm, height_m: e.target.value })}
+              onChange={(e) => {
+                setBuildingForm({ ...buildingForm, height_m: e.target.value })
+                // El volumen del lienzo sigue al campo mientras se escribe: es
+                // la única forma de acertarle a la altura de un edificio sin
+                // guardar, mirar el mapa, volver y corregir.
+                const metres = Number(e.target.value)
+                setPreviewHeightM(Number.isFinite(metres) && metres > 0 ? metres : null)
+              }}
               placeholder="0"
             />
           </Field>
@@ -272,6 +441,7 @@ export function MappingProperties({
       title={selectedArea ? 'Área' : 'Área nueva'}
       polygon={activePolygon}
       vertices={vertices}
+      onEditShape={onEditShape}
     >
       <Field label="Nombre" issues={issuesFor(areaIssues, 'name')}>
         <input
@@ -381,26 +551,33 @@ function Panel({
   title,
   polygon,
   vertices,
+  subtitle,
+  onEditShape,
   children,
 }: {
   title: string
   polygon: Polygon | null
   vertices: number
+  /** Reemplaza al contexto de planta, que no significa nada en la facultad. */
+  subtitle?: string
+  onEditShape: () => void
   children: React.ReactNode
 }) {
   const selectedFloor = useMappingEditor((s) => s.selectedFloor)
   const selectedBuildingId = useMappingEditor((s) => s.selectedBuildingId)
+  const draft = useMappingEditor((s) => s.draft)
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
       <div>
         <h2 className="text-sm font-black tracking-tight text-neutral-900 dark:text-white">{title}</h2>
         <p className="text-[10px] font-medium text-neutral-400">
-          {selectedBuildingId === null
-            ? 'Exterior'
-            : selectedFloor === null
-              ? 'Huella del edificio'
-              : floorName(selectedFloor, null)}
+          {subtitle ??
+            (selectedBuildingId === null
+              ? 'Exterior'
+              : selectedFloor === null
+                ? 'Huella del edificio'
+                : floorName(selectedFloor, null))}
         </p>
       </div>
 
@@ -413,6 +590,17 @@ function Panel({
         </span>
         <span className="ml-auto text-[10px] text-neutral-400">{vertices} vértices</span>
       </div>
+
+      {/* Solo con la forma guardada y sin borrador: mientras dibujas los
+          tiradores ya están, y ofrecerlo ahí sería ofrecer deshacer tu trazo. */}
+      {polygon && !draft && (
+        <button
+          onClick={onEditShape}
+          className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-300 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-neutral-500 transition-colors hover:border-[#D41F2D] hover:text-[#D41F2D] dark:border-neutral-700"
+        >
+          <Move size={11} /> Editar forma
+        </button>
+      )}
 
       {children}
     </div>

@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { SlidersHorizontal, Star, X } from 'lucide-react'
 import { useFilterStore } from '@/shared/stores/filterStore'
 import { useUIStore } from '@/shared/stores/uiStore'
-import { CATEGORIES, FACULTIES } from '@/shared/data/campusData'
+import { CATEGORIES } from '@/shared/data/campusData'
+import { useFaculties } from '@/shared/data/facultyStore'
 import { useGuard } from '@/features/auth/useGuard'
 import type { PinType } from '@/shared/types/database'
 
@@ -15,6 +16,7 @@ const TYPE_KEYS: { type: PinType; key: string }[] = [
 
 export function FiltersPanel() {
   const { t } = useTranslation()
+  const faculties = useFaculties()
   const [open, setOpen] = useState(false)
   const [facultyDropdownOpen, setFacultyDropdownOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -137,7 +139,7 @@ export function FiltersPanel() {
             >
               <span className="truncate">
                 {facultyId
-                  ? FACULTIES.find(f => f.id === facultyId)?.name ?? t('filters.allFaculties')
+                  ? faculties.find(f => f.id === facultyId)?.name ?? t('filters.allFaculties')
                   : t('filters.allFaculties')}
               </span>
               <svg
@@ -165,7 +167,7 @@ export function FiltersPanel() {
                   >
                     {t('filters.allFaculties')}
                   </button>
-                  {FACULTIES.map((f) => (
+                  {faculties.map((f) => (
                     <button
                       key={f.id}
                       onClick={() => {

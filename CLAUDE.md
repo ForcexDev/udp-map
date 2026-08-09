@@ -1,35 +1,59 @@
 # UDP Map — reglas del repositorio
 
-Mapa colaborativo de la Universidad Diego Portales. React 19 + TypeScript + Vite,
-MapLibre GL para el mapa, Supabase para datos y auth, Tailwind 4, PWA.
+## Lo primero, aunque no leas nada más
 
-Este archivo lo lee cualquier agente de IA que trabaje en el repositorio.
-`AGENTS.md` es un enlace a este mismo contenido, para las herramientas que buscan
-ese nombre. Si cambias uno, cambia el otro.
+**Al terminar un cambio, deja al día el documento que le corresponde:**
+
+| Si tocaste… | Actualiza, en el mismo commit |
+|---|---|
+| El esquema de la base | La migración **+** `supabase/schema/baseline.sql` **+** `docs/DATABASE.md` |
+| Algo del plan: cerrar un pendiente, cambiar una decisión | `docs/ROADMAP.md` |
+
+`docs/ROADMAP.md` es el plan vivo y la lista de pendientes. **`PLAN.md` y
+`SPRINTS_STATUS.md` ya no existen** — se borraron el 2026-08-05 y su contenido
+está ahí. Si buscas el estado del proyecto, es ese archivo.
+
+Antes de dar algo por terminado:
+
+```bash
+npm run typecheck && npx vitest run && npx eslint src
+```
 
 ---
 
-## La regla de la documentación
+Mapa colaborativo de la Universidad Diego Portales. React 19 + TypeScript + Vite,
+MapLibre GL para el mapa, Supabase para datos y auth, Tailwind 4, PWA.
 
-**Todo cambio en la base de datos son TRES cosas en el mismo commit:**
+> **Este archivo es el origen.** `AGENTS.md` (Antigravity, Codex), `GEMINI.md`,
+> `.cursorrules` y `.github/copilot-instructions.md` se **generan** desde aquí
+> con `npm run gen:agents`. Llevan el contenido completo, no un enlace, porque
+> una herramienta que lee el contexto a trozos nunca va a seguir el enlace.
+> No los edites a mano: edita `CLAUDE.md` y regenera.
+
+---
+
+## Por qué la regla de los tres archivos
 
 1. La migración nueva en `supabase/migrations/`, con nombre `<timestamp>_descripcion.sql`.
    Es lo que se ejecuta contra la base.
-2. `supabase/schema/baseline.sql` actualizado. Es lo que reconstruye la base desde cero.
-3. `docs/DATABASE.md` actualizado. Es lo que explica **por qué** el esquema es así.
+2. `supabase/schema/baseline.sql`. Es lo que reconstruye la base desde cero.
+3. `docs/DATABASE.md`. Es lo que explica **por qué** el esquema es así.
 
 Las tres, siempre. Si se separan, el baseline deja de describir la realidad y la
 documentación deja de servir para entender la base. Ya pasó: el mapeo interior
 entero (`building_floors`, `areas`, `pin_schedule_items`) se implementó sin tocar
 `DATABASE.md`, y recuperarlo después costó más que haberlo escrito en su momento.
 
-**Cambios que no son de base de datos:** si alteran una decisión de arquitectura o
-un pendiente del plan, actualiza `docs/ROADMAP.md`. Marcar una casilla como hecha
-cuenta como actualizar.
+Hay un hook (`.claude/hooks/check-database-docs.mjs`) que avisa si tocas el
+esquema y `DATABASE.md` sigue igual. Solo funciona en Claude Code; en el resto de
+herramientas la regla depende de que la leas.
 
 Las migraciones se aplican **a mano** desde el SQL Editor de Supabase. No hay
 `db push` ni en CI ni en los scripts de npm. Cuando crees una migración, dile a
 quien te lo pidió que tiene que aplicarla.
+
+Si quien te pide algo no dice en qué trabajar, mira los pendientes de
+`docs/ROADMAP.md` y ofrécele lo que hay antes de proponer nada por tu cuenta.
 
 ---
 
@@ -55,7 +79,7 @@ src/
 ├── features/<dominio>/     auth, map, mapping, pins, places, events, forum,
 │                           profile, admin, onboarding
 ├── shared/
-│   ├── data/               catálogos estáticos (campusData, facultyPerimeters)
+│   ├── data/               el catálogo: campusData (semilla), facultyStore (vivo)
 │   ├── stores/             zustand (uiStore, filterStore)
 │   ├── ui/                 componentes sin dominio (Dialog, PhotoCarousel…)
 │   ├── utils/              lógica pura y testeable
@@ -66,6 +90,12 @@ src/
 
 Dentro de un feature: `api.ts` para datos, `use*.ts` para hooks de react-query,
 `demoStore.ts` para el modo sin Supabase, componentes en PascalCase.
+
+**Las fronteras entre features no se respetan, y no lo empeores.** Hoy hay ciclos
+reales: `map` ↔ `pins` ↔ `mapping`. Antes de añadir una importación cruzada
+nueva, mira si lo que necesitas puede vivir en `shared/`. El porqué de esto y la
+lista de archivos que ya se pasaron de tamaño están en `docs/CONTRIBUTING.md`,
+sección "Por qué el proyecto es así, y dónde duele".
 
 **Modo demo.** La app funciona sin credenciales de Supabase, contra almacenes en
 memoria. Cuando escribas una función de datos nueva, cubre los dos caminos: si
@@ -93,9 +123,25 @@ tocar el mapa.
 - **La planta es un contexto de FACULTAD, no de edificio.** La regla vive entera en
   `shared/utils/floorVisibility.ts` y la comparten los marcadores y los polígonos.
   No la reimplementes en un tercer sitio.
-- **`FACULTIES` es un array estático** en `shared/data/campusData.ts`, y el cliente
-  **nunca** consulta la tabla `faculties`. 26 archivos dependen de ese array. Crear
-  una facultad en la base no la hace aparecer en la app.
+- **`FACULTIES` es un array MUTABLE, no una constante.** Vive en
+  `shared/data/campusData.ts` sembrado con el catálogo de siempre, y
+  `facultyStore.publishFaculties()` lo reemplaza **en el sitio** con lo que hay
+  en la tabla `faculties` al arrancar. Se reemplaza con `splice` y no
+  reasignando: los ~26 archivos que hacen `FACULTIES.find(...)` guardan esta
+  misma referencia, y reasignar la dejaría apuntando al catálogo viejo. Si tu
+  componente PINTA una lista de facultades, usa `useFaculties()`; si solo hace
+  una consulta puntual, `FACULTIES` basta.
+- **Los perímetros de facultad viven SOLO en la base.** No hay copia en el
+  repositorio: la hubo (`facultyPerimeters.ts`), se desincronizó durante meses y
+  se borró. `seed.sql` tampoco los siembra. Se trazan desde `/admin/mapeo`.
+- **`polygon` null no es un perímetro cualquiera.** Significa "sin trazar": no
+  pinta contorno, no captura pines y no se puede mapear por dentro. No lo
+  rellenes con un cuadrado alrededor de la chincheta — ya se hizo, y asignaba
+  facultad a pines que estaban en la calle.
+- **No pongas un índice de perímetros al lado de `FACULTIES`.** Ya se probó: son
+  dos contenedores que hay que mantener a la par, y en cuanto uno se quedó atrás
+  el editor enseñaba el nombre nuevo de una facultad junto a un "sin trazar" que
+  ya no era cierto. Todo se deriva del catálogo.
 
 ---
 
@@ -130,4 +176,3 @@ tocar el mapa.
 | `docs/CHANGELOG.md` | Novedades por versión. Lo lee el aviso de actualización de la PWA. |
 | `docs/NOTIFICATIONS_AND_MODERATION.md` | Notificaciones y moderación. |
 | `docs/PWA_UPDATE.md` | Cómo la app detecta una versión nueva. |
-| `docs/_archive/` | Informes congelados. No se actualizan; se conservan como historia. |

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Camera, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { Camera, ChevronLeft, ChevronRight, Loader2, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { Dialog } from '@/shared/ui/Dialog'
@@ -32,7 +32,7 @@ interface PlaceGalleryProps {
 }
 
 export function PlaceGallery({ owner, fallbackImage, collapsed = false }: PlaceGalleryProps) {
-  const { photos } = usePlacePhotos(owner)
+  const { photos, isLoading } = usePlacePhotos(owner)
 
   // El respaldo solo aplica a la facultad: un edificio sin fotos no tiene qué
   // enseñar y es mejor no ocupar sitio con nada.
@@ -43,15 +43,26 @@ export function PlaceGallery({ owner, fallbackImage, collapsed = false }: PlaceG
         ? [{ id: 'fallback', url: fallbackImage }]
         : []
 
-  if (items.length === 0) return null
+  // El alto se RESERVA desde el primer fotograma y el hueco se pliega solo si
+  // resulta que no hay nada. Antes se devolvía null mientras la consulta iba en
+  // camino: la ficha abría sin portada y, al llegar las fotos, todo el contenido
+  // saltaba 128px hacia abajo. Reservar primero y plegar después convierte el
+  // caso malo (un lugar sin fotos) en una transición de 300ms en vez de un salto.
+  const empty = !isLoading && items.length === 0
 
   return (
     <div
       className={`w-full shrink-0 overflow-hidden transition-[height] duration-300 ease-out ${
-        collapsed ? 'h-0' : 'h-32'
+        collapsed || empty ? 'h-0' : 'h-32'
       }`}
     >
-      <PhotoCarousel photos={items} className="h-32 !rounded-none" />
+      {items.length > 0 ? (
+        <PhotoCarousel photos={items} className="h-32 !rounded-none" />
+      ) : (
+        <div className="flex h-32 w-full items-center justify-center bg-neutral-100 dark:bg-neutral-900">
+          <Loader2 size={18} className="animate-spin text-neutral-300 dark:text-neutral-600" />
+        </div>
+      )}
     </div>
   )
 }

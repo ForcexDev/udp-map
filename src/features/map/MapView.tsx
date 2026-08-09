@@ -11,7 +11,7 @@ import { eventPhase } from '@/shared/utils/eventState'
 import { useNowTick } from '@/shared/lib/useNowTick'
 import { publishBounds } from '@/features/pins/usePins'
 import { MAP_STYLE_LIGHT, MAP_STYLE_DARK, DEFAULT_ZOOM } from './mapConfig'
-import { addFacultyLayers, PERIMETER_FILL_LAYER } from './facultyLayers'
+import { addFacultyLayers, PERIMETER_FILL_LAYER, refreshFacultyPerimeters } from './facultyLayers'
 import {
   addMappingLayers,
   updateMappingData,
@@ -24,7 +24,7 @@ import {
 import { facultyLevels, useMapping } from '@/features/mapping/useMapping'
 import { closestPointOnPolygon } from '@/shared/utils/geometry'
 import { GROUND_LEVEL, pinVisibleOnFloor } from '@/shared/utils/floorVisibility'
-import { FACULTY_PERIMETERS, facultyIdAt } from '@/shared/data/facultyPerimeters'
+import { facultyIdAt, facultyPerimeter, subscribeFaculties } from '@/shared/data/facultyStore'
 import { addBoundaryMask, BOUNDARY_MAX_BOUNDS, BOUNDARY_MIN_ZOOM, isLocationOutOfBounds } from './campusBoundary'
 import type { WalkingRoute } from './routing'
 
@@ -295,6 +295,30 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       markers.clear()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Perímetros: repintar cuando llegue el catálogo de la base ──
+  //
+  // Las capas se crean al cargar el estilo y la consulta de facultades termina
+  // por su cuenta, así que el orden de los dos no está garantizado.
+  //
+  // La primera versión de esto descartaba el aviso si `isStyleLoaded()` daba
+  // false, y ahí estaba el bug: MapLibre sigue devolviendo false un rato
+  // DESPUÉS del evento `style.load`, así que en una carga en frío el repintado
+  // se perdía en silencio y el mapa se quedaba con la semilla. Al volver desde
+  // otra pestaña, en cambio, `MapView` se remontaba y las capas se creaban ya
+  // con el catálogo de la base. Resultado: el mismo mapa se veía distinto según
+  // cómo hubieras llegado a él. Un aviso que llega pronto se encola, no se
+  // tira.
+  useEffect(() => {
+    return subscribeFaculties(() => {
+      const map = mapRef.current
+      if (!map) return
+      if (map.isStyleLoaded()) refreshFacultyPerimeters(map)
+      // El guardia del encolado no es paranoia: si el mapa se destruye entre el
+      // aviso y el `idle`, `getStyle()` revienta sobre una instancia muerta.
+      else map.once('idle', () => mapRef.current === map && refreshFacultyPerimeters(map))
+    })
   }, [])
 
   // ── Cambio de estilo (Modo Oscuro) ──
@@ -748,7 +772,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
         if (!inside) return
         // Salir pide margen: el perímetro corre pegado a las fachadas, y ahí un
         // temblor de un metro bastaba para expulsarte.
-        const current = FACULTY_PERIMETERS[ui.activeFacultyId as string]
+        const current = facultyPerimeter(ui.activeFacultyId as string)
         const edge = current ? closestPointOnPolygon(current, [centre.lng, centre.lat]) : null
         if (edge && edge.distanceM <= INDOOR_EXIT_MARGIN_M) return
         ui.setActiveMappingFaculty(null)

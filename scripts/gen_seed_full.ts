@@ -20,13 +20,11 @@ sql += `insert into faculties (id, name, name_en, campus_id, lat, lng, image) va
 sql += FACULTIES.map(f => `  ('${f.id}', '${f.name}', '${f.name_en}', '${f.campus_id}', ${f.lat}, ${f.lng}, ${f.image ? `'${f.image}'` : 'null'})`).join(',\n')
 sql += `\non conflict (id) do nothing;\n\n`
 
-sql += `-- ── Polígonos Reales (exportados de facultyPerimeters.ts) ──\n`
-for (const f of FACULTIES) {
-  if (f.polygon) {
-    sql += `update faculties set polygon = '${JSON.stringify(f.polygon)}'::jsonb where id = '${f.id}';\n`
-  }
-}
-sql += `\n`
+// Los perímetros NO se siembran. Viven solo en \`faculties.polygon\` y se
+// dibujan desde /admin/mapeo. Aquí hubo una copia generada desde el archivo
+// estático, se desincronizó, y como este script no tiene comando de npm nadie
+// se enteró durante meses. Una base recién sembrada arranca sin contornos y se
+// trazan desde el editor, que es de donde salen ahora.
 
 sql += `insert into careers (faculty_id, name, name_en) values\n`
 sql += CAREERS.map(c => `  ('${c.faculty_id}', '${c.name}', '${c.name_en}')`).join(',\n')

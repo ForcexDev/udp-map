@@ -10,12 +10,15 @@ import {
   Monitor,
   MousePointer2,
   PenLine,
+  Plus,
   Redo2,
   Square,
   Undo2,
 } from 'lucide-react'
 import type { Polygon } from 'geojson'
-import { FACULTIES } from '@/shared/data/campusData'
+import { facultyPerimeter, useFaculties } from '@/shared/data/facultyStore'
+import { deleteFaculty, upsertFaculty } from '@/shared/data/facultiesApi'
+import { FACULTIES_QUERY_KEY } from '@/shared/data/useFaculties'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { CustomSelect } from '@/shared/ui/CustomSelect'
@@ -23,6 +26,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { fetchPins } from '@/features/pins/api'
 import {
   formatArea,
+  openRing,
   polygonAreaM2,
   polygonCentroid,
   smallestContaining,
@@ -41,7 +45,12 @@ import {
   upsertBuilding,
 } from './api'
 import { MappingCanvas } from './MappingCanvas'
-import { MappingProperties, type AreaFormValues, type BuildingFormValues } from './MappingProperties'
+import {
+  MappingProperties,
+  type AreaFormValues,
+  type BuildingFormValues,
+  type FacultyFormValues,
+} from './MappingProperties'
 import { MappingTree } from './MappingTree'
 import { PinFloorPanel } from './PinFloorPanel'
 import { buildExport, downloadExport } from './export'
@@ -69,8 +78,11 @@ export function MappingPage() {
   const queryClient = useQueryClient()
   const showToast = useUIStore((s) => s.showToast)
 
+  const faculties = useFaculties()
   const facultyId = useMappingEditor((s) => s.facultyId)
   const setFacultyId = useMappingEditor((s) => s.setFacultyId)
+  const facultyEdit = useMappingEditor((s) => s.facultyEdit)
+  const setFacultyEdit = useMappingEditor((s) => s.setFacultyEdit)
   const selectedBuildingId = useMappingEditor((s) => s.selectedBuildingId)
   const selectedFloor = useMappingEditor((s) => s.selectedFloor)
   const selectedAreaId = useMappingEditor((s) => s.selectedAreaId)
@@ -90,6 +102,7 @@ export function MappingPage() {
     | { kind: 'building'; id: string; name: string }
     | { kind: 'floor'; buildingId: string; level: number; areas: number }
     | { kind: 'area'; id: string; name: string }
+    | { kind: 'faculty'; id: string; name: string }
     | null
   >(null)
 
@@ -111,9 +124,16 @@ export function MappingPage() {
   const selectedBuilding = mapping.buildings.find((b) => b.id === selectedBuildingId) ?? null
   const selectedArea = mapping.areas.find((a) => a.id === selectedAreaId) ?? null
 
+  const faculty = faculties.find((f) => f.id === facultyId) ?? null
+  // El perímetro TRAZADO, no `faculty.polygon`: este último cae al cuadrado
+  // aproximado, y enseñarlo en el editor haría creer que ya está dibujado.
+  const perimeter = facultyPerimeter(facultyId)
+
   const activePolygon: Polygon | null = draft
     ? draftPolygon(draft)
-    : (selectedArea?.polygon ?? (selectedFloor === null ? (selectedBuilding?.footprint ?? null) : null))
+    : facultyEdit
+      ? (facultyEdit === 'edit' ? perimeter : null)
+      : (selectedArea?.polygon ?? (selectedFloor === null ? (selectedBuilding?.footprint ?? null) : null))
 
   /**
    * Cuánto de la facultad está mapeado, para saber qué falta.
@@ -126,9 +146,9 @@ export function MappingPage() {
    * presenta como aproximación.
    */
   const coverage = useMemo(() => {
-    const faculty = FACULTIES.find((f) => f.id === facultyId)
-    if (!faculty?.polygon) return null
-    const total = polygonAreaM2(faculty.polygon)
+    const outline = facultyPerimeter(facultyId)
+    if (!outline) return null
+    const total = polygonAreaM2(outline)
     if (total <= 0) return null
 
     const mapped =
@@ -138,7 +158,11 @@ export function MappingPage() {
         .reduce((acc, a) => acc + polygonAreaM2(a.polygon), 0)
 
     return { total, mapped, percent: Math.min(100, Math.round((mapped / total) * 100)) }
-  }, [facultyId, mapping.buildings, mapping.areas])
+    // `faculties` está aquí aunque no se lea: `facultyPerimeter` es una lectura
+    // de la caché de módulo, y sin esta dependencia la cobertura se quedaría
+    // calculada contra la semilla estática después de rehidratar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facultyId, faculties, mapping.buildings, mapping.areas])
 
   const areaCounts = useMemo(() => {
     const counts = new Map<string, number>()
@@ -201,7 +225,96 @@ export function MappingPage() {
     [mapping.buildings, mapping.floors, showToast],
   )
 
+  /**
+   * Convierte la forma YA GUARDADA de lo seleccionado en borrador editable.
+   *
+   * Hasta ahora los tiradores de vértice solo existían mientras dibujabas: una
+   * vez guardado, corregir una esquina obligaba a retrazar la forma entera.
+   * Sembrar el borrador con el anillo que ya hay reutiliza tal cual toda la
+   * maquinaria —tiradores, imanes, deshacer— y el guardado ni se entera, porque
+   * `activePolygon` ya prefiere el borrador cuando existe. Sirve igual para un
+   * área, la huella de un edificio y el perímetro de una facultad.
+   *
+   * Entra siempre como 'ring' y nunca como 'rect', aunque la forma tenga cuatro
+   * esquinas: deducir ancla, dimensiones y giro desde el resultado tiene más de
+   * una respuesta, y elegir mal haría que la forma cambiara de tamaño sola al
+   * girarla.
+   */
+  const editShape = useCallback(() => {
+    const polygon = activePolygon
+    if (!polygon) return
+    // Retrazar una huella ES dibujar un edificio. Sin esto, el panel se
+    // cambiaría al formulario de área en cuanto apareciera el borrador, porque
+    // la rama del edificio exige que no haya ninguno.
+    if (!facultyEdit && selectedBuilding && selectedFloor === null) setDrawingBuilding(true)
+    useMappingEditor.getState().commitDraft({
+      kind: 'ring',
+      ring: openRing(polygon.coordinates[0]),
+      phase: 'ready',
+    })
+  }, [activePolygon, facultyEdit, selectedBuilding, selectedFloor])
+
   // ── Mutaciones ──
+
+  /**
+   * Crea o actualiza una facultad, y refresca el catálogo que ve toda la app.
+   *
+   * La chincheta sale del centroide del perímetro: es un dato deducible, y
+   * mantener dos campos de coordenadas al lado de un polígono es garantizar que
+   * un día digan cosas distintas. Sin perímetro nuevo, la que tenía se queda.
+   */
+  const saveFaculty = useMutation({
+    mutationFn: async (values: FacultyFormValues) => {
+      const existing = facultyEdit === 'edit' ? faculty : null
+      const polygon = draft ? draftPolygon(draft) : (existing ? perimeter : null)
+      if (!existing && !polygon) throw new Error('SIN_FORMA')
+
+      const id = existing?.id ?? facultySlug(values.name)
+      if (!existing && faculties.some((f) => f.id === id)) throw new Error('ID_DUPLICADO')
+
+      const centre = polygon ? polygonCentroid(polygon) : null
+      return upsertFaculty({
+        id,
+        name: values.name.trim(),
+        // Sin traducción, el inglés cae al nombre en español: la columna es NOT
+        // NULL y una facultad sin nombre en inglés desaparecería de la interfaz
+        // traducida.
+        name_en: values.name_en.trim() || values.name.trim(),
+        campus_id: values.campus_id,
+        lat: centre ? centre[1] : (existing?.lat ?? 0),
+        lng: centre ? centre[0] : (existing?.lng ?? 0),
+        polygon,
+        image: values.image.trim() || null,
+      })
+    },
+    onSuccess: async (saved) => {
+      // Se espera al refetch antes de seleccionarla: `setFacultyId` con un id
+      // que todavía no está en el catálogo dejaría el editor en una facultad
+      // que no existe.
+      await queryClient.refetchQueries({ queryKey: FACULTIES_QUERY_KEY })
+      showToast('Facultad guardada.')
+      setFacultyId(saved.id)
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : ''
+      if (message === 'SIN_FORMA') return showToast('Traza el perímetro antes de guardar.')
+      if (message === 'ID_DUPLICADO') return showToast('Ya hay una facultad con ese nombre.')
+      reportError(error, 'No se pudo guardar la facultad.')
+    },
+  })
+
+  const removeFaculty = useMutation({
+    mutationFn: (id: string) => deleteFaculty(id),
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: FACULTIES_QUERY_KEY })
+      showToast('Facultad eliminada.')
+      setConfirmDelete(null)
+      const next = faculties.find((f) => f.id !== facultyId)
+      if (next) setFacultyId(next.id)
+    },
+    onError: (error) => reportError(error, 'No se pudo eliminar la facultad.'),
+  })
+
   const saveArea = useMutation({
     mutationFn: async (values: AreaFormValues) => {
       const polygon = activePolygon
@@ -363,9 +476,12 @@ export function MappingPage() {
     mutationFn: async (target: NonNullable<typeof confirmDelete>) => {
       if (target.kind === 'building') return deleteBuilding(target.id)
       if (target.kind === 'floor') return deleteFloor(target.buildingId, target.level)
+      if (target.kind === 'faculty') return removeFaculty.mutateAsync(target.id)
       return deleteArea(target.id)
     },
     onSuccess: (_data, target) => {
+      // La facultad ya avisó y ya reseleccionó en su propia mutación.
+      if (target.kind === 'faculty') return
       showToast(
         target.kind === 'building'
           ? 'Edificio eliminado.'
@@ -431,7 +547,8 @@ export function MappingPage() {
       }
       if (e.key === 'Escape') {
         state.resetHistory()
-        state.selectArea(null)
+        if (state.facultyEdit) state.setFacultyEdit(null)
+        else state.selectArea(null)
         setDrawingBuilding(false)
       }
     }
@@ -464,6 +581,21 @@ export function MappingPage() {
     downloadExport(buildExport(mapping))
     showToast('Exportado. Reemplaza los archivos en src/shared/data/ para versionarlos.')
   }
+
+  /**
+   * Borrar una facultad solo vale para deshacer una recién creada por error.
+   *
+   * `pins`, `forum_threads` y `profiles` apuntan a `faculties` sin cascada, así
+   * que borrar una con vida encima falla en la base. Antes que enseñar un botón
+   * que revienta, el botón no está: se exige vacía de edificios, áreas y pines,
+   * y que quede al menos otra a la que volver.
+   */
+  const canDeleteFaculty =
+    facultyEdit === 'edit' &&
+    mapping.buildings.length === 0 &&
+    mapping.areas.length === 0 &&
+    pins.length === 0 &&
+    faculties.length > 1
 
   const floorsOfBuilding = mapping.floors
     .filter((f) => f.building_id === selectedBuildingId)
@@ -500,12 +632,33 @@ export function MappingPage() {
         <div className="flex items-center gap-3">
           <div className="w-64 shrink-0">
             <CustomSelect
-              options={FACULTIES.map((f) => ({ value: f.id, label: f.name }))}
+              options={faculties.map((f) => ({ value: f.id, label: f.name }))}
               value={facultyId}
               onChange={setFacultyId}
               placeholder="Facultad"
+              // Diecisiete facultades y creciendo: la lista ya no se recorre de
+              // un vistazo, y casi todas empiezan por "Facultad de".
+              searchable
+              searchPlaceholder="Buscar facultad…"
             />
           </div>
+
+          {/* Crear una facultad es trazar su perímetro, así que entra ya con la
+              herramienta de polígono: es el único primer paso posible. */}
+          <button
+            onClick={() => {
+              setFacultyEdit('new')
+              setTool('polygon')
+            }}
+            title="Crear una facultad nueva trazando su perímetro"
+            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-black uppercase tracking-wider transition-colors ${
+              facultyEdit === 'new'
+                ? 'bg-[#D41F2D] text-white'
+                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+            }`}
+          >
+            <Plus size={13} /> Facultad
+          </button>
 
           <div className="flex shrink-0 items-center gap-0.5 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800">
             <ModeButton active={mode === 'draw'} onClick={() => setMode('draw')}>
@@ -632,6 +785,8 @@ export function MappingPage() {
                   floors={mapping.floors}
                   areaCounts={areaCounts}
                   outdoorCount={areaCounts.get(floorKey(null, null)) ?? 0}
+                  facultyName={faculty?.name ?? 'Facultad'}
+                  hasPerimeter={perimeter !== null}
                   onAddBuilding={() => {
                     useMappingEditor.getState().selectBuilding(null)
                     useMappingEditor.getState().setTool('rect')
@@ -675,6 +830,12 @@ export function MappingPage() {
                 drawingBuilding={drawingBuilding}
                 onSaveArea={(values) => saveArea.mutate(values)}
                 onSaveBuilding={(values) => saveBuilding.mutate(values)}
+                onSaveFaculty={(values) => saveFaculty.mutate(values)}
+                onDeleteFaculty={
+                  canDeleteFaculty && faculty
+                    ? () => setConfirmDelete({ kind: 'faculty', id: faculty.id, name: faculty.name })
+                    : undefined
+                }
                 onDeleteArea={(id) =>
                   setConfirmDelete({
                     kind: 'area',
@@ -690,12 +851,19 @@ export function MappingPage() {
                   })
                 }
                 onSplit={(parts) => splitArea.mutate(parts)}
+                onEditShape={editShape}
                 onCancel={() => {
                   useMappingEditor.getState().resetHistory()
+                  useMappingEditor.getState().setFacultyEdit(null)
                   useMappingEditor.getState().selectArea(null)
                   setDrawingBuilding(false)
                 }}
-                saving={saveArea.isPending || saveBuilding.isPending || splitArea.isPending}
+                saving={
+                  saveArea.isPending ||
+                  saveBuilding.isPending ||
+                  splitArea.isPending ||
+                  saveFaculty.isPending
+                }
               />
             </aside>
           </>
@@ -710,12 +878,16 @@ export function MappingPage() {
               ? 'Eliminar edificio'
               : confirmDelete?.kind === 'floor'
                 ? 'Eliminar planta'
-                : 'Eliminar área'
+                : confirmDelete?.kind === 'faculty'
+                  ? 'Eliminar facultad'
+                  : 'Eliminar área'
           }
           // El borrado en cascada se dice ANTES, con el número exacto: enterarse
           // después de que se fueron doce áreas no tiene arreglo.
           description={
-            confirmDelete?.kind === 'building'
+            confirmDelete?.kind === 'faculty'
+              ? `Se eliminará "${confirmDelete.name}". Está vacía: no tiene edificios, áreas ni pines.`
+              : confirmDelete?.kind === 'building'
               ? `Se eliminarán "${confirmDelete.name}", todas sus plantas y todas las áreas que haya dentro.`
               : confirmDelete?.kind === 'floor'
                 ? `Se eliminará ${floorName(confirmDelete.level, null)}${
@@ -731,6 +903,25 @@ export function MappingPage() {
       </div>
     </>
   )
+}
+
+/**
+ * id de una facultad a partir de su nombre.
+ *
+ * Se le quita el "facultad de" delantero porque el id se lee en la URL y en las
+ * claves de mapeo: `ingenieria` y no `facultad-de-ingenieria-y-ciencias`. Es
+ * exactamente la forma de los 17 ids que ya existen.
+ */
+function facultySlug(name: string): string {
+  const base = name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/^(facultad|instituto|escuela)\s+(de|del)?\s*/, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40)
+  return base || `facultad-${Date.now().toString(36)}`
 }
 
 /** id estable y legible a partir del código o el nombre. */

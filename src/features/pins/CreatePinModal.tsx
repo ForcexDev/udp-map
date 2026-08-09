@@ -10,7 +10,7 @@ import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
 import { CATEGORIES, FACULTIES } from '@/shared/data/campusData'
-import { facultyIdAt } from '@/shared/data/facultyPerimeters'
+import { facultyIdAt } from '@/shared/data/facultyStore'
 import type { Pin, PinType } from '@/shared/types/database'
 import { createPin, updatePin, fetchPinSchedule } from './api'
 import { EventScheduleEditor } from './EventScheduleEditor'
@@ -21,10 +21,15 @@ import { validatePhoto, MAX_PHOTOS_PER_PIN } from './photos'
 import { nextDailyPinReset } from '@/shared/utils/rateLimit'
 import { dbErrorMessage, isUserFacingDbError } from '@/shared/utils/dbError'
 
+const MAX_DESCRIPTION = 1500
+
 const pinSchema = z.object({
   type: z.enum(['report', 'place', 'event']),
   title: z.string().trim().min(3).max(80),
-  description: z.string().trim().max(500).optional().or(z.literal('')),
+  // 1500 y no 500: la descripción admite enlaces y una URL de correo o de Drive
+  // mide 300 caracteres sola. Tiene que coincidir con el check de la base
+  // (pins_description_check), o el formulario deja pasar algo que la base rechaza.
+  description: z.string().trim().max(MAX_DESCRIPTION).optional().or(z.literal('')),
   categoryId: z.string().nullable(),
   facultyId: z.string().nullable(),
   // La planta la elige la persona: no se puede deducir del punto, porque desde
@@ -118,6 +123,7 @@ export function CreatePinModal() {
   
   const type = form.watch('type')
   const title = form.watch('title')
+  const description = form.watch('description')
 
   // Switch category list and defaults when type changes
   useEffect(() => {
@@ -462,6 +468,18 @@ export function CreatePinModal() {
                 placeholder={t('pin.descriptionPlaceholder', '¿Qué está pasando? (opcional)')}
                 className="w-full min-h-[84px] bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl px-4 py-3 text-sm font-medium leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 outline-none focus:border-[#D41F2D] focus:bg-white dark:focus:bg-neutral-900 transition-all resize-y shadow-sm"
               />
+              {/* Sin esto, pasarse de largo dejaba el borde en rojo y el botón sin
+                  hacer nada: el formulario no guardaba y no decía por qué. El
+                  contador solo aparece cerca del tope para no meter ruido. */}
+              {form.formState.errors.description ? (
+                <p className="text-xs font-bold text-[#D41F2D]">
+                  {t('common.maxChars', { n: MAX_DESCRIPTION })}
+                </p>
+              ) : (description?.length ?? 0) > MAX_DESCRIPTION * 0.8 ? (
+                <p className="text-xs font-medium text-neutral-400">
+                  {description?.length ?? 0} / {MAX_DESCRIPTION}
+                </p>
+              ) : null}
             </div>
 
             {/* Photos (Nativa UI con carrusel horizontal) */}

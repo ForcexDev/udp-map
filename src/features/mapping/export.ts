@@ -6,7 +6,7 @@ import type { FacultyMapping } from './api'
 // Se dibuja en la app y se guarda en Supabase, pero eso deja el trabajo en un
 // solo sitio. Exportar lo baja a `src/shared/data/` para que quede versionado
 // en git y para que el MODO DEMO tenga datos: es el mismo papel que cumple hoy
-// facultyPerimeters.ts.
+// `faculties.polygon`, que es donde viven los perímetros.
 //
 // Sale como TypeScript y no como JSON a propósito: así el compilador avisa si
 // un día cambia la forma de `Building` o de `Area` y estos archivos se quedan

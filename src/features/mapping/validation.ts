@@ -128,6 +128,66 @@ export function validateBuilding(
   return issues
 }
 
+/** Por debajo de esto no es una facultad, es un error de trazado. */
+export const MIN_FACULTY_AREA_M2 = 100
+
+export function validateFaculty(
+  name: string,
+  polygon: Polygon | null,
+  context: {
+    /** true si es una facultad nueva; entonces el perímetro es obligatorio. */
+    isNew: boolean
+    /** Perímetros de las DEMÁS facultades, para avisar de solapes. */
+    others: { id: string; name: string; polygon: Polygon }[]
+  },
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+
+  if (!name.trim()) {
+    issues.push({ level: 'error', field: 'name', message: 'Ponle un nombre.' })
+  } else if (name.trim().length > 120) {
+    issues.push({ level: 'error', field: 'name', message: 'Máximo 120 caracteres.' })
+  }
+
+  if (!polygon || openRing(polygon.coordinates[0] ?? []).length < 3) {
+    // El perímetro es obligatorio al crear porque de él sale la chincheta y
+    // porque sin él la facultad no asigna pines ni se puede entrar a mapearla:
+    // existiría en la lista y en ningún sitio más. Al editar una que ya está,
+    // no: se puede querer solo corregirle el nombre.
+    if (context.isNew) {
+      issues.push({
+        level: 'error',
+        field: 'shape',
+        message: 'Traza el perímetro en el mapa: de ahí sale la chincheta.',
+      })
+    }
+    return issues
+  }
+
+  if (polygonAreaM2(polygon) < MIN_FACULTY_AREA_M2) {
+    issues.push({
+      level: 'error',
+      field: 'shape',
+      message: `Son ${formatArea(polygonAreaM2(polygon))}: demasiado poco para una facultad.`,
+    })
+  }
+
+  // Aviso y no error: la Biblioteca y Ciencias Sociales comparten manzana y sus
+  // perímetros ya se rozan a propósito. `facultyIdAt` desempata por cercanía.
+  for (const other of context.others) {
+    const shared = polygonIntersectionAreaM2(polygon, other.polygon)
+    if (shared > MIN_FACULTY_AREA_M2) {
+      issues.push({
+        level: 'warning',
+        field: 'shape',
+        message: `Se solapa ${formatArea(shared)} con "${other.name}". Un pin ahí irá a la más cercana.`,
+      })
+    }
+  }
+
+  return issues
+}
+
 export function hasErrors(issues: ValidationIssue[]): boolean {
   return issues.some((i) => i.level === 'error')
 }

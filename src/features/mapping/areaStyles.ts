@@ -49,6 +49,24 @@ export function areaColor(kind: AreaKind, override: string | null): string {
 export const BUILDING_COLOR = '#D41F2D'
 
 /**
+ * La altura del volumen 3D, en metros. **0 = no se levanta nada.**
+ *
+ * Sale exclusivamente de `height_m`, que es lo que se escribe a mano en
+ * `/admin/mapeo`, y no se deduce de ningún sitio. Casi todos los edificios del
+ * campus YA están en OpenStreetMap con su altura, y el estilo del mapa los
+ * levanta solo: generarles encima un volumen propio sería dibujar dos veces el
+ * mismo edificio, uno tapando al otro. La altura se rellena únicamente para los
+ * que faltan en OSM, y hasta entonces vale 0.
+ *
+ * Vive aquí, junto al color, y no en `map/mappingLayers.ts`, porque la
+ * comparten el mapa público y la previsualización del editor. Con una copia en
+ * cada lado, la vista previa acabaría mintiendo sobre lo que se va a ver.
+ */
+export function buildingHeightM(building: { height_m: number | null }): number {
+  return building.height_m && building.height_m > 0 ? building.height_m : 0
+}
+
+/**
  * Nombre de una planta. `label` gana cuando existe, porque hay plantas que la
  * gente no llama por su número ("Zócalo", "Entrepiso").
  */

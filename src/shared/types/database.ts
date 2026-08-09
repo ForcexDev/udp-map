@@ -108,8 +108,10 @@ export interface PinPhoto {
  */
 export interface PlacePhoto {
   id: string
+  // Exactamente uno de los tres va relleno; lo impone place_photos_one_owner.
   faculty_id: string | null
   building_id: string | null
+  area_id: string | null
   url: string
   width: number | null
   height: number | null
@@ -150,7 +152,7 @@ export interface Favorite {
 // ── Mapeo interior ──────────────────────────────────────────────────────────
 // Facultad → Edificio → Planta → Área. La tabla `floor_plans` sigue existiendo
 // en la base, reservada para un plano de piso como imagen superpuesta
-// (docs/ROADMAP.md §13); no se declara su tipo mientras nada la
+// (docs/ROADMAP.md §14); no se declara su tipo mientras nada la
 // consuma.
 
 export type AreaKind =
