@@ -20,6 +20,7 @@ import { CustomDateTimePicker } from '@/shared/ui/CustomDateTimePicker'
 import { validatePhoto, MAX_PHOTOS_PER_PIN } from './photos'
 import { nextDailyPinReset } from '@/shared/utils/rateLimit'
 import { dbErrorMessage, isUserFacingDbError } from '@/shared/utils/dbError'
+import { floorRejectionKey } from '@/shared/utils/floorValidation'
 
 const MAX_DESCRIPTION = 1500
 
@@ -325,6 +326,11 @@ export function CreatePinModal() {
       }
       if (message.includes('PIN_LOCATION_OCCUPIED')) {
         showToast(t('pin.locationOccupied'))
+        return
+      }
+      const floorKey = floorRejectionKey(message)
+      if (floorKey) {
+        showToast(t(floorKey))
         return
       }
       // Las funciones de la base explican por qué rechazan algo ("No puedes

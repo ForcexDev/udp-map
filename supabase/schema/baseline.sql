@@ -699,6 +699,76 @@ begin
 end;
 $fn$;
 
+-- La planta de un pin tiene que existir de verdad.
+--
+-- Está en un trigger y no dentro de create_pin_with_daily_limit por dos razones.
+-- Una: `floor` es de los pocos campos que el autor escribe con un UPDATE directo
+-- a la tabla —protect_pin_sensitive_fields lo deja pasar a propósito— así que
+-- validar solo al crear no cierra nada. Dos: los triggers también se disparan
+-- para service_role, o sea que cubren lo que se escribe a mano desde el SQL
+-- Editor, que es por donde entraron los primeros pines en plantas inexistentes.
+--
+-- El daño de no tener esto no es de seguridad: es que el pin se vuelve
+-- INVISIBLE. El selector solo ofrece los niveles que existen en building_floors
+-- (`facultyLevels`) y un pin se ve si su planta es la activa
+-- (`pinVisibleOnFloor`), así que una planta que nadie declaró no tiene chip que
+-- la seleccione. El pin existe, gasta cupo diario y no lo ve ni su autor.
+--
+-- Es más laxa que la FK de `areas` a propósito: un área siempre se dibuja dentro
+-- de un edificio, un pin puede tener planta sin edificio.
+create or replace function public.validate_pin_floor()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  -- Sin planta no hay nada que validar: es un pin de exterior.
+  if new.floor is null then
+    return new;
+  end if;
+
+  -- El 0 no existe: la baja es el 1 y el primer subterráneo el -1.
+  if new.floor = 0 then
+    raise exception 'La planta 0 no existe: usa 1 para la planta baja y -1 para el subterráneo.';
+  end if;
+
+  -- Dentro de un edificio, la planta tiene que estar declarada en ESE edificio.
+  if new.building_id is not null then
+    if not exists (
+      select 1
+      from public.building_floors
+      where building_id = new.building_id
+        and level = new.floor
+    ) then
+      raise exception 'INVALID_FLOOR_FOR_BUILDING';
+    end if;
+
+    return new;
+  end if;
+
+  -- Con planta y sin edificio —mapeo a medias, o el punto cae en el patio— se
+  -- exige que el nivel exista en ALGÚN edificio de la facultad. Es el mismo
+  -- criterio con el que el selector decide qué chips pintar.
+  if new.faculty_id is not null
+     and exists (select 1 from public.buildings where faculty_id = new.faculty_id)
+     and not exists (
+       select 1
+       from public.building_floors f
+       join public.buildings b on b.id = f.building_id
+       where b.faculty_id = new.faculty_id
+         and f.level = new.floor
+     ) then
+    raise exception 'FLOOR_NOT_IN_FACULTY';
+  end if;
+
+  -- Facultad sin edificios mapeados, o pin sin facultad: no hay contra qué
+  -- comprobar y no se rechaza. Exigir mapeo para poder decir "piso 2" apagaría
+  -- la planta en todo el campus que aún no se ha trazado, que es casi todo.
+  return new;
+end;
+$fn$;
+
 create or replace function public.protect_profile_privileged_fields()
 returns trigger
 language plpgsql
@@ -919,10 +989,11 @@ begin
     raise exception 'Coordenadas del pin inválidas';
   end if;
 
-  -- La planta 0 no existe: la baja es el 1 y el primer subterráneo el -1.
-  if p_floor = 0 then
-    raise exception 'La planta 0 no existe: usa 1 para la planta baja y -1 para el subterráneo.';
-  end if;
+  -- La planta no se valida aquí. La regla entera —el 0 no existe, y el nivel
+  -- tiene que existir en el edificio o en la facultad— vive en
+  -- validate_pin_floor, disparada por el INSERT de más abajo. Está en un trigger
+  -- porque el autor puede cambiar `floor` con un UPDATE directo a la tabla, sin
+  -- pasar por esta función: validar solo al crear no cerraría nada.
 
   -- El plazo no se acepta del cliente: se deduce del tipo y de la categoría.
   -- p_expires_at se conserva en la firma pero se ignora — cambiarla obligaría a
@@ -2255,6 +2326,16 @@ drop trigger if exists trg_protect_pin_vote_counters on public.pins;
 create trigger trg_protect_pin_vote_counters
   before update of votes_up, votes_down on public.pins
   for each row execute function public.protect_vote_counters();
+
+-- El nombre importa: Postgres dispara los triggers BEFORE en orden alfabético y
+-- este tiene que correr DESPUÉS de trg_protect_pin_sensitive_fields, que
+-- revierte `building_id` al valor viejo cuando quien edita no es moderador.
+-- Validar antes compararía la planta contra un edificio que no va a quedar
+-- escrito. `trg_validate_...` ordena después de `trg_protect_...` por la v.
+drop trigger if exists trg_validate_pin_floor on public.pins;
+create trigger trg_validate_pin_floor
+  before insert or update of floor, building_id, faculty_id on public.pins
+  for each row execute function public.validate_pin_floor();
 
 drop trigger if exists on_pin_badge on public.pins;
 create trigger on_pin_badge

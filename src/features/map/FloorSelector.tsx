@@ -1,3 +1,6 @@
+import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { FACULTIES } from '@/shared/data/campusData'
 import { facultyShortName } from '@/shared/utils/facultyShortName'
@@ -19,13 +22,28 @@ import { facultyLevels, useMapping } from '@/features/mapping/useMapping'
 //
 // No se pide ni se abre: aparece al entrar en una facultad con interior
 // mapeado, y se va al salir.
+//
+// **Es una ventanilla, no una lista.** Enseñar las ocho plantas a la vez hacía
+// una columna de 250px por el centro de la pantalla, justo encima de lo que se
+// está mirando; en un teléfono se comía media vista. Ahora se ve UNA cara —la
+// planta activa— entre dos flechas, y cambiarla la desliza en la dirección en
+// la que vas, que es lo que hace que se lea como altura y no como un menú. La
+// rueda del ratón también la mueve.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function FloorSelector() {
+  const { t } = useTranslation()
   const { mapping } = useMapping()
   const activeFacultyId = useUIStore((s) => s.activeFacultyId)
   const activeFloor = useUIStore((s) => s.activeFloor)
   const setActiveFloor = useUIStore((s) => s.setActiveFloor)
+
+  // Hacia dónde fue el último cambio, para saber por qué borde entra la cara
+  // nueva. Solo decide la animación, así que no hace falta que sobreviva a nada.
+  const [dir, setDir] = useState<'up' | 'down'>('up')
+  // La rueda manda muchos eventos por gesto; sin freno un golpe de trackpad
+  // recorre la facultad entera de arriba abajo.
+  const lastWheel = useRef(0)
 
   if (!activeFacultyId) return null
 
@@ -35,51 +53,110 @@ export function FloorSelector() {
   // selector de un elemento solo ocupa sitio.
   if (levels.length < 2) return null
 
+  // `levels` viene de mayor a menor, así que subir es restar índice.
+  const index = activeFloor === null ? -1 : levels.findIndex((l) => l.level === activeFloor)
+  const current = index === -1 ? null : levels[index]
+  // Desde "Todo" las flechas tienen que aterrizar en algún sitio, y ese sitio es
+  // la planta de acceso: el piso 1 si la facultad lo tiene, y si no la más alta.
+  const entry = levels.find((l) => l.level === 1) ?? levels[0]
+
+  const step = (delta: -1 | 1) => {
+    setDir(delta === -1 ? 'up' : 'down')
+    if (index === -1) {
+      setActiveFloor(entry.level)
+      return
+    }
+    const next = levels[index + delta]
+    if (next) setActiveFloor(next.level)
+  }
+
+  const onWheel = (e: React.WheelEvent) => {
+    const now = Date.now()
+    if (now - lastWheel.current < 220) return
+    lastWheel.current = now
+    step(e.deltaY < 0 ? -1 : 1)
+  }
+
+  const ARROW =
+    'flex items-center justify-center py-0.5 text-neutral-500 transition-colors hover:bg-neutral-100/70 disabled:opacity-25 disabled:hover:bg-transparent dark:text-neutral-400 dark:hover:bg-neutral-800/70'
+
   return (
     <div className="pointer-events-auto absolute right-3 top-1/2 z-20 -translate-y-1/2 sm:right-5">
       {/* Columna estrecha y de ancho fijo: es un control de tránsito, no un
           panel. Con el nombre completo de la facultad medía el doble y se
           comía el mapa, que es justo lo que se está mirando. */}
-      <div className="glass-hud flex w-11 flex-col items-stretch overflow-hidden rounded-2xl premium-shadow">
+      <div
+        onWheel={onWheel}
+        className="glass-hud flex w-11 flex-col items-stretch overflow-hidden rounded-2xl premium-shadow"
+      >
         <p
           title={faculty?.name}
-          className="truncate border-b border-neutral-200/60 px-1 py-1.5 text-center text-[9px] font-black uppercase tracking-tight text-neutral-500 dark:border-neutral-700/60"
+          className="truncate border-b border-neutral-200/60 px-1 py-1 text-center text-[9px] font-black uppercase tracking-tight text-neutral-500 dark:border-neutral-700/60"
         >
           {faculty ? facultyShortName(faculty.name) : 'Pisos'}
         </p>
 
-        {levels.map((level) => {
-          const isActive = activeFloor === level.level
-          return (
-            <button
-              key={level.level}
-              onClick={() => setActiveFloor(level.level)}
-              aria-pressed={isActive}
-              title={floorName(level.level, level.label)}
-              className={`px-1 py-1.5 text-[12px] font-black tabular-nums transition-colors ${
-                isActive
-                  ? 'bg-[#D41F2D] text-white'
-                  : 'text-neutral-600 hover:bg-neutral-100/70 dark:text-neutral-300 dark:hover:bg-neutral-800/70'
-              }`}
-            >
-              {level.label ? level.label.slice(0, 3) : floorShortName(level.level)}
-            </button>
-          )
-        })}
+        <button
+          onClick={() => step(-1)}
+          disabled={index === 0}
+          aria-label={t('indoor.floorUp', 'Subir un piso')}
+          title={t('indoor.floorUp', 'Subir un piso')}
+          className={ARROW}
+        >
+          <ChevronUp size={15} strokeWidth={3} />
+        </button>
+
+        {/* La ventanilla. `key` fuerza el remontado en cada cambio, que es lo que
+            dispara la animación de entrada; sin él React reusa el nodo y el
+            número salta sin deslizarse. */}
+        <div
+          aria-live="polite"
+          title={current ? floorName(current.level, current.label) : t('indoor.allFloorsHint', 'Ver todas las plantas')}
+          className={`flex h-9 items-center justify-center overflow-hidden transition-colors ${
+            current ? 'bg-[#D41F2D] text-white' : 'text-neutral-400 dark:text-neutral-500'
+          }`}
+        >
+          <span
+            key={activeFloor ?? 'all'}
+            className={`block truncate px-1 text-[15px] font-black leading-none tabular-nums ${
+              dir === 'up' ? 'floor-roll-up' : 'floor-roll-down'
+            }`}
+          >
+            {current
+              ? current.label
+                ? current.label.slice(0, 3)
+                : floorShortName(current.level)
+              : '—'}
+          </span>
+        </div>
+
+        <button
+          onClick={() => step(1)}
+          disabled={index === levels.length - 1}
+          aria-label={t('indoor.floorDown', 'Bajar un piso')}
+          title={t('indoor.floorDown', 'Bajar un piso')}
+          className={ARROW}
+        >
+          <ChevronDown size={15} strokeWidth={3} />
+        </button>
 
         {/* "Todo" apaga el filtro sin salir de la facultad: cada edificio vuelve
-            a su planta por defecto, que es la vista de conjunto. */}
+            a su planta por defecto, que es la vista de conjunto. Con la
+            ventanilla en "—", es también lo que explica qué significa ese guion. */}
         <button
-          onClick={() => setActiveFloor(null)}
+          onClick={() => {
+            setDir('down')
+            setActiveFloor(null)
+          }}
           aria-pressed={activeFloor === null}
-          title="Ver todas las plantas"
-          className={`border-t border-neutral-200/60 px-1 py-1.5 text-[8.5px] font-black uppercase tracking-tight transition-colors dark:border-neutral-700/60 ${
+          title={t('indoor.allFloorsHint', 'Ver todas las plantas')}
+          className={`border-t border-neutral-200/60 px-1 py-1 text-[8.5px] font-black uppercase tracking-tight transition-colors dark:border-neutral-700/60 ${
             activeFloor === null
               ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
               : 'text-neutral-500 hover:bg-neutral-100/70 dark:hover:bg-neutral-800/70'
           }`}
         >
-          Todo
+          {t('indoor.allFloors', 'Todo')}
         </button>
       </div>
     </div>

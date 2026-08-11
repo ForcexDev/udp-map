@@ -76,7 +76,10 @@ export function floorName(level: number, label: string | null): string {
   return `Piso ${level}`
 }
 
-/** Versión corta para el selector vertical del mapa: 3, 1, S1. */
+/** Versión corta para el selector vertical del mapa: 3, 1, -1. */
 export function floorShortName(level: number): string {
-  return level < 0 ? `S${Math.abs(level)}` : String(level)
+  // Un subterráneo se escribe `-1`, no `S1`. Es lo que pone el ascensor, y en
+  // una columna de números `S1 S2 S3` se lee como otra escala en vez de como la
+  // continuación hacia abajo de la misma.
+  return String(level)
 }

@@ -62,6 +62,12 @@ const es = {
       // punto en pisos distintos conviven. Sin nombrar el piso, el aviso parece
       // mentir cuando el que estorba está en otra planta.
       locationOccupied: 'Ya hay un pin en este punto de esta planta. Muévelo un poco o cambia de piso.',
+      // La planta la valida el servidor (trg_validate_pin_floor). Estos avisos
+      // solo se ven si el mapeo cambió mientras el formulario estaba abierto:
+      // el selector nunca ofrece una planta que no exista.
+      invalidFloorForBuilding: 'Ese edificio no tiene esa planta. Vuelve a elegir el piso.',
+      floorNotInFaculty: 'Esa facultad no tiene esa planta mapeada. Vuelve a elegir el piso.',
+      floorZero: 'La planta 0 no existe: la planta baja es el 1 y el subterráneo el -1.',
       delete: 'Eliminar pin',
       deleted: 'Pin eliminado',
       confirmDelete: '¿Eliminar este pin? Sus fotos y comentarios se borran también.',
@@ -107,6 +113,11 @@ const es = {
       title: 'Planos interiores',
       floor: 'Piso {{n}}',
       exit: 'Salir del plano',
+      floorsTitle: 'Piso',
+      allFloors: 'Todo',
+      allFloorsHint: 'Ver todas las plantas',
+      floorUp: 'Subir un piso',
+      floorDown: 'Bajar un piso',
     },
     sidebar: {
       settings: 'Ajustes',
@@ -307,6 +318,9 @@ const en = {
       created: 'Pin published!',
       dailyLimitReached: '{{name}}, you exceeded the daily limit of 10 pins. Come back tomorrow at {{resetAt}}.',
       locationOccupied: 'There is already a pin at this spot on this floor. Move it slightly or change floor.',
+      invalidFloorForBuilding: 'That building does not have that floor. Pick the floor again.',
+      floorNotInFaculty: 'That faculty has no such floor mapped. Pick the floor again.',
+      floorZero: 'Floor 0 does not exist: the ground floor is 1 and the basement is -1.',
       delete: 'Delete pin',
       deleted: 'Pin deleted',
       confirmDelete: 'Delete this pin? Its photos and comments will be removed too.',
@@ -352,6 +366,11 @@ const en = {
       title: 'Indoor plans',
       floor: 'Floor {{n}}',
       exit: 'Exit floor plan',
+      floorsTitle: 'Floor',
+      allFloors: 'All',
+      allFloorsHint: 'Show every floor',
+      floorUp: 'Up one floor',
+      floorDown: 'Down one floor',
     },
     sidebar: {
       settings: 'Settings',

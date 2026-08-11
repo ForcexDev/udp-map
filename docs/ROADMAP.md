@@ -1,7 +1,7 @@
 # Hoja de ruta — UDP Map
 
 > **Documento vivo.** Es el plan del repositorio: qué está hecho y qué falta. Se
-> actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-08-05.
+> actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-08-10.
 >
 > Nació como el plan de mapeo interior y onboarding, y absorbió el backlog que
 > antes vivía repartido entre `PLAN.md` y `SPRINTS_STATUS.md`. Los dos se
@@ -178,6 +178,14 @@ parseRoomCode('A-302')        // { building: 'A',    floor: 3, room: '302'  }
 parseRoomCode('lo que sea')   // null → no se deduce nada, se elige a mano
 ```
 
+> ⚠️ **Contrastado con los datos reales el 2026-08-10, y "se parte en tres" es
+> falso.** Hay que partir por los **dos primeros** puntos y recortar espacios:
+> `E441.4.L.D` trae cuatro trozos y `E441.5. LAB INF` trae un espacio después del
+> punto. Un `split('.')` a secas pierde los tres laboratorios del piso 4 de la
+> FIC. La regla completa, el catálogo de salas y —lo que faltaba de verdad— el
+> mapa de **prefijo de edificio → dirección postal → facultad** están en
+> **`docs/SALAS.md`**. Léelo antes de escribir `parseRoomCode`.
+
 Dos reglas para que esto no se vuelva una fuente de errores:
 
 - **Es una sugerencia, nunca una imposición.** Rellena los selectores y la persona puede cambiarlos. Si el código no calza con ningún formato conocido, se guarda igual como texto y no se deduce nada.
@@ -202,6 +210,85 @@ Documentado aquí porque es la razón de fondo de esas dos categorías, aunque l
 3. **Advertencia honesta.** Si el edificio no tiene ningún `ascensor` ni `rampa` mapeados y el destino no está en planta baja, decirlo en vez de trazar una ruta que no sirve.
 
 Requisitos que esto impone y que este plan ya cumple: los pines de `ascensor` y `rampa` deben tener `building_id` y `floor`, y los de `entrada` un modo de marcar si son accesibles. Lo dejo anotado; no está en ninguna fase todavía.
+
+### 4.1 Falta la categoría `escalera`
+
+Anotado el 2026-08-10. Hay `ascensor` y `rampa`, y **no hay escalera**. No es una
+categoría más de la lista: es la que dice **por dónde no se puede pasar**. El
+punto 3 de arriba —advertir en vez de trazar una ruta que no sirve— necesita
+saber que lo único que sube a ese piso es una escalera; sin la categoría, "no hay
+ascensor mapeado" no se distingue de "nadie mapeó nada todavía".
+
+Como **área** ya está cubierta: `area_kind` tiene `'service'`, documentado en el
+esquema como "baños, ascensores, escaleras". Como **pin** hay que crearla, con su
+icono.
+
+Y conviene que sea pin y no área salvo en cajas de escalera grandes: lo que
+importa de una escalera es *por aquí se sube*, que es un punto. Dibujar su
+contorno es trabajo que no devuelve nada.
+
+### 4.2 Un ascensor no vive en una planta: las atraviesa
+
+Idea del 2026-08-10, y destapa un límite real del modelo.
+
+`pins.floor` es **un entero**, o sea una sola planta. Y `pinVisibleOnFloor`
+(`shared/utils/floorVisibility.ts`) enseña un pin solo cuando su planta es la
+activa. Un ascensor que va del −1 al 5 es, hoy, un pin de una planta: en las
+otras seis **no existe**. Lo mismo la escalera.
+
+Comprobado de paso: **poner `floor = null` no lo arregla.** Un pin sin planta se
+trata como exterior y se ve **solo en la planta baja**, que es lo correcto para
+un food truck y lo contrario de lo que hace falta aquí.
+
+Quedan dos caminos:
+
+- **Un pin por planta, en las mismas coordenadas.** Funciona sin tocar nada —
+  `PIN_LOCATION_OCCUPIED` solo choca con lat/lng **y** planta iguales, así que
+  siete pines apilados en siete plantas son legales. Pero son **siete objetos**:
+  siete verificaciones, siete hilos de comentarios, y "el ascensor está en pana"
+  hay que decirlo siete veces y se lee seis veces incompleto.
+- **Un rango de plantas en el pin.** Una columna más —`floor_to`, con `floor`
+  como el extremo inferior— y `pinVisibleOnFloor` comprobando el rango en vez de
+  la igualdad. Un objeto, una conversación, un aviso.
+
+**Se elige la segunda**, y la razón no es la elegancia: es que el ascensor
+averiado es **un hecho**, no siete. Un modelo que obliga a repetirlo garantiza
+que quede desactualizado en algunas plantas.
+
+> **Que quede sin ambigüedad: es UN pin, no varios.** Una sola fila en `pins`,
+> un solo autor, un solo hilo de comentarios, una sola verificación. Lo que se
+> repite es **el marcador dibujado**: el mismo pin aparece en su misma ubicación
+> en cada planta del rango. Quien lo mire desde el piso 4 y quien lo mire desde
+> el −1 están viendo, y comentando, la misma cosa.
+
+Al construirlo, cuatro cosas que hay que tener presentes:
+
+1. **El 0 no existe, y en Chile tampoco existe en la vida real.** Aquí se pasa
+   del 1 al −1 directamente; no hay "planta baja" numerada como cero, que es una
+   costumbre de otros países. La base ya lo impone (`check (level <> 0)` en
+   `building_floors`), así que un rango de −1 a 5 cubre −1, 1, 2, 3, 4, 5. No es
+   un caso raro que haya que contemplar: es el caso normal de cualquier ascensor
+   con subterráneo.
+2. **Los dos extremos tienen que validarse** contra `building_floors`, no solo
+   el de abajo. Es ampliar `trg_validate_pin_floor`, que hoy mira un solo valor.
+3. **Se pregunta "¿hasta qué piso llega?"**, que es como lo piensa quien lo está
+   mapeando. No "elige las plantas": un desplegable con el tope y otro con el
+   fondo.
+4. **La pregunta va al crear Y al editar.** Un ascensor mal declarado se corrige
+   igual que se corrige un piso mal puesto, que es la edición más común. Ojo con
+   una consecuencia concreta: `floor` es de los pocos campos que el autor cambia
+   con un `UPDATE` directo —`protect_pin_sensitive_fields` lo deja pasar a
+   propósito— así que `floor_to` tiene que ir por el mismo camino, o el autor
+   podrá corregir el piso de abajo y no el de arriba.
+
+Y esto vale igual para **escaleras** (§4.1) que para ascensores: una escalera que
+sube del 1 al 5 tiene el mismo problema y la misma solución.
+
+Y una limitación que conviene aceptar en vez de resolver: **un ascensor que se
+salta una planta intermedia** —de esos que no paran en el −2— no lo cubre un
+rango. Es raro, y la alternativa es una lista de plantas por pin, que complica
+el modelo entero para el caso menos frecuente. Si aparece, se anota en la
+descripción.
 
 ---
 
@@ -385,6 +472,88 @@ Pestaña aparte, y es la que te resuelve los 20 pines de hoy y los que vengan: t
 - Superficie mínima, para que un doble clic no cree un área de 2 m².
 - **Borrar una planta que tiene áreas o pines dentro**: confirmación explícita diciendo cuántos, porque el `on delete cascade` se lleva las áreas por delante.
 
+#### Qué está hecho de verdad (comprobado el 2026-08-10)
+
+Contra `src/features/mapping/validation.ts` y `MappingCanvas.tsx`. Lo de arriba
+es la especificación; esto es el estado.
+
+**Contención — "esto tiene que caber dentro de aquello".** Cada cosa que se
+dibuja tiene un contenedor, y el editor comprueba que no se salga. Si se sale,
+o no te deja guardar (**error**) o te avisa y te deja seguir (**aviso**):
+
+| Si dibujas… | …tiene que caber dentro de… | Si se sale |
+|---|---|---|
+| Un área de un edificio | la huella de ese edificio | **no te deja guardar** |
+| Un área exterior | el perímetro de la facultad | **no te deja guardar** |
+| Un edificio | el perímetro de la facultad | solo te avisa |
+
+Que lo del edificio sea aviso y no error es deliberado y está razonado en el
+código: hay edificios que asoman del perímetro trazado y no es motivo para
+impedir guardarlos.
+
+> **"Área exterior" no quiere decir "patio".** Son dos cosas distintas que es
+> fácil confundir. **Exterior** significa `building_id` nulo: es suelo del
+> campus, no está en ningún edificio y se ve desde todas las plantas. **Patio,
+> jardín o cancha** son valores de `kind`, y describen **qué es** el área, no
+> dónde está.
+>
+> Un `kind = 'green'` puede vivir perfectamente **dentro** de un edificio: el
+> pastito de la Biblioteca en las plantas 3 y 5 es un área con
+> `building_id = biblioteca`, `floor = 3` y `kind = 'green'`, y como tal ya se
+> valida contra la huella del edificio — que es lo correcto. Lo mismo un casino
+> en el piso 2. Nada de lo que se propone abajo lo estorba.
+
+**Solape — "esto no debería pisar aquello".** Aquí están los huecos:
+
+| ¿Se comprueba que no se pisen? | Estado |
+|---|---|
+| Un área contra las otras áreas **de su misma planta** | ✅ Avisa, si comparten más del 1 % o 2 m² |
+| Un área exterior contra las otras áreas exteriores | ✅ Avisa, por la misma vía |
+| **Un edificio contra otro edificio** | ❌ **No se comprueba nada** |
+| **Un área exterior contra la huella de un edificio** | ❌ **No se comprueba nada** |
+
+O sea: **hoy se puede trazar un edificio encima de otro, o un patio del campus
+encima de un edificio, y el editor no dice ni una palabra.**
+
+**El imán ya hace lo que hace falta para trazar salas pegadas.** Verificado en
+`snapToPolygons`: con 1 m de tolerancia, se pega **primero a los vértices y, si
+no hay ninguno cerca, al borde** del polígono más próximo. Y sus referencias
+(`snapReferences`) incluyen el perímetro de la facultad, **todas** las huellas de
+edificios y **las áreas de la planta activa**, menos la que se está editando.
+
+Traducido al caso real: dibujas la sala 1, empiezas la sala 2 a su derecha, y al
+acercarte a menos de un metro los vértices se clavan en la esquina de la sala 1;
+si vas por mitad de la pared, se clava en el borde. Las salas quedan pegadas sin
+hueco ni solape, que es justo lo que se busca. **Esto ya funciona hoy**, y no hay
+que confundirlo con las validaciones: el imán es una ayuda de trazado y la
+validación es lo que salta cuando el imán no se usó.
+
+**Por qué el solape entre áreas es aviso y no error:** porque a veces es
+correcto. Un quiosco dentro del casino es un área dentro de otra, y el editor no
+está en posición de saber si el solape es un error de trazado o una anidación
+deliberada.
+
+Eso vale para casinos y quioscos. **Para salas no vale**: dos salas de clases no
+pueden ocupar el mismo metro cuadrado, nunca. Cuando exista el tipo de área
+`'room'` (`docs/SALAS.md` §12.6), el solape entre dos áreas de ese tipo debería
+ser **error**.
+
+**Lo que falta, en orden:**
+
+1. **Solape edificio contra edificio**, como **aviso**, no como error. Es el
+   hueco más grande —un edificio mal trazado desplaza todas las áreas que
+   cuelguen de él— pero prohibirlo del todo sería pasarse: hay casos reales de
+   huellas que se tocan o se montan, como dos cuerpos unidos por una pasarela, o
+   `E278A` y `E278B`, que comparten medianera. El coste de un error falso es que
+   no puedes guardar nada; el de un aviso falso es leer una línea. Con el aviso
+   basta para cazar el 99 % de los casos, que son de trazado.
+2. **Solape de área exterior contra huella de edificio**, como aviso. Recordando
+   la distinción de arriba: esto solo afecta a áreas **sin edificio**. Un jardín
+   en la planta 3 no entra aquí.
+3. **Solape entre áreas de tipo sala: error, no aviso.** Es el único caso donde
+   sí conviene impedir guardar, porque no hay lectura legítima. Depende de que
+   exista `'room'` en `area_kind`.
+
 ### 6.6 Sin dependencias nuevas
 
 Se escribe a mano, unas 400-500 líneas. El repo ya trabaja así (`MapView.tsx:390-421`, `campusBoundary.ts`, `facultyLayers.ts`), y es lo único que permite el modo ortogonal, dividir-en-N y copiar-planta.
@@ -524,6 +693,22 @@ Pedido explícito, y hoy es el punto más flojo: hay mensajes clavados en españ
 | Código de sala sin formato conocido | inline, aviso | "No se reconoce el formato. Se guardará igual; elige el piso a mano." |
 | Código de sala repetido en el edificio | inline, aviso | "Ya existe un pin para S101 en este edificio." |
 
+**El título se sugiere según la categoría.** Anotado el 2026-08-10. Hoy el campo
+de título está igual de vacío tanto si publicas un baño como una sala, y el
+resultado son cincuenta formas de escribir lo mismo: "Sala 403", "sala403",
+"S403 libre", "la 403". Un catálogo de salas con títulos así no se puede ni
+ordenar ni buscar.
+
+La salida es barata: **un texto de ejemplo en el campo, distinto por categoría**,
+y para `sala` además el título **propuesto** a partir del código —escribes
+`E441.4.S403` y aparece "Sala 403". Dos reglas para que no moleste:
+
+- **Es una sugerencia, no una imposición.** Se puede borrar y escribir otra cosa.
+  Igual que el propio código de sala (§3.4): el editor propone, la persona
+  decide.
+- **Si la persona ya escribió algo, no se le pisa.** La propuesta solo rellena un
+  campo vacío.
+
 ### 10.3 Pisos y áreas
 
 | Situación | Qué se hace |
@@ -538,7 +723,40 @@ Pedido explícito, y hoy es el punto más flojo: hay mensajes clavados en españ
 
 Todas inline junto al elemento, nunca como toast, porque son correcciones en curso: fuera del perímetro, solape con superficie, área bajo el mínimo, planta duplicada, y confirmación destructiva al borrar una planta con contenido ("Se eliminarán 12 áreas de esta planta"). Si falla el guardado, **el trazado no se pierde**: queda en borrador local con un botón de reintentar.
 
-### 10.5 Transversales
+### 10.5 Lo que la app nunca explica
+
+Anotado el 2026-08-10. Las tablas de arriba cubren **errores**; esto es lo
+contrario, y es un hueco más grande: **cuando todo sale bien, la app tampoco
+cuenta nada.** Un estudiante publica un reporte y no se entera de que caduca en
+12 horas, de que alguien puede verificarlo, ni de qué gana si lo hacen. Las
+reglas existen, están implementadas y son buenas —el TTL por categoría, la
+verificación, el karma—; simplemente no se dicen en ninguna parte.
+
+Cuatro cosas concretas, de menos a más trabajo:
+
+1. **Decir qué va a pasar ANTES de publicar, no después.** En el propio
+   formulario, según la categoría elegida: cuánto dura, si puede volverse
+   permanente, y qué pasa si un moderador lo verifica. El caso de la sala está
+   escrito como ejemplo en `docs/SALAS.md` §12.5, y sirve de molde para el
+   resto.
+2. **Notificar el karma, con el motivo.** Hoy `adjust_karma` mueve el número y
+   **nadie se entera de por qué**: no hay ningún mensaje del tipo "ganaste 25 de
+   karma porque verificaron tu sala". Un contador que sube solo no enseña nada y
+   no motiva a nadie. Hace falta el evento y el texto, y una idea de dónde se
+   lee el historial.
+3. **Explicar la verificación y el cambio de tipo.** Cuando verifican un
+   reporte, pasa a `type = 'place'` y deja de caducar. Es de las mejores cosas
+   que hace la aplicación y es completamente invisible: ni el autor recibe aviso
+   claro, ni se entiende qué cambió.
+4. **Una página de preguntas frecuentes.** Cuánto dura cada tipo de pin, cómo se
+   gana karma, qué hace un moderador, qué es una sala verificada, por qué mi pin
+   desapareció. Va enlazada desde el menú y desde el formulario de creación.
+
+Ojo con el orden: el punto 1 y el 4 se pisan si se hacen a la vez. Primero los
+mensajes en contexto —que es donde la persona tiene la duda— y la página después,
+como sitio donde ampliar.
+
+### 10.6 Transversales
 
 - **Sin conexión**: banner de solo lectura; las acciones de escritura quedan deshabilitadas con explicación, no fallando al pulsarlas.
 - **Carga**: esqueletos donde ya se usan; nunca un spinner a pantalla completa sobre el mapa.
@@ -923,13 +1141,60 @@ sabía qué eran.
       (bypass de CSRF), `undici`, `postcss`, `brace-expansion`, `fast-uri`.
       Todas con arreglo disponible. `react-router` puede traer cambios de
       comportamiento: va en su propio commit.
+- [ ] **El rol `moderator` no está acotado por facultad** (§13.4). Ninguna
+      política usa `profiles.faculty_id`, así que un moderador lo es de las
+      diecisiete facultades. Si el rol lo van a llevar los centros de alumnos,
+      esto hay que cerrarlo antes de repartirlo.
+- [ ] **"Mover un pin de sitio" solo se comprueba en la interfaz.** Es el único
+      permiso del proyecto en esa situación (`DATABASE.md` §2), y el flujo de
+      salas lo vuelve central (`docs/SALAS.md` §12.5).
 - [ ] Repaso de RLS y funciones que queden sin endurecer.
 
 **Funcionalidad**
 
 - [ ] Búsqueda de texto completo y filtro por tags en el foro. Comprobado que no
       existe: ni `tsvector` en la base ni filtro en la interfaz.
-- [ ] Atribución oficial dinámica por facultad/CEE.
+- [ ] **Cargar las salas como pines** (bloquea §13.3 y "Salas libres" de §14).
+      El catálogo está derivado en `docs/SALAS.md`: 61 salas en 12 edificios.
+      Va edificio por edificio, con las coordenadas puestas a mano — un seed
+      generado apilaría los 61 pines en el centroide. Empezar por `E441` (22
+      salas). Antes hay que declarar sus plantas en `/admin/mapeo`, o
+      `trg_validate_pin_floor` rechaza el `INSERT`.
+- [ ] **Confirmar tres direcciones en terreno** (`docs/SALAS.md` §4). Si
+      `E278A/B` son de Ciencias Sociales o salas comunes, el número por Ejército
+      de la Biblioteca Nicanor Parra, y si Ejército 219 y 141 tienen salas
+      docentes. Es ir a mirar la placa de la puerta. `E306` ya está resuelto:
+      es la Facultad de Comercio.
+- [x] **Decidir si la sala se dibuja como área o como pin.** Cerrado el
+      2026-08-10 (`docs/SALAS.md` §12): **la sala se ve y se usa como un pin, el
+      mismo front**, y el área es solo la geometría que un moderador dibuja
+      encima después. El estudiante propone la sala con un pin, gana karma al
+      verificarse, y el trazo queda como curaduría.
+- [ ] **Flujo de sugerencia de sala** (`docs/SALAS.md` §12.5). Aviso antes de
+      publicar, entrada a la cola de administración, plazo de gracia y botón que
+      resuelve la sugerencia entera. Depende de §13.2.
+- [ ] **Preguntar a la EIT quién mantiene `data.json`** y con qué periodicidad
+      se republica (`docs/SALAS.md` §1). No es un trámite: de la respuesta
+      depende si se puede leer en producción o si conviene pedir algo más
+      estable. Los autores de `salas-vacias` tienen el contacto.
+- [ ] **Atribución oficial dinámica por facultad/CEE** (§13.4). Ya con alcance:
+      hay tres nombres clavados —dos de ellos contradictorios— y la base asume
+      que todo moderador es del Centro de Alumnos de Ingeniería. Va junto con el
+      alcance por facultad, porque necesita saber de qué facultad es quien firma.
+- [ ] **Renombrar `computacion` a "Sala de computación"** (`docs/SALAS.md`
+      §12.6). Mismo id, mismo SVG, mismo color: solo `name` y `name_en`, en el
+      seed y en `campusData.ts`. "Computación" nombra una materia; lo que se
+      marca es un recinto.
+- [ ] **Categoría `escalera`** (§4.1). Falta, y es la que dice por dónde no se
+      puede pasar: sin ella el ruteo accesible no distingue "no hay ascensor" de
+      "nadie lo mapeó".
+- [ ] **Rango de plantas para ascensores y escaleras** (§4.2). Hoy un ascensor
+      del −1 al 5 solo se ve en una planta. Una columna `floor_to` y
+      `pinVisibleOnFloor` comprobando el rango.
+- [ ] **Solapes que el editor no comprueba** (§6.5). Hoy se puede trazar un
+      edificio encima de otro, o un patio encima de un edificio, sin un solo
+      aviso. Y cuando existan las salas, el solape entre dos de ellas tiene que
+      ser error, no aviso.
 - [ ] Moderación con IA: Edge Function con proveedor principal y respaldo,
       evaluación de falsos positivos y cola administrativa.
 - [ ] Pruebas E2E con Playwright. Comprobado que no hay ningún rastro en el
@@ -1001,14 +1266,98 @@ Los tres se levantaron deprisa y hay que **rehacerlos bien**, no seguir
 remendándolos. Antes de tocar nada, decidir qué tiene que hacer cada uno; el
 estado actual no sirve de especificación.
 
-Un síntoma concreto que se puede arreglar ya, por separado:
+**Lo que administración necesita y no tiene** (anotado el 2026-08-10, a raíz del
+flujo de salas de `docs/SALAS.md` §12.5):
 
-**El botón "Probar notificación" está para todo el mundo, invitados incluidos.**
-Vive en `shared/ui/Sidebar.tsx` dentro de una sección sin ninguna comprobación
-de rol. Matiz importante: dispara una notificación **local** (`new
-Notification`), no una push, así que no filtra nada del servidor — es una
+- **Una cola de sugerencias pendientes.** Hoy un reporte que merece volverse
+  permanente no aparece en ninguna lista: alguien tiene que toparse con él en el
+  mapa. Con las salas eso deja de ser aceptable, porque el flujo entero depende
+  de que el moderador se entere.
+- **Aviso al moderador cuando entra una sugerencia.** Es el mismo hueco que la
+  §10.5 punto 2, visto desde el otro lado: no hay notificaciones hacia el equipo,
+  solo hacia el usuario.
+- **Resolver la sugerencia sin salir del plano.** Acomodar el pin si quedó mal
+  puesto, aceptar o rechazar **con motivo** —que le llega a quien la sugirió— y,
+  al aceptar, trazar el área ahí mismo. Hoy eso son tres sitios distintos; por
+  61 salas, 183 pantallas. El flujo entero está en `docs/SALAS.md` §12.5.
+- **Cerrar "mover un pin de sitio" en el servidor.** Es el único permiso que hoy
+  solo se comprueba en la interfaz (§2 de `DATABASE.md`), y el flujo de salas lo
+  convierte en una acción central. Mientras siga así, cualquiera con la clave
+  pública puede reubicar pines ajenos.
+- **Decidir si la cola es de moderador o de admin.** Hoy un moderador puede
+  verificar una sala y dibujar su área, pero **no puede entrar al panel de
+  administración**, que es donde estaría la cola. Está desarrollado en
+  `docs/SALAS.md` §12.5. Ver también §13.4.
+- **Distinguir "reporte que se queda reporte" de "reporte que se vuelve lugar".**
+  El esquema ya lo hace (`type` pasa de `report` a `place` al verificar) pero la
+  interfaz de administración no lo enseña, así que quien modera no sabe qué
+  decisión está tomando.
+
+#### Todo lo de administrar vive en el panel, y en ningún otro sitio
+
+La regla que ordena el resto: **si es una herramienta de administración, está en
+`/admin`.** Hoy hay piezas sueltas por la aplicación, y esa dispersión es la
+razón de que nadie sepa qué existe.
+
+El caso concreto: **el botón "Probar notificación" está para todo el mundo,
+invitados incluidos.** Vive en `shared/ui/Sidebar.tsx`, en una sección sin
+ninguna comprobación de rol. Matiz: dispara una notificación **local**
+(`new Notification`), no una push, así que no filtra nada del servidor — es una
 herramienta de depuración enviada a todos los usuarios. Sus textos además están
-clavados en español y no pasan por i18n.
+clavados en español, sin i18n.
+
+Y **ya tiene casa**: `features/admin/PushTestPanel.tsx` existe. O sea que no hay
+que construir nada, hay que **quitar el botón del Sidebar**. Es de las
+correcciones más baratas del documento.
+
+#### Un panel de moderador, aparte del de administración
+
+Anotado el 2026-08-10. Hoy `/admin` es de admin y punto; un moderador no entra
+(§13.4). Pero el moderador tiene trabajo que hacer —cola de sugerencias,
+contenido denunciado de su facultad, verificar pines— y ese trabajo necesita una
+pantalla.
+
+Dos maneras, y conviene elegir antes de construir:
+
+- **Un panel propio de moderador**, con lo suyo y nada más. Más claro, y encaja
+  con el eje de §13.4.
+- **El mismo panel, con secciones según el rol.** Menos código, pero es fácil
+  que se filtre algo que no debía verse.
+
+Lo que no sirve es lo de hoy: que el moderador tenga permisos y no tenga dónde
+ejercerlos.
+
+#### El panel tiene que funcionar en el teléfono. El editor de mapeo, no.
+
+Dos casos que parecen el mismo y no lo son:
+
+- **`/admin/mapeo` es de computador, y está bien que lo sea.** Trazar polígonos
+  con el dedo no es un problema de diseño responsive, es una herramienta que
+  pide ratón. No hay que "arreglarlo" para móvil.
+- **El panel de administración sí debería funcionar en el teléfono.** Revisar una
+  denuncia, aprobar una sugerencia o mirar quién se registró son gestos de
+  lectura y de un toque. Hoy `AdminLayout` esconde etiquetas en pantallas
+  pequeñas (`hidden sm:`) pero no está pensado para móvil, y el frontend en
+  general necesita una pasada.
+
+**Y hay un caso mezclado que hay que resolver:** desde `/admin/mapeo` también se
+editan los **datos** de una facultad —nombre, y en el futuro el nombre de su
+centro de alumnos (§13.4)—, que no son trazado y no piden ratón. Conviene
+sacarlos del editor y llevarlos al panel, o al menos que existan en los dos
+sitios. Si no, cambiar un nombre obliga a sentarse en un computador.
+
+#### El centro de notificaciones
+
+Se rehace con lo de arriba, y hay dos cosas concretas:
+
+- **Falta borrar.** `NotificationCenter.tsx` solo tiene "marcar todas como
+  leídas" (`useMarkAllNotificationsRead`). No hay forma de **vaciar** la lista, y
+  una lista que solo crece se vuelve inútil sola.
+- **La presentación.** Es de lo más flojo de la aplicación visualmente, y es
+  además donde va a caer todo lo nuevo: el karma con su motivo (§10.5), la
+  respuesta a una sugerencia de sala con su motivo (`docs/SALAS.md` §12.5) y los
+  avisos hacia el equipo. Rehacerlo antes de colgarle esas tres cosas, no
+  después.
 
 ### 13.3 Buscar dentro de una facultad, no solo facultades
 
@@ -1016,16 +1365,163 @@ Hoy el buscador solo encuentra facultades. La idea es que, **estando dentro de
 una facultad**, sirva para encontrar lo que hay dentro: qué salas están libres
 ahora y qué ramo se está dando en cada una.
 
-Depende de conseguir acceso al repositorio de salas y horarios de la
-universidad, que es el mismo bloqueo que tiene "Salas libres" en la §14. El
+Dependía de conseguir acceso al repositorio de salas y horarios de la
+universidad, que era el mismo bloqueo que tenía "Salas libres" en la §14. El
 modelo ya lo soporta: `pins.room_code` existe justamente para cruzar con ese
-sistema. Cuando haya acceso, las dos cosas salen del mismo trabajo.
+sistema. **Ese bloqueo se levantó el 2026-08-10** (ver §14 y `docs/SALAS.md`);
+lo que ahora falta es que existan los pines de sala contra los que cruzar. Las
+dos cosas siguen saliendo del mismo trabajo.
+
+### 13.4 El moderador no tiene facultad, y debería
+
+Levantado el 2026-08-10 al preguntarse qué separa de verdad a un moderador de un
+administrador. La lista real está en `docs/DATABASE.md` §2, ya corregida — la que
+había estaba incompleta.
+
+**El eje actual es "contenido y mapa" contra "plataforma y personas".** El
+moderador verifica pines, edita y borra contenido ajeno, y traza edificios,
+plantas y áreas. El administrador maneja facultades, roles, denuncias, correos y
+difusión push. Es un eje razonable y encaja con la idea de fondo: **moderador =
+centro de alumnos u otra gente de confianza; administrador = quien trabaja en la
+UDP y quien desarrolla el sistema.**
+
+**Pero falta la pieza que hace que esa idea funcione: el alcance.**
+`profiles.faculty_id` existe y **ninguna política lo usa**. Un moderador lo es de
+**toda la universidad**: puede borrar un hilo de Derecho, verificar un pin de
+Arquitectura, o borrar una planta de Medicina y llevarse sus áreas por cascada.
+Nombrar al centro de alumnos de una facultad significa hoy darle poder sobre las
+diecisiete.
+
+Y hay dos permisos que quedan **al revés** de esa idea:
+
+- **Subir la foto de una facultad es de admin** (`place_photos_admin`). O sea que
+  el centro de alumnos no puede poner la foto de su propia facultad, que es
+  justo lo que querría hacer.
+- **Crear o editar una facultad es de admin** (`faculties_admin`). Esta sí tiene
+  sentido donde está, pero conviene decirlo junto a la anterior para no
+  confundirlas.
+
+**Lo que habría que hacer, en orden:**
+
+1. **Acotar al moderador por facultad** en las políticas de contenido y mapeo,
+   contra `profiles.faculty_id`. Es el cambio grande y es de RLS, no de
+   interfaz.
+2. **Mover las galerías de facultad, edificio y área** al moderador de esa
+   facultad. Es curaduría de contenido, que es su eje.
+3. **Dejar el panel de administración solo para admin**, como está. Encaja con la
+   idea, y la cola de sugerencias de salas entonces vive en `/admin/mapeo`
+   —donde el moderador sí entra— y no en el panel (`docs/SALAS.md` §12.5).
+4. **Decidir si hace falta un moderador sin facultad**, para quien coordine
+   varias. Si hace falta, es un `faculty_id` nulo con significado de "todas", y
+   más vale que sea explícito y no el estado por defecto de hoy.
+
+Mientras el punto 1 no exista, **conviene ser conservador repartiendo el rol
+`moderator`**: hoy no es "moderador de mi facultad", es "moderador de todo".
+
+#### El nombre de la organización no es uno solo
+
+Contrastado el 2026-08-10, y el sistema hoy da por hecho lo contrario.
+
+Cada facultad organiza a sus estudiantes con **su propio nombre**: centro de
+estudiantes, centro de alumnos, consejo, federación, y con siglas distintas
+según la facultad. No hay un "el Centro de Alumnos UDP" que valga para las
+diecisiete. Y cuando un moderador publica algo como entidad oficial o verifica
+un pin, **lo que se enseña es ese nombre** — así que acertarlo no es un detalle
+cosmético: es lo que hace que la atribución sea creíble.
+
+Hoy hay **tres cadenas clavadas, y dos se contradicen**:
+
+| Dónde | Qué dice |
+|---|---|
+| `verify_and_make_permanent`, valor por defecto del parámetro | `'Centro de Alumnos FIC'` |
+| La misma función, respaldo si llega vacío | `'Centro de Alumnos UDP'` |
+| `CreateThreadModal.tsx:62` y `:174` | `role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP'` |
+
+O sea: **la base asume que todo moderador es del Centro de Alumnos de
+Ingeniería**, y el cliente lo repite. Un moderador de Psicología que verifique
+un pin lo firma hoy como FIC. Además esas cadenas están en español dentro del
+código, sin pasar por i18n, contra la regla de la §10.1.
+
+Esto es la parte concreta y hacedora de "atribución oficial dinámica por
+facultad/CEE", que estaba en el backlog como una línea sin alcance:
+
+1. **El nombre de la organización es un dato de la facultad**, no una constante.
+   Una columna en `faculties` —`student_org_name`— con el nombre tal como se
+   llama cada una.
+2. **Al verificar o publicar como oficial, el nombre sale de ahí**, de la
+   facultad del moderador. Sin valor por defecto clavado: si la facultad no lo
+   tiene cargado, no se firma con un nombre inventado.
+3. **Quitar las tres cadenas** de la base y del cliente.
+
+Ojo con el orden: el punto 2 necesita saber **de qué facultad es el moderador**,
+que es justo lo que hoy no existe (el alcance de arriba). Los dos cambios son el
+mismo trabajo y conviene hacerlos juntos.
+
+### 13.5 La barra lateral: de lista de facultades a índice del campus
+
+Idea del 2026-08-10. Hoy `Sidebar.tsx` enseña las facultades agrupadas por campus
+y, al tocar una, vuela el mapa hasta ella. Es un buscador, y funciona.
+
+Lo que podría ser: **que cada facultad se despliegue y muestre sus edificios**,
+cada uno con su nombre y su foto. Así la barra deja de ser una lista de nombres y
+pasa a ser el índice visual del campus — que es la forma natural de encontrar
+algo cuando no sabes cómo se llama, que es el caso de casi cualquier estudiante
+nuevo.
+
+Lo que hace falta ya existe casi todo: `buildings` con su nombre, y
+`place_photos.building_id` para la galería. Lo que no existe es que la barra
+consulte el mapeo — hoy solo lee el catálogo de facultades.
+
+Dos cuidados:
+
+- **Una facultad sin edificios mapeados no puede quedar rota.** Hoy solo la FIC
+  tiene mapeo; las otras dieciséis se desplegarían vacías. O no se despliegan, o
+  dicen algo útil.
+- **Que no se vuelva una segunda ficha de facultad.** `FacultyDetail` ya existe y
+  ya lista los posts. La barra es para llegar, no para quedarse.
 
 ---
 
 ## 14. Anotado para el futuro, fuera de fases
 
-- **Salas libres.** Cruzar `room_code` con el repositorio de salas de la universidad, vía Edge Function que cachea horarios, para pintar en verde las que están libres ahora. El modelo ya lo soporta; falta el acceso a esa fuente.
+- **Salas libres.** Cruzar `room_code` con el repositorio de salas de la universidad para pintar en verde las que están libres ahora. El modelo ya lo soporta. **La fuente apareció el 2026-08-10** (`salas.docencia-eit.cl/data.json`, 799 bloques de la FIC, con `Access-Control-Allow-Origin: *`), así que ni siquiera hace falta la Edge Function que se había supuesto: se puede leer desde el navegador y cachear con `ETag`. Lo que queda no es acceso técnico sino acordarlo con quien la mantiene — y, antes de eso, **cargar las salas como pines**. Todo el levantamiento está en `docs/SALAS.md`.
 - **Ruteo accesible fino** (§4): destino en la entrada o rampa accesible más cercana, y continuación por ascensor hasta la planta correcta.
 - **Interior como imagen.** Si algún día consigues el plano de una planta en imagen, se puede poner bajo el mapa ajustando las cuatro esquinas y usarlo de calco para dibujar las áreas encima. `floor_plans.image_overlay` y `floor_plans.bounds` ya existen sin usar (`baseline.sql:196-208`), y MapLibre soporta un source `type: 'image'`.
 - **Capacidad de sala**, para "busco una sala libre para 6 personas". Un campo más en el pin `sala` cuando haga falta.
+- ~~Validación de plantas por edificio en servidor.~~ **Hecha el 2026-08-10**, ver §15.
+
+---
+
+## 15. Validación de plantas en servidor ✅ HECHA (2026-08-10)
+
+Estaba en §14 como "anotado para el futuro" y no debía estarlo: no era una idea,
+era un agujero abierto con un síntoma concreto.
+
+**Lo que pasaba.** `pins.floor` era un `integer` suelto. La única comprobación
+del servidor era `floor <> 0`, dentro de `create_pin_with_daily_limit`. Que la
+planta existiera en el edificio lo garantizaba solo `IndoorFields.tsx`. Tres
+caminos se saltaban eso: la RPC acepta cualquier `p_floor` y la clave anon viaja
+en el bundle; `pins_owner_update` deja al autor cambiar `floor` con un `PATCH`
+directo, porque `protect_pin_sensitive_fields` no lo protege a propósito; y el
+SQL Editor escribe como `service_role` sin pasar por nada.
+
+**Por qué importaba.** No es seguridad — nadie escala privilegios con esto. Es
+que el pin se vuelve **invisible**: el selector solo ofrece los niveles de
+`building_floors` y un pin se ve si su planta es la activa, así que una planta
+que nadie declaró no tiene chip que la seleccione. El pin existe, gasta cupo
+diario y no lo ve ni su autor. Es lo que pasó con los pines de prueba cargados a
+mano en plantas −1 a −3.
+
+**Lo que se hizo.** Trigger `trg_validate_pin_floor` (`BEFORE INSERT OR UPDATE`),
+no un check dentro de la RPC: validar solo al crear no cerraba el camino del
+`UPDATE`, y un trigger además cubre `service_role`. Tres casos, con las fronteras
+razonadas en `docs/DATABASE.md`. En el cliente, `shared/utils/floorValidation.ts`
+replica la regla para el modo demo, con una desviación deliberada: un edificio
+que no está en el snapshot del mapeo no se juzga, porque el snapshot empieza
+vacío y viene acotado a una facultad.
+
+**Queda pendiente:** las filas que ya estaban mal no se corrigen solas. La
+migración `20260810000000_pin_floor_server_validation.sql` trae al final la
+consulta que las lista. Mientras una siga mal, editarla fallará — es correcto,
+pero conviene saberlo.
+

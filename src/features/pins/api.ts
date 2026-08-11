@@ -6,7 +6,8 @@ import { isInBounds } from '@/shared/utils/geo'
 import { expiresAtFromTtl } from '@/shared/utils/expiry'
 import { categoryById } from '@/shared/data/campusData'
 import { facultyIdAt } from '@/shared/data/facultyStore'
-import { indoorLocationAt } from '@/features/mapping/mappingCache'
+import { indoorLocationAt, mappingSnapshot } from '@/features/mapping/mappingCache'
+import { validatePinFloor } from '@/shared/utils/floorValidation'
 import type { PinFilters } from '@/shared/stores/filterStore'
 import { compressImage, photoStoragePath } from './photos'
 import { demoDb, demoAddPhotos, demoRemovePhotos, demoVerifyPin, demoUnverifyPin, demoExtendPinTTL, demoPinCreationEvents, demoSchedules, demoReplaceSchedule } from './demoStore'
@@ -182,6 +183,15 @@ export async function createPin(
     if (isPinLocationOccupied(demoDb.pins, input.lat, input.lng, floor)) {
       throw new Error('PIN_LOCATION_OCCUPIED')
     }
+    // Lo que en la base hace trg_validate_pin_floor. Aquí no hay servidor que
+    // lo imponga, y sin esto el modo demo aceptaría plantas que la app con base
+    // rechaza.
+    const rejection = validatePinFloor(mappingSnapshot(), {
+      floor,
+      buildingId: indoor.buildingId,
+      facultyId,
+    })
+    if (rejection) throw new Error(rejection)
 
     const pin: Pin = {
       id: crypto.randomUUID(),
@@ -377,6 +387,14 @@ export async function updatePin(
         if (isPinLocationOccupied(demoDb.pins, pin.lat, pin.lng, input.floor, pin.id)) {
           throw new Error('PIN_LOCATION_OCCUPIED')
         }
+        // El trigger de la base valida también en el UPDATE, porque `floor` es
+        // de los campos que el autor escribe directo. El demo hace lo mismo.
+        const rejection = validatePinFloor(mappingSnapshot(), {
+          floor: input.floor,
+          buildingId: pin.building_id,
+          facultyId: input.facultyId !== undefined ? input.facultyId : pin.faculty_id,
+        })
+        if (rejection) throw new Error(rejection)
         // El área colgaba de la planta vieja; en la nueva ya no vale.
         pin.area_id = null
         pin.floor = input.floor

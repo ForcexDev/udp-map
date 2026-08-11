@@ -247,6 +247,49 @@ body {
   }
 }
 
+/* La ventanilla del selector de plantas: el número entra por donde vas. Subes y
+   el nuevo piso sube desde abajo, como el marcador de un ascensor. Sin esto el
+   número cambia de golpe y no se lee como movimiento vertical. */
+@keyframes floor-roll-up {
+  from {
+    opacity: 0;
+    transform: translateY(85%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floor-roll-down {
+  from {
+    opacity: 0;
+    transform: translateY(-85%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.floor-roll-up {
+  animation: floor-roll-up 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.floor-roll-down {
+  animation: floor-roll-down 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .floor-roll-up,
+  .floor-roll-down {
+    animation: none;
+  }
+}
+
 @keyframes reticle-float {
 
   0%,

@@ -73,11 +73,36 @@ y el rechazo ocurre en el alta, no en la interfaz.
 | Denunciar contenido | ❌ | ✅ | ✅ | ✅ | RPC `create_content_report` |
 | Editar o borrar contenido ajeno | ❌ | ❌ | ✅ | ✅ | políticas `..._owner_or_mod` |
 | Verificar un pin (hacerlo permanente) | ❌ | ❌ | ✅ | ✅ | RPC `verify_and_make_permanent` |
+| Quitar la verificación de un pin | ❌ | ❌ | ✅ | ✅ | RPC `unverify_pin` |
 | Extender el plazo de un pin | ❌ | ❌ | ✅ | ✅ | RPC `extend_pin_ttl` |
+| **Trazar el mapeo interior** (edificios, plantas, áreas) | ❌ | ❌ | ✅ | ✅ | `buildings_write`, `building_floors_write`, `areas_write` |
+| Cargar planos de planta | ❌ | ❌ | ✅ | ✅ | `floor_plans_admin` (el nombre engaña: es de moderador) |
 | Mover un pin de sitio | ❌ | ❌ | ✅ | ✅ | solo en la interfaz (`can()`), **no** en la base |
+| **Crear, editar o borrar una facultad** (y su perímetro) | ❌ | ❌ | ❌ | ✅ | `faculties_admin` |
+| **Subir fotos de una facultad, edificio o área** | ❌ | ❌ | ❌ | ✅ | `place_photos_admin` |
 | Entrar al panel de administración | ❌ | ❌ | ❌ | ✅ | cada RPC `admin_*` comprueba el rol |
+| Ver el perfil completo de otro, con su correo | ❌ | ❌ | ❌ | ✅ | `profiles_read_admin` |
 | Cambiar el rol de otro | ❌ | ❌ | ❌ | ✅ | RPC `admin_set_user_role` |
-| Resolver denuncias | ❌ | ❌ | ❌ | ✅ | RPC `resolve_moderation_report` |
+| Ver y resolver denuncias | ❌ | ❌ | ❌ | ✅ | `content_reports_read_own_or_admin`, RPC `claim_moderation_report` y `resolve_moderation_report` |
+| Enviar una notificación push a todo el mundo | ❌ | ❌ | ❌ | ✅ | RPC `admin_broadcast_push_notification` |
+
+**El eje que separa los dos roles es "contenido y mapa" contra "plataforma y
+personas".** Un moderador manda sobre lo que se ve en el mapa: verifica, edita,
+borra, traza edificios y áreas. Un administrador manda sobre el sistema:
+facultades, roles, denuncias, correos, difusión.
+
+Hay dos filas que se salen de ese eje y conviene mirarlas: **subir la foto de
+una facultad y crear la facultad son de admin**, aunque son gestos de curaduría
+de contenido. Si algún día los moderadores son los centros de alumnos de cada
+facultad, esas dos filas quedan al revés de lo que se espera.
+
+> ⚠️ **Ningún permiso está acotado por facultad.** `profiles.faculty_id` existe,
+> pero **no lo usa ninguna política**: comprobado el 2026-08-10 sobre el
+> baseline. Un moderador es moderador **de toda la universidad** — puede borrar
+> un hilo de Derecho, verificar un pin de Arquitectura o borrar una planta
+> entera de Medicina con sus áreas en cascada. Si la idea es que el rol lo
+> lleven los centros de alumnos, esto es lo primero que hay que cambiar, y no es
+> un ajuste de interfaz: son las políticas.
 
 La columna de la derecha importa más de lo que parece. Un permiso que solo se
 aplica en la interfaz es una sugerencia: cualquiera con la clave pública del
@@ -266,6 +291,47 @@ Tres reglas del modelo que conviene tener presentes:
   de uno solo. La regla completa vive en `src/shared/utils/floorVisibility.ts`.
 - **Un área siempre cuelga de una planta concreta**, salvo las exteriores
   (`building_id` nulo), que son suelo y se ven desde todas.
+
+#### La planta de un pin la valida el servidor
+
+`areas` no puede desviarse: tiene FK compuesta `(building_id, floor)` contra
+`building_floors`. `pins` no puede tener esa FK —un pin puede estar en el piso 2
+sin edificio, porque `building_id` se deduce de la huella y el mapeo puede estar
+a medias— así que la regla la impone el trigger **`trg_validate_pin_floor`**, en
+tres casos:
+
+| Situación | Qué exige |
+|---|---|
+| `floor` nulo | Nada. Es un pin de exterior |
+| `floor = 0` | Rechaza siempre. La baja es el `1` |
+| Con `building_id` | El nivel tiene que estar en `building_floors` de ESE edificio → `INVALID_FLOOR_FOR_BUILDING` |
+| Sin `building_id`, con facultad **ya mapeada** | El nivel tiene que existir en algún edificio de la facultad → `FLOOR_NOT_IN_FACULTY` |
+| Sin `building_id`, facultad sin edificios | Nada. No hay contra qué comprobar |
+
+El último caso es deliberado: exigir mapeo para poder decir "piso 2" apagaría la
+planta en todo el campus que aún no se ha trazado.
+
+Dos cosas que explican por qué está donde está:
+
+- **Es un trigger, no un check dentro de `create_pin_with_daily_limit`.** `floor`
+  es de los pocos campos que el autor escribe con un `UPDATE` directo a `pins`
+  (`protect_pin_sensitive_fields` lo deja pasar a propósito: corregir el piso de
+  una sala es la edición más común). Validar solo al crear no cerraría nada. Los
+  triggers además se disparan para `service_role`, así que cubren lo que se
+  escribe a mano desde el SQL Editor.
+- **El nombre del trigger tiene que ordenar después de
+  `trg_protect_pin_sensitive_fields`.** Postgres dispara los `BEFORE` en orden
+  alfabético, y ese revierte `building_id` al valor viejo cuando quien edita no
+  es moderador; validar antes compararía contra un edificio que no va a quedar
+  escrito.
+
+El síntoma de no tener esto no era un error, era un pin **invisible**: el
+selector solo ofrece los niveles de `building_floors` y un pin se ve si su planta
+es la activa, así que una planta que nadie declaró no tiene chip que la
+seleccione. El pin existía, gastaba cupo diario y no lo veía ni su autor. El
+trigger no arregla las filas que ya estaban mal — la migración
+`20260810000000_pin_floor_server_validation.sql` trae al final la consulta que
+las lista.
 
 `floor_plans` guarda planos de interior como imagen georreferenciada
 (`image_overlay` y `bounds`). Las columnas existen desde el principio pero

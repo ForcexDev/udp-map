@@ -25,6 +25,8 @@ import { FloorSelector } from './FloorSelector'
 import { getWalkingRoute, type WalkingRoute } from './routing'
 import { isLocationOutOfBounds } from './campusBoundary'
 import { isPinLocationOccupied } from '@/shared/utils/pinLocation'
+import { dbErrorMessage } from '@/shared/utils/dbError'
+import { floorRejectionKey } from '@/shared/utils/floorValidation'
 import type { Polygon } from 'geojson'
 import { polygonCentroid } from '@/shared/utils/geometry'
 import { AREA_STYLES } from '@/features/mapping/areaStyles'
@@ -470,10 +472,18 @@ export function MapPage() {
       cancelMovingPin()
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : String(error)
-      showToast(message.includes('PIN_LOCATION_OCCUPIED')
-        ? t('pin.locationOccupied')
-        : t('common.error'))
+      // dbErrorMessage y no `error instanceof Error`: los errores de Supabase
+      // son objetos planos, y el String() de uno da "[object Object]", con lo
+      // que ninguna de estas comparaciones acertaba nunca contra la base real.
+      const message = dbErrorMessage(error)
+      if (message.includes('PIN_LOCATION_OCCUPIED')) {
+        showToast(t('pin.locationOccupied'))
+        return
+      }
+      // Mover un pin recalcula su edificio, y el nuevo puede no tener la planta
+      // que el pin ya traía. Lo rechaza trg_validate_pin_floor.
+      const floorKey = floorRejectionKey(message)
+      showToast(floorKey ? t(floorKey) : t('common.error'))
     },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),
   })

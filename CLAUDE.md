@@ -173,6 +173,7 @@ tocar el mapa.
 | `docs/ROADMAP.md` | El plan. Qué está hecho y qué falta. Se actualiza al cerrar algo. |
 | `docs/DATABASE.md` | El esquema y por qué es así. Se actualiza con cada migración. |
 | `docs/CONTRIBUTING.md` | Cómo trabajar en el repositorio y cómo está organizado el código. |
+| `docs/SALAS.md` | El código de sala, el catálogo de salas y qué dirección es cada facultad. Léelo antes de tocar `room_code` o de asignar facultad por dirección. |
 | `docs/CHANGELOG.md` | Novedades por versión. Lo lee el aviso de actualización de la PWA. |
 | `docs/NOTIFICATIONS_AND_MODERATION.md` | Notificaciones y moderación. |
 | `docs/PWA_UPDATE.md` | Cómo la app detecta una versión nueva. |
