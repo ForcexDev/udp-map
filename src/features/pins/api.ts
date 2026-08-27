@@ -22,7 +22,10 @@ interface CreatePinInput {
   title: string
   description: string | null
   categoryId: string | null
-  facultyId: string | null
+  /** Omitir para que la asigne el perímetro; `null` para dejarla sin facultad
+   *  a propósito. El tipo decía `string | null` y el código ya distinguía
+   *  `undefined`, o sea que mentía. */
+  facultyId?: string | null
   lat: number
   lng: number
   userId: string
@@ -574,6 +577,12 @@ export async function updatePinLocation(pinId: string, lat: number, lng: number)
   if (!supabase) {
     const pin = demoDb.pins.find((p) => p.id === pinId)
     if (pin) {
+      // Mismo rechazo que trg_authorize_pin_move en la base: sin este, el modo
+      // demo dejaría pasar lo único que la interfaz ya no deja intentar, y el
+      // editor de mapeo probado sin Supabase mentiría sobre lo que permite.
+      if (!can(useAuthStore.getState().role, 'pin.update.location')) {
+        throw new Error('Mover un pin de sitio es permiso de moderador.')
+      }
       const isModerator = can(useAuthStore.getState().role, 'pin.moderate')
       if (pin.is_permanent && !isModerator) return // Protected fields
       if (isPinLocationOccupied(demoDb.pins, lat, lng, pin.floor, pinId)) {

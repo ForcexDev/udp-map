@@ -171,16 +171,22 @@ export const CATEGORIES: Category[] = [
   // sala como LUGAR, distinta de `sala-libre`, que es el aviso de que hay una
   // libre ahora mismo.
   { id: 'sala', kind: 'report', name: 'Sala', name_en: 'Room', emoji: '🚪', color: '#0EA5E9', svgPath: 'M19 19V5c0-1.1-.9-2-2-2H7c-1.1 0-2 .9-2 2v14H3v2h18v-2h-2zm-4-6h-2v-2h2v2z', ttl_hours: 720 },
-  // Ascensor y rampa son además la base del ruteo accesible: sin ellas, "cómo
-  // llegar" en silla de ruedas solo sabe de veredas y deja a la persona en la
-  // puerta de la escalera.
+  // Ascensor, rampa y escalera son además la base del ruteo accesible: sin
+  // ellas, "cómo llegar" en silla de ruedas solo sabe de veredas y deja a la
+  // persona en la puerta de la escalera. `escalera` no es una categoría más
+  // de la lista: es la que dice por dónde NO se puede pasar, y sin ella "no
+  // hay ascensor" no se distingue de "nadie lo mapeó". Va como pin y no como
+  // área porque lo que importa de una escalera es "por aquí se sube", que es
+  // un punto; su contorno solo vale la pena en cajas de escalera grandes, y
+  // para eso `area_kind` ya tiene 'service'.
   { id: 'ascensor', kind: 'report', name: 'Ascensor', name_en: 'Elevator', emoji: '🛗', color: '#6366F1', svgPath: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v16h10V4H7zm5 2.5l3.5 4h-7l3.5-4zm0 11.5l-3.5-4h7l-3.5 4z', ttl_hours: 720 },
   { id: 'rampa', kind: 'report', name: 'Rampa', name_en: 'Ramp', emoji: '♿', color: '#0D9488', svgPath: 'M9.08 5.88c.86-.08 1.53-.82 1.53-1.69C10.61 3.26 9.85 2.5 8.92 2.5s-1.69.76-1.69 1.69c0 .28.08.58.21.82l.6 8.49h6.22l2.55 5.97 3.35-1.31-.52-1.23-1.87.68-2.47-5.69-5.78.04-.08-1.08h4.18v-1.59h-4.34L9.08 5.88zM15.33 18.06c-1.05 2.07-3.24 3.44-5.59 3.44C6.31 21.5 3.5 18.69 3.5 15.25c0-2.42 1.46-4.66 3.65-5.65l.14 1.84c-1.29.81-2.09 2.28-2.09 3.82 0 2.5 2.04 4.53 4.53 4.53 2.28 0 4.23-1.75 4.5-4l1.1 2.27z', ttl_hours: 720 },
+  { id: 'escalera', kind: 'report', name: 'Escalera', name_en: 'Stairs', emoji: '🪜', color: '#475569', svgPath: 'M3 21v-4h5v-4h5V9h5V5h3v16H3z', ttl_hours: 720 },
 
   // Estudio y Trabajo
   { id: 'sala-libre', kind: 'report', name: 'Sala Libre', name_en: 'Free Room', emoji: '🟩', color: '#10B981', svgPath: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z', ttl_hours: 6 },
   { id: 'estudio', kind: 'report', name: 'Estudio', name_en: 'Study', emoji: '🎓', color: '#3B82F6', svgPath: 'M12 3L1 9l11 6 9-4.91V17h2V9L12 3z', ttl_hours: 12 },
-  { id: 'computacion', kind: 'report', name: 'Computación', name_en: 'Computing', emoji: '💻', color: '#06B6D4', svgPath: 'M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z', ttl_hours: 12 },
+  { id: 'computacion', kind: 'report', name: 'Sala de computación', name_en: 'Computer lab', emoji: '💻', color: '#06B6D4', svgPath: 'M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z', ttl_hours: 12 },
   { id: 'silencio', kind: 'report', name: 'Silencio', name_en: 'Silence', emoji: '🎵', color: '#6366F1', svgPath: 'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z', ttl_hours: 12 },
   { id: 'impresora', kind: 'report', name: 'Print', name_en: 'Print', emoji: '🖨️', color: '#EC4899', svgPath: 'M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z', ttl_hours: 24 },
   { id: 'enchufe', kind: 'report', name: 'Enchufe', name_en: 'Outlet', emoji: '🔌', color: '#2563eb', svgPath: 'M7 7h10v3l-4 4v5h-2v-5l-4-4V7zm2-5h2v4H9V2zm4 0h2v4h-2V2z', ttl_hours: 12 },
@@ -215,6 +221,29 @@ export const CATEGORIES: Category[] = [
 
 export function categoryById(id: string | null): Category | undefined {
   return CATEGORIES.find((c) => c.id === id)
+}
+
+/**
+ * Las categorías que describen infraestructura fija: cosas que están ahí
+ * siempre. El mapa las dibuja un punto más pequeñas que los avisos (ROADMAP
+ * §9.2), porque un pin de sala y uno de food truck no pueden competir igual: el
+ * segundo es una novedad y el primero es el plano del edificio.
+ *
+ * Es una lista explícita y no una regla derivada, y las dos derivaciones que
+ * parecían obvias ya fallaron:
+ *
+ * - **"permanente"** no sirve: las facultades también son pines permanentes, y
+ *   encogerlas deja el mapa sin sus anclas.
+ * - **"permanente y con categoría"** tampoco: en la base las facultades están
+ *   sembradas con la categoría `entrada`, así que caían dentro igual.
+ *
+ * `entrada` queda fuera a propósito aunque también sea fija: una entrada es
+ * una referencia para orientarse desde lejos, no un detalle del interior.
+ */
+const FIXED_INFRA_CATEGORIES = new Set(['sala', 'ascensor', 'rampa', 'escalera'])
+
+export function isFixedInfraCategory(categoryId: string | null): boolean {
+  return categoryId !== null && FIXED_INFRA_CATEGORIES.has(categoryId)
 }
 
 // El mapeo interior (edificios, plantas y áreas) vive en las tablas `buildings`,

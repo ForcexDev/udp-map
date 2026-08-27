@@ -13,17 +13,17 @@ interface FilterPillsProps<T extends string> {
  */
 export function FilterPills<T extends string>({ options, value, onChange, label, className = '' }: FilterPillsProps<T>) {
   return (
-    <div role="group" aria-label={label} className={`flex gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden ${className}`}>
+    <div role="group" aria-label={label} className={`flex gap-2 overflow-x-auto no-scrollbar ${className}`}>
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
-          className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#D41F2D] ${
+          className={`flex h-11 shrink-0 items-center rounded-full px-3.5 text-xs font-bold transition-colors active:scale-95 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#D41F2D] ${
             value === option.value
               ? 'bg-[#D41F2D] text-white shadow-sm'
-              : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
           }`}
         >
           {option.label}

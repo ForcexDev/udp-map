@@ -11,10 +11,12 @@ import {
   Sparkles,
   Tent,
   Trophy,
+  Users,
 } from 'lucide-react'
 import type { Pin } from '@/shared/types/database'
 import { categoryById, FACULTIES } from '@/shared/data/campusData'
 import { eventPhase } from '@/shared/utils/eventState'
+import { RSVP_PUBLIC_THRESHOLD, type EventRsvpCount } from './api'
 
 const EVENT_ICONS: Record<string, ElementType> = {
   charla: Mic,
@@ -29,11 +31,26 @@ interface EventCardProps {
   userStatus: 'going' | 'interested' | null
   scheduleCount: number
   now: number
+  /** Conteo agregado del evento. Ausente mientras la consulta va en camino. */
+  rsvpCount?: EventRsvpCount
+  /** Quien lo creó ve el número siempre y puede abrir la lista de nombres. */
+  isOrganizer: boolean
   onSelect: (pin: Pin) => void
   onRSVPChange: (pinId: string, status: 'going' | 'interested' | null) => void
+  onShowAttendees: (pin: Pin) => void
 }
 
-export function EventCard({ event, userStatus, scheduleCount, now, onSelect, onRSVPChange }: EventCardProps) {
+export function EventCard({
+  event,
+  userStatus,
+  scheduleCount,
+  now,
+  rsvpCount,
+  isOrganizer,
+  onSelect,
+  onRSVPChange,
+  onShowAttendees,
+}: EventCardProps) {
   const { t, i18n } = useTranslation()
 
   const cat = categoryById(event.category_id)
@@ -42,6 +59,13 @@ export function EventCard({ event, userStatus, scheduleCount, now, onSelect, onR
 
   const faculty = event.faculty_id ? FACULTIES.find((f) => f.id === event.faculty_id) : null
   const facultyName = faculty ? (i18n.language === 'en' ? faculty.name_en : faculty.name) : null
+
+  // Quien organiza ve el número exacto siempre, porque para preparar algo el 2
+  // también sirve. En público hay un umbral: a la escala de la UDP van a
+  // abundar los eventos con números bajos, y "2 personas van" dice "esto no le
+  // importa a nadie" mucho más fuerte que no decir nada. Ver RSVP_PUBLIC_THRESHOLD.
+  const totalRsvp = (rsvpCount?.going ?? 0) + (rsvpCount?.interested ?? 0)
+  const showRsvp = isOrganizer ? totalRsvp > 0 : totalRsvp >= RSVP_PUBLIC_THRESHOLD
 
   // 24 h, igual que la píldora de fecha del detalle del pin. Con 12 h, es-CL
   // devuelve "10:00 a. m. - 02:00 p. m." y ocupa dos líneas.
@@ -94,6 +118,37 @@ export function EventCard({ event, userStatus, scheduleCount, now, onSelect, onR
           <div className="flex items-center gap-1.5">
             <MapPin size={14} className="shrink-0" />
             <span className="truncate">{facultyName}</span>
+          </div>
+        )}
+        {showRsvp && (
+          <div className="flex items-center gap-1.5">
+            <Users size={14} className="shrink-0" />
+            {isOrganizer ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onShowAttendees(event)
+                }}
+                className="font-bold text-[#D41F2D] hover:underline"
+              >
+                {t('events.attendeesGoing', {
+                  count: rsvpCount?.going ?? 0,
+                  defaultValue: `${rsvpCount?.going ?? 0} van`,
+                })}
+                {(rsvpCount?.interested ?? 0) > 0 &&
+                  ` · ${t('events.attendeesInterested', {
+                    count: rsvpCount?.interested ?? 0,
+                    defaultValue: `${rsvpCount?.interested ?? 0} interesados`,
+                  })}`}
+              </button>
+            ) : (
+              <span>
+                {t('events.attendeesPublic', {
+                  count: totalRsvp,
+                  defaultValue: `${totalRsvp} personas apuntadas`,
+                })}
+              </span>
+            )}
           </div>
         )}
         {scheduleCount > 0 && (

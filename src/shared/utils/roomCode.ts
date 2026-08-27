@@ -24,8 +24,14 @@ export interface ParsedRoomCode {
   room: string
 }
 
-/** `E441.1.S101` → edificio E441, planta 1, sala S101. */
-const POSITIONAL = /^([A-Za-z]+\d+)\.(-?\d+)\.(.+)$/
+/** `E441.1.S101` → edificio E441, planta 1, sala S101.
+ *
+ *  El sufijo de letra del prefijo no está de adorno: hay direcciones con dos
+ *  entradas en el mismo número —`E278A` y `E278B`, `M253A` y `M253B`— y son
+ *  edificios distintos. La primera versión exigía que el prefijo terminara en
+ *  dígito, así que `E278A.4.S402` no parseaba y once salas del catálogo se
+ *  quedaban sin planta deducida. */
+const POSITIONAL = /^([A-Za-z]+\d+[A-Za-z]*)\.(-?\d+)\.(.+)$/
 
 /** `A-302` → sala 302 de un edificio A; la planta es el primer dígito. */
 const DASHED = /^([A-Za-z]+)-(\d{3,4})$/

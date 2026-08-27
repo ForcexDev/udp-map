@@ -23,7 +23,11 @@ import { useUIStore } from '@/shared/stores/uiStore'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { CustomSelect } from '@/shared/ui/CustomSelect'
 import { Spinner } from '@/shared/ui/Spinner'
-import { fetchPins } from '@/features/pins/api'
+import { createPin, fetchPins } from '@/features/pins/api'
+import { useMapping } from './useMapping'
+import { indoorLocationAt, mappingSnapshot } from './mappingCache'
+import { useAuthStore } from '@/features/auth/authStore'
+import { RoomImportPanel } from './RoomImportPanel'
 import {
   formatArea,
   openRing,
@@ -111,8 +115,91 @@ export function MappingPage() {
     queryFn: () => fetchFacultyMapping(facultyId),
   })
 
+  // El editor trae SU mapeo (una facultad) por su cuenta, y eso dejaba vacía la
+  // caché que `features/pins/api.ts` lee para deducir edificio y área de un pin
+  // nuevo: las salas del importador nacían con `building_id` null. Esta llamada
+  // es por su efecto secundario —`useMapping` publica el mapeo en esa caché— y
+  // no por lo que devuelve.
+  //
+  // Se usa el hook del mapa público y no `publishMapping(mapping)` a secas a
+  // propósito: aquel publica el campus ENTERO y el del editor está acotado a
+  // una facultad. Pisar la caché con una sola dejaría al mapa deduciendo mal
+  // en las demás hasta el siguiente refetch, que con `staleTime` de cinco
+  // minutos puede tardar. Comparten clave de consulta, así que no es una
+  // descarga más.
+  useMapping()
+
   // Los pines se traen sin filtros y se recortan por facultad: el editor los
   // muestra para comprobar que las áreas cayeron donde debían.
+  // ── Importador de salas: el clic en el mapa crea el pin ──
+  //
+  // El código y la planta salen del catálogo del horario (no se escriben); el
+  // punto lo pone quien mapea. La categoría es `sala`, o sea que nace con su
+  // TTL de 30 días y espera verificación como cualquier otra — un alta desde el
+  // editor no es una excepción al ciclo de vida, solo se salta el formulario.
+  const placeRoom = useMutation({
+    mutationFn: ({ lng, lat }: { lng: number; lat: number }) => {
+      const room = useMappingEditor.getState().pendingRoom
+      const user = useAuthStore.getState().user
+      if (!room) throw new Error('SIN_SALA')
+      if (!user) throw new Error('SIN_SESION')
+
+      // Una sala tiene que caer DENTRO de su edificio: su código lo dice
+      // (`E441.1.S101` es del E441 por definición). Sin esto se puede soltar en
+      // el patio y el pin nace con `building_id` null, que es justo lo que pasó
+      // al probarlo: E441 es un edificio hueco y el centro de su rectángulo
+      // cae en el patio interior, no en el edificio.
+      //
+      // Solo se comprueba si el mapeo conoce ese edificio: con la caché vacía
+      // no hay contra qué comparar, y bloquear entonces sería impedir el alta
+      // por no tener el dato.
+      const snapshot = mappingSnapshot()
+      const target = useMappingEditor.getState().selectedBuildingId
+      const known = snapshot.buildings.some((b) => b.id === target)
+      if (known && indoorLocationAt(lat, lng, room.floor).buildingId !== target) {
+        throw new Error('FUERA_DEL_EDIFICIO')
+      }
+      return createPin(
+        {
+          type: 'report',
+          title: `Sala ${room.room}`,
+          description: null,
+          categoryId: 'sala',
+          // Sin facultad explícita: la asigna el perímetro donde cayó el clic.
+          lat,
+          lng,
+          userId: user.id,
+          userName: user.name ?? '',
+          floor: room.floor,
+          roomCode: room.code,
+        },
+        [],
+      )
+    },
+    onSuccess: () => {
+      const room = useMappingEditor.getState().pendingRoom
+      showToast(`${room?.code ?? 'Sala'} colocada.`)
+      useMappingEditor.getState().setPendingRoom(null)
+      void pinsQuery.refetch()
+    },
+    onError: (error) => {
+      const message = dbErrorMessage(error) || (error as Error).message
+      if (message.includes('FUERA_DEL_EDIFICIO')) {
+        return showToast('Ese punto queda fuera de la huella del edificio. Ojo con los patios interiores.')
+      }
+      if (message.includes('PIN_LOCATION_OCCUPIED')) {
+        return showToast('Ya hay un pin vivo en ese punto y esa planta. Elige otro sitio.')
+      }
+      if (message.includes('INVALID_FLOOR_FOR_BUILDING')) {
+        return showToast('Ese edificio no tiene declarada esa planta. Créala antes de colocar la sala.')
+      }
+      if (message.includes('FLOOR_NOT_IN_FACULTY')) {
+        return showToast('Ninguna planta de esta facultad tiene ese nivel. Decláralo primero.')
+      }
+      reportError(error, 'No se pudo colocar la sala.')
+    },
+  })
+
   const pinsQuery = useQuery({
     queryKey: ['mapping-pins', facultyId],
     queryFn: () => fetchPins(null, { types: ['place', 'event', 'report'], categoryId: null, facultyId, onlyFavorites: false }),
@@ -817,7 +904,12 @@ export function MappingPage() {
                   </button>
                 </div>
               ) : (
-                <MappingCanvas mapping={mapping} pins={pins} onDraftReady={() => {}} />
+                <MappingCanvas
+                  mapping={mapping}
+                  pins={pins}
+                  onDraftReady={() => {}}
+                  onRoomPlaced={({ lng, lat }) => placeRoom.mutate({ lng, lat })}
+                />
               )}
             </main>
 
@@ -865,6 +957,13 @@ export function MappingPage() {
                   saveFaculty.isPending
                 }
               />
+
+              {/* El importador va aquí y no en el modo "pines" porque necesita
+                  el mapa delante: la coordenada es lo único que la fuente no
+                  trae, y se pone clicando. */}
+              <div className="border-t border-neutral-200 p-4 dark:border-neutral-800">
+                <RoomImportPanel mapping={mapping} pins={pins} building={selectedBuilding} />
+              </div>
             </aside>
           </>
         )}

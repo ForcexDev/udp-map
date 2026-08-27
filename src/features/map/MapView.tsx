@@ -5,10 +5,19 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Pin } from '@/shared/types/database'
 import { useUIStore, type PlaceFocus } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
-import { CAMPUSES, FACULTIES, categoryById, EVENT_COLOR, PLACE_COLOR } from '@/shared/data/campusData'
+import {
+  CAMPUSES,
+  FACULTIES,
+  categoryById,
+  isFixedInfraCategory,
+  EVENT_COLOR,
+  PLACE_COLOR,
+} from '@/shared/data/campusData'
 import { expiryState, FADE_WINDOW_MS } from '@/shared/utils/expiry'
 import { eventPhase } from '@/shared/utils/eventState'
 import { useNowTick } from '@/shared/lib/useNowTick'
+import i18n from '@/shared/lib/i18n'
+import { pinScaleForZoom } from '@/shared/utils/pinScale'
 import { publishBounds } from '@/features/pins/usePins'
 import { MAP_STYLE_LIGHT, MAP_STYLE_DARK, DEFAULT_ZOOM } from './mapConfig'
 import { addFacultyLayers, PERIMETER_FILL_LAYER, refreshFacultyPerimeters } from './facultyLayers'
@@ -237,6 +246,16 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       // ruta). Va al final: para entonces sus capas ya existen.
       setStyleEpoch((n) => n + 1)
     })
+
+    // El tamaño del marcador según el zoom (ROADMAP §9.3) va como variable CSS
+    // en el contenedor y no marcador a marcador: los marcadores cuelgan de él,
+    // así que una sola escritura por frame les sirve a todos. Y va en `width`
+    // y no en `transform`, que es de MapLibre.
+    const applyPinScale = () => {
+      map.getContainer().style.setProperty('--pin-scale', String(pinScaleForZoom(map.getZoom())))
+    }
+    applyPinScale()
+    map.on('zoom', applyPinScale)
 
     map.on('mouseenter', 'faculty-perimeter-fill', () => {
       map.getCanvas().style.cursor = 'pointer'
@@ -484,6 +503,14 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       el.setAttribute('aria-label', pin.title)
       el.title = pin.title
       el.classList.toggle('pin-marker--selected', pin.id === selectedPinId)
+      // Infraestructura fija más pequeña que los avisos (ROADMAP §9.2): un pin
+      // de sala es una cosa que está ahí siempre y uno de comida es una
+      // novedad, y que compitan visualmente igual es un error. SOLO el tamaño:
+      // atenuarlos está descartado, porque el desvanecido ya significa "por
+      // vencer" y un permanente es justo lo que nunca vence. Qué cuenta como
+      // fija lo decide el catálogo, no una regla derivada — el porqué está en
+      // `isFixedInfraCategory`.
+      el.classList.toggle('pin-marker--fixed', isFixedInfraCategory(pin.category_id))
       marker.setLngLat([pin.lng, pin.lat])
     }
   }, [pins, selectedPinId, activeFacultyId, activeFloor])
@@ -900,7 +927,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full" aria-label="Mapa del campus" />
+      <div ref={containerRef} className="h-full w-full" aria-label={i18n.t('map.aria', 'Mapa del campus')} />
 
       {/* Location button */}
       <button
@@ -910,7 +937,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
                const loc = await onRequestLocation()
                if (loc) {
                   if (!devUnlockMap && isLocationOutOfBounds(loc.lat, loc.lng)) {
-                     useUIStore.getState().showToast('Estás fuera del área del mapa')
+                     useUIStore.getState().showToast(i18n.t('map.locationOutOfBounds', 'Estás fuera del área del mapa'))
                   } else {
                      mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 18, duration: 1000 })
                   }
@@ -918,14 +945,14 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
              } catch (err) {
                const error = err as Error
                if (error.message === 'PERMISSION_DENIED') {
-                 useUIStore.getState().showToast('Debes activar la ubicación en tu navegador para centrar el mapa.')
+                 useUIStore.getState().showToast(i18n.t('map.locationDeniedCenter', 'Debes activar la ubicación en tu navegador para centrar el mapa.'))
                } else {
-                 useUIStore.getState().showToast('No se pudo obtener tu ubicación.')
+                 useUIStore.getState().showToast(i18n.t('map.locationFailed', 'No se pudo obtener tu ubicación.'))
                }
              }
           }
         }}
-        aria-label="Centrar en mi ubicación"
+        aria-label={i18n.t('map.centerOnMe', 'Centrar en mi ubicación')}
         className="absolute right-3 top-[72px] sm:right-5 sm:top-[80px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95"
       >
         {isTrackingLocation ? (

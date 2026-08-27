@@ -9,4 +9,6 @@
 - Control mejorado para autores: ahora pueden extender la fecha de fin de sus eventos
 - Identificación automática de salas y espacios (ej. E441.1.S101)
 - Cronogramas de eventos y bloques horarios disponibles en las publicaciones
+- Nueva categoría "Escalera", para marcar por dónde se sube cuando no hay ascensor
+- La categoría "Computación" pasa a llamarse "Sala de computación"
 - La categoría de evento "Deportivo" pasa a llamarse "Competencia"

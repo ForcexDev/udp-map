@@ -30,6 +30,8 @@ const mockMapInstance = {
   // entrar en ningún edificio durante estas pruebas.
   getZoom: vi.fn(() => 16),
   getCenter: vi.fn(() => ({ lng: -70.661, lat: -33.4527 })),
+  // El tamaño del marcador según el zoom va como variable CSS en el contenedor.
+  getContainer: vi.fn(() => document.createElement('div')),
   queryRenderedFeatures: vi.fn(() => []),
   setBearing: vi.fn(),
   setPitch: vi.fn(),
@@ -73,12 +75,19 @@ vi.mock('maplibre-gl', () => {
     default: {
       Map: vi.fn(() => mockMapInstance),
       AttributionControl: vi.fn(),
-      Marker: vi.fn(() => ({
-        setLngLat: vi.fn().mockReturnThis(),
-        addTo: vi.fn().mockReturnThis(),
-        remove: vi.fn().mockReturnThis(),
-        getElement: vi.fn(() => document.createElement('div')),
-      })),
+      Marker: vi.fn((options?: { element?: HTMLElement }) => {
+        // El elemento es el MISMO en cada llamada a getElement(): MapView le
+        // guarda clases y variables CSS entre efectos, y devolver uno nuevo
+        // cada vez haría que nada de eso sobreviviera.
+        const element = options?.element ?? document.createElement('div')
+        const marker = {
+          setLngLat: vi.fn(() => marker),
+          addTo: vi.fn(() => marker),
+          remove: vi.fn(() => marker),
+          getElement: vi.fn(() => element),
+        }
+        return marker
+      }),
     }
   }
 })
