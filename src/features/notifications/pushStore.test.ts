@@ -123,6 +123,32 @@ describe('resolvePushState', () => {
     expect(usePushStore.getState().endpoint).toBe('https://push.example/xyz')
   })
 
+  it('no se cuelga para siempre si no hay service worker registrado', async () => {
+    // `navigator.serviceWorker.ready` NO rechaza cuando no hay service worker:
+    // se queda pendiente eternamente. Pasa en el servidor de desarrollo, donde
+    // vite-plugin-pwa solo inyecta el service worker en la compilación. Sin
+    // límite de espera, «Activar» pedía el permiso, lo conseguía, y se quedaba
+    // en «Activando…» sin un solo error en la consola.
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal('Notification', { permission: 'granted', requestPermission: vi.fn() })
+      vi.stubGlobal('PushManager', class {})
+      Object.defineProperty(navigator, 'serviceWorker', {
+        configurable: true,
+        value: { ready: new Promise(() => {}) }, // la que nunca resuelve
+      })
+
+      const { usePushStore, resolvePushState } = await freshStore()
+      const resolved = resolvePushState()
+      await vi.advanceTimersByTimeAsync(11_000)
+      await resolved
+
+      expect(usePushStore.getState().state).toBe('idle')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('se resuelve una sola vez aunque la pidan varios paneles a la vez', async () => {
     const getSubscription = vi.fn().mockResolvedValue({ endpoint: 'https://push.example/abc' })
     vi.stubGlobal('Notification', { permission: 'granted', requestPermission: vi.fn() })
@@ -135,10 +161,12 @@ describe('resolvePushState', () => {
     const { resolvePushState } = await freshStore()
     await Promise.all([resolvePushState(), resolvePushState(), resolvePushState()])
 
-    // Dos consultas, no seis: una la del `resolve` compartido entre las tres
-    // llamadas, y otra la resincronización que este dispara en segundo plano.
-    // Sin la deduplicación serían tres resoluciones con su sync cada una, y con
-    // ellas tres llamadas de red a Supabase cada vez que se abre el panel.
-    expect(getSubscription).toHaveBeenCalledTimes(2)
+    // Tres llamadas concurrentes comparten UNA resolución. La cota es 3 y no 1
+    // porque la resincronización en segundo plano consulta también, y si ha
+    // arrancado ya o no depende de los tiempos; lo que no puede pasar es que
+    // haya una resolución por cada quien pregunta, que serían tres —y con
+    // ellas, tres llamadas de red a Supabase cada vez que se abre el panel.
+    expect(getSubscription.mock.calls.length).toBeLessThan(3)
+    expect(getSubscription).toHaveBeenCalled()
   })
 })

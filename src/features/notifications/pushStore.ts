@@ -103,6 +103,10 @@ export function pushErrorMessage(cause: unknown): string {
     return 'La configuración de Web Push de la aplicación no es válida. Contacta al administrador.'
   }
 
+  if (/service worker/i.test(technicalMessage)) {
+    return 'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.'
+  }
+
   return 'No pudimos activar las notificaciones en este dispositivo. Revisa los permisos del navegador y vuelve a intentar.'
 }
 
@@ -125,6 +129,39 @@ export const usePushStore = create<PushStore>((set) => ({
   },
   setEndpoint: (endpoint) => set({ endpoint }),
 }))
+
+/** Lo que tarda el service worker en estar listo antes de darlo por perdido. */
+const SERVICE_WORKER_TIMEOUT_MS = 10_000
+
+/**
+ * `navigator.serviceWorker.ready` con un límite de paciencia.
+ *
+ * La promesa nativa **no resuelve nunca** si no hay un service worker
+ * registrado para este ámbito: no rechaza, se queda colgada para siempre. Pasa
+ * en el servidor de desarrollo, donde vite-plugin-pwa no sirve el service
+ * worker (solo lo inyecta en la compilación), y pasaría también si el registro
+ * fallara en producción.
+ *
+ * Sin este límite, pulsar «Activar» pedía el permiso al navegador, lo
+ * conseguía, y se quedaba en «Activando…» hasta que alguien recargara — sin un
+ * solo error en la consola, porque técnicamente no había fallado nada.
+ */
+async function readyRegistration(): Promise<ServiceWorkerRegistration> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error('El service worker no llegó a estar listo.')),
+          SERVICE_WORKER_TIMEOUT_MS,
+        )
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
 
 function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - value.length % 4) % 4)
@@ -150,7 +187,7 @@ export async function syncPushSubscription(): Promise<void> {
   if (!pushApiSupported()) return
   if (Notification.permission !== 'granted') return
   try {
-    const registration = await navigator.serviceWorker.ready
+    const registration = await readyRegistration()
     const subscription = await registration.pushManager.getSubscription()
     if (!subscription) return
     usePushStore.getState().setEndpoint(subscription.endpoint)
@@ -175,7 +212,7 @@ export function resolvePushState(): Promise<void> {
     if (Notification.permission === 'denied') return store.setState('denied')
 
     try {
-      const registration = await navigator.serviceWorker.ready
+      const registration = await readyRegistration()
       const subscription = await registration.pushManager.getSubscription()
       store.setEndpoint(subscription?.endpoint ?? null)
       // El navegador es la autoridad sobre si este dispositivo está suscrito.
@@ -184,7 +221,11 @@ export function resolvePushState(): Promise<void> {
       if (subscription) void syncPushSubscription()
     } catch (cause) {
       console.error('[web-push] No se pudo consultar la suscripción del dispositivo:', cause)
-      store.setState('error', pushErrorMessage(cause))
+      // Al COMPROBAR, no saber es lo mismo que no estar suscrito, y así se
+      // pinta: «Activar». Alarmar con un error rojo a quien solo abrió la
+      // pestaña sobra — si de verdad hay algo roto, saldrá al pulsar, que es
+      // cuando la persona está esperando que pase algo.
+      store.setState('idle')
     }
   })()
 
@@ -211,7 +252,7 @@ export async function subscribeToPush(): Promise<void> {
       )
     }
 
-    const registration = await navigator.serviceWorker.ready
+    const registration = await readyRegistration()
     const current = await registration.pushManager.getSubscription()
     const subscription = current ?? await registration.pushManager.subscribe({
       userVisibleOnly: true,
@@ -239,7 +280,7 @@ export async function unsubscribeFromPush(): Promise<void> {
 
   store.setState('loading')
   try {
-    const registration = await navigator.serviceWorker.ready
+    const registration = await readyRegistration()
     const subscription = await registration.pushManager.getSubscription()
     if (subscription) {
       await deletePushSubscription(subscription.endpoint)
