@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next'
 import { Bell, BellRing, CheckCheck, Circle, Trash2, TriangleAlert } from 'lucide-react'
 import type { AppNotification, NotificationCategory } from '@/shared/types/database'
 import { useAuthStore } from '@/features/auth/authStore'
-import { relativeTime } from '@/shared/utils/datetime'
+import { relativeTime, relativeTimeKey } from '@/shared/utils/datetime'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import {
   useMarkNotificationRead,
@@ -43,14 +43,9 @@ type Filter = NotificationCategory | 'all'
 
 function timeLabel(t: TFunction, createdAt: string): string {
   const relative = relativeTime(createdAt)
+  // Menos de un minuto no es "hace 1 min": es "ahora".
   if (relative.unit === 'minute' && relative.value <= 1) return t('time.now', 'ahora')
-  if (relative.unit === 'minute') return t('time.agoMinutes', { n: relative.value })
-  if (relative.unit === 'hour') return t('time.agoHours', { n: relative.value })
-  // Clave aparte para el singular: `time.agoDays` no tiene forma plural y decía
-  // "hace 1 días". Las de minutos y horas no la necesitan porque abrevian la
-  // unidad ("hace 1 min", "hace 1 h") y ahí el singular no se nota.
-  if (relative.value === 1) return t('time.agoDay', { n: 1 })
-  return t('time.agoDays', { n: relative.value })
+  return t(relativeTimeKey(relative), { n: relative.value })
 }
 
 function NotificationRow({

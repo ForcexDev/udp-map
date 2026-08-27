@@ -7,7 +7,7 @@ import { FACULTIES, categoryById, EVENT_COLOR, PLACE_COLOR } from '@/shared/data
 import { expiryState } from '@/shared/utils/expiry'
 import { eventPhase } from '@/shared/utils/eventState'
 import { pinVisibleOnFloor } from '@/shared/utils/floorVisibility'
-import { relativeTime } from '@/shared/utils/datetime'
+import { relativeTime, relativeTimeKey } from '@/shared/utils/datetime'
 import { usePins } from '@/features/pins/usePins'
 import { useMapping } from '@/features/mapping/useMapping'
 import { floorName } from '@/features/mapping/areaStyles'
@@ -52,7 +52,6 @@ import type { PlaceOwner } from '@/features/places/placePhotos'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const UNIT_FALLBACK = { minute: 'min', hour: 'h', day: 'd' } as const
-const UNIT_KEY = { minute: 'Minutes', hour: 'Hours', day: 'Days' } as const
 
 function pinColor(pin: Pin): string {
   if (pin.category_id) return categoryById(pin.category_id)?.color ?? '#64748b'
@@ -337,7 +336,7 @@ export function FacultyDetail() {
                     }`}
                   >
                     <Clock size={10} className="shrink-0" />
-                    {t(`time.in${UNIT_KEY[when.unit]}`, {
+                    {t(relativeTimeKey(when), {
                       defaultValue: `{{n}} ${UNIT_FALLBACK[when.unit]}`,
                       n: when.value,
                     })}

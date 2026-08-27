@@ -6,9 +6,7 @@ import type { Pin } from '@/shared/types/database'
 import { expiryState } from '@/shared/utils/expiry'
 import { eventPhase } from '@/shared/utils/eventState'
 import { useNowTick } from '@/shared/lib/useNowTick'
-import { relativeTime } from '@/shared/utils/datetime'
-
-const UNIT_KEY = { minute: 'Minutes', hour: 'Hours', day: 'Days' } as const
+import { relativeTime, relativeTimeKey } from '@/shared/utils/datetime'
 
 // Fallback en español por si falta la clave en el archivo de traducciones
 // (evita mostrar literales como "time.inHours" o "pin.addedBy" en pantalla)
@@ -19,7 +17,8 @@ export function PinBadges({ pin }: { pin: Pin }) {
   const [profileId, setProfileId] = useState<string | null>(null)
   const now = useNowTick()
   const expiry = expiryState(pin.expires_at, pin.is_permanent, now)
-  const { unit, value } = relativeTime(pin.expires_at ?? '')
+  const when = relativeTime(pin.expires_at ?? '')
+  const { unit, value } = when
   const phase = pin.type === 'event' ? eventPhase(pin.starts_at, pin.ends_at, now) : null
 
   const TypeIcon = pin.type === 'place' ? MapPin : pin.type === 'event' ? Clock : Flag
@@ -30,7 +29,7 @@ export function PinBadges({ pin }: { pin: Pin }) {
         ? t('pin.typeEvent', 'Evento')
         : t('pin.typeReport', 'Reporte')
 
-  const whenText = t(`time.in${UNIT_KEY[unit]}`, {
+  const whenText = t(relativeTimeKey(when), {
     defaultValue: `{{n}} ${UNIT_FALLBACK[unit]}`,
     n: value,
   })
