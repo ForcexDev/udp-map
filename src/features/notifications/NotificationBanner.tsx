@@ -1,11 +1,14 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, CalendarDays, MessagesSquare, Trophy, X, ShieldAlert } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { X } from 'lucide-react'
 import type { AppNotification } from '@/shared/types/database'
 import { useMarkNotificationRead, useNotificationRealtime } from './useNotifications'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
+import { notificationLook } from './notificationMeta'
 
 export function NotificationBanner() {
+  const { t } = useTranslation()
   const [activeBanner, setActiveBanner] = useState<AppNotification | null>(null)
   const markRead = useMarkNotificationRead()
   const navigate = useNavigate()
@@ -23,7 +26,11 @@ export function NotificationBanner() {
     if (!activeBanner.read_at) {
       markRead.mutate(activeBanner.id)
     }
-    if (activeBanner.url) {
+    // '/' no es un destino: es lo que llevan los avisos de difusión, que no
+    // apuntan a ninguna pantalla concreta. Navegar ahí deja al usuario en el
+    // mapa preguntándose qué pasó, así que se abre la lista de avisos, que es
+    // donde está lo que acaba de tocar.
+    if (activeBanner.url && activeBanner.url !== '/') {
       navigate(activeBanner.url)
     } else {
       openNotificationsSidebar()
@@ -31,20 +38,12 @@ export function NotificationBanner() {
     setActiveBanner(null)
   }
 
-  const getCategoryIcon = () => {
-    switch (activeBanner.category) {
-      case 'forum':
-        return <MessagesSquare size={18} className="text-blue-500" />
-      case 'events':
-        return <CalendarDays size={18} className="text-emerald-500" />
-      case 'profile':
-        return <Trophy size={18} className="text-amber-500" />
-      case 'moderation':
-        return <ShieldAlert size={18} className="text-red-500" />
-      default:
-        return <Bell size={18} className="text-[#D41F2D]" />
-    }
-  }
+  // El icono sale del mismo sitio que en la lista de avisos. Este componente
+  // tenía su propio `switch` —la tercera copia del mapa categoría→icono— y ya
+  // se había quedado atrás: los avisos de difusión ('system') caían en el
+  // `default` y salían con una campana genérica en vez del megáfono.
+  const look = notificationLook(activeBanner.category)
+  const CategoryIcon = look.icon
 
   return (
     <div
@@ -52,8 +51,8 @@ export function NotificationBanner() {
       style={{ top: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
     >
       <div className="glass-hud p-4 rounded-2xl shadow-2xl border border-neutral-200/80 dark:border-neutral-700/80 flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center flex-shrink-0 mt-0.5">
-          {getCategoryIcon()}
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${look.bg} ${look.fg}`}>
+          <CategoryIcon size={18} strokeWidth={2.2} />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -70,14 +69,14 @@ export function NotificationBanner() {
               onClick={handleView}
               className="px-3 py-1 rounded-lg bg-[#D41F2D] text-white text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all shadow-sm cursor-pointer"
             >
-              Ver
+              {t('notifications.bannerView', 'Ver')}
             </button>
             <button
               type="button"
               onClick={() => setActiveBanner(null)}
               className="px-2 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 text-[10px] font-bold uppercase tracking-wider hover:text-neutral-800 dark:hover:text-neutral-200 transition-all cursor-pointer"
             >
-              Ignorar
+              {t('notifications.bannerDismiss', 'Ignorar')}
             </button>
           </div>
         </div>
@@ -86,7 +85,7 @@ export function NotificationBanner() {
           type="button"
           onClick={() => setActiveBanner(null)}
           className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors p-1 cursor-pointer"
-          aria-label="Cerrar notificación"
+          aria-label={t('common.close', 'Cerrar')}
         >
           <X size={16} />
         </button>

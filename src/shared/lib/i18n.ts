@@ -166,6 +166,8 @@ const es = {
       filterEvents: 'Eventos',
       filterProfile: 'Perfil',
       filterSystem: 'Avisos',
+      bannerView: 'Ver',
+      bannerDismiss: 'Ignorar',
       push: {
         title: 'Notificaciones push',
         checking: 'Comprobando este dispositivo…',
@@ -510,6 +512,8 @@ const en = {
       filterEvents: 'Events',
       filterProfile: 'Profile',
       filterSystem: 'Announcements',
+      bannerView: 'View',
+      bannerDismiss: 'Dismiss',
       push: {
         title: 'Push notifications',
         checking: 'Checking this device…',
