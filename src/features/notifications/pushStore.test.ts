@@ -149,6 +149,33 @@ describe('resolvePushState', () => {
     }
   })
 
+  it('vuelve a intentarlo si la primera comprobación no concluyó', async () => {
+    // Sin esto, un tropiezo al arrancar —sin conexión, o el service worker aún
+    // activándose— congelaba la tarjeta en «Activar» toda la vida de la página:
+    // la promesa quedaba resuelta y nadie volvía a mirar.
+    vi.stubGlobal('Notification', { permission: 'granted', requestPermission: vi.fn() })
+    vi.stubGlobal('PushManager', class {})
+    let intento = 0
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      get() {
+        intento += 1
+        return intento === 1
+          ? { ready: Promise.reject(new Error('service worker caído')) }
+          : { ready: Promise.resolve({ pushManager: { getSubscription: () => Promise.resolve({ endpoint: 'https://push.example/ok' }) } }) }
+      },
+    })
+
+    const { usePushStore, resolvePushState } = await freshStore()
+
+    await resolvePushState()
+    expect(usePushStore.getState().state).toBe('idle')
+
+    // Segunda oportunidad: ahora sí concluye.
+    await resolvePushState()
+    expect(usePushStore.getState().state).toBe('subscribed')
+  })
+
   it('se resuelve una sola vez aunque la pidan varios paneles a la vez', async () => {
     const getSubscription = vi.fn().mockResolvedValue({ endpoint: 'https://push.example/abc' })
     vi.stubGlobal('Notification', { permission: 'granted', requestPermission: vi.fn() })

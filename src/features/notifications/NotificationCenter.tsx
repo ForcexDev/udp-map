@@ -272,7 +272,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
                   >
                     {option.label}
                     {count > 0 && (
-                      <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-[#D41F2D]' : 'bg-[#D41F2D]'}`} />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#D41F2D]" />
                     )}
                   </button>
                 )

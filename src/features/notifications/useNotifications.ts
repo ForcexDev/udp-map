@@ -109,10 +109,12 @@ export function useMarkAllNotificationsRead() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => userId ? markAllNotificationsRead(userId) : Promise.resolve(),
-    onMutate: () => patchCache(queryClient, (list) => {
-      const now = new Date().toISOString()
-      return list.map((n) => (n.read_at ? n : { ...n, read_at: now }))
-    }),
+    onMutate: () => userId
+      ? patchCache(queryClient, (list) => {
+          const now = new Date().toISOString()
+          return list.map((n) => (n.read_at ? n : { ...n, read_at: now }))
+        })
+      : Promise.resolve(undefined),
     onError: (_error, _vars, snapshot) => restore(queryClient, snapshot),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   })
@@ -130,10 +132,16 @@ export function useDeleteNotification() {
 
 export function useDeleteAllNotifications() {
   const userId = useAuthStore((state) => state.user?.id)
+  const role = useAuthStore((state) => state.role)
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => userId ? deleteAllNotifications(userId) : Promise.resolve(),
-    onMutate: () => patchCache(queryClient, () => []),
+    mutationFn: () => userId ? deleteAllNotifications(userId, role) : Promise.resolve(),
+    // Sin `userId` la mutación no borra nada, así que tampoco puede pintar la
+    // bandeja vacía: sería enseñar una pérdida que no ocurrió y que solo se
+    // deshace cuando el refetch la devuelve.
+    onMutate: () => userId
+      ? patchCache(queryClient, (list) => list.filter((n) => n.audience !== 'personal'))
+      : Promise.resolve(undefined),
     onError: (_error, _vars, snapshot) => restore(queryClient, snapshot),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   })
@@ -145,10 +153,12 @@ export function useMarkCategoryRead() {
   return useMutation({
     mutationFn: (category: NotificationCategory) =>
       userId ? markCategoryRead(userId, category) : Promise.resolve(),
-    onMutate: (category: NotificationCategory) => patchCache(queryClient, (list) => {
-      const now = new Date().toISOString()
-      return list.map((n) => (n.category === category && !n.read_at ? { ...n, read_at: now } : n))
-    }),
+    onMutate: (category: NotificationCategory) => userId
+      ? patchCache(queryClient, (list) => {
+          const now = new Date().toISOString()
+          return list.map((n) => (n.category === category && !n.read_at ? { ...n, read_at: now } : n))
+        })
+      : Promise.resolve(undefined),
     onError: (_error, _vars, snapshot) => restore(queryClient, snapshot),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   })

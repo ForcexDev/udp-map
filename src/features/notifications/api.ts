@@ -135,15 +135,24 @@ export async function deleteNotification(notificationId: string): Promise<void> 
  * sin `where` contra una tabla compartida no debería depender de que la política
  * esté bien puesta para no ser una catástrofe.
  */
-export async function deleteAllNotifications(userId: string): Promise<void> {
+export async function deleteAllNotifications(userId: string, role: Role): Promise<void> {
   if (!supabase) {
-    for (const notification of demoSeed(userId, 'admin')) deletedDemoIds.add(notification.id)
+    for (const notification of demoSeed(userId, role)) {
+      if (notification.audience === 'personal') deletedDemoIds.add(notification.id)
+    }
     return
   }
+  // `audience = 'personal'` NO es cosmético. El botón vive bajo "Tus avisos",
+  // enseña un recuento de avisos personales y promete borrar ESE número. Sin
+  // este filtro el DELETE se llevaba también los de `audience: 'admin'` —la
+  // cola de denuncias del equipo, que ni se cuenta ni se enseña ahí—, así que
+  // un administrador que vaciaba su bandeja destruía de paso avisos de trabajo
+  // que nunca vio mencionados en la confirmación.
   const { error } = await supabase
     .from('notifications')
     .delete()
     .eq('user_id', userId)
+    .eq('audience', 'personal')
   if (error) throw error
 }
 

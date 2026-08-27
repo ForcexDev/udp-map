@@ -201,10 +201,19 @@ export async function syncPushSubscription(): Promise<void> {
 // pidan. Sin esto, abrir el sidebar y el panel a la vez dispara dos.
 let resolving: Promise<void> | null = null
 
-/** Comprueba el dispositivo y deja el store en su estado real. Idempotente. */
+/**
+ * Comprueba el dispositivo y deja el store en su estado real. Idempotente.
+ *
+ * La memoización solo se conserva si la comprobación LLEGÓ A UNA CONCLUSIÓN. Si
+ * falla —sin conexión, o el service worker todavía activándose— se descarta,
+ * porque si no un único tropiezo al arrancar congelaba la tarjeta en «Activar»
+ * durante toda la vida de la página: `resolving` quedaba resuelta y ni volver a
+ * la pestaña ni remontar el panel volvían a mirar. Solo se arreglaba recargando.
+ */
 export function resolvePushState(): Promise<void> {
   if (resolving) return resolving
 
+  let concluyente = true
   resolving = (async () => {
     const store = usePushStore.getState()
     if (!pushApiSupported()) return store.setState('unsupported')
@@ -221,13 +230,16 @@ export function resolvePushState(): Promise<void> {
       if (subscription) void syncPushSubscription()
     } catch (cause) {
       console.error('[web-push] No se pudo consultar la suscripción del dispositivo:', cause)
+      concluyente = false
       // Al COMPROBAR, no saber es lo mismo que no estar suscrito, y así se
       // pinta: «Activar». Alarmar con un error rojo a quien solo abrió la
       // pestaña sobra — si de verdad hay algo roto, saldrá al pulsar, que es
       // cuando la persona está esperando que pase algo.
       store.setState('idle')
     }
-  })()
+  })().finally(() => {
+    if (!concluyente) resolving = null
+  })
 
   return resolving
 }
