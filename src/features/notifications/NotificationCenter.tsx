@@ -162,6 +162,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
     { value: 'all', label: t('notifications.filterAll', 'Todas') },
     { value: 'forum', label: t('notifications.filterForum', 'Foro') },
     { value: 'events', label: t('notifications.filterEvents', 'Eventos') },
+    { value: 'pins', label: t('notifications.filterPins', 'Mis pines') },
     { value: 'profile', label: t('notifications.filterProfile', 'Perfil') },
     { value: 'system', label: t('notifications.filterSystem', 'Avisos') },
   ]

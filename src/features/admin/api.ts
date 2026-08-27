@@ -1,6 +1,6 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { Profile, Pin, Role } from '@/shared/types/database'
-import type { DashboardStats, ActivityEntry, AdminUserFilter, AdminPinFilter } from './types'
+import type { DashboardStats, ActivityEntry, ActivityFeed, AdminUserFilter, AdminPinFilter } from './types'
 import { demoDb } from '@/features/pins/demoStore'
 import { REASON_LABELS } from '@/features/moderation/labels'
 import type { ContentReport } from '@/shared/types/database'
@@ -167,37 +167,139 @@ export async function adminDeletePin(pinId: string): Promise<void> {
   if (error) throw error
 }
 
-export async function fetchRecentActivity(): Promise<ActivityEntry[]> {
+export interface PushSubscriber {
+  userId: string
+  name: string | null
+  role: string | null
+  /** El `user_agent` crudo. Resumirlo es cosa de la interfaz. */
+  userAgent: string | null
+  createdAt: string
+}
+
+/**
+ * Quiénes reciben los avisos push.
+ *
+ * `null` mientras la migración 20260829000100 no esté aplicada: la pantalla
+ * enseña entonces solo el número, como hasta ahora, y lo dice.
+ */
+export async function fetchPushSubscribers(): Promise<PushSubscriber[] | null> {
   if (!supabase) {
     return [
-      { id: '1', type: 'pin_created', title: 'Sala libre en la FIC', timestamp: new Date(Date.now() - 5 * 60000).toISOString() },
-      { id: '2', type: 'report_submitted', title: REASON_LABELS.inappropriate, timestamp: new Date(Date.now() - 25 * 60000).toISOString() },
+      { userId: 'demo-admin', name: 'Admin Demo', role: 'admin', userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/141', createdAt: new Date(Date.now() - 4 * 86400000).toISOString() },
+      { userId: 'demo-mod', name: 'Moderador Demo', role: 'moderator', userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2) Safari', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+      { userId: 'demo-student', name: 'Estudiante Demo', role: 'student', userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/141', createdAt: new Date(Date.now() - 3600000).toISOString() },
     ]
   }
+
+  const { data, error } = await supabase.rpc('admin_push_subscribers')
+  if (error) {
+    if (isMissingFunction(error)) return null
+    throw error
+  }
+
+  return ((data ?? []) as Array<{ user_id: string; name: string | null; role: string | null; user_agent: string | null; created_at: string }>)
+    .map((row) => ({
+      userId: row.user_id,
+      name: row.name,
+      role: row.role,
+      userAgent: row.user_agent,
+      createdAt: row.created_at,
+    }))
+}
+
+/** Lo que responde `admin_activity_log`. */
+interface ActivityLogRow {
+  id: number
+  actor_name: string | null
+  action: ActivityEntry['action']
+  summary: string
+  created_at: string
+}
+
+/**
+ * El registro de actividad.
+ *
+ * Intenta el registro de verdad y, si la migración 20260828000000 todavía no
+ * está aplicada, cae al apaño anterior: leer los últimos pines y denuncias
+ * VIVOS y mezclarlos. Ese apaño no es un registro —lo borrado no aparece, y
+ * nada dice quién lo hizo— así que el `fromLog: false` viaja hasta la pantalla
+ * para que lo advierta en vez de disimularlo.
+ */
+export async function fetchRecentActivity(): Promise<ActivityFeed> {
+  if (!supabase) {
+    return {
+      fromLog: true,
+      entries: [
+        { id: '1', action: 'pin_created', actorName: 'Estudiante Demo', summary: 'Sala libre en la FIC', timestamp: new Date(Date.now() - 5 * 60000).toISOString() },
+        { id: '2', action: 'report_filed', actorName: 'Sofía Valdés', summary: `Denuncia por ${REASON_LABELS.inappropriate}`, timestamp: new Date(Date.now() - 25 * 60000).toISOString() },
+        { id: '3', action: 'pin_verified', actorName: 'Moderador Demo', summary: 'Microondas del casino', timestamp: new Date(Date.now() - 90 * 60000).toISOString() },
+        { id: '4', action: 'role_changed', actorName: 'Admin Demo', summary: 'Sofía Valdés: student → moderator', timestamp: new Date(Date.now() - 26 * 3600000).toISOString() },
+      ],
+    }
+  }
+
+  const { data, error } = await supabase.rpc('admin_activity_log', { p_limit: 100 })
+
+  if (!error) {
+    return {
+      fromLog: true,
+      entries: ((data ?? []) as ActivityLogRow[]).map((row) => ({
+        id: String(row.id),
+        action: row.action,
+        actorName: row.actor_name,
+        summary: row.summary,
+        timestamp: row.created_at,
+      })),
+    }
+  }
+
+  // Cualquier error que no sea "la función no existe" sí es un problema.
+  const faltaLaMigracion = error.code === 'PGRST202'
+    || error.code === '42883'
+    || /could not find the function|does not exist/i.test(error.message ?? '')
+  if (!faltaLaMigracion) throw error
+
+  return { fromLog: false, entries: await fetchLegacyActivity() }
+}
+
+/** El apaño de antes, mientras no exista `activity_log`. */
+async function fetchLegacyActivity(): Promise<ActivityEntry[]> {
+  if (!supabase) return []
 
   const [pinsRes, reportsRes] = await Promise.all([
     supabase.from('pins').select('id, title, created_at').order('created_at', { ascending: false }).limit(15),
     supabase.from('content_reports').select('id, reason, created_at').order('created_at', { ascending: false }).limit(15),
   ])
 
-  const activity: ActivityEntry[] = [
+  const entries: ActivityEntry[] = [
     ...(pinsRes.data ?? []).map((p): ActivityEntry => ({
       id: `pin-${p.id}`,
-      type: 'pin_created',
-      // Sin prefijo: la fila del registro ya rotula el tipo por su cuenta, y
-      // repetirlo dejaba "Pin publicado" dos veces en la misma línea.
-      title: p.title,
+      action: 'pin_created',
+      actorName: null,
+      summary: p.title,
       timestamp: p.created_at,
     })),
     ...(reportsRes.data ?? []).map((r): ActivityEntry => ({
       id: `rep-${r.id}`,
-      type: 'report_submitted',
-      title: REASON_LABELS[r.reason as ContentReport['reason']] ?? 'Motivo desconocido',
+      action: 'report_filed',
+      actorName: null,
+      summary: REASON_LABELS[r.reason as ContentReport['reason']] ?? 'Motivo desconocido',
       timestamp: r.created_at,
     })),
   ]
 
-  return activity.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  return entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
+/**
+ * "La función no existe" llega por dos caminos y hay que mirar los dos: `42883`
+ * es el código de Postgres, pero una RPC desconocida ni llega a Postgres —
+ * PostgREST la corta antes con un 404 y `PGRST202`.
+ */
+function isMissingFunction(error: { code?: string; message?: string }): boolean {
+  return error.code === '42883'
+    || error.code === 'PGRST202'
+    || /could not find the function|does not exist/i.test(error.message ?? '')
 }
 
 interface PushRunResult {
@@ -255,10 +357,7 @@ export async function sendSelfPushTest(): Promise<PushRunResult> {
     // `PGRST202`. Comprobar solo el primero, que fue el primer intento, dejaba
     // salir el texto crudo en inglés ("Could not find the function … in the
     // schema cache"), que no le dice a nadie qué tiene que hacer.
-    const missingFunction = error.code === '42883'
-      || error.code === 'PGRST202'
-      || /could not find the function|does not exist/i.test(error.message ?? '')
-    if (missingFunction) {
+    if (isMissingFunction(error)) {
       throw new Error('Falta aplicar la migración 20260827000000 en Supabase (SQL Editor).')
     }
     throw new Error(error.message || 'No se pudo encolar la prueba.')
@@ -267,18 +366,47 @@ export async function sendSelfPushTest(): Promise<PushRunResult> {
   return drainPushQueue(session.access_token)
 }
 
-export async function triggerServerPushTest(title?: string, body?: string): Promise<{ processed: number; sent: number; failed: number }> {
+/**
+ * Difunde un aviso a todo el que tenga push activado.
+ *
+ * `url` es la ruta interna a la que lleva tocar el aviso. Hasta la migración
+ * 20260829000000 el RPC no lo aceptaba y clavaba '/', que es la razón de que
+ * tocar un aviso de difusión no llevara a ninguna parte.
+ */
+export async function triggerServerPushTest(
+  title?: string,
+  body?: string,
+  url = '/',
+): Promise<PushRunResult> {
   if (!supabase) {
     return { processed: 1, sent: 1, failed: 0 }
   }
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('No hay sesión activa de administrador.')
 
-  // 1. Encolar notificaciones y entregas push para todos los suscriptores activos
-  const { error: rpcError } = await supabase.rpc('admin_broadcast_push_notification', {
-    p_title: title || 'Notificación de prueba UDP Map',
-    p_body: body || 'Mensaje de prueba enviado desde el panel de administración.',
+  const finalTitle = title || 'Notificación de prueba UDP Map'
+  const finalBody = body || 'Mensaje de prueba enviado desde el panel de administración.'
+
+  // 1. Encolar el aviso y sus entregas para cada suscriptor.
+  let { error: rpcError } = await supabase.rpc('admin_broadcast_push_notification', {
+    p_title: finalTitle,
+    p_body: finalBody,
+    p_url: url,
   })
+
+  if (rpcError && isMissingFunction(rpcError)) {
+    // La firma de tres argumentos todavía no existe. Sin destino elegido se
+    // puede seguir con la vieja; con destino elegido, callarse y mandarlo a la
+    // nada sería peor que no mandarlo.
+    if (url !== '/') {
+      throw new Error('Vincular un pin necesita la migración 20260829000000 aplicada en Supabase.')
+    }
+    ;({ error: rpcError } = await supabase.rpc('admin_broadcast_push_notification', {
+      p_title: finalTitle,
+      p_body: finalBody,
+    }))
+  }
+
   if (rpcError) {
     throw new Error(rpcError.message || rpcError.details || 'Error al ejecutar broadcast de notificaciones')
   }

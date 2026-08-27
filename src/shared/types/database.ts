@@ -258,7 +258,7 @@ export interface UserBadge {
 }
 
 /** `system` son los avisos de difusión del panel — ver migración 20260827000000. */
-export type NotificationCategory = 'profile' | 'forum' | 'events' | 'moderation' | 'system'
+export type NotificationCategory = 'profile' | 'forum' | 'events' | 'moderation' | 'system' | 'pins'
 type NotificationAudience = 'personal' | 'admin'
 export type NotificationType =
   | 'achievement'
@@ -267,6 +267,8 @@ export type NotificationType =
   | 'moderation_report'
   | 'moderation_update'
   | 'announcement'
+  | 'pin_verified'
+  | 'pin_comment'
 
 export interface AppNotification {
   id: string

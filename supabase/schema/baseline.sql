@@ -444,8 +444,9 @@ create table if not exists public.notifications (
   -- propio porque antes se guardaban como 'achievement'/'profile': un corte de
   -- agua le llegaba a cada estudiante disfrazado de logro y se le mezclaba
   -- entre sus insignias al filtrar.
-  type        text         not null check (type in ('achievement', 'forum_reply', 'event_reminder', 'moderation_report', 'moderation_update', 'announcement')),
-  category    text         not null check (category in ('profile', 'forum', 'events', 'moderation', 'system')),
+  type        text         not null check (type in ('achievement', 'forum_reply', 'event_reminder', 'moderation_report', 'moderation_update', 'announcement', 'pin_verified', 'pin_comment')),
+  -- 'pins' es TU contenido en el mapa: ni tu perfil, ni el foro, ni un evento.
+  category    text         not null check (category in ('profile', 'forum', 'events', 'moderation', 'system', 'pins')),
   audience    text         not null default 'personal' check (audience in ('personal', 'admin')),
   title       text         not null,
   body        text         not null,
@@ -542,6 +543,37 @@ create index if not exists idx_forum_threads_created  on public.forum_threads (c
 create index if not exists idx_forum_threads_faculty  on public.forum_threads (faculty_id);
 create index if not exists idx_forum_comments_thread  on public.forum_comments (thread_id);
 create index if not exists idx_forum_comments_parent  on public.forum_comments (parent_comment_id);
+
+-- ── 3.9 Registro de actividad ───────────────────────────────────────────────
+
+-- Un log de solo-añadir para administración. Existe porque "actividad" antes se
+-- reconstruía leyendo los últimos pines y denuncias VIVOS: lo que se borraba
+-- desaparecía del registro, que es justo lo que habría que poder auditar.
+--
+-- La clave es `bigint identity` y no uuid a propósito: 8 bytes en vez de 16, y
+-- al ser de solo-añadir, ordenar por id ya es ordenar por fecha. Tampoco se
+-- guarda el contenido — solo un resumen de una línea y los ids—, así que una
+-- fila anda por los 150-250 bytes. Se poda con `prune_activity_log`.
+create table if not exists public.activity_log (
+  id           bigint       generated always as identity primary key,
+  -- `set null`: si se borra la cuenta, el hecho ocurrió igual.
+  actor_id     uuid         references public.profiles(id) on delete set null,
+  action       text         not null check (action in (
+                              'pin_created', 'pin_deleted',
+                              'pin_verified', 'pin_unverified',
+                              'report_filed', 'report_claimed',
+                              'report_resolved', 'report_dismissed',
+                              'role_changed', 'broadcast_sent'
+                            )),
+  target_type  text         check (target_type is null or target_type in ('pin', 'report', 'profile', 'broadcast')),
+  target_id    uuid,
+  summary      text         not null check (char_length(summary) <= 200),
+  metadata     jsonb        not null default '{}'::jsonb,
+  created_at   timestamptz  not null default now()
+);
+
+create index if not exists activity_log_created_idx
+  on public.activity_log (created_at desc);
 
 create index if not exists notifications_user_created_idx
   on public.notifications (user_id, created_at desc);
@@ -1906,6 +1938,69 @@ $fn$;
 
 -- Al nacer una notificación se encola una entrega por cada suscripción push
 -- del destinatario. El envío real lo hace la Edge Function send-push.
+create or replace function public.notify_pin_verified()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if new.is_permanent is not distinct from old.is_permanent then return new; end if;
+  if not new.is_permanent then return new; end if;
+  if new.creator_id is null then return new; end if;
+  -- Verificarse el propio pin no es noticia para uno mismo.
+  if new.creator_id = auth.uid() then return new; end if;
+
+  perform public.create_notification(
+    new.creator_id,
+    'pin_verified',
+    'pins',
+    'Tu publicación fue verificada',
+    '“' || left(new.title, 80) || '” ya es permanente. Ganaste 25 de karma.',
+    '/mapa?pin=' || new.id::text,
+    'pin_verified:' || new.id::text,
+    jsonb_build_object('pinId', new.id),
+    auth.uid()
+  );
+  return new;
+end;
+$fn$;
+
+create or replace function public.notify_pin_comment()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_pin    record;
+  v_actor  text;
+begin
+  select creator_id, title into v_pin from public.pins where id = new.pin_id;
+  if v_pin.creator_id is null then return new; end if;
+  -- Comentar lo tuyo no se notifica a ti mismo.
+  if v_pin.creator_id = new.author_id then return new; end if;
+
+  select coalesce(name, 'Alguien') into v_actor from public.profiles where id = new.author_id;
+
+  -- El dedupe lleva el id del comentario: dos comentarios distintos en el mismo
+  -- pin son dos avisos. Agruparlos por pin silenciaría el segundo, que suele
+  -- ser el que corrige al primero.
+  perform public.create_notification(
+    v_pin.creator_id,
+    'pin_comment',
+    'pins',
+    'Nuevo comentario en tu publicación',
+    coalesce(v_actor, 'Alguien') || ' comentó en “' || left(v_pin.title, 60) || '”',
+    '/mapa?pin=' || new.pin_id::text,
+    'pin_comment:' || new.id::text,
+    jsonb_build_object('pinId', new.pin_id, 'commentId', new.id),
+    new.author_id
+  );
+  return new;
+end;
+$fn$;
+
 create or replace function public.queue_notification_push()
 returns trigger
 language plpgsql
@@ -2216,16 +2311,51 @@ begin
 end;
 $fn$;
 
-create or replace function public.admin_broadcast_push_notification(p_title text, p_body text)
+create or replace function public.admin_push_subscribers()
+returns table (
+  user_id      uuid,
+  name         text,
+  role         text,
+  user_agent   text,
+  created_at   timestamptz,
+  updated_at   timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden ver quién recibe los avisos.';
+  end if;
+
+  return query
+    select s.user_id, p.name, p.role, s.user_agent, s.created_at, s.updated_at
+      from public.push_subscriptions s
+      left join public.profiles p on p.id = s.user_id
+     -- Por persona y luego por dispositivo: alguien con el teléfono y el
+     -- portátil aparece dos veces, y esas dos veces tienen que salir juntas.
+     order by p.name nulls last, s.created_at desc;
+end;
+$fn$;
+
+
+create or replace function public.admin_broadcast_push_notification(
+  p_title text,
+  p_body  text,
+  p_url   text default '/'
+)
 returns integer
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $fn$
 declare
   v_sub   record;
   v_count integer := 0;
   v_key   text;
+  v_url   text;
 begin
   if public.user_role() <> 'admin' then
     raise exception 'Solo los administradores pueden enviar avisos de difusión.';
@@ -2239,23 +2369,33 @@ begin
     raise exception 'El aviso necesita un mensaje.';
   end if;
 
-  -- Una sola marca para toda la difusión: así los avisos de un mismo envío
-  -- comparten identidad y se pueden rastrear juntos. El unique de la tabla es
-  -- (user_id, dedupe_key), de modo que compartirla entre usuarios no colisiona.
+  -- El destino tiene que ser una ruta DE ESTA aplicación. Sin esto, un aviso
+  -- podría mandar a toda la universidad a una web ajena con un toque, que es
+  -- exactamente la forma de un ataque de phishing servido por nosotros mismos.
+  v_url := coalesce(nullif(trim(p_url), ''), '/');
+  if v_url !~ '^/[A-Za-z0-9/_?=&%.-]*$' then
+    raise exception 'El destino del aviso tiene que ser una ruta interna, y llegó: %', v_url;
+  end if;
+
   v_key := 'announcement_' || extract(epoch from now())::bigint::text;
 
   for v_sub in select distinct user_id from public.push_subscriptions loop
     perform public.create_notification(
-      v_sub.user_id,
-      'announcement',
-      'system',
-      p_title,
-      p_body,
-      '/',              -- al mapa: '/admin' rebotaba a cualquiera que no fuera admin
-      v_key
+      v_sub.user_id, 'announcement', 'system',
+      p_title, p_body, v_url, v_key
     );
     v_count := v_count + 1;
   end loop;
+
+  -- `broadcast_sent` estaba declarado en el CHECK de activity_log desde la
+  -- migración anterior y no lo escribía nadie.
+  perform public.log_activity(
+    'broadcast_sent',
+    p_title,
+    'broadcast',
+    null,
+    jsonb_build_object('destinatarios', v_count, 'url', v_url)
+  );
 
   return v_count;
 end;
@@ -2601,6 +2741,30 @@ create trigger on_user_badge_notification
   for each row execute function public.notify_badge_awarded();
 
 -- Notificaciones y moderación
+-- Registro de actividad
+drop trigger if exists on_pin_activity_log on public.pins;
+create trigger on_pin_activity_log
+  after insert or delete or update of is_permanent on public.pins
+  for each row execute function public.trg_log_pin_activity();
+drop trigger if exists on_report_activity_log on public.content_reports;
+create trigger on_report_activity_log
+  after insert or update of status on public.content_reports
+  for each row execute function public.trg_log_report_activity();
+drop trigger if exists on_role_change_activity_log on public.profiles;
+create trigger on_role_change_activity_log
+  after update of role on public.profiles
+  for each row execute function public.trg_log_role_change();
+
+drop trigger if exists on_pin_verified_notification on public.pins;
+create trigger on_pin_verified_notification
+  after update of is_permanent on public.pins
+  for each row execute function public.notify_pin_verified();
+
+drop trigger if exists on_pin_comment_notification on public.pin_comments;
+create trigger on_pin_comment_notification
+  after insert on public.pin_comments
+  for each row execute function public.notify_pin_comment();
+
 drop trigger if exists on_notification_queue_push on public.notifications;
 create trigger on_notification_queue_push
   after insert on public.notifications
@@ -2684,6 +2848,7 @@ alter table public.forum_votes                  enable row level security;
 alter table public.user_badges                  enable row level security;
 alter table public.content_reports              enable row level security;
 alter table public.notifications                enable row level security;
+alter table public.activity_log                 enable row level security;
 alter table public.push_subscriptions           enable row level security;
 alter table public.notification_push_deliveries enable row level security;
 alter table public.storage_cleanup_queue         enable row level security;
@@ -3017,6 +3182,10 @@ drop policy if exists notifications_delete_own on public.notifications;
 create policy notifications_delete_own on public.notifications
   for delete using (user_id = auth.uid());
 
+drop policy if exists activity_log_read_admin on public.activity_log;
+create policy activity_log_read_admin on public.activity_log
+  for select using (public.user_role() = 'admin');
+
 drop policy if exists push_subscriptions_own on public.push_subscriptions;
 create policy push_subscriptions_own on public.push_subscriptions
   for all using (user_id = auth.uid())
@@ -3075,6 +3244,12 @@ grant select (id, name, avatar_url, role, karma, faculty_id, career, year, creat
 revoke all on public.content_reports    from anon, authenticated;
 grant select, references, trigger, truncate on public.content_reports to authenticated;
 
+-- El registro no se escribe ni se borra desde la API: entra por `log_activity`
+-- (SECURITY DEFINER) y sale por la poda. Un log que sus sujetos pueden editar
+-- no audita nada.
+revoke all on public.activity_log from anon, authenticated;
+grant select on public.activity_log to authenticated;
+
 revoke all on public.notifications from anon, authenticated;
 grant select, delete, references, trigger, truncate on public.notifications to authenticated;
 grant update (read_at) on public.notifications to authenticated;
@@ -3124,8 +3299,211 @@ grant execute on function public.claim_moderation_report(uuid)               to 
 grant execute on function public.resolve_moderation_report(uuid, text, text) to authenticated, service_role;
 grant execute on function public.admin_set_user_role(uuid, text)             to authenticated, service_role;
 grant execute on function public.admin_count_push_subscribers()              to authenticated, service_role;
-grant execute on function public.admin_broadcast_push_notification(text, text) to authenticated, service_role;
+grant execute on function public.admin_broadcast_push_notification(text, text, text) to authenticated, service_role;
 grant execute on function public.admin_send_test_push_to_self() to authenticated, service_role;
+grant execute on function public.admin_push_subscribers() to authenticated, service_role;
+grant execute on function public.admin_activity_log(integer) to authenticated, service_role;
+grant execute on function public.prune_activity_log(integer) to authenticated, service_role;
+revoke all on function public.log_activity(text, text, text, uuid, jsonb, uuid) from anon, authenticated;
+
+
+-- ── 5.10 Registro de actividad ──────────────────────────────────────────────
+
+create or replace function public.log_activity(
+  p_action      text,
+  p_summary     text,
+  p_target_type text default null,
+  p_target_id   uuid default null,
+  p_metadata    jsonb default '{}'::jsonb,
+  p_actor_id    uuid default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  insert into public.activity_log (actor_id, action, target_type, target_id, summary, metadata)
+  values (
+    coalesce(p_actor_id, auth.uid()),
+    p_action,
+    p_target_type,
+    p_target_id,
+    left(p_summary, 200),
+    coalesce(p_metadata, '{}'::jsonb)
+  );
+exception when others then
+  -- Un fallo del registro NO puede tumbar la operación que lo generó. Que no
+  -- se apunte que se creó un pin es molesto; que no se pueda crear el pin
+  -- porque el registro falló es inaceptable.
+  raise warning 'activity_log: no se pudo registrar % (%)', p_action, sqlerrm;
+end;
+$fn$;
+
+revoke all on function public.log_activity(text, text, text, uuid, jsonb, uuid) from anon, authenticated;
+
+-- ── 3. Los triggers que lo alimentan ────────────────────────────────────────
+
+create or replace function public.trg_log_pin_activity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if tg_op = 'INSERT' then
+    perform public.log_activity(
+      'pin_created', new.title, 'pin', new.id,
+      jsonb_build_object('type', new.type, 'category', new.category_id),
+      new.creator_id
+    );
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    -- El actor es quien BORRA, que no siempre es quien creó: puede ser un
+    -- moderador resolviendo una denuncia. Por eso el autor va en metadata.
+    perform public.log_activity(
+      'pin_deleted', old.title, 'pin', old.id,
+      jsonb_build_object('type', old.type, 'creator_id', old.creator_id)
+    );
+    return old;
+  end if;
+
+  -- UPDATE: solo interesa el cruce de la verificación.
+  if new.is_permanent and not old.is_permanent then
+    perform public.log_activity(
+      'pin_verified', new.title, 'pin', new.id,
+      jsonb_build_object('creator_id', new.creator_id)
+    );
+  elsif old.is_permanent and not new.is_permanent then
+    perform public.log_activity(
+      'pin_unverified', new.title, 'pin', new.id,
+      jsonb_build_object('creator_id', new.creator_id)
+    );
+  end if;
+  return new;
+end;
+$fn$;
+
+create or replace function public.trg_log_report_activity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_accion text;
+begin
+  if tg_op = 'INSERT' then
+    perform public.log_activity(
+      'report_filed', 'Denuncia por ' || new.reason, 'report', new.id,
+      jsonb_build_object('target_type', new.target_type, 'target_id', new.target_id),
+      new.reporter_id
+    );
+    return new;
+  end if;
+
+  if new.status is not distinct from old.status then return new; end if;
+
+  v_accion := case new.status
+    when 'reviewing' then 'report_claimed'
+    when 'resolved'  then 'report_resolved'
+    when 'dismissed' then 'report_dismissed'
+    else null
+  end;
+  if v_accion is null then return new; end if;
+
+  perform public.log_activity(
+    v_accion, 'Denuncia por ' || new.reason, 'report', new.id,
+    jsonb_build_object('accion', new.resolution_action, 'target_type', new.target_type)
+  );
+  return new;
+end;
+$fn$;
+
+create or replace function public.trg_log_role_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if new.role is not distinct from old.role then return new; end if;
+  perform public.log_activity(
+    'role_changed',
+    coalesce(new.name, 'Sin nombre') || ': ' || old.role || ' → ' || new.role,
+    'profile', new.id,
+    jsonb_build_object('de', old.role, 'a', new.role)
+  );
+  return new;
+end;
+$fn$;
+
+create or replace function public.prune_activity_log(p_days integer default 90)
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_borradas integer;
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden podar el registro.';
+  end if;
+  if p_days < 7 then
+    raise exception 'La ventana mínima del registro es de 7 días.';
+  end if;
+
+  delete from public.activity_log
+   where created_at < now() - make_interval(days => p_days);
+  get diagnostics v_borradas = row_count;
+  return v_borradas;
+end;
+$fn$;
+
+grant execute on function public.prune_activity_log(integer) to authenticated, service_role;
+
+-- ── 6. Lo que se lee desde el panel ─────────────────────────────────────────
+--
+-- Va por función y no por SELECT directo para poder traer el nombre de quien
+-- actuó sin exponer `profiles` entera ni obligar al cliente a un join.
+
+create or replace function public.admin_activity_log(p_limit integer default 100)
+returns table (
+  id          bigint,
+  actor_id    uuid,
+  actor_name  text,
+  action      text,
+  target_type text,
+  target_id   uuid,
+  summary     text,
+  metadata    jsonb,
+  created_at  timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden ver el registro de actividad.';
+  end if;
+
+  return query
+    select l.id, l.actor_id, p.name, l.action, l.target_type, l.target_id,
+           l.summary, l.metadata, l.created_at
+      from public.activity_log l
+      left join public.profiles p on p.id = l.actor_id
+     order by l.id desc
+     limit least(greatest(coalesce(p_limit, 100), 1), 500);
+end;
+$fn$;
+
+grant execute on function public.admin_activity_log(integer) to authenticated, service_role;
+
 
 -- Solo el servicio (cron y Edge Functions).
 grant execute on function public.enqueue_upcoming_event_notifications() to service_role;

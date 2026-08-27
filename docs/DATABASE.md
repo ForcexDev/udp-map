@@ -86,6 +86,8 @@ y el rechazo ocurre en el alta, no en la interfaz.
 | Ver y resolver denuncias | ❌ | ❌ | ❌ | ✅ | `content_reports_read_own_or_admin`, RPC `claim_moderation_report` y `resolve_moderation_report` |
 | Enviar una notificación push a todo el mundo | ❌ | ❌ | ❌ | ✅ | RPC `admin_broadcast_push_notification` |
 | Mandarse una push de prueba a uno mismo | ❌ | ❌ | ❌ | ✅ | RPC `admin_send_test_push_to_self` |
+| Ver el registro de actividad | ❌ | ❌ | ❌ | ✅ | RLS `activity_log_read_admin` + RPC `admin_activity_log` |
+| Ver quién recibe los avisos push | ❌ | ❌ | ❌ | ✅ | RPC `admin_push_subscribers` |
 
 **El eje que separa los dos roles es "contenido y mapa" contra "plataforma y
 personas".** Un moderador manda sobre lo que se ve en el mapa: verifica, edita,
@@ -505,9 +507,98 @@ insignias al filtrar por "Perfil", y su `url` era `/admin` — o sea que tocarlo
 mandaba al estudiante a una pantalla de la que rebota al mapa. Ahora apuntan a
 `/`.
 
+`admin_push_subscribers()` (migración `20260829000100`) enseña **quién** recibe
+los avisos y no solo cuántos: `admin_count_push_subscribers()` devolvía un
+`count(*)`, con el que no se puede responder a lo único que importa antes de
+difundir algo a toda la universidad. Devuelve nombre, rol, `user_agent` y fechas
+— **no el correo**, que es el dato que convierte una lista en un directorio—, y
+comprueba el rol dentro de la función, no solo con el GRANT.
+
 La misma migración añade `admin_send_test_push_to_self()`. Existe porque probar
 el push obligaba a usar la difusión, que recorre **todas** las suscripciones:
 comprobar "¿me llega a mí?" le hacía sonar el teléfono a la universidad entera.
+
+### Qué avisa la aplicación, y qué no avisaba
+
+Ocho tipos, y los dos últimos son de la migración `20260829000000`:
+
+| Tipo | Categoría | Cuándo | Adónde lleva |
+|---|---|---|---|
+| `forum_reply` | forum | Responden tu hilo | `/foro?thread=…` |
+| `achievement` | profile | Ganas una insignia | `/perfil?tab=badges` |
+| `event_reminder` | events | Empieza un evento que marcaste | `/eventos?event=…` |
+| `moderation_report` | moderation | Entra una denuncia *(a admins)* | `/admin/moderacion?report=…` |
+| `moderation_update` | profile | Se resuelve la denuncia **que pusiste** | `/perfil` |
+| `announcement` | system | Difusión del panel | la ruta que elija quien difunde |
+| **`pin_verified`** | **pins** | Un moderador verifica tu publicación | `/mapa?pin=…` |
+| **`pin_comment`** | **pins** | Alguien comenta tu publicación | `/mapa?pin=…` |
+
+**Los dos nuevos tapan huecos que se vieron al inventariar los seis anteriores:**
+
+- **Verificar no avisaba a nadie.** `verify_and_make_permanent` da +25 de karma
+  al autor y ahí se acababa: la persona se enteraba solo si volvía a mirar su
+  pin. Era el único momento en que alguien recibe algo por lo que hizo, y pasaba
+  en silencio.
+- **Comentar un pin tampoco.** El foro sí avisaba (`notify_forum_reply`), los
+  pines no. Alguien publica "Sala libre en la FIC", otro comenta "ya no está", y
+  el autor no se entera — que es la conversación que más importa de las dos,
+  porque corrige el mapa.
+
+La categoría `pins` es nueva porque ninguno de los dos es tu perfil, ni el foro,
+ni un evento: son **tu contenido en el mapa**. Meterlos en `profile` habría
+repetido el error que ya se corrigió con los avisos de difusión, que llegaban
+disfrazados de logro.
+
+`admin_broadcast_push_notification` pasa a tener un tercer argumento, `p_url`, y
+la firma de dos se retira — dejar las dos conviviendo haría que PostgREST
+eligiera por los argumentos recibidos y acabara llamándose la que no lleva
+destino sin que nadie se enterara. El destino se valida contra
+`^/[A-Za-z0-9/_?=&%.-]*$`: **tiene que ser una ruta interna**, porque un aviso
+que puede mandar a toda la universidad a una web ajena con un toque es phishing
+servido por la propia aplicación.
+
+### El registro de actividad
+
+```
+alguien hace algo → trigger sobre la tabla → log_activity() → activity_log
+                                                                   │
+                                                    admin_activity_log() ← el panel
+```
+
+**Por qué existe** (migración `20260828000000`). Antes "Actividad" no era un
+registro: el cliente leía los últimos 15 pines y las últimas 15 denuncias y los
+mezclaba. Eso solo enseñaba **lo que todavía existe**, así que al borrar un pin
+desaparecía también el rastro de que se creó — justo lo que un administrador
+querría auditar. Tampoco sabía de nada que no fuera esas dos tablas: un cambio
+de rol o una verificación no dejaban huella, y ninguna entrada tenía autor.
+
+**Tres decisiones de espacio**, que es lo que originó el rediseño:
+
+- La clave es `bigint generated always as identity`, no uuid: 8 bytes en vez de
+  16, y al ser una tabla de solo-añadir, ordenar por `id` ya es ordenar por
+  fecha.
+- **No se guarda el contenido.** Se guarda `summary` —una línea ya legible, con
+  tope de 200 caracteres— y los ids para ir a buscar el resto si sigue vivo.
+  Una fila anda por los 150-250 bytes.
+- Hay poda: `prune_activity_log(dias)`, con mínimo de 7 días. **No se ejecuta
+  sola**; hay que programarla con `pg_cron` o llamarla a mano. Un registro sin
+  poda es una tabla que solo crece.
+
+**Se alimenta con triggers, no llamando desde cada función.** Meter la llamada
+dentro de `create_pin_with_daily_limit`, `verify_and_make_permanent` y las
+demás obligaría a reescribir el cuerpo entero de cada una en la migración, que
+es la forma más fácil de que una se quede atrás. Los triggers capturan el hecho
+sin tocar a nadie: `on_pin_activity_log` (alta, baja y el cruce de
+`is_permanent`), `on_report_activity_log` (alta y cambios de estado) y
+`on_role_change_activity_log`.
+
+`log_activity` traga sus propios errores con un `raise warning`. Es
+deliberado: que no se apunte la creación de un pin es molesto; que no se pueda
+crear el pin porque el registro falló, no.
+
+Solo lo lee administración (`activity_log_read_admin`), y nadie lo escribe ni
+lo borra desde la API — un log que sus propios sujetos pueden editar no sirve
+para auditar nada.
 
 ---
 
@@ -548,13 +639,16 @@ una tabla o función. Dos no lo hacen — ver la sección 11.
 | `admin_count_push_subscribers()` | admin | Cuántos navegadores suscritos |
 | `admin_broadcast_push_notification(t, c)` | admin | Difunde un aviso a todo el que tenga push activado |
 | `admin_send_test_push_to_self()` | admin | La misma tubería, pero solo a quien la llama |
+| `admin_push_subscribers()` | admin | Quién recibe los avisos push, y desde qué dispositivo |
+| `admin_activity_log(limite)` | admin | El registro de actividad, con el nombre de quien actuó |
+| `prune_activity_log(dias)` | admin | Poda el registro. Mínimo 7 días |
 
 ### Las internas
 
 Nadie puede invocarlas desde la API: se les revocó el `EXECUTE`. Solo las llaman
 otros triggers y funciones.
 
-`adjust_karma` · `create_notification` · `enqueue_event_reminder` ·
+`adjust_karma` · `create_notification` · `log_activity` · `enqueue_event_reminder` ·
 `enqueue_upcoming_event_notifications` · `check_explorer_badge` ·
 `check_guardian_badge` · `check_host_badge` · `check_photographer_badge` ·
 `check_pioneer_badge` · `handle_new_user` · y todos los `notify_*`, `on_*` y

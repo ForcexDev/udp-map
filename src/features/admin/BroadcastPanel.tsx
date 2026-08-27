@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Bell, BellRing, ChevronRight, Loader2, Send, TriangleAlert } from 'lucide-react'
+import { Bell, BellRing, ChevronDown, ChevronRight, Loader2, MapPin, Search, Send, TriangleAlert, X } from 'lucide-react'
 import { usePushSubscription } from '@/features/notifications/usePushSubscription'
-import { triggerServerPushTest, fetchDashboardStats } from './api'
+import { triggerServerPushTest, fetchDashboardStats, fetchAdminPins, fetchPushSubscribers } from './api'
+import { deviceName } from './deviceName'
+import type { Pin } from '@/shared/types/database'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { AdminScreen } from './AdminScreen'
@@ -44,10 +46,28 @@ export function BroadcastPanel() {
   const [body, setBody] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [sending, setSending] = useState(false)
+  // El pin al que lleva el aviso. Sin él la notificación no va a ninguna parte:
+  // su url era '/' fija, así que tocarla te dejaba en el mapa preguntándote qué
+  // había pasado.
+  const [linkedPin, setLinkedPin] = useState<Pin | null>(null)
+  const [pinSearch, setPinSearch] = useState('')
+  const [showSubscribers, setShowSubscribers] = useState(false)
 
   const { data: stats } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: fetchDashboardStats,
+  })
+
+  const { data: subscribers } = useQuery({
+    queryKey: ['admin', 'push-subscribers'],
+    queryFn: fetchPushSubscribers,
+  })
+
+  // Solo se busca a partir de dos letras: con una, la lista es "todos los pines".
+  const { data: pinResults = [] } = useQuery({
+    queryKey: ['admin', 'pins', 'broadcast-search', pinSearch],
+    queryFn: () => fetchAdminPins({ search: pinSearch }),
+    enabled: pinSearch.trim().length >= 2 && !linkedPin,
   })
 
   const recipients = stats?.pushSubscribers ?? 0
@@ -56,7 +76,11 @@ export function BroadcastPanel() {
   const send = async () => {
     setSending(true)
     try {
-      const res = await triggerServerPushTest(title.trim(), body.trim())
+      const res = await triggerServerPushTest(
+        title.trim(),
+        body.trim(),
+        linkedPin ? `/mapa?pin=${linkedPin.id}` : '/',
+      )
       showToast(
         res.failed > 0
           ? `Enviado a ${res.sent} de ${res.processed}. ${res.failed} no llegaron.`
@@ -64,6 +88,8 @@ export function BroadcastPanel() {
       )
       setTitle('')
       setBody('')
+      setLinkedPin(null)
+      setPinSearch('')
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'No se pudo enviar el aviso.')
     } finally {
@@ -79,19 +105,56 @@ export function BroadcastPanel() {
       width="narrow"
     >
       <div className="flex flex-col gap-5">
-        {/* Cuánta gente lo va a recibir, antes de escribir nada. */}
-        <div className="flex items-center gap-4 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-purple-50 text-purple-500 dark:bg-purple-950/40">
-            <BellRing size={24} strokeWidth={2.2} />
-          </span>
-          <div className="min-w-0">
-            <span className="block text-[11px] font-black uppercase tracking-wider text-neutral-400">
-              Llegará a
+        {/* A quién le va a llegar, antes de escribir nada.
+            Era solo el número, y con un número no se puede responder a lo único
+            que importa antes de escribirle a toda la universidad: a QUIÉN. */}
+        <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <button
+            type="button"
+            onClick={() => setShowSubscribers((v) => !v)}
+            disabled={!subscribers || subscribers.length === 0}
+            className="flex w-full cursor-pointer items-center gap-4 p-4 text-left transition-colors hover:bg-neutral-50 disabled:cursor-default disabled:hover:bg-transparent dark:hover:bg-neutral-800/60 dark:disabled:hover:bg-transparent"
+          >
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-purple-50 text-purple-500 dark:bg-purple-950/40">
+              <BellRing size={24} strokeWidth={2.2} />
             </span>
-            <span className="block text-2xl font-black tracking-tight text-neutral-900 dark:text-white">
-              {recipients} {recipients === 1 ? 'dispositivo' : 'dispositivos'}
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] font-black uppercase tracking-wider text-neutral-400">
+                Llegará a
+              </span>
+              <span className="block text-2xl font-black tracking-tight text-neutral-900 dark:text-white">
+                {recipients} {recipients === 1 ? 'dispositivo' : 'dispositivos'}
+              </span>
             </span>
-          </div>
+            {subscribers && subscribers.length > 0 && (
+              <ChevronDown
+                size={18}
+                className={`shrink-0 text-neutral-400 transition-transform ${showSubscribers ? 'rotate-180' : ''}`}
+              />
+            )}
+          </button>
+
+          {showSubscribers && subscribers && (
+            <ul className="m-0 list-none divide-y divide-neutral-100 border-t border-neutral-100 p-0 dark:divide-neutral-800 dark:border-neutral-800">
+              {subscribers.map((sub) => (
+                <li key={`${sub.userId}-${sub.createdAt}`} className="flex items-center gap-3 px-4 py-2.5">
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+                    {sub.name ?? 'Sin nombre'}
+                  </span>
+                  <span className="shrink-0 text-[11px] font-medium text-neutral-400">
+                    {deviceName(sub.userAgent)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {subscribers === null && (
+            <p className="border-t border-neutral-100 px-4 py-2.5 text-[11px] font-medium leading-snug text-neutral-400 dark:border-neutral-800">
+              Para ver quiénes son, aplica la migración{' '}
+              <code className="font-mono text-[10px]">20260829000100</code> en Supabase.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-5">
@@ -132,6 +195,77 @@ export function BroadcastPanel() {
             <p className="mt-1 text-right text-[10px] font-bold text-neutral-400">
               {body.length}/180
             </p>
+          </div>
+
+          {/* A dónde lleva el aviso.
+              Opcional a propósito: "el casino cierra a las 18:00" no apunta a
+              ningún pin, y obligar a elegir uno inventaría un destino. */}
+          <div>
+            <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wider text-neutral-400">
+              Lleva a un pin <span className="normal-case tracking-normal text-neutral-400">(opcional)</span>
+            </span>
+
+            {linkedPin ? (
+              <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700/80 dark:bg-neutral-800/60">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40">
+                  <MapPin size={17} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold text-neutral-900 dark:text-white">
+                    {linkedPin.title}
+                  </span>
+                  <span className="block text-[11px] font-medium text-neutral-400">
+                    Al tocar el aviso se abrirá este pin en el mapa.
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setLinkedPin(null); setPinSearch('') }}
+                  aria-label="Quitar el pin vinculado"
+                  className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-xl text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-700"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  value={pinSearch}
+                  onChange={(e) => setPinSearch(e.target.value)}
+                  placeholder="Buscar un pin por su título…"
+                  className="h-11 w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-10 pr-3.5 text-sm font-medium text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-[#D41F2D] focus:bg-white dark:border-neutral-700/80 dark:bg-neutral-800/60 dark:text-white dark:focus:bg-neutral-900"
+                />
+                {pinSearch.trim().length >= 2 && (
+                  <ul className="m-0 mt-2 flex max-h-52 list-none flex-col gap-1 overflow-y-auto p-0">
+                    {pinResults.length === 0 ? (
+                      <li className="px-1 py-2 text-xs font-medium text-neutral-400">
+                        Ningún pin con ese título.
+                      </li>
+                    ) : (
+                      pinResults.slice(0, 8).map((pin) => (
+                        <li key={pin.id}>
+                          <button
+                            type="button"
+                            onClick={() => setLinkedPin(pin)}
+                            className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                          >
+                            <MapPin size={14} className="shrink-0 text-neutral-400" />
+                            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+                              {pin.title}
+                            </span>
+                            <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-neutral-400">
+                              {pin.type}
+                            </span>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Vista previa: una notificación se lee en dos líneas y con el

@@ -1,5 +1,9 @@
 ### Novedades en esta versión (v0.7.0)
 
+- Te avisamos cuando verifican tu publicación o alguien la comenta
+- Los avisos de la universidad ahora pueden llevarte al pin del que hablan
+- Actualizar la aplicación es mucho más rápido y ya no hay que insistir
+- Al marcar asistencia a un evento se te dice que quien organiza verá tu nombre
 - Centro de avisos rehecho: agrupados por día, más legibles y con "Vaciar todo"
 - Arreglado el parpadeo del interruptor de notificaciones al abrir la pestaña de avisos
 - El icono de las notificaciones push ya no sale en blanco en Android

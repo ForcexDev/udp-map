@@ -1,6 +1,7 @@
 import {
   Bell,
   CalendarDays,
+  MapPin,
   Megaphone,
   MessagesSquare,
   ShieldAlert,
@@ -45,6 +46,12 @@ const LOOKS: Record<NotificationCategory, CategoryLook> = {
     icon: ShieldAlert,
     fg: 'text-[#D41F2D] dark:text-red-400',
     bg: 'bg-red-100 dark:bg-red-950/50',
+  },
+  // Tu contenido en el mapa: te verificaron un pin, o alguien lo comentó.
+  pins: {
+    icon: MapPin,
+    fg: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-100 dark:bg-emerald-950/50',
   },
   system: {
     icon: Megaphone,

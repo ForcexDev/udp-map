@@ -122,6 +122,22 @@ export default defineConfig({
         importScripts: ['push-sw.js'],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // `fic.png` son 5,4 MB —una foto de 2560x1707 guardada como PNG— y era
+        // el 63% del precache entero. Precachear significa que TODO el que
+        // instala o actualiza la aplicación se la descarga, aunque no llegue a
+        // abrir nunca la ficha de Ingeniería, que es el único sitio donde se
+        // usa. Y como el precache se rehace en cada versión, se la volvía a
+        // descargar en cada actualización: por eso "Actualizar" tardaba tanto
+        // que parecía colgado.
+        //
+        // Fuera del precache se sirve de la red la primera vez que alguien abre
+        // esa ficha, y de ahí en adelante la cachea el navegador. El coste real
+        // de sacarla es que esa portada no se ve sin conexión la primera vez.
+        //
+        // Lo que de verdad toca es reescalarla: a 800 px y en WebP son ~60 KB,
+        // noventa veces menos, y entonces vuelve a caber en el precache sin
+        // que nadie lo note.
+        globIgnores: ['**/fic.png'],
         navigateFallback: '/index.html',
         runtimeCaching: [
           {
