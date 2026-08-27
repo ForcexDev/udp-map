@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Bell, BellRing, CheckCheck, Circle, Trash2 } from 'lucide-react'
+import { Bell, BellRing, CheckCheck, Circle, Trash2, TriangleAlert } from 'lucide-react'
 import type { AppNotification, NotificationCategory } from '@/shared/types/database'
 import { useAuthStore } from '@/features/auth/authStore'
 import { relativeTime } from '@/shared/utils/datetime'
@@ -138,7 +138,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
-  const { data: notifications = [], isLoading } = useNotifications()
+  const { data: notifications = [], isLoading, isError, refetch } = useNotifications()
 
   const markRead = useMarkNotificationRead()
   const toggleRead = useToggleNotificationRead()
@@ -205,6 +205,28 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
         <p className="py-10 text-center text-sm font-semibold text-neutral-400">
           {t('notifications.loading', 'Cargando avisos…')}
         </p>
+      ) : isError ? (
+        /* Un fallo de carga NO puede verse como una bandeja vacía. `data`
+           cae a `[]` cuando la consulta revienta, así que sin esta rama la
+           pantalla decía "No tienes avisos" con la red caída o la sesión
+           caducada — que es la peor mentira posible aquí: el usuario deja de
+           mirar justo cuando hay algo que no le está llegando. */
+        <div className="rounded-3xl border border-dashed border-amber-300 py-10 text-center dark:border-amber-900/60">
+          <TriangleAlert size={28} strokeWidth={1.5} className="mx-auto text-amber-500" />
+          <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">
+            {t('notifications.loadFailed', 'No se pudieron cargar tus avisos')}
+          </p>
+          <p className="mx-auto mt-1 max-w-[16rem] text-xs font-medium leading-relaxed text-neutral-400">
+            {t('notifications.loadFailedHint', 'Revisa tu conexión. Si acabas de volver, puede que tu sesión haya caducado.')}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mt-4 h-10 cursor-pointer rounded-full bg-[#D41F2D] px-5 text-xs font-bold text-white transition-colors hover:bg-[#b11a25] active:scale-95"
+          >
+            {t('notifications.retry', 'Reintentar')}
+          </button>
+        </div>
       ) : (
         <>
           <div className="flex items-center justify-between gap-3">
