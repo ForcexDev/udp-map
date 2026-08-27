@@ -2,6 +2,8 @@ import { supabase } from '@/shared/lib/supabase'
 import type { Profile, Pin, Role } from '@/shared/types/database'
 import type { DashboardStats, ActivityEntry, AdminUserFilter, AdminPinFilter } from './types'
 import { demoDb } from '@/features/pins/demoStore'
+import { REASON_LABELS } from '@/features/moderation/labels'
+import type { ContentReport } from '@/shared/types/database'
 
 /** Sanitizador estricto contra inyecciones de sintaxis PostgREST (.or, .ilike, etc.) */
 function sanitizePostgrestSearch(input?: string): string {
@@ -168,8 +170,8 @@ export async function adminDeletePin(pinId: string): Promise<void> {
 export async function fetchRecentActivity(): Promise<ActivityEntry[]> {
   if (!supabase) {
     return [
-      { id: '1', type: 'pin_created', title: 'Nuevo reporte de Sala Libre en FIC', timestamp: new Date(Date.now() - 5 * 60000).toISOString() },
-      { id: '2', type: 'report_submitted', title: 'Reporte de contenido inapropiado', timestamp: new Date(Date.now() - 25 * 60000).toISOString() },
+      { id: '1', type: 'pin_created', title: 'Sala libre en la FIC', timestamp: new Date(Date.now() - 5 * 60000).toISOString() },
+      { id: '2', type: 'report_submitted', title: REASON_LABELS.inappropriate, timestamp: new Date(Date.now() - 25 * 60000).toISOString() },
     ]
   }
 
@@ -182,18 +184,87 @@ export async function fetchRecentActivity(): Promise<ActivityEntry[]> {
     ...(pinsRes.data ?? []).map((p): ActivityEntry => ({
       id: `pin-${p.id}`,
       type: 'pin_created',
-      title: `Pin publicado: "${p.title}"`,
+      // Sin prefijo: la fila del registro ya rotula el tipo por su cuenta, y
+      // repetirlo dejaba "Pin publicado" dos veces en la misma línea.
+      title: p.title,
       timestamp: p.created_at,
     })),
     ...(reportsRes.data ?? []).map((r): ActivityEntry => ({
       id: `rep-${r.id}`,
       type: 'report_submitted',
-      title: `Reporte de moderación enviado (${r.reason})`,
+      title: REASON_LABELS[r.reason as ContentReport['reason']] ?? 'Motivo desconocido',
       timestamp: r.created_at,
     })),
   ]
 
   return activity.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
+interface PushRunResult {
+  processed: number
+  sent: number
+  failed: number
+}
+
+/**
+ * Vacía la cola de entregas llamando a la Edge Function.
+ *
+ * Está aparte porque la usan los dos envíos —la difusión y la prueba a uno
+ * mismo— y porque encolar y entregar son pasos distintos: el trigger
+ * `queue_notification_push` escribe en `notification_push_deliveries` y sin esta
+ * llamada la cola espera al cron, que corre cada minuto. Esperar un minuto para
+ * saber si el push funciona hace que nadie llegue a comprobarlo.
+ */
+async function drainPushQueue(accessToken: string): Promise<PushRunResult> {
+  const baseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
+  const res = await fetch(`${baseUrl}/functions/v1/send-push`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!res.ok) {
+    const errData = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(errData.error || `Error del servidor de push: status ${res.status}`)
+  }
+
+  return (await res.json()) as PushRunResult
+}
+
+/**
+ * Una push de prueba a MI dispositivo y a ninguno más.
+ *
+ * Antes la única forma de probar era la difusión, que recorre todas las
+ * suscripciones: comprobar "¿me llega a mí?" le hacía sonar el teléfono a la
+ * universidad entera, así que en la práctica no se probaba nunca y los fallos
+ * se descubrían por el reporte de un compañero.
+ */
+export async function sendSelfPushTest(): Promise<PushRunResult> {
+  if (!supabase) return { processed: 1, sent: 1, failed: 0 }
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('No hay sesión activa de administrador.')
+
+  const { error } = await supabase.rpc('admin_send_test_push_to_self')
+  if (error) {
+    // "La función no existe" llega por dos caminos distintos y hay que mirar
+    // los dos: `42883` es el código de Postgres, pero una RPC desconocida ni
+    // siquiera llega a Postgres — PostgREST la corta antes con un 404 y
+    // `PGRST202`. Comprobar solo el primero, que fue el primer intento, dejaba
+    // salir el texto crudo en inglés ("Could not find the function … in the
+    // schema cache"), que no le dice a nadie qué tiene que hacer.
+    const missingFunction = error.code === '42883'
+      || error.code === 'PGRST202'
+      || /could not find the function|does not exist/i.test(error.message ?? '')
+    if (missingFunction) {
+      throw new Error('Falta aplicar la migración 20260827000000 en Supabase (SQL Editor).')
+    }
+    throw new Error(error.message || 'No se pudo encolar la prueba.')
+  }
+
+  return drainPushQueue(session.access_token)
 }
 
 export async function triggerServerPushTest(title?: string, body?: string): Promise<{ processed: number; sent: number; failed: number }> {
@@ -212,20 +283,6 @@ export async function triggerServerPushTest(title?: string, body?: string): Prom
     throw new Error(rpcError.message || rpcError.details || 'Error al ejecutar broadcast de notificaciones')
   }
 
-  // 2. Invocar la Edge Function send-push para procesar el envío Web Push a los dispositivos
-  const baseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
-  const res = await fetch(`${baseUrl}/functions/v1/send-push`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  })
-
-  if (!res.ok) {
-    const errData = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new Error(errData.error || `Error del servidor de push: status ${res.status}`)
-  }
-
-  return (await res.json()) as { processed: number; sent: number; failed: number }
+  // 2. Vaciar la cola ya, sin esperar al cron del minuto.
+  return drainPushQueue(session.access_token)
 }

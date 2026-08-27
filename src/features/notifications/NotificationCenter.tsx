@@ -1,29 +1,52 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Bell, BellOff, CalendarDays, CheckCheck, ChevronRight,
-  MessagesSquare, ShieldAlert, Trophy, Trash2, CheckCircle2, Circle
-} from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import { Bell, BellRing, CheckCheck, Circle, Trash2, TriangleAlert } from 'lucide-react'
 import type { AppNotification, NotificationCategory } from '@/shared/types/database'
 import { useAuthStore } from '@/features/auth/authStore'
-import { relativeTime } from '@/shared/utils/datetime'
+import { relativeTime, relativeTimeKey } from '@/shared/utils/datetime'
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import {
-  useMarkCategoryRead,
   useMarkNotificationRead,
   useToggleNotificationRead,
   useMarkAllNotificationsRead,
   useDeleteNotification,
-  useNotifications
+  useDeleteAllNotifications,
+  useNotifications,
 } from './useNotifications'
-import { usePushSubscription } from './usePushSubscription'
-import { useUIStore } from '@/shared/stores/uiStore'
+import { groupNotifications, notificationLook } from './notificationMeta'
+import { PushCard } from './PushCard'
 
-const CATEGORY_TABS: Array<{ category: NotificationCategory | 'all'; label: string; icon: typeof Trophy }> = [
-  { category: 'all', label: 'Todas', icon: Bell },
-  { category: 'forum', label: 'Foro', icon: MessagesSquare },
-  { category: 'events', label: 'Eventos', icon: CalendarDays },
-  { category: 'profile', label: 'Perfil', icon: Trophy },
-]
+// ─────────────────────────────────────────────────────────────────────────────
+// El centro de avisos.
+//
+// Rehecho entero el 2026-08-27. Lo que había era, en sus propias palabras del
+// ROADMAP §13.2, "de lo más flojo de la aplicación visualmente": tipografía de
+// 9 a 11 px casi entera, tres radios distintos en el mismo componente y ni una
+// cadena por i18n. Además colgaba de aquí una sección de ADMINISTRACIÓN con la
+// cola de moderación, que no pinta nada en la bandeja personal de nadie: se
+// mudó al panel, que es donde vive todo lo de administrar.
+//
+// Tres decisiones de fondo:
+//
+//  · Agrupado por día, como cualquier bandeja de verdad. Una lista plana de 40
+//    avisos no dice cuál es de esta mañana y cuál del mes pasado.
+//  · La fila entera abre el aviso. Los dos botones —leído y papelera— son
+//    objetivos de 44 px, que es lo que pide un dedo; antes eran de 14 px.
+//  · Vaciar la bandeja pide confirmación, porque no hay deshacer. Borrar UNO no
+//    la pide: es un solo aviso y exigir un diálogo por fila hace que limpiar
+//    veinte sea insufrible.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Filter = NotificationCategory | 'all'
+
+function timeLabel(t: TFunction, createdAt: string): string {
+  const relative = relativeTime(createdAt)
+  // Menos de un minuto no es "hace 1 min": es "ahora".
+  if (relative.unit === 'minute' && relative.value <= 1) return t('time.now', 'ahora')
+  return t(relativeTimeKey(relative), { n: relative.value })
+}
 
 function NotificationRow({
   notification,
@@ -36,254 +59,236 @@ function NotificationRow({
   onToggleRead: (id: string, readAt: string | null) => void
   onDelete: (id: string) => void
 }) {
-  const relative = relativeTime(notification.created_at)
+  const { t } = useTranslation()
   const isRead = Boolean(notification.read_at)
+  const look = notificationLook(notification.category)
+  const Icon = look.icon
 
   return (
-    <div
-      className={`group relative flex items-start gap-2.5 rounded-2xl p-3 text-left transition-all border ${
+    <li
+      className={`relative flex items-start gap-3 rounded-2xl p-2.5 transition-colors ${
         isRead
-          ? 'bg-neutral-50/50 dark:bg-neutral-800/40 border-neutral-100 dark:border-neutral-800'
-          : 'bg-red-50/60 dark:bg-red-950/20 border-red-100/80 dark:border-red-900/40 shadow-sm'
+          ? 'hover:bg-neutral-50 dark:hover:bg-neutral-800/40'
+          : 'bg-red-50/50 dark:bg-red-950/15'
       }`}
     >
-      {/* Read Status Dot / Toggle */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          onToggleRead(notification.id, notification.read_at)
-        }}
-        title={isRead ? 'Marcar como no leída' : 'Marcar como leída'}
-        className="mt-0.5 text-neutral-400 hover:text-[#D41F2D] transition-colors p-0.5 cursor-pointer flex-shrink-0"
-      >
-        {isRead ? (
-          <Circle size={14} className="text-neutral-300 dark:text-neutral-600" />
-        ) : (
-          <span className="block w-2.5 h-2.5 rounded-full bg-[#D41F2D] shadow-[0_0_8px_rgba(212,31,45,0.6)]" />
-        )}
-      </button>
+      <span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full ${look.bg} ${look.fg}`}>
+        <Icon size={18} strokeWidth={2.2} />
+      </span>
 
-      {/* Main Content (Clickable) */}
       <button
         type="button"
         onClick={() => onOpen(notification)}
-        className="min-w-0 flex-1 text-left cursor-pointer"
+        className="min-w-0 flex-1 cursor-pointer py-0.5 text-left"
       >
-        <p className={`text-xs font-black leading-snug ${isRead ? 'text-neutral-700 dark:text-neutral-300' : 'text-neutral-900 dark:text-white'}`}>
+        <p
+          className={`text-[13px] leading-snug ${
+            isRead
+              ? 'font-semibold text-neutral-600 dark:text-neutral-300'
+              : 'font-bold text-neutral-900 dark:text-white'
+          }`}
+        >
           {notification.title}
         </p>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400 line-clamp-2">
+        <p className="mt-0.5 text-xs font-medium leading-relaxed text-neutral-500 dark:text-neutral-400">
           {notification.body}
         </p>
-        <span className="inline-block mt-1 text-[9px] font-extrabold uppercase tracking-wider text-neutral-400">
-          {relative.value === 0 ? 'Ahora' : `${relative.value} ${relative.unit === 'day' ? 'd' : relative.unit === 'hour' ? 'h' : 'min'}`}
+        <span className="mt-1 block text-[11px] font-semibold text-neutral-400 dark:text-neutral-500">
+          {timeLabel(t, notification.created_at)}
         </span>
       </button>
 
-      {/* Actions (Delete) */}
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center">
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete(notification.id)
-          }}
-          title="Eliminar notificación"
-          className="text-neutral-400 dark:text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-all p-1.5 cursor-pointer rounded-xl"
+          onClick={() => onToggleRead(notification.id, notification.read_at)}
+          title={isRead
+            ? t('notifications.markUnread', 'Marcar como no leída')
+            : t('notifications.markRead', 'Marcar como leída')}
+          aria-label={isRead
+            ? t('notifications.markUnread', 'Marcar como no leída')
+            : t('notifications.markRead', 'Marcar como leída')}
+          className="grid h-11 w-9 cursor-pointer place-items-center text-neutral-300 transition-colors hover:text-neutral-500 dark:text-neutral-600 dark:hover:text-neutral-400"
         >
-          <Trash2 size={15} />
+          {isRead
+            ? <Circle size={13} />
+            : <span className="block h-2.5 w-2.5 rounded-full bg-[#D41F2D] shadow-[0_0_8px_rgba(212,31,45,0.6)]" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onDelete(notification.id)}
+          title={t('notifications.delete', 'Eliminar aviso')}
+          aria-label={t('notifications.delete', 'Eliminar aviso')}
+          className="grid h-11 w-10 cursor-pointer place-items-center rounded-xl text-neutral-400 transition-colors hover:bg-red-50 hover:text-[#D41F2D] dark:text-neutral-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+        >
+          <Trash2 size={16} />
         </button>
       </div>
-    </div>
+    </li>
   )
 }
 
 export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
-  const role = useAuthStore((state) => state.role)
-  const { data: notifications = [], isLoading } = useNotifications()
+  const { data: notifications = [], isLoading, isError, refetch } = useNotifications()
+
   const markRead = useMarkNotificationRead()
   const toggleRead = useToggleNotificationRead()
   const markAll = useMarkAllNotificationsRead()
   const deleteSingle = useDeleteNotification()
-  const markCategory = useMarkCategoryRead()
-  const push = usePushSubscription(Boolean(user))
-  const openTutorial = useUIStore((s) => s.openTutorial)
+  const deleteAll = useDeleteAllNotifications()
 
-  const [activeFilter, setActiveFilter] = useState<NotificationCategory | 'all'>('all')
+  const [filter, setFilter] = useState<Filter>('all')
+  const [clearing, setClearing] = useState(false)
 
-  const openNotification = (notification: AppNotification) => {
-    if (!notification.read_at) markRead.mutate(notification.id)
-    if (notification.url) {
-      navigate(notification.url)
-    }
-    onNavigate()
-  }
+  // Los avisos de `audience: 'admin'` NO salen aquí. Son trabajo del equipo, no
+  // avisos personales, y ahora viven en /admin/moderacion.
+  const personal = useMemo(
+    () => notifications.filter((n) => n.audience === 'personal'),
+    [notifications],
+  )
+  const unreadCount = personal.filter((n) => !n.read_at).length
 
-  const openSection = (path: string, category: NotificationCategory) => {
-    markCategory.mutate(category)
-    navigate(path)
-    onNavigate()
+  const visible = useMemo(
+    () => (filter === 'all' ? personal : personal.filter((n) => n.category === filter)),
+    [personal, filter],
+  )
+  const groups = useMemo(() => groupNotifications(visible), [visible])
+
+  const FILTERS: Array<{ value: Filter; label: string }> = [
+    { value: 'all', label: t('notifications.filterAll', 'Todas') },
+    { value: 'forum', label: t('notifications.filterForum', 'Foro') },
+    { value: 'events', label: t('notifications.filterEvents', 'Eventos') },
+    { value: 'profile', label: t('notifications.filterProfile', 'Perfil') },
+    { value: 'system', label: t('notifications.filterSystem', 'Avisos') },
+  ]
+
+  const GROUP_LABEL = {
+    today: t('notifications.groupToday', 'Hoy'),
+    week: t('notifications.groupWeek', 'Esta semana'),
+    earlier: t('notifications.groupEarlier', 'Antes'),
   }
 
   if (!user) {
     return (
-      <div className="rounded-2xl border border-dashed border-neutral-200 p-6 text-center dark:border-neutral-700">
-        <Bell size={28} className="mx-auto text-neutral-300 dark:text-neutral-600" />
-        <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">Inicia sesión para ver tus notificaciones</p>
-        <p className="mt-1 text-xs text-neutral-400">Los avisos son privados y están asociados a tu cuenta UDP.</p>
+      <div className="rounded-3xl border border-dashed border-neutral-200 p-8 text-center dark:border-neutral-700">
+        <Bell size={30} strokeWidth={1.5} className="mx-auto text-neutral-300 dark:text-neutral-600" />
+        <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">
+          {t('notifications.signedOut', 'Inicia sesión para ver tus avisos')}
+        </p>
+        <p className="mt-1 text-xs font-medium text-neutral-400">
+          {t('notifications.signedOutHint', 'Son privados y van asociados a tu cuenta UDP.')}
+        </p>
       </div>
     )
   }
 
-  const personal = notifications.filter((notification) => notification.audience === 'personal')
-  const adminNotifications = notifications.filter((notification) => notification.audience === 'admin')
-  const unreadCount = notifications.filter((n) => !n.read_at).length
-
-  // Filtered notifications list
-  const filteredPersonal = activeFilter === 'all'
-    ? personal
-    : personal.filter((n) => n.category === activeFilter)
+  const openNotification = (notification: AppNotification) => {
+    if (!notification.read_at) markRead.mutate(notification.id)
+    if (notification.url && notification.url !== '/') navigate(notification.url)
+    onNavigate()
+  }
 
   return (
     <div className="space-y-5 pb-12">
-      {/* Web Push Card */}
-      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-3.5 dark:border-neutral-700 dark:bg-neutral-800/50 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${push.state === 'subscribed' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50' : 'bg-neutral-200 text-neutral-500 dark:bg-neutral-700'}`}>
-              {push.state === 'subscribed' ? <Bell size={17} /> : <BellOff size={17} />}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-black text-neutral-800 dark:text-neutral-100">Notificaciones Web Push</p>
-              <p className="truncate text-[10px] text-neutral-400 font-medium">
-                {push.state === 'subscribed'
-                  ? 'Activadas en este dispositivo'
-                  : push.state === 'denied'
-                    ? 'Bloqueadas por el navegador'
-                    : push.state === 'unsupported'
-                      ? 'Este navegador no admite Web Push'
-                      : push.state === 'ios-not-installed'
-                        ? 'En iPhone solo funcionan con la app instalada en tu pantalla de inicio'
-                        : 'Recíbelas aunque la app esté cerrada'}
-              </p>
-            </div>
-          </div>
-          {push.state === 'subscribed' ? (
-            <button type="button" onClick={() => void push.unsubscribe()} className="text-[10px] font-black text-neutral-400 hover:text-red-600 transition-colors cursor-pointer">Desactivar</button>
-          ) : push.state === 'ios-not-installed' ? (
-            <button type="button" onClick={openTutorial} className="rounded-xl bg-[#D41F2D] px-3 py-1.5 text-[10px] font-black text-white active:scale-95 transition-all cursor-pointer">Instalar app</button>
-          ) : (
-            <button type="button" onClick={() => void push.subscribe()} disabled={push.state === 'loading' || push.state === 'unsupported' || push.state === 'denied'} className="rounded-xl bg-[#D41F2D] px-3 py-1.5 text-[10px] font-black text-white active:scale-95 transition-all disabled:opacity-40 cursor-pointer">
-              {push.state === 'loading' ? 'Activando…' : push.state === 'error' ? 'Reintentar' : 'Activar'}
-            </button>
-          )}
-        </div>
-        {push.error && <p className="mt-2 text-[10px] font-semibold text-red-500">{push.error}</p>}
-      </div>
+      <PushCard />
 
       {isLoading ? (
-        <div className="py-10 text-center text-xs font-semibold text-neutral-400">Cargando notificaciones…</div>
+        <p className="py-10 text-center text-sm font-semibold text-neutral-400">
+          {t('notifications.loading', 'Cargando avisos…')}
+        </p>
+      ) : isError ? (
+        /* Un fallo de carga NO puede verse como una bandeja vacía. `data`
+           cae a `[]` cuando la consulta revienta, así que sin esta rama la
+           pantalla decía "No tienes avisos" con la red caída o la sesión
+           caducada — que es la peor mentira posible aquí: el usuario deja de
+           mirar justo cuando hay algo que no le está llegando. */
+        <div className="rounded-3xl border border-dashed border-amber-300 py-10 text-center dark:border-amber-900/60">
+          <TriangleAlert size={28} strokeWidth={1.5} className="mx-auto text-amber-500" />
+          <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">
+            {t('notifications.loadFailed', 'No se pudieron cargar tus avisos')}
+          </p>
+          <p className="mx-auto mt-1 max-w-[16rem] text-xs font-medium leading-relaxed text-neutral-400">
+            {t('notifications.loadFailedHint', 'Revisa tu conexión. Si acabas de volver, puede que tu sesión haya caducado.')}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mt-4 h-10 cursor-pointer rounded-full bg-[#D41F2D] px-5 text-xs font-bold text-white transition-colors hover:bg-[#b11a25] active:scale-95"
+          >
+            {t('notifications.retry', 'Reintentar')}
+          </button>
+        </div>
       ) : (
         <>
-          {/* Header & Mark All Read */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-400">Tus avisos</h3>
-                {unreadCount > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-[#D41F2D] text-white text-[9px] font-black leading-none">
-                    {unreadCount}
-                  </span>
-                )}
-              </div>
-              
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
+                {t('notifications.title', 'Tus avisos')}
+              </h3>
               {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => markAll.mutate()}
-                  disabled={markAll.isPending}
-                  className="flex items-center gap-1.5 text-[10px] font-black text-[#D41F2D] hover:text-[#b11a25] transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <CheckCheck size={14} />
-                  <span>Marcar leídas</span>
-                </button>
+                <span className="rounded-full bg-[#D41F2D] px-1.5 py-0.5 text-[10px] font-black leading-none text-white">
+                  {unreadCount}
+                </span>
               )}
             </div>
 
-            {/* Category Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1.5 pt-0.5 px-0.5 pr-8">
-              {CATEGORY_TABS.map(({ category, label, icon: Icon }) => {
-                const isActive = activeFilter === category
-                const categoryUnread = category === 'all'
-                  ? unreadCount
-                  : personal.filter((n) => n.category === category && !n.read_at).length
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={() => markAll.mutate()}
+                disabled={markAll.isPending}
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-bold text-[#D41F2D] transition-colors hover:text-[#b11a25] disabled:opacity-50"
+              >
+                <CheckCheck size={14} />
+                {t('notifications.markAllRead', 'Marcar leídas')}
+              </button>
+            )}
+          </div>
 
+          {/* Las píldoras solo aparecen cuando hay algo que filtrar. Con dos
+              avisos en la bandeja, un filtro de cinco categorías es decoración. */}
+          {personal.length > 2 && (
+            <div role="group" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 no-scrollbar">
+              {FILTERS.map((option) => {
+                const active = filter === option.value
+                const count = option.value === 'all'
+                  ? unreadCount
+                  : personal.filter((n) => n.category === option.value && !n.read_at).length
                 return (
                   <button
-                    key={category}
+                    key={option.value}
                     type="button"
-                    onClick={() => setActiveFilter(category)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-                      isActive
-                        ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm'
-                        : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400'
+                    aria-pressed={active}
+                    onClick={() => setFilter(option.value)}
+                    className={`flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-bold transition-colors active:scale-95 ${
+                      active
+                        ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
+                        : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
                     }`}
                   >
-                    <Icon size={12} />
-                    <span>{label}</span>
-                    {categoryUnread > 0 && (
-                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#D41F2D]' : 'bg-[#D41F2D]'}`} />
+                    {option.label}
+                    {count > 0 && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#D41F2D]" />
                     )}
                   </button>
                 )
               })}
             </div>
+          )}
 
-            {/* Notifications List */}
-            {filteredPersonal.length > 0 ? (
-              <div className="space-y-2">
-                {filteredPersonal.map((notification) => (
-                  <NotificationRow
-                    key={notification.id}
-                    notification={notification}
-                    onOpen={openNotification}
-                    onToggleRead={(id, readAt) => toggleRead.mutate({ id, readAt })}
-                    onDelete={(id) => deleteSingle.mutate(id)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="py-8 text-center bg-neutral-50/50 dark:bg-neutral-800/20 rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800">
-                <CheckCircle2 size={24} className="mx-auto text-neutral-300 dark:text-neutral-600 mb-2" />
-                <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">Sin notificaciones en esta categoría</p>
-              </div>
-            )}
-          </div>
-
-          {/* Admin Moderation Section */}
-          {role === 'admin' && (
-            <section className="space-y-3 border-t border-neutral-200 pt-5 dark:border-neutral-800">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-[#D41F2D]">Administración</h3>
-              <div className="overflow-hidden rounded-[18px] border border-red-200 bg-red-50/40 dark:border-red-900/50 dark:bg-red-950/10">
-                <button type="button" onClick={() => openSection('/moderacion', 'moderation')} className="flex w-full items-center gap-3 px-3.5 py-3 text-left hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer">
-                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-red-100 text-[#D41F2D] dark:bg-red-950/50"><ShieldAlert size={18} /></div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-extrabold text-neutral-800 dark:text-neutral-100">Cola de moderación</p>
-                    <p className="text-[10px] text-neutral-400 font-medium">Reportes separados de tus avisos personales</p>
-                  </div>
-                  {adminNotifications.filter((notification) => !notification.read_at).length > 0 && (
-                    <span className="min-w-5 rounded-full bg-[#D41F2D] px-1.5 py-0.5 text-center text-[10px] font-black text-white">
-                      {adminNotifications.filter((notification) => !notification.read_at).length}
-                    </span>
-                  )}
-                  <ChevronRight size={15} className="text-neutral-300" />
-                </button>
-                {adminNotifications.length > 0 && (
-                  <div className="border-t border-red-100 p-2 space-y-2 dark:border-red-950">
-                    {adminNotifications.slice(0, 3).map((notification) => (
+          {groups.length > 0 ? (
+            <div className="space-y-5">
+              {groups.map((group) => (
+                <section key={group.id}>
+                  <h4 className="mb-1.5 px-1 text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
+                    {GROUP_LABEL[group.id]}
+                  </h4>
+                  <ul className="m-0 list-none space-y-0.5 p-0">
+                    {group.items.map((notification) => (
                       <NotificationRow
                         key={notification.id}
                         notification={notification}
@@ -292,14 +297,46 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
                         onDelete={(id) => deleteSingle.mutate(id)}
                       />
                     ))}
-                  </div>
-                )}
-              </div>
-            </section>
+                  </ul>
+                </section>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setClearing(true)}
+                disabled={deleteAll.isPending}
+                className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white text-xs font-bold text-neutral-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-[#D41F2D] active:scale-[0.98] disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:border-red-900/60 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+              >
+                <Trash2 size={14} />
+                {t('notifications.clearAll', 'Vaciar todo')}
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-neutral-200 py-12 text-center dark:border-neutral-800">
+              <BellRing size={30} strokeWidth={1.5} className="mx-auto text-neutral-300 dark:text-neutral-600" />
+              <p className="mt-3 text-sm font-bold text-neutral-600 dark:text-neutral-300">
+                {personal.length === 0
+                  ? t('notifications.empty', 'No tienes avisos')
+                  : t('notifications.emptyFiltered', 'Nada en esta categoría')}
+              </p>
+              {personal.length === 0 && (
+                <p className="mx-auto mt-1 max-w-[15rem] text-xs font-medium leading-relaxed text-neutral-400">
+                  {t('notifications.emptyHint', 'Aquí llegarán las respuestas del foro, los recordatorios de eventos y tus logros.')}
+                </p>
+              )}
+            </div>
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={clearing}
+        onOpenChange={setClearing}
+        title={t('notifications.clearAllTitle', '¿Vaciar todos los avisos?')}
+        description={t('notifications.clearAllBody', { count: personal.length })}
+        confirmText={t('notifications.clearAllConfirm', 'Vaciar')}
+        onConfirm={() => deleteAll.mutate()}
+      />
     </div>
   )
 }
-

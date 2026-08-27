@@ -1,7 +1,7 @@
 # Hoja de ruta — UDP Map
 
 > **Documento vivo.** Es el plan del repositorio: qué está hecho y qué falta. Se
-> actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-08-10.
+> actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-08-27.
 >
 > Nació como el plan de mapeo interior y onboarding, y absorbió el backlog que
 > antes vivía repartido entre `PLAN.md` y `SPRINTS_STATUS.md`. Los dos se
@@ -61,16 +61,26 @@ Al revisar `campusData.ts:136-173` aparecieron dos que conviene arreglar de paso
 
 Ambos son un copiar-pegar antiguo. Se corrigen en la Fase 3 junto con las categorías nuevas.
 
-### 1.6 Hay mensajes en español clavados en el código
+### 1.6 Hay mensajes en español clavados en el código ✅ RESUELTO (2026-08-26)
 
-`i18n` está montado (`shared/lib/i18n.ts`, es/en), pero varios avisos se saltan el sistema y salen siempre en español:
+`i18n` estaba montado (`shared/lib/i18n.ts`, es/en) pero varios avisos se
+saltaban el sistema y salían siempre en español: los cuatro toasts de brújula y
+ubicación de `MapPage`/`MapView`, sus dos `aria-label` y casi todos los textos
+de las tarjetas de `TutorialModal`. Ya están en el catálogo, es y en.
 
-- `MapPage.tsx:99` — "Brújula bloqueada. Permite acceso a…"
-- `MapPage.tsx:336` — "Debes activar la ubicación en tu dispositivo o navegador."
-- `MapView.tsx:714` y `722` — "Estás fuera del área del mapa", "Debes activar la ubicación…"
-- `TutorialModal.tsx` — casi todos los textos de las tarjetas.
+Dos cosas que salieron al hacerlo y conviene saber:
 
-Se limpia junto con el trabajo de mensajes de la §10.
+- **`MapView` no usa el hook `useTranslation`**, porque sus avisos salen de
+  callbacks imperativos y no del render. Usa la instancia (`import i18n from
+  '@/shared/lib/i18n'`) y llama `i18n.t(...)`. Lo mismo el aviso de brújula de
+  `MapPage`, que vive en un `useCallback` de dependencias vacías.
+- **`map.outOfBounds` ya estaba en uso con otro significado** —"estás demasiado
+  lejos del campus para trazar una ruta a pie", en `MapPage` y `PinDetail`—
+  apoyado solo en su respaldo, porque la clave no existía en el catálogo. Meter
+  ahí el "estás fuera del área del mapa" del botón de ubicación les habría
+  cambiado el texto a los dos sin que nada fallara. El aviso nuevo se llama
+  `map.locationOutOfBounds`; de paso quedaron definidas `outOfBounds`,
+  `searchFaculty` y `noResults`, que en inglés salían en español.
 
 ### 1.7 Onboarding: nada coordina los diálogos
 
@@ -211,7 +221,7 @@ Documentado aquí porque es la razón de fondo de esas dos categorías, aunque l
 
 Requisitos que esto impone y que este plan ya cumple: los pines de `ascensor` y `rampa` deben tener `building_id` y `floor`, y los de `entrada` un modo de marcar si son accesibles. Lo dejo anotado; no está en ninguna fase todavía.
 
-### 4.1 Falta la categoría `escalera`
+### 4.1 Falta la categoría `escalera` ✅ CREADA (2026-08-26)
 
 Anotado el 2026-08-10. Hay `ascensor` y `rampa`, y **no hay escalera**. No es una
 categoría más de la lista: es la que dice **por dónde no se puede pasar**. El
@@ -226,6 +236,12 @@ icono.
 Y conviene que sea pin y no área salvo en cajas de escalera grandes: lo que
 importa de una escalera es *por aquí se sube*, que es un punto. Dibujar su
 contorno es trabajo que no devuelve nada.
+
+**Creada el 2026-08-26**
+(`20260826000000_stairs_category_and_computer_lab_rename.sql`), con TTL de 720 h
+como el resto de la infraestructura fija. Ojo con lo que todavía NO resuelve:
+una escalera que sube del 1 al 5 sigue siendo un pin de **una** planta, así que
+se ve en una sola. Eso es la §4.2, y sin ella la categoría cuenta media verdad.
 
 ### 4.2 Un ascensor no vive en una planta: las atraviesa
 
@@ -632,7 +648,19 @@ Los 20 pines de tu foto 1 se vuelven 4 o 5 marcadores de facultad; al acercarte,
 
 ### 9.2 Las salas se ven distinto de los avisos
 
-Un pin de sala es infraestructura fija; uno de comida es una novedad. Que compitan visualmente igual es un error. Los pines permanentes verificados —salas, ascensores, rampas, baños— se dibujan **más pequeños**: 18 px y con la etiqueta del código de sala al lado a zoom alto. Los avisos efímeros mantienen el marcador actual de 26 px.
+Un pin de sala es infraestructura fija; uno de comida es una novedad. Que compitan visualmente igual es un error. Los pines de infraestructura fija se dibujan **más pequeños** que los avisos, que mantienen su marcador de 26 px.
+
+> **Corregido el 2026-08-26, al verlo en pantalla: son 22 px, no 18, y la
+> condición es la CATEGORÍA.** Con 18 px el icono dentro del círculo dejaba de
+> leerse, y multiplicado por la escala de zoom de la §9.3 daba pines de 14 px
+> que no se podían ni tocar. Y "permanente verificado" no es la condición
+> correcta: las facultades también son pines permanentes —sembradas además con
+> la categoría `entrada`—, así que cualquier regla derivada de `is_permanent`
+> las encogía y dejaba el mapa sin sus anclas. La lista vive en `campusData`
+> (`isFixedInfraCategory`) y hoy son cuatro: sala, ascensor, rampa y escalera.
+> `entrada` queda fuera a propósito: es una referencia para orientarse de
+> lejos, no un detalle del interior. La etiqueta con el código de sala al lado
+> a zoom alto sigue pendiente.
 
 > **Corregido el 2026-08-05: solo el tamaño, nunca el tono.** La versión anterior
 > pedía además dibujarlos "sin sombra fuerte, en un tono apagado". Eso choca de
@@ -649,7 +677,7 @@ Así el interior de un edificio se lee como un plano —salas pequeñas con su n
 ### 9.3 Abanico y tamaño por zoom
 
 - **Abanico**: dos o más pines a menos de ~30 px se colapsan en un chip con el número y se abren en abanico al tocarlo.
-- **Tamaño según zoom** con `--pin-scale`: 20 px a zoom 17, 26 px a 18, 30 px a 19+.
+- **Tamaño según zoom** con `--pin-scale`: 26 px hasta zoom 18 y hasta 30 px de 19 en adelante. *(Los 20 px a zoom 17 que decía este plan se probaron el 2026-08-26 y se descartaron: de lejos el problema no es el tamaño de los pines sino su número, y encogerlos solo los volvía ilegibles.)*
 
 > **Repriorizado el 2026-08-05: el abanico deja de ser un remate.** Esta sección
 > estaba escrita como el adorno final de la §9.1, y es al revés. El detalle por
@@ -1006,11 +1034,32 @@ enseñaba mal casi todo lo que ese motor producía. Siete arreglos:
 
 Repriorizada el 2026-08-05 (ver §9.2 y §9.3). El orden de abajo es el nuevo.
 
-- [ ] **Abanico para colisiones a menos de 30 px.** Lo primero: es el único
-      punto que ataca el solape a zoom alto, que es el problema que existe hoy.
-- [ ] Estilo diferenciado de pines permanentes vs efímeros: **solo tamaño**,
-      nunca tono (§9.2).
-- [ ] `--pin-scale` según zoom.
+- [ ] **Abanico para colisiones a menos de 30 px.** Sigue siendo lo primero: es
+      el único punto que ataca el solape a zoom alto, que es el problema que
+      existe hoy. **Se intentó el 2026-08-26 y se retiró**: colapsar el grupo en
+      un marcador con el número encima y abrirlo al tocarlo se veía mal en el
+      mapa real —el pin "cabeza" tapaba a los otros y el número competía con la
+      insignia de planta, que vive en la misma esquina—. La lógica de
+      agrupación por distancia en pantalla funcionaba y estaba probada; lo que
+      no funciona es esa presentación. Cuando se retome, el problema a resolver
+      es **cómo se ve un grupo**, no cómo se calcula.
+- [x] Estilo diferenciado de pines permanentes vs efímeros: **solo tamaño**,
+      nunca tono (§9.2). Hecho el 2026-08-26. Dos cosas que salieron al
+      probarlo en pantalla y que conviene no volver a descubrir:
+      - **22 px, no 18.** Los 18 px del plan dejaban el icono ilegible dentro
+        del círculo, y multiplicados por la escala de zoom daban pines de 14 px
+        imposibles de tocar.
+      - **Qué cuenta como "fijo" lo dice el catálogo**, no una regla derivada.
+        "Permanente" no sirve —las facultades también lo son— y "permanente y
+        con categoría" tampoco: en la base las facultades están sembradas con la
+        categoría `entrada`, así que caían dentro igual y el mapa se quedaba
+        sin sus anclas. Ahora es una lista explícita en `campusData`
+        (`isFixedInfraCategory`): sala, ascensor, rampa y escalera.
+- [x] `--pin-scale` según zoom. Hecho el 2026-08-26, con una corrección sobre
+      la §9.3: **nunca baja de 1.** Encoger a 20 px por debajo de zoom 18 se vio
+      en el mapa y quedó mal — de lejos el problema no es que los pines sobren
+      de tamaño, es que sobran de número, y eso lo arregla el detalle por zoom.
+      Así que crece de cerca (hasta 30 px a zoom 19) y no encoge de lejos.
 - [ ] Detalle por zoom: facultad → edificio → pin, con transiciones. Pospuesto
       hasta que haya más edificios mapeados: resuelve el amontonamiento de
       lejos, que todavía no duele, y sin datos indoor no luce.
@@ -1026,7 +1075,7 @@ Repriorizada el 2026-08-05 (ver §9.2 y §9.3). El orden de abajo es el nuevo.
 - [ ] Orquestador en `uiStore`; `TutorialModal` → carrusel de 3 slides.
 - [ ] `src/features/onboarding/` con `TourOverlay` y `tours.ts`.
 - [ ] Tour del mapa y tour de facultad; submenú en el sidebar.
-- [ ] Migrar a i18n los mensajes clavados de la §1.6.
+- [x] Migrar a i18n los mensajes clavados de la §1.6. Hecho el 2026-08-26.
 
 ### Fase 6 — La ficha de facultad ✅ HECHA (2026-08-05)
 
@@ -1134,20 +1183,32 @@ sabía qué eran.
 
 **Seguridad**
 
-- [ ] **Lectura pública de `event_rsvps`** (SEC-007). Comprobado: la política
-      `event_rsvps_read` sigue con `using (true)`, así que cualquiera puede leer
-      quién va a qué evento. Es real y es el pendiente más concreto de la lista.
-- [ ] **Dependencias con vulnerabilidades altas:** `react-router` 7.12.0–8.2.0
-      (bypass de CSRF), `undici`, `postcss`, `brace-expansion`, `fast-uri`.
-      Todas con arreglo disponible. `react-router` puede traer cambios de
-      comportamiento: va en su propio commit.
+- [x] **Lectura pública de `event_rsvps`** (SEC-007). Cerrado el 2026-08-26
+      (`20260826000200_event_rsvps_private.sql`), y no tapándolo: la política se
+      borró y en su lugar quedaron las dos lecturas que sí tienen sentido —el
+      conteo agregado para cualquiera (`event_rsvp_counts`) y la lista con
+      nombres solo para quien organiza (`event_attendees`)—. Con eso sale
+      también el punto 1 de la §13.1, que era el que más rendía de esa lista.
+- [x] **Dependencias con vulnerabilidades altas.** Cerrado el 2026-08-26:
+      `npm audit` da 0. `react-router` fue de 7.18.1 a 7.18.2 —un parche, no el
+      salto de mayor que se temía— y el resto (`undici`, `postcss`,
+      `brace-expansion`, `fast-uri`, `js-yaml`, `nanoid`) salió con
+      `npm audit fix`, sin `--force` y sin cambios de comportamiento.
 - [ ] **El rol `moderator` no está acotado por facultad** (§13.4). Ninguna
       política usa `profiles.faculty_id`, así que un moderador lo es de las
       diecisiete facultades. Si el rol lo van a llevar los centros de alumnos,
       esto hay que cerrarlo antes de repartirlo.
-- [ ] **"Mover un pin de sitio" solo se comprueba en la interfaz.** Es el único
-      permiso del proyecto en esa situación (`DATABASE.md` §2), y el flujo de
-      salas lo vuelve central (`docs/SALAS.md` §12.5).
+- [x] **"Mover un pin de sitio" solo se comprueba en la interfaz.** Cerrado el
+      2026-08-26 con el trigger `trg_authorize_pin_move`
+      (`20260826000100_pin_move_server_authorization.sql`). Era el último
+      permiso del proyecto en esa situación. El alcance real era más chico de lo
+      que decía esta línea —`pins_owner_update` limita a los pines propios, así
+      que no se podían reubicar los ajenos— pero un estudiante sí podía
+      arrastrar el suyo a otra manzana con un `PATCH`, porque
+      `protect_pin_sensitive_fields` protege `building_id` y `area_id` y no
+      `lat`/`lng`. El trigger va aparte y no dentro de esa función por el orden
+      alfabético de los `BEFORE`, y exime a `service_role` a propósito: el
+      razonamiento entero está en `docs/DATABASE.md` §4.
 - [ ] Repaso de RLS y funciones que queden sin endurecer.
 
 **Funcionalidad**
@@ -1155,11 +1216,19 @@ sabía qué eran.
 - [ ] Búsqueda de texto completo y filtro por tags en el foro. Comprobado que no
       existe: ni `tsvector` en la base ni filtro en la interfaz.
 - [ ] **Cargar las salas como pines** (bloquea §13.3 y "Salas libres" de §14).
-      El catálogo está derivado en `docs/SALAS.md`: 61 salas en 12 edificios.
-      Va edificio por edificio, con las coordenadas puestas a mano — un seed
-      generado apilaría los 61 pines en el centroide. Empezar por `E441` (22
-      salas). Antes hay que declarar sus plantas en `/admin/mapeo`, o
-      `trg_validate_pin_floor` rechaza el `INSERT`.
+      **El importador ya está** (2026-08-26): `/admin/mapeo` lee el `data.json`
+      de la FIC y, con un edificio seleccionado, enseña sus salas marcando
+      cuáles ya tienen pin. Al elegir una que falta, el siguiente clic en el
+      mapa la crea con el código y la planta puestos. Lo que queda es el
+      trabajo humano: **pasar por los edificios poniendo los puntos**, que es lo
+      único que la fuente no puede dar — un alta masiva las apilaría en el
+      centroide y además la rechazaría `prevent_occupied_pin_location`.
+      Empezar por `E441` (23 salas). Antes hay que declarar sus plantas en el
+      mismo editor, o `trg_validate_pin_floor` rechaza el `INSERT`; el
+      importador avisa de las que faltan.
+      **El catálogo se volvió a derivar el 2026-08-26 y creció: 82 salas en 11
+      edificios**, no las 61 de agosto. Está en `docs/SALAS.md` §5.1, con tres
+      rarezas nuevas que conviene leer antes de mapear.
 - [ ] **Confirmar tres direcciones en terreno** (`docs/SALAS.md` §4). Si
       `E278A/B` son de Ciencias Sociales o salas comunes, el número por Ejército
       de la Biblioteca Nicanor Parra, y si Ejército 219 y 141 tienen salas
@@ -1181,13 +1250,15 @@ sabía qué eran.
       hay tres nombres clavados —dos de ellos contradictorios— y la base asume
       que todo moderador es del Centro de Alumnos de Ingeniería. Va junto con el
       alcance por facultad, porque necesita saber de qué facultad es quien firma.
-- [ ] **Renombrar `computacion` a "Sala de computación"** (`docs/SALAS.md`
-      §12.6). Mismo id, mismo SVG, mismo color: solo `name` y `name_en`, en el
-      seed y en `campusData.ts`. "Computación" nombra una materia; lo que se
-      marca es un recinto.
-- [ ] **Categoría `escalera`** (§4.1). Falta, y es la que dice por dónde no se
-      puede pasar: sin ella el ruteo accesible no distingue "no hay ascensor" de
-      "nadie lo mapeó".
+- [x] **Renombrar `computacion` a "Sala de computación"** (`docs/SALAS.md`
+      §12.6). Hecho el 2026-08-26 en la misma migración que `escalera`. Mismo
+      id, mismo SVG, mismo color: solo `name` y `name_en`, en la base, el seed y
+      `campusData.ts`. "Computación" nombra una materia; lo que se marca es un
+      recinto.
+- [x] **Categoría `escalera`** (§4.1). Creada el 2026-08-26. Es la que dice por
+      dónde no se puede pasar: sin ella el ruteo accesible no distinguía "no hay
+      ascensor" de "nadie lo mapeó". Queda a medias hasta la §4.2: una escalera
+      que sube del 1 al 5 hoy se ve en una sola planta.
 - [ ] **Rango de plantas para ascensores y escaleras** (§4.2). Hoy un ascensor
       del −1 al 5 solo se ve en una planta. Una columna `floor_to` y
       `pinVisibleOnFloor` comprobando el rango.
@@ -1232,26 +1303,32 @@ Marcar "Iré" guarda una fila y programa tu propio recordatorio; ahí termina.
 
 En orden de lo que más rinde:
 
-1. **Que el creador vea quién va.** Lo menos discutible y lo que de verdad
-   falta: quien organiza una feria necesita saber si van 5 o 50, porque cambia
-   lo que prepara. Utilidad real y no lo ve nadie más.
-2. **Sección "Mis eventos" en el perfil.** Hoy aprietas "Iré" y no cambia nada
-   en pantalla. Que el evento aparezca en algún sitio tuyo es lo que hace que el
-   botón se sienta como que hizo algo.
-3. **Conteo público, pero con umbral.** Enseñarlo solo a partir de cierto
-   número, o sumando "interesados" y "voy" en una cifra. **Nunca "2 personas
-   van"**: a la escala de la UDP habrá muchos eventos con números bajos, y ahí
-   el número social juega en contra — dice "esto no le importa a nadie".
+1. - [x] **Que el creador vea quién va.** Hecho el 2026-08-26. La tarjeta del
+     evento enseña "N van · M interesados" a quien lo creó, y ese número abre la
+     lista con nombres (`EventAttendeesDialog`). Sale de `event_attendees`, que
+     comprueba en la base que quien pregunta sea el autor: no es un `if` de
+     interfaz.
+2. - [ ] **Sección "Mis eventos" en el perfil.** Hoy aprietas "Iré" y no cambia
+     nada en pantalla. Que el evento aparezca en algún sitio tuyo es lo que hace
+     que el botón se sienta como que hizo algo. Sigue pendiente.
+3. - [x] **Conteo público, pero con umbral.** Hecho el 2026-08-26, con las dos
+     salidas que proponía esta línea a la vez: se suma "interesados" y "voy" en
+     una cifra **y** hay umbral (`RSVP_PUBLIC_THRESHOLD`, hoy 5). Por debajo no
+     se enseña nada; a quien organiza se le enseña siempre, porque para preparar
+     algo el 2 también sirve. El umbral vive en el cliente a propósito: la base
+     devuelve el número exacto a cualquiera, así que esto es diseño y no
+     privacidad.
 
-**Esto resuelve de paso el SEC-007 del backlog.** Hoy `event_rsvps` tiene
-lectura pública, así que cualquiera puede sacar la lista de quién va a qué. La
-salida correcta no es taparlo, es exponer el **conteo agregado** en vez de las
-filas. Un problema de seguridad y una funcionalidad que salen con el mismo
-cambio.
+**Esto resolvió de paso el SEC-007 del backlog**, que era el objetivo: la
+política `using (true)` se borró y lo que quedó expuesto es el conteo agregado
+en vez de las filas. Un problema de seguridad y una funcionalidad que salieron
+con el mismo cambio. El detalle está en `docs/DATABASE.md`, sección "Quién va a
+un evento no es público".
 
-De paso, cuestionar si "Me interesa" y "Iré" tienen que ser **dos** botones.
-Duplican la decisión y ninguno hace nada. Solo se justifican si "interesado"
-sirve para engordar el conteo del punto 3.
+Lo que sigue abierto: **si "Me interesa" y "Iré" tienen que ser dos botones.**
+Duplican la decisión. Ahora al menos "interesado" sirve para algo —engorda el
+conteo público—, que era la única condición que esta línea les ponía para
+justificarse, así que la pregunta se puede dejar dormida.
 
 Y la idea que probablemente vale más que las tres: **avisar a la facultad cuando
 se publica un evento oficial.** El evento de campus no falla porque se te
@@ -1280,10 +1357,11 @@ flujo de salas de `docs/SALAS.md` §12.5):
   puesto, aceptar o rechazar **con motivo** —que le llega a quien la sugirió— y,
   al aceptar, trazar el área ahí mismo. Hoy eso son tres sitios distintos; por
   61 salas, 183 pantallas. El flujo entero está en `docs/SALAS.md` §12.5.
-- **Cerrar "mover un pin de sitio" en el servidor.** Es el único permiso que hoy
-  solo se comprueba en la interfaz (§2 de `DATABASE.md`), y el flujo de salas lo
-  convierte en una acción central. Mientras siga así, cualquiera con la clave
-  pública puede reubicar pines ajenos.
+- ~~**Cerrar "mover un pin de sitio" en el servidor.**~~ **Hecho el 2026-08-26**
+  (`trg_authorize_pin_move`). Era el último permiso que solo se comprobaba en la
+  interfaz. Matiz sobre lo que decía esta línea: los pines **ajenos** nunca
+  estuvieron expuestos —`pins_owner_update` exige `creator_id = auth.uid()`—;
+  lo que estaba abierto era que el autor moviera el suyo.
 - **Decidir si la cola es de moderador o de admin.** Hoy un moderador puede
   verificar una sala y dibujar su área, pero **no puede entrar al panel de
   administración**, que es donde estaría la cola. Está desarrollado en
@@ -1296,19 +1374,98 @@ flujo de salas de `docs/SALAS.md` §12.5):
 #### Todo lo de administrar vive en el panel, y en ningún otro sitio
 
 La regla que ordena el resto: **si es una herramienta de administración, está en
-`/admin`.** Hoy hay piezas sueltas por la aplicación, y esa dispersión es la
-razón de que nadie sepa qué existe.
+`/admin`.** Había piezas sueltas por la aplicación, y esa dispersión era la
+razón de que nadie supiera qué existe.
 
-El caso concreto: **el botón "Probar notificación" está para todo el mundo,
-invitados incluidos.** Vive en `shared/ui/Sidebar.tsx`, en una sección sin
-ninguna comprobación de rol. Matiz: dispara una notificación **local**
-(`new Notification`), no una push, así que no filtra nada del servidor — es una
-herramienta de depuración enviada a todos los usuarios. Sus textos además están
-clavados en español, sin i18n.
+**Recogidas el 2026-08-27**, con el rediseño del panel:
 
-Y **ya tiene casa**: `features/admin/PushTestPanel.tsx` existe. O sea que no hay
-que construir nada, hay que **quitar el botón del Sidebar**. Es de las
-correcciones más baratas del documento.
+- **La cola de denuncias se mudó a `/admin/moderacion`.** Vivía en
+  `/moderacion`, fuera del panel y dentro del `Layout` público — o sea con la
+  barra de navegación de estudiante debajo de una pantalla que solo ve un
+  administrador. El panel ni la mencionaba: su cifra de "reportes pendientes"
+  era un número muerto que no llevaba a ninguna parte. La ruta vieja redirige y
+  **conserva el `?report=`**, porque las notificaciones ya emitidas apuntan ahí
+  y la función SQL que las crea sigue generándolo.
+- **Los datos de una facultad salieron del editor** a `/admin/facultades`:
+  nombre, nombre en inglés, campus e imagen. Corregir una tilde ya no exige
+  abrir el editor de polígonos en un computador. La geometría **no** se toca
+  ahí, y el formulario reenvía `polygon`, `lat` y `lng` tal cual — mandar
+  `polygon: null` borraría un perímetro que no está en el repositorio.
+- **Las secciones del panel son rutas**, no un `useState`. Antes no había
+  enlace profundo, ni historial, ni "atrás": el panel entero era una sola URL.
+
+**Segunda tanda, el mismo 2026-08-27**, al rehacer el centro de avisos. Quedaban
+dos piezas de administración colgando del Sidebar:
+
+- **La cola de moderación salió de la pestaña de avisos.** Los avisos con
+  `audience: 'admin'` se pintaban ahí bajo un encabezado "Administración",
+  mezclados con los logros y las respuestas del foro de quien miraba. Es trabajo
+  del equipo, no correo personal. Ahora aparecen arriba de `/admin/moderacion`
+  como "lo que ha entrado desde la última visita" (`TeamInbox`), y **no se marcan
+  solos al entrar**: la razón de enseñarlos es saber qué es nuevo, y marcarlos al
+  montar borraría esa señal antes de leerla. La campana del mapa y el punto de la
+  pestaña dejaron de contarlos, porque prometían avisos que esa pestaña ya no
+  enseña.
+- **"Desbloquear mapa" salió de Ajustes** a `/admin/ajustes`, sección nueva del
+  panel. Estaba en la misma pantalla donde un estudiante elige idioma y tema,
+  escondido tras un `role === 'admin'`: ahí no lo encontraba quien lo necesitaba
+  y no pintaba nada para quien no. Con él se fue el estado del dispositivo —la
+  tarjeta de push y el endpoint registrado, que es el dato con el que se depura
+  de verdad "a mí no me llega"— y la prueba de push dirigida.
+- **El interruptor de push estaba escrito dos veces**, en `NotificationCenter` y
+  otra vez distinto en `BroadcastPanel`, con los textos ya separados. Ahora es
+  `PushCard` y lo usan los dos.
+- **Y el Sidebar se quedó con la PUERTA al panel**, que hasta entonces solo
+  existía enterrada en el perfil.
+
+El caso concreto, **cerrado el 2026-08-26**: el botón "Probar notificación"
+estaba para todo el mundo, invitados incluidos, en una sección de
+`shared/ui/Sidebar.tsx` sin ninguna comprobación de rol. Matiz: disparaba una
+notificación **local** (`new Notification`), no una push, así que no filtraba
+nada del servidor — era una herramienta de depuración enviada a todos los
+usuarios, con sus textos clavados en español. Ya tenía casa
+(`features/admin/PushTestPanel.tsx`), así que no hubo que construir nada: se
+quitó.
+
+Activar las notificaciones **no** se perdió con él. La pestaña de avisos del
+mismo Sidebar monta `NotificationCenter`, que ya trae el interruptor de verdad
+con todos sus estados —suscrito, denegado, no soportado, iOS sin instalar—. El
+botón que se quitó era el duplicado inútil, no el bueno.
+
+**Y destapó un bug que nadie estaba mirando.** Ese mismo trozo del Sidebar era
+el único sitio que montaba `usePushSubscription` a nivel de aplicación, y el
+comentario del hook decía que corría "app-wide vía el Sidebar siempre montado".
+El Sidebar **no** está siempre montado: hace `if (!isOpen) return null`. O sea
+que la resincronización al volver a primer plano —la que existe porque en iOS el
+endpoint de push rota en silencio y solo la página puede avisar del nuevo— solo
+corría mientras el panel estaba abierto. Se mudó a `App`, que sí está siempre
+montado, y el comentario ahora dice la verdad.
+
+#### El panel dejó de parecerse a otra aplicación ✅ (2026-08-27)
+
+Era la queja de fondo: el panel se construyó aparte y quedó con su propio
+dialecto. Tarjetas a `rounded-2xl` donde la app usa `rounded-3xl`, botones
+cuadrados donde la app usa cápsulas, `<select>` nativos sin estilar habiendo un
+`CustomSelect`, y **ninguna sección con título ni subtítulo** — algo que todas
+las pantallas públicas tienen. Ahora comparte el lenguaje: `AdminScreen` pone la
+cabecera canónica de `EventsPage`, y los estados vacíos, las píldoras de filtro
+y las tarjetas son los mismos.
+
+Tres cosas que salieron al medirlo en pantalla y que conviene no deshacer:
+
+- **La tabla de usuarios se parte en tarjetas por debajo de `lg`, no de `md`.**
+  A 768 px no cabe: la última columna —el selector de rol— quedaba recortada por
+  el `overflow` de la tarjeta, o sea inalcanzable. Se probó.
+- **`FilterPills` se alineó con las píldoras de Eventos** (cápsula, borde y fondo
+  blanco cuando está inactiva) y subió a 44 px de alto. Antes eran objetivos
+  táctiles de 29 px. Solo la usa el panel, así que el cambio no toca nada más.
+- **Borrar un pin pide confirmación.** Antes bastaba un toque, mientras que
+  cambiar un rol —bastante menos grave— sí preguntaba.
+
+Y "Push Test" pasó a ser **Difusión**, que es lo que siempre fue: su botón manda
+una notificación real al teléfono de todo el mundo. Ahora enseña a cuánta gente
+va a llegar antes de escribir nada, tiene vista previa y pide confirmación; la
+prueba de verdad —"¿me llega a mí?"— es un botón aparte que no molesta a nadie.
 
 #### Un panel de moderador, aparte del de administración
 
@@ -1327,37 +1484,101 @@ Dos maneras, y conviene elegir antes de construir:
 Lo que no sirve es lo de hoy: que el moderador tenga permisos y no tenga dónde
 ejercerlos.
 
-#### El panel tiene que funcionar en el teléfono. El editor de mapeo, no.
+#### El panel tiene que funcionar en el teléfono. El editor de mapeo, no. ✅ (2026-08-27)
 
 Dos casos que parecen el mismo y no lo son:
 
 - **`/admin/mapeo` es de computador, y está bien que lo sea.** Trazar polígonos
   con el dedo no es un problema de diseño responsive, es una herramienta que
   pide ratón. No hay que "arreglarlo" para móvil.
-- **El panel de administración sí debería funcionar en el teléfono.** Revisar una
-  denuncia, aprobar una sugerencia o mirar quién se registró son gestos de
-  lectura y de un toque. Hoy `AdminLayout` esconde etiquetas en pantallas
-  pequeñas (`hidden sm:`) pero no está pensado para móvil, y el frontend en
-  general necesita una pasada.
+- **El panel de administración sí funciona ya en el teléfono.** Revisar una
+  denuncia o mirar quién se registró son gestos de lectura y de un toque.
 
-**Y hay un caso mezclado que hay que resolver:** desde `/admin/mapeo` también se
-editan los **datos** de una facultad —nombre, y en el futuro el nombre de su
-centro de alumnos (§13.4)—, que no son trazado y no piden ratón. Conviene
-sacarlos del editor y llevarlos al panel, o al menos que existan en los dos
-sitios. Si no, cambiar un nombre obliga a sentarse en un computador.
+  Lo que estaba roto no era "faltan estilos": `hidden sm:` se llevaba en móvil
+  el branding, el nombre de quien miraba y las etiquetas de la navegación, y
+  dejaba un "VOLVER AL MA…" cortado junto a dos iconos mudos. Peor: la barra de
+  pestañas se desplazaba en horizontal pero Radix la recentraba en la activa, así
+  que **al arrastrarla para alcanzar otra pestaña te la quitaba de debajo del
+  dedo**. Era inutilizable, no incómoda.
 
-#### El centro de notificaciones
+  Ahora la identidad y el avatar no se esconden nunca, y las secciones se eligen
+  con un botón que abre la lista —el mismo recurso que usa el Foro para sus
+  canales bajo `lg:`—. La tabla de usuarios se convierte en tarjetas.
 
-Se rehace con lo de arriba, y hay dos cosas concretas:
+**Y el caso mezclado se resolvió:** los **datos** de una facultad —nombre,
+nombre en inglés, campus e imagen— salieron del editor a `/admin/facultades`.
+El nombre del centro de alumnos (§13.4) tendrá su sitio ahí cuando exista.
 
-- **Falta borrar.** `NotificationCenter.tsx` solo tiene "marcar todas como
-  leídas" (`useMarkAllNotificationsRead`). No hay forma de **vaciar** la lista, y
-  una lista que solo crece se vuelve inútil sola.
-- **La presentación.** Es de lo más flojo de la aplicación visualmente, y es
-  además donde va a caer todo lo nuevo: el karma con su motivo (§10.5), la
-  respuesta a una sugerencia de sala con su motivo (`docs/SALAS.md` §12.5) y los
-  avisos hacia el equipo. Rehacerlo antes de colgarle esas tres cosas, no
-  después.
+#### El centro de notificaciones ✅ (2026-08-27)
+
+Rehecho entero. Queda listo para lo que tenía que aguantar: el karma con su
+motivo (§10.5), la respuesta a una sugerencia de sala (`docs/SALAS.md` §12.5) y
+los avisos hacia el equipo.
+
+- **Vaciar de golpe, hecho.** `deleteAllNotifications` + `ConfirmDialog`. No hizo
+  falta migración: la política `notifications_delete_own` ya permitía el borrado
+  por lote, así que es un `delete().eq('user_id', …)` desde el cliente. Borrar
+  UNO sigue sin preguntar a propósito — un diálogo por fila hace insufrible
+  limpiar veinte.
+- **La presentación.** Agrupado por Hoy / Esta semana / Antes, un solo radio,
+  tipografía legible en vez de 9-11 px, icono y color por categoría, y todas las
+  cadenas por i18n en es/en. Los objetivos táctiles pasaron de 14 px a 44.
+- **Las mutaciones son optimistas** (`useNotifications.ts`). Antes cada una solo
+  invalidaba y esperaba al refetch, así que la fila borrada seguía ahí hasta que
+  respondía Supabase. En una lista donde se dan tres o cuatro toques seguidos,
+  esa espera se lee como que los botones no funcionan.
+
+**El parpadeo del interruptor de push, y por qué no era de pintura.** Al volver
+a la pestaña de avisos, el interruptor mostraba «Activar» medio segundo aunque
+estuvieran activadas. La causa: `usePushSubscription` guardaba el estado en un
+`useState` propio y **todos sus consumidores se desmontan** —el Sidebar hace
+`if (!isOpen) return null`, Radix desmonta la pestaña inactiva—, así que cada
+reaparición empezaba en `idle` y solo llegaba a `subscribed` tras
+`serviceWorker.ready`, `getSubscription()` y una RPC a Supabase. Encima `App`
+montaba una segunda instancia con su propio estado: dos verdades a la vez.
+
+Ahora vive en `pushStore.ts` (zustand), fuera de React. Tres cosas que conviene
+no deshacer, y que están comentadas en el archivo:
+
+1. `unknown` es un estado de verdad y pinta **esqueleto**, no «Activar».
+2. El último estado conocido se guarda en localStorage y siembra el store, así
+   ni la primera pintura tras recargar parpadea.
+3. `subscribed` lo decide el **navegador**; la sincronización con el servidor va
+   detrás y en segundo plano.
+
+**Y tres bugs de push que salieron al revisar la tubería entera:**
+
+- **El logo en blanco.** `badge` no es un icono a color: Android lo usa como
+  máscara de alfa y pinta de blanco todo pixel opaco. El badge era
+  `pwa-64x64.png`, un cuadrado rojo enteramente opaco, así que en la barra de
+  estado salía **una mancha blanca sólida**. Ahora hay
+  `public/notification-badge.png`: la silueta del pin sobre transparente.
+- **Tocar la notificación no hacía nada** en la PWA instalada de iOS.
+  `notificationclick` llamaba a `existingWindow.navigate()` **antes** del
+  `focus()`, y `navigate()` lanza cuando el cliente no está controlado por el
+  service worker — la excepción se llevaba por delante también el enfoque.
+  Ahora enfoca primero, y si `navigate()` falla abre ventana nueva.
+- **Un aviso de difusión llegaba disfrazado de logro.**
+  `admin_broadcast_push_notification` guardaba `type='achievement'`,
+  `category='profile'` y `url='/admin'` porque era lo que cabía en los CHECK.
+  Consecuencia: un corte de agua se le mezclaba a cada estudiante entre sus
+  insignias al filtrar por "Perfil", y al tocarlo lo mandaba a una pantalla de
+  la que rebota al mapa. Migración `20260827000000`: `announcement`/`system` y
+  `url = '/'`.
+
+**Probar el push ya no despierta a la universidad entera.** La única vía era la
+difusión, que recorre todas las suscripciones, así que "¿me llega a mí?" le
+sonaba el teléfono a todo el mundo y en la práctica no se probaba nunca. La
+misma migración añade `admin_send_test_push_to_self()`, y el botón vive en
+`/admin/ajustes`.
+
+**El `Dialog` compartido no se veía.** Era `z-40`/`z-50`, por debajo del Sidebar
+(2000), `CreatePinModal` (3000), el aviso emergente (3500) y el visor de fotos
+(4000): un diálogo abierto desde cualquiera de ellos existía en el DOM, respondía
+al teclado y al ratón, y quedaba **pintado detrás**. No había saltado porque
+ninguno abría diálogos —el tutorial y "Sobre nosotros" se abren después de cerrar
+el Sidebar—; lo destapó la confirmación de "Vaciar todo". Ahora es
+`z-4500`/`z-4510`, por encima de todo salvo el Toast.
 
 ### 13.3 Buscar dentro de una facultad, no solo facultades
 

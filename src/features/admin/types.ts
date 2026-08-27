@@ -1,7 +1,5 @@
 import type { Role, PinType } from '@/shared/types/database'
 
-export type AdminTab = 'dashboard' | 'users' | 'content' | 'push' | 'activity'
-
 export interface DashboardStats {
   totalUsers: number
   roleCounts: Record<Role, number>

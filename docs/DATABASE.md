@@ -77,7 +77,7 @@ y el rechazo ocurre en el alta, no en la interfaz.
 | Extender el plazo de un pin | ❌ | ❌ | ✅ | ✅ | RPC `extend_pin_ttl` |
 | **Trazar el mapeo interior** (edificios, plantas, áreas) | ❌ | ❌ | ✅ | ✅ | `buildings_write`, `building_floors_write`, `areas_write` |
 | Cargar planos de planta | ❌ | ❌ | ✅ | ✅ | `floor_plans_admin` (el nombre engaña: es de moderador) |
-| Mover un pin de sitio | ❌ | ❌ | ✅ | ✅ | solo en la interfaz (`can()`), **no** en la base |
+| Mover un pin de sitio | ❌ | ❌ | ✅ | ✅ | trigger `trg_authorize_pin_move` |
 | **Crear, editar o borrar una facultad** (y su perímetro) | ❌ | ❌ | ❌ | ✅ | `faculties_admin` |
 | **Subir fotos de una facultad, edificio o área** | ❌ | ❌ | ❌ | ✅ | `place_photos_admin` |
 | Entrar al panel de administración | ❌ | ❌ | ❌ | ✅ | cada RPC `admin_*` comprueba el rol |
@@ -85,6 +85,7 @@ y el rechazo ocurre en el alta, no en la interfaz.
 | Cambiar el rol de otro | ❌ | ❌ | ❌ | ✅ | RPC `admin_set_user_role` |
 | Ver y resolver denuncias | ❌ | ❌ | ❌ | ✅ | `content_reports_read_own_or_admin`, RPC `claim_moderation_report` y `resolve_moderation_report` |
 | Enviar una notificación push a todo el mundo | ❌ | ❌ | ❌ | ✅ | RPC `admin_broadcast_push_notification` |
+| Mandarse una push de prueba a uno mismo | ❌ | ❌ | ❌ | ✅ | RPC `admin_send_test_push_to_self` |
 
 **El eje que separa los dos roles es "contenido y mapa" contra "plataforma y
 personas".** Un moderador manda sobre lo que se ve en el mapa: verifica, edita,
@@ -106,7 +107,9 @@ facultad, esas dos filas quedan al revés de lo que se espera.
 
 La columna de la derecha importa más de lo que parece. Un permiso que solo se
 aplica en la interfaz es una sugerencia: cualquiera con la clave pública del
-proyecto puede llamar la API directamente. Mover un pin es hoy el único caso.
+proyecto puede llamar la API directamente. **Ya no queda ninguno así**: mover un
+pin era el último, y se cerró el 2026-08-26 con `trg_authorize_pin_move` (ver
+más abajo, en `pins`).
 
 ### Las tres capas de seguridad
 
@@ -212,7 +215,7 @@ cambiar, así que un error ahí sería solo ruido.
 | `campuses` | Los 3 campus con sus coordenadas | seed |
 | `faculties` | 17 facultades y edificios, con su perímetro en GeoJSON | seed / **admin desde `/admin/mapeo`** |
 | `careers` | 14 carreras, colgando de una facultad | seed |
-| `categories` | 25 categorías de pin: color, icono SVG y `ttl_hours` | seed |
+| `categories` | 29 categorías de pin: color, icono SVG y `ttl_hours` | seed |
 | `badges` | Las 6 insignias | `badges.sql` |
 | `admin_emails` | Correos que reciben rol admin al registrarse | a mano |
 | `floor_plans` | Planos de interior en GeoJSON | seed / moderador |
@@ -333,6 +336,34 @@ trigger no arregla las filas que ya estaban mal — la migración
 `20260810000000_pin_floor_server_validation.sql` trae al final la consulta que
 las lista.
 
+#### Mover un pin de sitio lo autoriza el servidor
+
+Cerrado el 2026-08-26, y era el último permiso del proyecto que vivía solo en la
+interfaz. `can(role, 'pin.update.location')` pide moderador y `PinDetail`
+esconde el botón, pero esconder un botón no impide llamar a la API. El hueco
+concreto: `pins_owner_update` deja al autor escribir su fila y
+`protect_pin_sensitive_fields` protege `building_id` y `area_id` —los derivados
+del punto— pero **no** `lat` ni `lng`. Un `PATCH` movía el pin de manzana y le
+dejaba colgando el edificio viejo.
+
+Lo cierra **`trg_authorize_pin_move`**, y tiene tres detalles que conviene no
+deshacer sin querer:
+
+- **Es un trigger aparte y no dos líneas más en `protect_pin_sensitive_fields`.**
+  Por el orden alfabético de los `BEFORE`: `prevent` va antes que `protect`, así
+  que mover a un punto ocupado habría respondido `PIN_LOCATION_OCCUPIED` —un
+  error sobre un movimiento que se iba a rechazar igual— en vez de decir que
+  falta el permiso. `authorize` ordena antes que los dos.
+- **Solo se queja si el punto cambia de verdad.** El trigger está acotado a
+  `update of lat, lng`, pero eso también dispara cuando se reescribe el mismo
+  valor.
+- **Exime a `service_role`, al revés que `trg_validate_pin_floor`.** No es una
+  incoherencia: una planta inexistente está mal la escriba quien la escriba,
+  mientras que "quién puede mover un pin" no significa nada frente a la llave
+  que **es** la administración — bloquearla solo haría fallar el mantenimiento a
+  mano. `anon` no se cuela por esa exención, porque las dos políticas de
+  `UPDATE` sobre `pins` exigen ser el autor o ser moderador.
+
 `floor_plans` guarda planos de interior como imagen georreferenciada
 (`image_overlay` y `bounds`). Las columnas existen desde el principio pero
 todavía no las usa nadie: están previstas para poder calcar áreas sobre el plano
@@ -360,7 +391,7 @@ nombre del autor de un pin o de un hilo.
 | `pin_schedule_items` | Programa opcional de un evento: bloques horarios. Sin política de `update`, la interfaz reemplaza el set completo |
 | `pin_votes` | Un voto por persona y pin, `+1` o `-1` |
 | `favorites` | Marcadores personales |
-| `event_rsvps` | Asistencia a eventos. Un trigger comprueba que el pin sea de tipo `event` |
+| `event_rsvps` | Asistencia a eventos. Un trigger comprueba que el pin sea de tipo `event`. **No se lee directamente**: ver más abajo |
 | `pin_creation_events` | Bitácora del límite diario. Interna, sin políticas |
 | `storage_cleanup_queue` | Archivos pendientes de borrar del bucket. Interna, sin políticas |
 
@@ -370,6 +401,39 @@ desincronicen depende de un mecanismo concreto: **solo las RPC `vote_pin` y
 `vote_thread` pueden escribirlos.** Antes de tocarlos ponen una marca de sesión
 (`udpmap.vote_rpc`) que el trigger `protect_vote_counters` exige ver. Cualquier
 otro intento de cambiarlos lanza una excepción.
+
+### Quién va a un evento no es público
+
+Corregido el 2026-08-26 (era el SEC-007 del backlog). `event_rsvps_read` era
+`using (true)`: cualquiera con la clave anon —que viaja en el bundle— podía
+descargar la tabla entera y saber a qué eventos va cada persona. Es de las pocas
+cosas del proyecto que son datos personales de verdad; un voto en el foro es una
+opinión, esto es dónde va a estar alguien y a qué hora.
+
+**La salida no fue taparlo, fue cambiar lo que se expone.** Cerrar la lectura y
+ya está habría dejado la funcionalidad peor de lo que estaba: marcar "Iré"
+guardaba una fila y no cambiaba nada en pantalla, y quien organiza una feria no
+se enteraba de si iban 5 o 50. Así que la tabla se cerró y quedaron las dos
+lecturas que sí tienen sentido, cada una con su dueño:
+
+| Función | Quién | Qué devuelve |
+|---|---|---|
+| `event_rsvp_counts(pines[])` | cualquiera | Solo el número, por evento. Máximo 200 pines por llamada |
+| `event_attendees(pin)` | quien creó el evento, y admin | La lista con nombre y avatar |
+
+Las dos son `SECURITY DEFINER` porque leen una tabla que ya nadie lee
+directamente, así que la autorización va dentro de la función. **Moderador no
+basta para `event_attendees`, y es a propósito**: el eje de ese rol es
+"contenido y mapa", y una lista de asistentes no es contenido.
+
+No hizo falta una política de lectura para el organizador porque
+`event_rsvps_all_own` es `for all` —incluye el `SELECT` de las filas propias—,
+así que saber a qué eventos vas tú nunca dependió de la política pública.
+
+El **umbral** con el que la interfaz decide desde qué número enseñar el conteo
+(`RSVP_PUBLIC_THRESHOLD`) vive en el cliente y no aquí, porque no es privacidad:
+la base devuelve el número exacto a cualquiera. Es que "2 personas van" dice
+"esto no le importa a nadie" más fuerte que no decir nada.
 
 ### Galerías de lugares
 
@@ -428,7 +492,22 @@ algo ocurre → trigger → create_notification() → fila en notifications
 hace `on conflict do nothing`: es lo que impide avisar dos veces del mismo hecho.
 `authenticated` no tiene `INSERT` sobre la tabla — solo `SELECT`, `DELETE` y
 `UPDATE` limitado a la columna `read_at`, que es justo lo que hace falta para
-marcar como leída.
+marcar como leída. El `DELETE` con la política `notifications_delete_own` es lo
+que permite que "Vaciar todo" del centro de avisos sea un `delete().eq('user_id',
+…)` desde el cliente, sin RPC.
+
+**Un aviso de difusión no es un logro** (migración `20260827000000`). Los avisos
+que manda `/admin/difusion` tienen su propio `type = 'announcement'` y
+`category = 'system'`. Antes reutilizaban `'achievement'`/`'profile'` porque era
+lo que cabía en los CHECK, y eso tenía tres consecuencias que se veían en la
+aplicación: un corte de agua llegaba disfrazado de logro, se mezclaba entre las
+insignias al filtrar por "Perfil", y su `url` era `/admin` — o sea que tocarlo
+mandaba al estudiante a una pantalla de la que rebota al mapa. Ahora apuntan a
+`/`.
+
+La misma migración añade `admin_send_test_push_to_self()`. Existe porque probar
+el push obligaba a usar la difusión, que recorre **todas** las suscripciones:
+comprobar "¿me llega a mí?" le hacía sonar el teléfono a la universidad entera.
 
 ---
 
@@ -458,6 +537,8 @@ una tabla o función. Dos no lo hacen — ver la sección 11.
 | `vote_thread(hilo, valor)` | estudiante+ | Igual, en el foro |
 | `create_content_report(...)` | estudiante+ | Denuncia contenido |
 | `register_push_subscription(...)` | estudiante+ | Registra el navegador para notificaciones |
+| `event_rsvp_counts(pines[])` | cualquiera | Cuánta gente va a cada evento. Solo el número |
+| `event_attendees(pin)` | quien organiza / admin | Quién va, con nombre. La tabla ya no se lee directamente |
 | `extend_pin_ttl(pin, horas)` | moderador+ | Alarga el plazo de un pin no permanente |
 | `verify_and_make_permanent(pin, verificador)` | moderador+ | Verifica y premia al autor |
 | `unverify_pin(pin, horas)` | moderador+ | Deshace la verificación y devuelve los 25 de karma |
@@ -465,7 +546,8 @@ una tabla o función. Dos no lo hacen — ver la sección 11.
 | `resolve_moderation_report(id, acción, nota)` | admin | La resuelve, borrando el contenido o descartándola |
 | `admin_set_user_role(usuario, rol)` | admin | Cambia el rol de otro. No puede cambiar el propio |
 | `admin_count_push_subscribers()` | admin | Cuántos navegadores suscritos |
-| `admin_broadcast_push_notification(t, c)` | admin | Notificación de prueba a todos |
+| `admin_broadcast_push_notification(t, c)` | admin | Difunde un aviso a todo el que tenga push activado |
+| `admin_send_test_push_to_self()` | admin | La misma tubería, pero solo a quien la llama |
 
 ### Las internas
 
@@ -488,6 +570,11 @@ puede desencadenar karma, insignias, notificaciones y envíos push.
 **Al crear un pin:** se comprueba que la coordenada esté libre, y después
 `on_pin_badge` revisa si el autor llegó a 5 pines (insignia Explorador) o, si
 es un evento, a 2 eventos (Anfitrión).
+
+**Al mover un pin:** `trg_authorize_pin_move` comprueba que quien lo mueve sea
+moderador antes que nada, y después se vuelve a comprobar que la coordenada de
+destino esté libre y que la planta que el pin ya traía exista en el edificio
+nuevo.
 
 **Al votar un pin o un hilo:** `on_*_vote_karma` ajusta el karma del autor
 —`+10` por un voto positivo, `-2` por uno negativo, y 12 puntos de diferencia
@@ -799,3 +886,6 @@ arregló. Se deja anotado para que nadie vuelva a tropezar buscándolo.
 | Un reintento al subir fotos las duplicaba | Subida atómica en `src/features/pins/api.ts` |
 | La regla de extender o verificar vivía en un componente | Se eliminó: es una decisión por pin, no por categoría |
 | La Edge Function `expire-pins`, código muerto | Borrada del repositorio; nunca llegó a estar desplegada |
+| La planta de un pin podía ser cualquier número | `20260810000000` — trigger `trg_validate_pin_floor` |
+| Mover un pin solo se comprobaba en la interfaz | `20260826000100` — trigger `trg_authorize_pin_move` |
+| Quién va a qué evento lo podía leer cualquiera (SEC-007) | `20260826000200` — tabla cerrada + `event_rsvp_counts` y `event_attendees` |

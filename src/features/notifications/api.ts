@@ -2,8 +2,10 @@ import { supabase } from '@/shared/lib/supabase'
 import type { AppNotification, NotificationCategory, Role } from '@/shared/types/database'
 
 const demoRead = new Set<string>()
+const deletedDemoIds = new Set<string>()
 
-function demoNotifications(userId: string, role: Role): AppNotification[] {
+/** El catálogo completo del modo demo, sin filtrar por lo borrado. */
+function demoSeed(userId: string, role: Role): AppNotification[] {
   const now = Date.now()
   const personal: AppNotification[] = [
     {
@@ -30,6 +32,15 @@ function demoNotifications(userId: string, role: Role): AppNotification[] {
       read_at: demoRead.has('demo-event') ? new Date().toISOString() : null,
       created_at: new Date(now - 2 * 60 * 60_000).toISOString(),
     },
+    {
+      id: 'demo-announcement', user_id: userId, actor_id: null,
+      type: 'announcement', category: 'system', audience: 'personal',
+      title: 'Corte de agua en Ejército 441',
+      body: 'Los baños del segundo piso estarán cerrados hasta las 16:00.',
+      url: '/', payload: {}, dedupe_key: 'announcement:demo',
+      read_at: demoRead.has('demo-announcement') ? new Date().toISOString() : null,
+      created_at: new Date(now - 26 * 60 * 60_000).toISOString(),
+    },
   ]
 
   if (role === 'admin') {
@@ -37,12 +48,16 @@ function demoNotifications(userId: string, role: Role): AppNotification[] {
       id: 'demo-admin-report', user_id: userId, actor_id: null,
       type: 'moderation_report', category: 'moderation', audience: 'admin',
       title: 'Nuevo contenido reportado', body: 'Hay un reporte esperando revisión.',
-      url: '/moderacion', payload: { reportId: 'demo-report' }, dedupe_key: 'moderation_report:demo',
+      url: '/admin/moderacion', payload: { reportId: 'demo-report' }, dedupe_key: 'moderation_report:demo',
       read_at: demoRead.has('demo-admin-report') ? new Date().toISOString() : null,
       created_at: new Date(now - 5 * 60_000).toISOString(),
     })
   }
-  return personal.filter((n) => !deletedDemoIds.has(n.id))
+  return personal
+}
+
+function demoNotifications(userId: string, role: Role): AppNotification[] {
+  return demoSeed(userId, role).filter((n) => !deletedDemoIds.has(n.id))
 }
 
 export async function fetchNotifications(userId: string, role: Role): Promise<AppNotification[]> {
@@ -89,10 +104,7 @@ export async function toggleNotificationRead(notificationId: string, currentRead
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
   if (!supabase) {
-    demoRead.add('demo-achievement')
-    demoRead.add('demo-forum')
-    demoRead.add('demo-event')
-    demoRead.add('demo-admin-report')
+    for (const notification of demoSeed(userId, 'admin')) demoRead.add(notification.id)
     return
   }
   const { error } = await supabase
@@ -102,8 +114,6 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
     .is('read_at', null)
   if (error) throw error
 }
-
-const deletedDemoIds = new Set<string>()
 
 export async function deleteNotification(notificationId: string): Promise<void> {
   if (!supabase) {
@@ -117,16 +127,49 @@ export async function deleteNotification(notificationId: string): Promise<void> 
   if (error) throw error
 }
 
-export async function markCategoryRead(category: NotificationCategory): Promise<void> {
+/**
+ * Vaciar la bandeja de golpe.
+ *
+ * El filtro por `user_id` es redundante con la política `notifications_delete_own`
+ * —RLS ya impide tocar las de otro—, pero va explícito a propósito: un DELETE
+ * sin `where` contra una tabla compartida no debería depender de que la política
+ * esté bien puesta para no ser una catástrofe.
+ */
+export async function deleteAllNotifications(userId: string, role: Role): Promise<void> {
   if (!supabase) {
-    for (const notification of demoNotifications('demo', 'admin')) {
+    for (const notification of demoSeed(userId, role)) {
+      if (notification.audience === 'personal') deletedDemoIds.add(notification.id)
+    }
+    return
+  }
+  // `audience = 'personal'` NO es cosmético. El botón vive bajo "Tus avisos",
+  // enseña un recuento de avisos personales y promete borrar ESE número. Sin
+  // este filtro el DELETE se llevaba también los de `audience: 'admin'` —la
+  // cola de denuncias del equipo, que ni se cuenta ni se enseña ahí—, así que
+  // un administrador que vaciaba su bandeja destruía de paso avisos de trabajo
+  // que nunca vio mencionados en la confirmación.
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('user_id', userId)
+    .eq('audience', 'personal')
+  if (error) throw error
+}
+
+export async function markCategoryRead(userId: string, category: NotificationCategory): Promise<void> {
+  if (!supabase) {
+    for (const notification of demoNotifications(userId, 'admin')) {
       if (notification.category === category) demoRead.add(notification.id)
     }
     return
   }
+  // El `user_id` es redundante con la política RLS, igual que en el borrado
+  // masivo. Va explícito por el mismo motivo: un UPDATE cuyo alcance depende
+  // solo de que la política esté bien puesta es una bomba esperando un descuido.
   const { error } = await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
+    .eq('user_id', userId)
     .eq('category', category)
     .is('read_at', null)
   if (error) throw error

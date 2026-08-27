@@ -6,12 +6,14 @@ import { CalendarDays, CalendarX2, Plus, Radio, X } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { usePins } from '@/features/pins/usePins'
 import { fetchScheduleCounts } from '@/features/pins/api'
-import { useUserRSVPs, useSetRSVP } from './useEvents'
+import { useUserRSVPs, useSetRSVP, useEventRsvpCounts } from './useEvents'
 import { useGuard } from '@/features/auth/useGuard'
 import { useNowTick } from '@/shared/lib/useNowTick'
 import { eventPhase, eventTouchesDay } from '@/shared/utils/eventState'
 import { EventCard } from './EventCard'
 import { EventCalendarDialog } from './EventCalendarDialog'
+import { EventAttendeesDialog } from './EventAttendeesDialog'
+import { useAuthStore } from '@/features/auth/authStore'
 
 import type { Pin } from '@/shared/types/database'
 
@@ -40,6 +42,8 @@ export function EventsPage() {
   const [range, setRange] = useState<Range>('all')
   const [pickedDay, setPickedDay] = useState<Date | null>(null)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [attendeesOf, setAttendeesOf] = useState<Pin | null>(null)
+  const userId = useAuthStore((s) => s.user?.id)
 
   // usePins ya descarta lo vencido y un evento vence al terminar, así que aquí
   // solo llegan eventos por venir o en curso: no hace falta filtrar el pasado.
@@ -57,6 +61,7 @@ export function EventsPage() {
     queryFn: () => fetchScheduleCounts(eventIds),
     enabled: eventIds.length > 0,
   })
+  const { data: rsvpCounts = {} } = useEventRsvpCounts(eventIds)
 
   useEffect(() => {
     const linkedEventId = searchParams.get('event')
@@ -203,8 +208,11 @@ export function EventsPage() {
                       userStatus={rsvpOf(event.id)}
                       scheduleCount={scheduleCounts[event.id] ?? 0}
                       now={now}
+                      rsvpCount={rsvpCounts[event.id]}
+                      isOrganizer={Boolean(userId) && event.creator_id === userId}
                       onSelect={handleSelectEvent}
                       onRSVPChange={handleRSVPChange}
+                      onShowAttendees={setAttendeesOf}
                     />
                   ))}
                 </div>
@@ -286,8 +294,11 @@ export function EventsPage() {
                           userStatus={rsvpOf(event.id)}
                           scheduleCount={scheduleCounts[event.id] ?? 0}
                           now={now}
+                          rsvpCount={rsvpCounts[event.id]}
+                          isOrganizer={Boolean(userId) && event.creator_id === userId}
                           onSelect={handleSelectEvent}
                           onRSVPChange={handleRSVPChange}
+                          onShowAttendees={setAttendeesOf}
                         />
                       ))}
                     </div>
@@ -305,6 +316,12 @@ export function EventsPage() {
         events={events}
         selectedDay={pickedDay}
         onSelectDay={setPickedDay}
+      />
+
+      <EventAttendeesDialog
+        pinId={attendeesOf?.id ?? null}
+        eventTitle={attendeesOf?.title ?? ''}
+        onClose={() => setAttendeesOf(null)}
       />
     </div>
   )

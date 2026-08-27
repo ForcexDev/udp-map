@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Polygon, Position } from 'geojson'
 import { openRing, polygonFromRing, rectangleFrom } from '@/shared/utils/geometry'
+import type { CatalogRoom } from '@/shared/utils/roomCatalog'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Estado del editor de mapeo. Solo lo volátil: qué está seleccionado, qué
@@ -21,7 +22,13 @@ import { openRing, polygonFromRing, rectangleFrom } from '@/shared/utils/geometr
 // sincronía tras una edición libre no tiene una respuesta correcta.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type Tool = 'select' | 'rect' | 'polygon' | 'trace'
+export type Tool = 'select' | 'rect' | 'polygon' | 'trace' | 'room'
+
+// La herramienta 'room' es la del importador de salas: no dibuja nada, solo
+// espera un clic para colocar el pin de la sala que se eligió en la lista.
+// Existe como herramienta y no como un modo aparte para que valga la regla que
+// ya tiene el editor — cambiar de herramienta cancela lo que estuvieras
+// haciendo — y no haya dos estados de "estoy a media acción" que sincronizar.
 
 export type Draft =
   | {
@@ -140,6 +147,10 @@ interface MappingEditorState {
 
   tool: Tool
   setTool: (tool: Tool) => void
+
+  /** La sala del catálogo que espera un clic en el mapa para nacer como pin. */
+  pendingRoom: CatalogRoom | null
+  setPendingRoom: (room: CatalogRoom | null) => void
 
   draft: Draft | null
   setDraft: (draft: Draft | null) => void
@@ -260,7 +271,15 @@ export const useMappingEditor = create<MappingEditorState>((set, get) => {
       // Cambiar de herramienta descarta lo que se estuviera trazando: dejarlo a
       // medias entre dos modos es la vía rápida a un estado imposible.
       clearDraft()
-      set({ tool })
+      // Y descarta la sala pendiente: si no, salir del importador a dibujar un
+      // polígono dejaría una sala "esperando clic" que reaparecería al volver.
+      set({ tool, pendingRoom: tool === 'room' ? get().pendingRoom : null })
+    },
+
+    pendingRoom: null,
+    setPendingRoom: (room) => {
+      clearDraft()
+      set({ pendingRoom: room, tool: room ? 'room' : 'select' })
     },
 
     draft: null,

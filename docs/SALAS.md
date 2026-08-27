@@ -32,8 +32,10 @@ GET https://salas.docencia-eit.cl/data.json
 - `Access-Control-Allow-Origin: *` → **se puede consultar desde el navegador**,
   sin proxy y sin Edge Function.
 - Trae `Last-Modified` y `ETag`, así que se puede revalidar barato.
-- En el corte del 2026-08-10: **799 registros, 61 salas distintas, 12 edificios**
-  (contando los que solo aparecen en el listado estático de la §5).
+- En el corte del **2026-08-26**: **1304 registros, 82 salas distintas, 11
+  edificios**. El corte anterior (2026-08-10) traía 799 registros y 61 salas: el
+  archivo se republica, así que **cualquier número de este documento es una
+  foto, no una constante**. La receta para rehacerlo está en la §7.
 
 Es el `data.json` que consume `salas.docencia-eit.cl`, la web de "salas vacías"
 de la FIC. La forma del JSON delata que aguas arriba hay una API GraphQL:
@@ -63,9 +65,16 @@ de la FIC. La forma del JSON delata que aguas arriba hay una API GraphQL:
 - **Solo cubre la FIC.** Son los ramos de la FIC, no todos los del campus. Los
   ramos de la FIC ocupan salas de otras facultades (§4), pero de esas facultades
   solo vemos las salas que la FIC usa, no su horario completo.
-- **Un ~4 % de las filas viene incompleto:** 30 sin `course` y 38 sin `teacher`.
-  Son secciones de laboratorio, sobre todo en `E441.5. LAB INF` y
-  `E441.5. LAB TEL`. Se pueden usar para "ocupada", no para "qué se dicta".
+- **Las filas incompletas cambian de un corte a otro, y mucho.** El 2026-08-10
+  eran 30 sin `course` y 38 sin `teacher` (~4 %). El 2026-08-26 no falta
+  **ningún** `course` y faltan **360** `teacher` — el 28 %. O sea que la
+  completitud del archivo no es una propiedad estable en la que apoyarse: sirven
+  para "ocupada", no para "quién la dicta".
+- **Diez filas no dicen en qué sala están.** Siete traen `LOC` y tres el campo
+  vacío. `LOC` no es basura: es una sala real del subterráneo de `V432` que
+  aparece en el listado estático de la §5.2, escrita sin el prefijo de edificio
+  y planta. Se descartan al derivar el catálogo, porque sin planta no se puede
+  colocar el pin, pero conviene saber que esa sala existe.
 - **Antes de depender de esto en producción, hay que hablar con quien la
   mantiene** (Facultad de Ingeniería y Ciencias / los estudiantes de
   `open-source-udp`). Que un archivo sea accesible no lo hace un permiso, y aquí
@@ -349,32 +358,62 @@ mano en `/admin/mapeo`.
 
 ## 5. El catálogo de salas
 
-### 5.1 Salas con clase en el corte del 2026-08-10
+### 5.1 Salas con clase en el corte del 2026-08-26
 
-Entre paréntesis, cuántos bloques semanales ocupa. Un número alto es señal de
-sala grande y muy usada; un `1` es señal de sala que casi no se usa —o de un
-dato mal cargado.
+**82 salas en 11 edificios.** Entre paréntesis, cuántos bloques semanales ocupa.
+Un número alto es señal de sala grande y muy usada; un `1` es señal de sala que
+casi no se usa —o de un dato mal cargado.
+
+Este listado **no se mantiene a mano**: sale de correr la receta de la §7. Si
+alguna vez discrepa del archivo, manda el archivo.
 
 | Edificio | Piso | Salas |
 |---|---|---|
-| E278A | 4 | S402 (19), S403 (15) |
-| E278B | 4 | S402 (5) |
-| E306 | 1 | S101 (18), S102 (6), S103 (6), S104 (4), S107 (18), S108 (2) |
-| E306 | 2 | L202 (2), L203 (4), S204 (18), S205 (4), S206 (4), S207 (2), S208 (16), S210 (2), S212 (2) |
-| E306 | 3 | S302 (2), S307 (6) |
-| E326 | 3 | S304 (2) |
-| E441 | −1 | **AU** (11) — auditorio |
-| E441 | 1 | S101 (22), S102 (10), S105 (9), S106 (24) |
-| E441 | 2 | S201 (22), S203 (3), S204 (20), S205 (18), S206 (22), S207 (24) |
-| E441 | 3 | S302 (19), S303 (22), S304 (24) |
-| E441 | 4 | L.D (17), L.O (2), L.U (14), S401 (13), S402 (19), S403 (25) |
-| E441 | 5 | LAB INF (14), LAB TEL (21) |
-| M253A | 5 | S503 (1) |
-| M253A | 6 | L601 (18), L602 (22), L603 (16) |
-| V432 | −1 | **SIM** (13) — laboratorio de computadores |
-| V432 | 3 | **AU** (13) — auditorio, S312 (20), S313 (22), S314 (10), S315 (13) |
-| V432 | 4 | S412 (20), S413 (18), S414 (17), S415 (17) |
-| V432 | 5 | S512 (1), S513 (20), S514 (10), S515 (16) |
+| E278A | 4 | S402 (25), S403 (22), S404 (2) |
+| E278B | 4 | S402 (6), S403 (1) |
+| E306 | 1 | S101 (18), S102 (3), S103 (5), S104 (4), S107 (24), S108 (5) |
+| E306 | 2 | L201 (1), L202 (7), L203 (5), S204 (23), S205 (4), S206 (3), S207 (2), S208 (24), S210 (2), S212 (5) |
+| E306 | 3 | S307 (7), S310 (1) |
+| E326 | 2 | S202 (1), S203 (1), S204 (1) |
+| E326 | 3 | S303 (1), S304 (2) |
+| E333 | −3 | S301 (3) |
+| E333 | 2 | L201 (1) |
+| E333 | 3 | L301 (1) |
+| E333 | 5 | S502 (1) |
+| E333 | 6 | S601 (2) |
+| E441 | −1 | **AU** (14) — auditorio |
+| E441 | 1 | S101 (30), S102 (10), S105 (15), S106 (34) |
+| E441 | 2 | S201 (31), S203 (7), S204 (25), S205 (29), S206 (32), S207 (29) |
+| E441 | 3 | S302 (28), S303 (30), S304 (29) |
+| E441 | 4 | L.D (21), L.O (11), L.U (22), S401 (24), S402 (27), S403 (31) |
+| E441 | 5 | EE50 (3), LAB INF (15), LAB TEL (20) |
+| M253A | 3 | S308 (1) |
+| M253A | 5 | S503 (4) |
+| M253A | 6 | L601 (27), L602 (27), L603 (25) |
+| M253B | 4 | S402 (1) |
+| V210 | 2 | L201 (7) |
+| V275 | 1 | S107 (1) |
+| V275 | 2 | S202 (1) |
+| V275 | 3 | L301 (1) |
+| V432 | −1 | ERP (3), **FIS** (147) — ver abajo, **SIM** (23) — laboratorio de computadores |
+| V432 | 3 | **AU** (19) — auditorio, S312 (34), S313 (32), S314 (14), S315 (21) |
+| V432 | 4 | S412 (30), S413 (29), S414 (19), S415 (20) |
+| V432 | 5 | S512 (1), S513 (29), S514 (22), S515 (26) |
+
+**Tres cosas de este corte que no estaban en el anterior:**
+
+- **`V432.-1.FIS` con 147 bloques** es un valor atípico enorme: la siguiente
+  más ocupada tiene 34. Con siete bloques al día y cinco días, el techo de una
+  sala son 35. **147 no cabe en una semana**, así que o son secciones apiladas
+  en el mismo bloque —un laboratorio con varios grupos a la vez— o es un dato
+  cargado mal. No se puede usar para decir "esta sala está ocupada" sin
+  entenderlo primero.
+- **`E333.-3.S301`**: una sala numerada como del piso 3 declarada en el −3. El
+  número de sala y la planta del código **no tienen por qué coincidir**, y aquí
+  se contradicen. Antes de mapearla hay que ir a mirar.
+- **Aparecen `E333`, `V210`, `V275` y `M253B`**, que en el corte anterior solo
+  estaban en el listado estático de la §5.2. Su presencia aquí confirma que
+  existen; no dice cuántas salas más tienen.
 
 ### 5.2 Salas que existen pero hoy no tienen clase de la FIC
 
@@ -546,6 +585,17 @@ node -e 'const r=require("./salas.json").data.allSalasUdps.edges.map(e=>e.node),
 Fíjate en el `indexOf(".")` doble y el `.trim()`: es la regla de la §2, y es todo
 lo que separa un catálogo correcto de uno que pierde los tres laboratorios.
 
+**Desde el 2026-08-26 esa regla vive en el repositorio y no solo en esta línea
+de shell:** `shared/utils/roomCatalog.ts` (`buildRoomCatalog`) hace lo mismo con
+pruebas, y `features/mapping/salasEit.ts` es quien descarga el archivo. Si hay
+que tocar la regla, se toca ahí; el comando de arriba queda para mirar el
+catálogo desde la terminal sin abrir la aplicación.
+
+Y un aviso que costó encontrar: `parseRoomCode` exigía que el prefijo del
+edificio terminara en dígito, así que **`E278A`, `E278B`, `M253A` y `M253B` no
+parseaban** y sus once salas se quedaban sin planta. Son direcciones con dos
+entradas en el mismo número (§3), no erratas.
+
 ---
 
 ## 8. Cómo esto se convierte en pines
@@ -651,19 +701,31 @@ respuesta honesta es **casi ninguna**. Lo que hay:
 | El chip con el código en la ficha del pin | `PinDetail.tsx:220` |
 | La validación de planta en servidor | `trg_validate_pin_floor` (ROADMAP §15) |
 
-Y eso es todo. **Lo que la gente cree que existe y no existe:**
+**Lo que se añadió el 2026-08-26** y que esta sección daba por inexistente:
 
-- **Las salas NO se dibujan distinto de los avisos.** Está especificado en
-  ROADMAP §9.2 —más pequeñas, con la etiqueta del código— pero es Fase 4 y sigue
-  sin hacer. Hoy una sala compite visualmente igual que un aviso de food truck.
-- **`room_code` no se parsea.** Es texto libre. `parseRoomCode` no existe todavía
-  (ROADMAP §3.4), así que escribir `E441.4.S403` no preselecciona nada.
-- **Nada cruza con horarios.** No hay una sola línea que lea el `data.json`.
+| Qué | Dónde |
+|---|---|
+| `parseRoomCode`: `E441.4.S403` → edificio, planta y sala | `shared/utils/roomCode.ts` |
+| El catálogo derivado del horario, con sus pruebas | `shared/utils/roomCatalog.ts` |
+| La descarga del `data.json`, que nunca lanza | `features/mapping/salasEit.ts` |
+| El importador de `/admin/mapeo` (§12.7 punto 3) | `features/mapping/RoomImportPanel.tsx` |
+| Las salas se dibujan más pequeñas que los avisos (22 px contra 26) | `isFixedInfraCategory`, `styles/index.css` |
 
-**Y una trampa que hay que resolver antes de cargar nada:** la categoría `sala`
-nace con **TTL de 30 días**. Una sala cargada a mano y no verificada por un
-moderador **se borra sola**. Si cargas 61 salas y no las verificas, en un mes no
-queda ninguna.
+**Lo que sigue sin existir:**
+
+- **La etiqueta con el código al lado del marcador** a zoom alto (ROADMAP §9.2).
+  El tamaño ya distingue; el código todavía hay que abrir el pin para verlo.
+- **Nada cruza con horarios en el mapa del estudiante.** El `data.json` se lee
+  **solo** en el editor de administración. La capa de "libre / ocupada" es la
+  §11.4 punto 4 y no está.
+- **No hay flujo de sugerencia de sala** (§12.5): un estudiante puede crear un
+  pin `sala`, pero no entra a ninguna cola ni recibe respuesta.
+
+**Y la trampa sigue en pie, ahora con más salas:** la categoría `sala` nace con
+**TTL de 30 días**. Una sala cargada y no verificada por un moderador **se borra
+sola** — y eso incluye las que coloque el importador, que crea pines normales,
+no permanentes. Si se cargan las 82 y no se verifican, en un mes no queda
+ninguna.
 
 ---
 
@@ -727,12 +789,16 @@ puede avisar.
 
 ### 11.4 Lo que hay que construir, en orden
 
-1. **`parseRoomCode`** con la regla de la §2. Es una función pura en
-   `shared/utils/`, testeable, y no depende de nada más.
-2. **Cargar las salas** (§8). Sin pines no hay nada contra qué cruzar. **Y
-   verificarlas**, o el TTL de 30 días se las lleva.
-3. **Dibujarlas distinto** (ROADMAP §9.2, Fase 4). 61 pines de sala compitiendo
-   con los avisos hacen el mapa ilegible; es un requisito, no un adorno.
+1. - [x] **`parseRoomCode`** con la regla de la §2. Función pura en
+     `shared/utils/`, testeable y sin dependencias. Hecha, y corregida el
+     2026-08-26 para los prefijos con sufijo de letra (§7).
+2. - [ ] **Cargar las salas** (§8). Sin pines no hay nada contra qué cruzar. **Y
+     verificarlas**, o el TTL de 30 días se las lleva. **El importador del
+     editor ya está** (§12.7 punto 3): pone el código y la planta, y quien mapea
+     pone el punto. Lo que falta es pasar por los edificios.
+3. - [x] **Dibujarlas distinto** (ROADMAP §9.2, Fase 4). Hecho el 2026-08-26: la
+     infraestructura fija se dibuja a 22 px y los avisos a 26. Solo el tamaño,
+     nunca el tono.
 4. **La capa de horario**, con los tres estados de arriba.
 5. **Recién ahí, hablar con la universidad.** Con las salas cargadas y la capa
    funcionando, la conversación deja de ser "¿nos dan datos?" y pasa a ser "esto
@@ -1049,12 +1115,55 @@ Lo de arriba está cerrado. Esto no:
    deja al tipo más común de un edificio docente clasificado como "otro", y el
    color por defecto del área sale del `kind`. Añadirlo es una migración de una
    línea.
-3. **¿El importador entra en el editor?** El "importador" es la idea de la §1:
-   que `/admin/mapeo` **lea el `data.json` de la facultad** y, con un edificio
-   abierto, ofrezca las salas que faltan **con el código y la planta ya
-   rellenos**, para que solo haya que dibujar el contorno. Sin él, las 61 salas
-   se crean a mano una por una. La alternativa es cargarlas de golpe por SQL y
-   dibujar después.
+3. ~~**¿El importador entra en el editor?**~~ **Sí, y está hecho el
+   2026-08-26.** `/admin/mapeo` lee el `data.json`, y con un edificio
+   seleccionado enseña sus salas: cuáles ya tienen pin y cuáles faltan. Al
+   elegir una que falta, el siguiente clic en el mapa crea el pin con el código
+   y la planta ya puestos.
+
+   **Lo que NO hace, y no es un olvido: crearlas todas de golpe.** Un alta
+   masiva las pondría a todas en el centroide del edificio, que es el resultado
+   inútil contra el que avisa el ROADMAP — y ni siquiera funcionaría, porque
+   `prevent_occupied_pin_location` rechaza dos pines vivos en el mismo punto y
+   la misma planta. **La coordenada es justamente el dato que la fuente no
+   tiene**, y no hay forma de deducirla: desde arriba el piso 1 y el 3 ocupan el
+   mismo sitio. Así que el reparto es ese — la fuente pone lo tedioso y lo que
+   se escribe mal, la persona pone el punto.
+
+   Tres detalles del comportamiento que conviene conocer:
+
+   - **El edificio se reconoce por su dirección postal** (§3): el importador
+     busca el código del catálogo (`E441`, `E278A`) en el `short_name` o en los
+     `aliases` del edificio. Un edificio sin ese código no ofrece salas, y lo
+     dice en vez de quedarse vacío sin explicar por qué.
+   - **Una sala cuya planta no esté declarada no se puede colocar**, y la lista
+     la marca en vez de dejar un botón que fallaría contra
+     `trg_validate_pin_floor`. La planta se declara en el mismo editor.
+   - **Si la fuente está caída, el importador dice que no hay datos y ya.** Es
+     un archivo de terceros y no puede tumbar el editor de mapeo.
+   - **"Ya están en el mapa" cuenta pines VIVOS, no pines que existieron.** La
+     lista se compara contra `fetchPins`, que filtra por
+     `is_permanent OR expires_at > now()`. O sea que una sala **vuelve a salir
+     como pendiente** en dos casos: si alguien borra su pin, y —el que sorprende—
+     si su pin CADUCA. Con el TTL de 30 días de la categoría `sala`, una sala
+     colocada y no verificada reaparece sola al mes como si nunca se hubiera
+     puesto. No es un fallo del importador: es que efectivamente ya no hay un
+     pin ahí. Pero significa que **colocar sin verificar es trabajo que se
+     deshace solo**.
+   - **Un techo que hoy no molesta y algún día sí:** esa consulta trae como
+     mucho **300 pines** de la facultad (`limit(300)` en `fetchPins`). La FIC
+     tiene 14, así que sobra sitio; pero si algún día pasa de 300 vivos, el
+     importador empezaría a ofrecer salas que YA están puestas, y colocarlas
+     otra vez chocaría contra `prevent_occupied_pin_location` o dejaría un
+     duplicado. Cuando se acerque, el arreglo es una consulta propia que traiga
+     solo los `room_code` de la facultad en vez de los pines enteros.
+   - **La sala tiene que caer dentro de la huella de su edificio.** Su código
+     lo dice: `E441.1.S101` es del E441 por definición. Salió al probarlo, y de
+     la peor manera: E441 es un edificio HUECO, así que el centro de su
+     rectángulo cae en el patio interior y no en el edificio. Dos salas se
+     crearon ahí, con `building_id` null y sin que nada se quejara. Ahora se
+     rechaza el punto con un aviso que menciona los patios, que es donde
+     vuelve a pasar.
 
 ---
 

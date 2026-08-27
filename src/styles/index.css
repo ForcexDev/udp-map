@@ -358,11 +358,21 @@ body {
    ellos) en .pin-marker: se componen con ese translate y el marcador
    "salta" lejos del cursor. Efectos de hover solo con filter/shadow. */
 .pin-marker {
+  /* Tamaño del marcador = base × escala.
+     - La base la fija el tipo de pin: 26 px un aviso, 22 px la infraestructura
+       fija (§9.2 del plan).
+     - La escala la escribe MapView en el contenedor del mapa según el zoom
+       (§9.3), y NUNCA baja de 1: 26 px hasta zoom 18 y hasta 30 px de 19 en
+       adelante. Se probó encogiendo a 20 px de lejos y quedó ilegible, sobre
+       todo multiplicado por la base más pequeña.
+     Va en width/height y NO en transform: scale() por la advertencia de
+     arriba — el transform del marcador es de MapLibre. */
+  --pin-base: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: calc(var(--pin-base) * var(--pin-scale, 1));
+  height: calc(var(--pin-base) * var(--pin-scale, 1));
   border-radius: 50%;
   background: var(--pin-color, #9d2235);
   border: 2px solid white;
@@ -477,9 +487,21 @@ body {
   }
 }
 
+/* Infraestructura fija (salas, ascensores, rampas, escaleras, lo que se
+   verificó y ya no vence): un punto más pequeña que un aviso, lo justo para
+   que se note quién es novedad y quién lleva ahí siempre. SOLO el tamaño —
+   atenuar el tono está descartado, porque el desvanecido significa "por
+   vencer" y un permanente es justo lo que nunca vence.
+
+   18 px era la cifra del plan y en pantalla resultó demasiado: con el icono
+   dentro se volvía una mancha de color sin dibujo legible. */
+.pin-marker--fixed {
+  --pin-base: 22px;
+}
+
 .pin-marker svg {
-  width: 13px;
-  height: 13px;
+  width: calc(var(--pin-base) * 0.5 * var(--pin-scale, 1));
+  height: calc(var(--pin-base) * 0.5 * var(--pin-scale, 1));
   fill: white;
   pointer-events: none;
   transform: translateX(-0.25px) translateY(-0.4px);

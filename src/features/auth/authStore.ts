@@ -110,13 +110,33 @@ export const useAuthStore = create<AuthState>((set) => ({
         faculty_id: undefined,
         career: undefined,
       }
-      set({ user, loading: false })
-      void fetchProfile(su.id).then(({ role, name, faculty_id, career, created_at }) => {
-        set((state) => ({
-          role,
-          user: state.user ? { ...state.user, name: name || state.user.name, faculty_id, career, createdAt: created_at } : null
-        }))
-      })
+      // `loading` NO se apaga aquí, y es la corrección de un bug concreto:
+      // entrar a /admin/mapeo por URL o recargar la página rebotaba al mapa.
+      //
+      // La sesión llega en este callback, pero el ROL llega después, en el
+      // fetchProfile de abajo. Apagando `loading` ya, `AdminLayout` se
+      // reevaluaba con `loading: false` y `role: 'guest'` —su valor inicial— y
+      // disparaba su `<Navigate to="/mapa" replace />` antes de que el rol
+      // real apareciera. Era una carrera, así que a veces funcionaba: solo
+      // fallaba cuando la consulta del perfil tardaba lo normal.
+      //
+      // Nadie más lee `loading` salvo ese guard, así que estirarlo hasta saber
+      // el rol no le añade esperas a ninguna otra pantalla.
+      set({ user })
+      void fetchProfile(su.id)
+        .then(({ role, name, faculty_id, career, created_at }) => {
+          set((state) => ({
+            role,
+            user: state.user ? { ...state.user, name: name || state.user.name, faculty_id, career, createdAt: created_at } : null
+          }))
+        })
+        .catch((cause: unknown) => {
+          console.error('[auth] No se pudo leer el perfil:', cause)
+        })
+        // En `finally` y no en `then`: si la consulta del perfil falla, dejar
+        // `loading` en true encerraría a quien entre a /admin en un spinner
+        // eterno. Sin rol se le trata como invitado, que es lo correcto.
+        .finally(() => set({ loading: false }))
     })
   },
 

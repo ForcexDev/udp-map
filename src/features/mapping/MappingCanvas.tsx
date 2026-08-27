@@ -45,6 +45,8 @@ interface MappingCanvasProps {
   pins: Pin[]
   /** Se llama al terminar de trazar una forma nueva. */
   onDraftReady: () => void
+  /** Se llama al clicar con la herramienta de sala activa, con el punto elegido. */
+  onRoomPlaced: (lngLat: { lng: number; lat: number }) => void
 }
 
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] }
@@ -77,7 +79,7 @@ function buildingFeature(building: Building, height: number): Feature<Polygon> {
   }
 }
 
-export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProps) {
+export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: MappingCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const vertexMarkersRef = useRef<maplibregl.Marker[]>([])
@@ -106,6 +108,8 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
   dataRef.current = { mapping, pins }
   const onDraftReadyRef = useRef(onDraftReady)
   onDraftReadyRef.current = onDraftReady
+  const onRoomPlacedRef = useRef(onRoomPlaced)
+  onRoomPlacedRef.current = onRoomPlaced
 
   // ── Polígonos de referencia para los imanes ──
   // Perímetro de la facultad, huellas de edificios y áreas de la planta activa
@@ -379,6 +383,14 @@ export function MappingCanvas({ mapping, pins, onDraftReady }: MappingCanvasProp
 
       if (state.tool === 'trace') {
         traceBuildingAt(e.point)
+        return
+      }
+
+      // Colocar la sala del importador. No pasa por `resolvePoint`: los imanes
+      // son para que dos polígonos casen borde con borde, y una sala se pone en
+      // el centro de su recinto, no pegada a una pared.
+      if (state.tool === 'room') {
+        if (state.pendingRoom) onRoomPlacedRef.current(e.lngLat)
         return
       }
 

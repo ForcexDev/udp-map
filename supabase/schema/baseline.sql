@@ -440,8 +440,12 @@ create table if not exists public.notifications (
   id          uuid         primary key default gen_random_uuid(),
   user_id     uuid         not null references public.profiles(id) on delete cascade,
   actor_id    uuid         references public.profiles(id) on delete set null,
-  type        text         not null check (type in ('achievement', 'forum_reply', 'event_reminder', 'moderation_report', 'moderation_update')),
-  category    text         not null check (category in ('profile', 'forum', 'events', 'moderation')),
+  -- 'announcement' + 'system' son los avisos de difusión del panel. Tienen tipo
+  -- propio porque antes se guardaban como 'achievement'/'profile': un corte de
+  -- agua le llegaba a cada estudiante disfrazado de logro y se le mezclaba
+  -- entre sus insignias al filtrar.
+  type        text         not null check (type in ('achievement', 'forum_reply', 'event_reminder', 'moderation_report', 'moderation_update', 'announcement')),
+  category    text         not null check (category in ('profile', 'forum', 'events', 'moderation', 'system')),
   audience    text         not null default 'personal' check (audience in ('personal', 'admin')),
   title       text         not null,
   body        text         not null,
@@ -698,6 +702,52 @@ begin
   return new;
 end;
 $fn$;
+
+-- Mover un pin de sitio es permiso de moderador, y hasta el 2026-08-26 eso solo
+-- lo comprobaba la interfaz: era el único permiso del proyecto en esa situación.
+-- `pins_owner_update` deja al autor escribir su fila y protect_pin_sensitive_fields
+-- protege `building_id` y `area_id` pero no `lat`/`lng`, así que un PATCH movía
+-- el pin y dejaba el edificio viejo colgando.
+--
+-- Va en un trigger aparte y no como dos líneas más en protect_pin_sensitive_fields
+-- por el orden: los BEFORE se disparan por orden alfabético y `prevent` va antes
+-- que `protect`, así que mover a un punto ocupado habría respondido
+-- PIN_LOCATION_OCCUPIED en vez de "te falta el permiso". `authorize` ordena antes
+-- que los dos.
+--
+-- Exime a service_role, al revés que validate_pin_floor, y la diferencia no es un
+-- descuido: una planta inexistente está mal la escriba quien la escriba, mientras
+-- que "quién puede mover un pin" no significa nada frente a la llave que ES la
+-- administración. Bloquearla solo haría fallar el mantenimiento a mano. `anon` no
+-- se cuela por ahí: las dos políticas de UPDATE sobre `pins` exigen ser el autor
+-- o ser moderador, y sin sesión no se cumple ninguna.
+create or replace function public.authorize_pin_move()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  -- El trigger va acotado a `update of lat, lng`, pero eso dispara también
+  -- cuando se escribe el mismo valor. Mover es cambiar de sitio.
+  if new.lat is not distinct from old.lat
+     and new.lng is not distinct from old.lng then
+    return new;
+  end if;
+
+  -- Sin sesión no hay a quién pedirle permiso: es service_role o el SQL Editor.
+  if auth.uid() is null then
+    return new;
+  end if;
+
+  if public.user_role() in ('moderator', 'admin') then
+    return new;
+  end if;
+
+  raise exception 'Mover un pin de sitio es permiso de moderador.';
+end;
+$fn$;
+
 
 -- La planta de un pin tiene que existir de verdad.
 --
@@ -1185,6 +1235,77 @@ begin
   if v_pin.creator_id is not null then
     perform public.adjust_karma(v_pin.creator_id, -25);
   end if;
+end;
+$fn$;
+
+
+-- ── 5.4ter Asistencia a eventos ─────────────────────────────────────────────
+-- `event_rsvps` no la puede leer nadie salvo sus propias filas: quién va a qué
+-- evento es dato personal, y hasta el 2026-08-26 la política de lectura era
+-- `using (true)`. Estas dos funciones son las dos lecturas que sí tienen
+-- sentido, cada una con su dueño. Son SECURITY DEFINER porque leen una tabla
+-- que ya nadie lee directamente, así que la autorización va dentro.
+
+-- El conteo agregado, para cualquiera. Un número no dice de nadie dónde va a
+-- estar. Se devuelve exacto y es la interfaz la que decide desde qué número lo
+-- enseña — eso es diseño, no privacidad: "2 personas van" dice "esto no le
+-- importa a nadie" más fuerte que no decir nada.
+create or replace function public.event_rsvp_counts(p_pin_ids uuid[])
+returns table (pin_id uuid, going integer, interested integer)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  -- Endpoint público con la lista puesta por el navegador: conviene que no
+  -- pueda pedir el campus entero de una vez.
+  if p_pin_ids is null or array_length(p_pin_ids, 1) is null then
+    return;
+  end if;
+  if array_length(p_pin_ids, 1) > 200 then
+    raise exception 'Demasiados eventos en una sola consulta (máximo 200).';
+  end if;
+
+  return query
+    select r.pin_id,
+           count(*) filter (where r.status = 'going')::integer,
+           count(*) filter (where r.status = 'interested')::integer
+      from public.event_rsvps r
+     where r.pin_id = any (p_pin_ids)
+     group by r.pin_id;
+end;
+$fn$;
+
+-- La lista de nombres, solo para quien organiza. Moderador no basta a
+-- propósito: el eje de ese rol es "contenido y mapa", y una lista de asistentes
+-- no es contenido, es dónde va a estar un grupo de personas.
+create or replace function public.event_attendees(p_pin_id uuid)
+returns table (user_id uuid, name text, avatar_url text, status text)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if not exists (
+    select 1
+      from public.pins p
+     where p.id = p_pin_id
+       and p.type = 'event'
+       and (p.creator_id = auth.uid() or public.user_role() = 'admin')
+  ) then
+    raise exception 'Solo quien organiza el evento puede ver quién va.';
+  end if;
+
+  return query
+    select r.user_id, pr.name, pr.avatar_url, r.status
+      from public.event_rsvps r
+      join public.profiles pr on pr.id = r.user_id
+     where r.pin_id = p_pin_id
+     -- "Iré" antes que "Me interesa": para preparar algo, la confirmación pesa
+     -- más que la intención.
+     order by (r.status = 'going') desc, pr.name nulls last;
 end;
 $fn$;
 
@@ -2104,34 +2225,71 @@ as $fn$
 declare
   v_sub   record;
   v_count integer := 0;
+  v_key   text;
 begin
   if public.user_role() <> 'admin' then
-    raise exception 'Solo los administradores pueden enviar notificaciones de prueba.';
+    raise exception 'Solo los administradores pueden enviar avisos de difusión.';
   end if;
 
   if nullif(trim(p_title), '') is null then
-    p_title := 'Notificación de prueba UDP Map';
+    raise exception 'El aviso necesita un título.';
   end if;
 
   if nullif(trim(p_body), '') is null then
-    p_body := 'Mensaje de prueba enviado desde el panel de administración.';
+    raise exception 'El aviso necesita un mensaje.';
   end if;
 
-  -- Usa tipo 'achievement' para cumplir con el CHECK notifications_type_check.
+  -- Una sola marca para toda la difusión: así los avisos de un mismo envío
+  -- comparten identidad y se pueden rastrear juntos. El unique de la tabla es
+  -- (user_id, dedupe_key), de modo que compartirla entre usuarios no colisiona.
+  v_key := 'announcement_' || extract(epoch from now())::bigint::text;
+
   for v_sub in select distinct user_id from public.push_subscriptions loop
     perform public.create_notification(
       v_sub.user_id,
-      'achievement',
-      'profile',
+      'announcement',
+      'system',
       p_title,
       p_body,
-      '/admin',
-      'admin_test_' || extract(epoch from now())::text || '_' || v_sub.user_id::text
+      '/',              -- al mapa: '/admin' rebotaba a cualquiera que no fuera admin
+      v_key
     );
     v_count := v_count + 1;
   end loop;
 
   return v_count;
+end;
+$fn$;
+
+-- Probar el push sin despertar a nadie más. Antes la única vía era la difusión
+-- de arriba, que recorre TODAS las suscripciones: "a ver si me llega a mí" le
+-- sonaba el teléfono a la universidad entera, así que no se probaba nunca.
+create or replace function public.admin_send_test_push_to_self()
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_id uuid;
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden lanzar una prueba de push.';
+  end if;
+
+  -- La marca lleva el instante: repetir la prueba tiene que volver a sonar, y
+  -- el unique (user_id, dedupe_key) descartaría en silencio un duplicado.
+  select public.create_notification(
+    auth.uid(),
+    'announcement',
+    'system',
+    'Prueba de notificación',
+    'Si ves esto en tu pantalla de bloqueo, el push funciona en este dispositivo.',
+    '/',
+    'self_push_test_' || extract(epoch from now())::bigint::text
+  ) into v_id;
+
+  return v_id;
 end;
 $fn$;
 
@@ -2307,6 +2465,15 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- Pines
+--
+-- El nombre de cada uno importa: Postgres dispara los BEFORE por orden
+-- alfabético. `authorize` < `prevent` < `protect` < `validate`, que es
+-- justamente el orden en el que hay que resolverlos.
+drop trigger if exists trg_authorize_pin_move on public.pins;
+create trigger trg_authorize_pin_move
+  before update of lat, lng on public.pins
+  for each row execute function public.authorize_pin_move();
+
 drop trigger if exists trg_prevent_occupied_pin_location_insert on public.pins;
 create trigger trg_prevent_occupied_pin_location_insert
   before insert on public.pins
@@ -2736,8 +2903,12 @@ create policy favorites_all_own on public.favorites
   for all using (user_id = auth.uid())
   with check (user_id = auth.uid() and public.user_role() <> 'guest');
 
+-- Sin política de lectura pública: quién va a qué evento es dato personal. Se
+-- lee por `event_rsvp_counts` (el número, para todos) y `event_attendees` (la
+-- lista, solo para quien organiza). La de abajo es `for all`, así que incluye
+-- el SELECT de las filas propias: saber a qué eventos vas tú no dependía de la
+-- pública.
 drop policy if exists event_rsvps_read on public.event_rsvps;
-create policy event_rsvps_read on public.event_rsvps for select using (true);
 
 drop policy if exists event_rsvps_all_own on public.event_rsvps;
 create policy event_rsvps_all_own on public.event_rsvps
@@ -2931,6 +3102,9 @@ revoke execute on all functions in schema public from public, anon, authenticate
 grant execute on function public.user_role() to public, anon, authenticated, service_role;
 grant execute on function public.protect_vote_counters() to public, anon, authenticated, service_role;
 grant execute on function public.set_notification_updated_at() to public, anon, authenticated, service_role;
+grant execute on function public.authorize_pin_move() to anon, authenticated, service_role;
+grant execute on function public.event_rsvp_counts(uuid[]) to anon, authenticated, service_role;
+grant execute on function public.event_attendees(uuid) to authenticated, service_role;
 grant execute on function public.prevent_occupied_pin_location() to anon, authenticated, service_role;
 grant execute on function public.validate_rsvp_targets_event() to anon, authenticated, service_role;
 grant execute on function public.create_pin_with_daily_limit(
@@ -2951,6 +3125,7 @@ grant execute on function public.resolve_moderation_report(uuid, text, text) to 
 grant execute on function public.admin_set_user_role(uuid, text)             to authenticated, service_role;
 grant execute on function public.admin_count_push_subscribers()              to authenticated, service_role;
 grant execute on function public.admin_broadcast_push_notification(text, text) to authenticated, service_role;
+grant execute on function public.admin_send_test_push_to_self() to authenticated, service_role;
 
 -- Solo el servicio (cron y Edge Functions).
 grant execute on function public.enqueue_upcoming_event_notifications() to service_role;

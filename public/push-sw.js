@@ -39,9 +39,16 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || 'Tienes una nueva notificación.',
     icon: '/pwa-192x192.png',
-    badge: '/pwa-64x64.png',
+    // El badge NO es un icono a color: Android lo usa como máscara de alfa y
+    // pinta de blanco todo pixel opaco. Aquí estaba `pwa-64x64.png`, que es un
+    // cuadrado rojo enteramente opaco, así que en la barra de estado salía una
+    // mancha blanca sólida — el "logo en blanco" que se reportaba.
+    // `notification-badge.png` es la silueta del pin sobre transparente.
+    badge: '/notification-badge.png',
     tag: data.notificationId || `${data.type || 'notification'}:${Date.now()}`,
     renotify: false,
+    timestamp: Date.now(),
+    lang: 'es',
     data: {
       url: data.url || '/',
       notificationId: data.notificationId || null,
@@ -54,17 +61,38 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
-  const target = new URL(event.notification.data?.url || '/', self.location.origin)
+  // El destino se resuelve SIEMPRE contra nuestro origen. Si el payload trae
+  // una URL absoluta a otro sitio, `new URL(url, origin)` la respetaría y el
+  // toque en la notificación abriría una web ajena.
+  const requested = event.notification.data?.url || '/'
+  const parsed = new URL(requested, self.location.origin)
+  const target = new URL(
+    parsed.origin === self.location.origin ? parsed.href : '/',
+    self.location.origin,
+  )
   const notificationId = event.notification.data?.notificationId
   if (notificationId) target.searchParams.set('notification', notificationId)
 
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    const existingWindow = windows.find((client) => new URL(client.url).origin === target.origin)
+    const existingWindow = windows.find((client) => new URL(client.url).origin === self.location.origin)
 
+    // Enfocar primero y navegar después. `navigate()` lanza cuando el cliente
+    // no lo está controlando —pasa en la PWA instalada de iOS—, y como antes
+    // iba delante del `focus()`, esa excepción se llevaba por delante también
+    // el enfoque: el toque en la notificación no hacía absolutamente nada.
     if (existingWindow) {
-      await existingWindow.navigate(target.href)
-      return existingWindow.focus()
+      try {
+        await existingWindow.focus()
+      } catch (err) {
+        console.error('[push-sw] No se pudo enfocar la ventana existente:', err)
+      }
+      try {
+        await existingWindow.navigate(target.href)
+        return
+      } catch (err) {
+        console.error('[push-sw] navigate() no disponible, se abre ventana nueva:', err)
+      }
     }
     return self.clients.openWindow(target.href)
   })())

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from '@/shared/lib/i18n'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown, Bell, Building2 } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -25,7 +26,7 @@ import { FloorSelector } from './FloorSelector'
 import { getWalkingRoute, type WalkingRoute } from './routing'
 import { isLocationOutOfBounds } from './campusBoundary'
 import { isPinLocationOccupied } from '@/shared/utils/pinLocation'
-import { dbErrorMessage } from '@/shared/utils/dbError'
+import { dbErrorMessage, isUserFacingDbError } from '@/shared/utils/dbError'
 import { floorRejectionKey } from '@/shared/utils/floorValidation'
 import type { Polygon } from 'geojson'
 import { polygonCentroid } from '@/shared/utils/geometry'
@@ -135,7 +136,7 @@ function useUserLocation() {
     // ANTI-BRAVE: Health check para detectar bloqueo de hardware
     setTimeout(() => {
       if (!hasReceivedData) {
-        useUIStore.getState().showToast('Brújula bloqueada. Permite acceso a "Sensores de movimiento" en tu navegador (ej. Escudos Brave).')
+        useUIStore.getState().showToast(i18n.t('map.compassBlocked', 'Brújula bloqueada. Permite acceso a “Sensores de movimiento” en tu navegador (ej. Escudos Brave).'))
       }
     }, 1500)
   }, [])
@@ -238,7 +239,12 @@ export function MapPage() {
   const openSidebar = useSidebarStore((s) => s.open)
   const openNotifications = useSidebarStore((s) => s.openNotifications)
   const { data: notifications = [] } = useNotifications()
-  const unreadNotificationsCount = notifications.filter((n) => !n.read_at).length
+  // Solo los personales. La campana abre la pestaña de avisos, y desde que los
+  // de `audience: 'admin'` se mudaron al panel, contarlos aquí prometía en la
+  // campana cosas que esa pestaña ya no enseña.
+  const unreadNotificationsCount = notifications.filter(
+    (n) => n.audience === 'personal' && !n.read_at,
+  ).length
   const queryClient = useQueryClient()
 
   const handleSelectCampus = (id: string) => {
@@ -415,9 +421,9 @@ export function MapPage() {
       } catch (err) {
         const error = err as Error
         if (error.message === 'PERMISSION_DENIED') {
-          showToast('Debes activar la ubicación en tu dispositivo o navegador.')
+          showToast(t('map.locationDenied', 'Debes activar la ubicación en tu dispositivo o navegador.'))
         } else {
-          showToast('No se pudo obtener tu ubicación.')
+          showToast(t('map.locationFailed', 'No se pudo obtener tu ubicación.'))
         }
         setRouteTarget(null)
         return
@@ -483,7 +489,15 @@ export function MapPage() {
       // Mover un pin recalcula su edificio, y el nuevo puede no tener la planta
       // que el pin ya traía. Lo rechaza trg_validate_pin_floor.
       const floorKey = floorRejectionKey(message)
-      showToast(floorKey ? t(floorKey) : t('common.error'))
+      if (floorKey) {
+        showToast(t(floorKey))
+        return
+      }
+      // El resto de los rechazos del servidor traen su propia explicación
+      // cuando fueron escritos para una persona (P0001) — el de
+      // trg_authorize_pin_move, por ejemplo. Enseñarla es mejor que un
+      // "algo salió mal" que no dice qué falta.
+      showToast(isUserFacingDbError(error) ? message : t('common.error'))
     },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),
   })
