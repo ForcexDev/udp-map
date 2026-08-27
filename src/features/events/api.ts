@@ -1,5 +1,6 @@
 import { supabase } from '@/shared/lib/supabase'
-import type { EventRsvp } from '@/shared/types/database'
+import type { EventRsvp, Pin } from '@/shared/types/database'
+import { demoDb } from '@/features/pins/demoStore'
 import { useAuthStore } from '@/features/auth/authStore'
 
 // Local demo database for RSVPs when Supabase is not available
@@ -137,4 +138,26 @@ export async function fetchEventAttendees(pinId: string): Promise<EventAttendee[
   const { data, error } = await supabase.rpc('event_attendees', { p_pin_id: pinId })
   if (error) throw error
   return (data ?? []) as EventAttendee[]
+}
+
+/**
+ * Los eventos concretos que alguien marcó.
+ *
+ * Consulta acotada por ids y no `usePins`: la del mapa lleva los filtros
+ * activos en su `queryKey`, así que "mis eventos" cambiaría según lo que
+ * estuviera filtrado en el mapa — que no tiene nada que ver.
+ */
+export async function fetchEventsByIds(pinIds: string[]): Promise<Pin[]> {
+  if (pinIds.length === 0) return []
+
+  if (!supabase) {
+    return demoDb.pins.filter((p) => pinIds.includes(p.id))
+  }
+
+  const { data, error } = await supabase
+    .from('pins')
+    .select('*, pin_photos(*)')
+    .in('id', pinIds)
+  if (error) throw error
+  return (data ?? []) as Pin[]
 }

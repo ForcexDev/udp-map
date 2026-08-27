@@ -38,6 +38,8 @@ interface ProfileViewProps {
   onAdminPanel?: () => void
   /** Pestaña de clasificación; ausente en perfiles ajenos. */
   leaderboard?: ReactNode
+  /** Solo se pasa en el perfil propio. */
+  myEvents?: ReactNode
 }
 
 /**
@@ -65,6 +67,7 @@ export function ProfileView({
   onEditProfile,
   onAdminPanel,
   leaderboard,
+  myEvents,
 }: ProfileViewProps) {
   const { i18n } = useTranslation()
 
@@ -86,7 +89,7 @@ export function ProfileView({
 
       <ProfileFacultyTag career={career} facultyName={facultyName} />
 
-      <ProfileTabs value={activeTab} onValueChange={onTabChange} hideLeaderboard={!leaderboard}>
+      <ProfileTabs value={activeTab} onValueChange={onTabChange} hideLeaderboard={!leaderboard} showEvents={Boolean(myEvents)}>
         <Tabs.Content value="reports" className="outline-none">
           <ReportTimeline pins={pins} loading={pinsLoading} onViewOnMap={onViewOnMap} />
         </Tabs.Content>
@@ -94,6 +97,12 @@ export function ProfileView({
         <Tabs.Content value="badges" className="outline-none">
           <BadgesGrid badges={badges} userBadges={userBadges} loading={badgesLoading} />
         </Tabs.Content>
+
+        {myEvents && (
+          <Tabs.Content value="events" className="outline-none">
+            {myEvents}
+          </Tabs.Content>
+        )}
 
         {leaderboard && (
           <Tabs.Content value="leaderboard" className="outline-none">

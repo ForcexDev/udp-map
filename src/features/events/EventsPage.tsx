@@ -193,6 +193,16 @@ export function EventsPage() {
 
         {!isLoading && !error && (
           <>
+            {/* Marcar asistencia NO es anónimo: quien organiza abre "Quién va" y
+                ve nombre y avatar de cada persona, en las dos listas. Hay que
+                decirlo, pero UNA vez: puesto en cada tarjeta —como estaba— se
+                repetía tantas veces como eventos hubiera y dejaba de leerse. */}
+            {userId && (
+              <p className="mb-4 rounded-2xl bg-neutral-100/70 px-3.5 py-2.5 text-[11px] font-medium leading-snug text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">
+                {t('events.rsvpVisibility', 'Al marcar “Asistiré” o “Me interesa”, quien organiza el evento verá tu nombre.')}
+              </p>
+            )}
+
             {/* En vivo: lo primero, porque es lo único accionable ahora mismo */}
             {liveEvents.length > 0 && (
               <section className="mb-5">

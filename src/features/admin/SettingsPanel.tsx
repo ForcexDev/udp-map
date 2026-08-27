@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { Loader2, MapPinOff, Send } from 'lucide-react'
 import { PushCard } from '@/features/notifications/PushCard'
@@ -22,6 +23,7 @@ import { AdminScreen } from './AdminScreen'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function SettingsPanel() {
+  const { t } = useTranslation()
   const devUnlockMap = useUIStore((s) => s.devUnlockMap)
   const setDevUnlockMap = useUIStore((s) => s.setDevUnlockMap)
   const showToast = useUIStore((s) => s.showToast)
@@ -47,14 +49,14 @@ export function SettingsPanel() {
 
   return (
     <AdminScreen
-      title="Ajustes"
-      description="Este dispositivo y las herramientas que cambian cómo se ve el mapa."
+      title={t('admin.sections.settings')}
+      description={t('admin.sections.settingsHint')}
       width="narrow"
     >
       <div className="flex flex-col gap-6">
         <section>
           <h2 className="mb-2.5 text-[11px] font-black uppercase tracking-widest text-neutral-400">
-            Este dispositivo
+            {t('admin.thisDevice')}
           </h2>
           <div className="flex flex-col gap-3">
             <PushCard />
@@ -62,10 +64,10 @@ export function SettingsPanel() {
             <div className="flex flex-col gap-3 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-neutral-900 dark:text-white">
-                  Probar el push aquí
+                  {t('admin.testPushHere')}
                 </p>
                 <p className="mt-0.5 text-xs font-medium leading-snug text-neutral-500 dark:text-neutral-400">
-                  Se envía solo a tu cuenta. Nadie más recibe nada.
+                  {t('admin.testPushHint')}
                 </p>
               </div>
               <button
@@ -75,7 +77,7 @@ export function SettingsPanel() {
                 className="flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white px-4 text-xs font-bold text-neutral-700 transition-colors hover:bg-neutral-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
               >
                 {testing ? <Loader2 size={15} className="animate-spin" /> : <Send size={14} />}
-                {testing ? 'Enviando…' : 'Enviar prueba'}
+                {testing ? t('admin.sending') : t('admin.sendTest')}
               </button>
             </div>
 
@@ -85,7 +87,7 @@ export function SettingsPanel() {
                 entero para reconocerlo. */}
             {endpoint && (
               <p className="px-1 text-[11px] font-medium leading-relaxed text-neutral-400">
-                Endpoint registrado:{' '}
+                {t('admin.registeredEndpoint')}{' '}
                 <code className="break-all font-mono text-[10px] text-neutral-500 dark:text-neutral-400">
                   {endpoint.length > 72 ? `${endpoint.slice(0, 72)}…` : endpoint}
                 </code>
@@ -96,7 +98,7 @@ export function SettingsPanel() {
 
         <section>
           <h2 className="mb-2.5 text-[11px] font-black uppercase tracking-widest text-neutral-400">
-            El mapa
+            {t('admin.theMap')}
           </h2>
           <button
             type="button"
@@ -119,11 +121,10 @@ export function SettingsPanel() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold text-neutral-900 dark:text-white">
-                {devUnlockMap ? 'Mapa desbloqueado' : 'Desbloquear mapa'}
+                {devUnlockMap ? t('admin.mapUnlocked') : t('admin.unlockMap')}
               </span>
               <span className="mt-0.5 block text-xs font-medium leading-snug text-neutral-500 dark:text-neutral-400">
-                Quita el límite de área para poner pines fuera del campus. Solo
-                afecta a lo que ves tú, en este navegador.
+                {t('admin.unlockMapHint')}
               </span>
             </span>
             <span

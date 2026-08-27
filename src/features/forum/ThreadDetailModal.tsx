@@ -1,3 +1,4 @@
+import { localizedName } from '@/shared/utils/localized'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BadgeCheck, ChevronDown, Pin as PinIcon, Trash2, Reply, ThumbsUp, ThumbsDown, Send, Flag } from 'lucide-react'
@@ -205,7 +206,7 @@ function CommentItem({
 }
 
 export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const showToast = useUIStore((s) => s.showToast)
@@ -369,7 +370,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                       <span>{relTime ? (relTime.value === 0 ? 'Ahora' : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`) : ''}</span>
                       <span>•</span>
                       <span className="font-extrabold text-[#D41F2D]">
-                        {faculty ? faculty.name : t('forum.general', 'General')}
+                        {faculty ? localizedName(faculty, i18n.language) : t('forum.general', 'General')}
                       </span>
                     </div>
                   </div>

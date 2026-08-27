@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2, ImageOff, PenTool, Shapes } from 'lucide-react'
@@ -31,6 +32,7 @@ import { AdminEmpty, AdminError, AdminLoading, AdminScreen } from './AdminScreen
 const CAMPUS_OPTIONS = CAMPUSES.map((c) => ({ value: c.id, label: c.name }))
 
 export function FacultiesPanel() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const showToast = useUIStore((s) => s.showToast)
   const [editing, setEditing] = useState<Faculty | null>(null)
@@ -73,18 +75,18 @@ export function FacultiesPanel() {
 
   return (
     <AdminScreen
-      title="Facultades"
-      description="Nombre, campus e imagen. El perímetro se traza en el editor de mapeo."
+      title={t('admin.sections.faculties')}
+      description={t('admin.sections.facultiesHint')}
     >
       {isLoading ? (
         <AdminLoading />
       ) : error ? (
-        <AdminError message="No se pudo cargar el catálogo de facultades." />
+        <AdminError message={t('admin.facultiesFailed')} />
       ) : faculties.length === 0 ? (
         <AdminEmpty
           icon={<Building2 size={40} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />}
-          title="No hay facultades"
-          hint="Se crean desde el editor de mapeo, junto con su perímetro."
+          title={t('admin.noFaculties')}
+          hint={t('admin.noFacultiesHint')}
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -155,6 +157,7 @@ interface FacultyDialogProps {
 }
 
 function FacultyDialog({ faculty, saving, onClose, onSave }: FacultyDialogProps) {
+  const { t } = useTranslation()
   const [draft, setDraft] = useState<Faculty | null>(null)
   // El borrador se siembra con la facultad que se acaba de abrir. `key` en el
   // Dialog fuerza el remontaje, que es más simple que sincronizar con efectos.
@@ -173,7 +176,7 @@ function FacultyDialog({ faculty, saving, onClose, onSave }: FacultyDialogProps)
         }
       }}
       title={faculty.name}
-      description="El perímetro y la posición no se tocan aquí: se dibujan en el editor de mapeo."
+      description={t('admin.facultyEditHint')}
       contentClassName="!bg-white dark:!bg-neutral-900"
     >
       <form
@@ -183,7 +186,7 @@ function FacultyDialog({ faculty, saving, onClose, onSave }: FacultyDialogProps)
           onSave(values)
         }}
       >
-        <Field label="Nombre">
+        <Field label={t('admin.fieldName')}>
           <input
             value={values.name}
             onChange={(e) => setDraft({ ...values, name: e.target.value })}
@@ -192,7 +195,7 @@ function FacultyDialog({ faculty, saving, onClose, onSave }: FacultyDialogProps)
           />
         </Field>
 
-        <Field label="Nombre en inglés">
+        <Field label={t('admin.fieldNameEn')}>
           <input
             value={values.name_en}
             onChange={(e) => setDraft({ ...values, name_en: e.target.value })}
@@ -201,7 +204,7 @@ function FacultyDialog({ faculty, saving, onClose, onSave }: FacultyDialogProps)
           />
         </Field>
 
-        <Field label="Campus">
+        <Field label={t('admin.fieldCampus')}>
           <CustomSelect
             options={CAMPUS_OPTIONS}
             value={values.campus_id}
@@ -209,7 +212,7 @@ function FacultyDialog({ faculty, saving, onClose, onSave }: FacultyDialogProps)
           />
         </Field>
 
-        <Field label="Imagen de respaldo">
+        <Field label={t('admin.fieldImage')}>
           <input
             value={values.image ?? ''}
             onChange={(e) => setDraft({ ...values, image: e.target.value.trim() || null })}

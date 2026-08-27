@@ -2,20 +2,22 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import i18n from '@/shared/lib/i18n'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown, Bell, Building2 } from 'lucide-react'
+import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown, Bell, Building2, DoorOpen } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useNotifications } from '@/features/notifications/useNotifications'
 import { useGuard } from '@/features/auth/useGuard'
 import { AnimatePresence } from 'framer-motion'
 import { usePins } from '@/features/pins/usePins'
+import { searchRooms } from '@/shared/utils/roomSearch'
+import { roomSubtitle } from '@/features/map/roomSubtitle'
 import { PinDetail } from '@/features/pins/PinDetail'
 import { CreatePinModal } from '@/features/pins/CreatePinModal'
 import { TutorialModal } from './TutorialModal'
 import { ProfileSetupModal } from '@/features/auth/ProfileSetupModal'
 import { updatePinLocation } from '@/features/pins/api'
 import { useAuthStore } from '@/features/auth/authStore'
-import type { Faculty } from '@/shared/types/database'
+import type { Faculty, Pin } from '@/shared/types/database'
 import { CAMPUSES } from '@/shared/data/campusData'
 import { useFaculties } from '@/shared/data/facultyStore'
 import { formatDistance, type LatLng } from '@/shared/utils/geo'
@@ -300,7 +302,7 @@ export function MapPage() {
   const searchResults = useMemo(() => {
     const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     const q = normalize(searchQuery.trim())
-    if (q.length < 2) return { buildings: [], areas: [] }
+    if (q.length < 2) return { buildings: [], areas: [], rooms: [] }
 
     const buildings = mapping.buildings
       .filter((b) =>
@@ -312,8 +314,14 @@ export function MapPage() {
       .filter((a) => normalize(a.name).includes(q) || normalize(a.custom_kind ?? '').includes(q))
       .slice(0, 8)
 
-    return { buildings, areas }
-  }, [searchQuery, mapping])
+    // Las salas son pines con `room_code`, y hasta ahora no se buscaban:
+    // escribir "E441.1.S106" —el código que la propia aplicación genera y
+    // enseña— devolvía "Sin resultados". La regla de coincidencia y su orden
+    // están en `roomSearch.ts`.
+    const rooms = searchRooms(pins, searchQuery)
+
+    return { buildings, areas, rooms }
+  }, [searchQuery, mapping, pins])
 
   // Close search dropdown when clicking outside
   useEffect(() => {
@@ -387,6 +395,61 @@ export function MapPage() {
     setSearchQuery('')
     setSearchOpen(false)
   }
+
+  /** Abrir una sala es abrir su pin: vuela hasta ella y despliega su ficha. */
+  const handleSelectRoom = (pin: Pin) => {
+    const faculty = pin.faculty_id ? faculties.find((f) => f.id === pin.faculty_id) : null
+    if (faculty) setCampusId(faculty.campus_id)
+    // La planta importa: sin fijarla, el marcador de una sala del piso 2 no se
+    // dibuja mientras se está mirando el 1 (ver floorVisibility).
+    if (faculty && pin.floor !== null) {
+      useUIStore.getState().setActiveMappingFaculty(faculty.id, pin.floor)
+    }
+    window.dispatchEvent(new CustomEvent('faculty-flyto', { detail: { lat: pin.lat, lng: pin.lng, zoom: 20 } }))
+    selectPin(pin.id)
+    setSearchQuery('')
+    setSearchOpen(false)
+  }
+
+  // Las filas del mapeo se arman UNA vez y se usan en las dos ramas del
+  // desplegable. Estaban duplicadas literal, y meter las salas habría dejado
+  // tres copias que mantener a la par.
+  const hasMappedResults =
+    searchResults.buildings.length > 0 ||
+    searchResults.areas.length > 0 ||
+    searchResults.rooms.length > 0
+
+  const mappedRows = (
+    <>
+      {searchResults.buildings.map((b) => (
+        <SearchRow
+          key={b.id}
+          icon={<Building2 size={14} className="text-neutral-500" strokeWidth={2.5} />}
+          title={b.name}
+          subtitle={b.aliases[0] ?? 'Edificio'}
+          onClick={() => handleSelectMapped(b.footprint, b.faculty_id)}
+        />
+      ))}
+      {searchResults.rooms.map((pin) => (
+        <SearchRow
+          key={pin.id}
+          icon={<DoorOpen size={14} className="text-neutral-500" strokeWidth={2.5} />}
+          title={pin.title}
+          subtitle={roomSubtitle(pin, faculties, i18n.language)}
+          onClick={() => handleSelectRoom(pin)}
+        />
+      ))}
+      {searchResults.areas.map((a) => (
+        <SearchRow
+          key={a.id}
+          icon={<MapPin size={14} className="text-neutral-500" strokeWidth={2.5} />}
+          title={a.name}
+          subtitle={a.custom_kind ?? AREA_STYLES[a.kind].label}
+          onClick={() => handleSelectMapped(a.polygon, a.faculty_id, a.floor)}
+        />
+      ))}
+    </>
+  )
 
   const handleSelectFaculty = (faculty: Faculty) => {
     setCampusId(faculty.campus_id)
@@ -605,53 +668,17 @@ export function MapPage() {
                         )
                       })}
 
-                      {/* Edificios y áreas del mapeo interior. Van debajo de las
-                          facultades porque son más específicos: quien escribe
-                          "ingeniería" quiere la facultad, no una de sus salas. */}
-                      {(searchResults.buildings.length > 0 || searchResults.areas.length > 0) && (
+                      {/* Edificios, áreas y salas del mapeo interior. Van debajo
+                          de las facultades porque son más específicos: quien
+                          escribe "ingeniería" quiere la facultad, no una sala. */}
+                      {hasMappedResults && (
                         <div className="mt-1 border-t border-neutral-200/60 pt-1 dark:border-neutral-700/60">
-                          {searchResults.buildings.map((b) => (
-                            <SearchRow
-                              key={b.id}
-                              icon={<Building2 size={14} className="text-neutral-500" strokeWidth={2.5} />}
-                              title={b.name}
-                              subtitle={b.aliases[0] ?? 'Edificio'}
-                              onClick={() => handleSelectMapped(b.footprint, b.faculty_id)}
-                            />
-                          ))}
-                          {searchResults.areas.map((a) => (
-                            <SearchRow
-                              key={a.id}
-                              icon={<MapPin size={14} className="text-neutral-500" strokeWidth={2.5} />}
-                              title={a.name}
-                              subtitle={a.custom_kind ?? AREA_STYLES[a.kind].label}
-                              onClick={() => handleSelectMapped(a.polygon, a.faculty_id, a.floor)}
-                            />
-                          ))}
+                          {mappedRows}
                         </div>
                       )}
                     </div>
-                  ) : searchResults.buildings.length > 0 || searchResults.areas.length > 0 ? (
-                    <div className="max-h-72 overflow-y-auto p-2">
-                      {searchResults.buildings.map((b) => (
-                        <SearchRow
-                          key={b.id}
-                          icon={<Building2 size={14} className="text-neutral-500" strokeWidth={2.5} />}
-                          title={b.name}
-                          subtitle={b.aliases[0] ?? 'Edificio'}
-                          onClick={() => handleSelectMapped(b.footprint, b.faculty_id)}
-                        />
-                      ))}
-                      {searchResults.areas.map((a) => (
-                        <SearchRow
-                          key={a.id}
-                          icon={<MapPin size={14} className="text-neutral-500" strokeWidth={2.5} />}
-                          title={a.name}
-                          subtitle={a.custom_kind ?? AREA_STYLES[a.kind].label}
-                          onClick={() => handleSelectMapped(a.polygon, a.faculty_id, a.floor)}
-                        />
-                      ))}
-                    </div>
+                  ) : hasMappedResults ? (
+                    <div className="max-h-72 overflow-y-auto p-2">{mappedRows}</div>
                   ) : (
                     <p className="text-sm text-neutral-400 text-center py-6">
                       {t('map.noResults', 'Sin resultados')}

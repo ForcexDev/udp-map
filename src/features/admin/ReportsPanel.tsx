@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -42,11 +43,11 @@ import { AdminEmpty, AdminError, AdminLoading, AdminScreen } from './AdminScreen
 // Lo que se mudó es la pantalla de administración, no los datos.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FILTERS: Array<{ status: ModerationStatus; label: string }> = [
-  { status: 'pending', label: 'Pendientes' },
-  { status: 'reviewing', label: 'En revisión' },
-  { status: 'resolved', label: 'Resueltos' },
-  { status: 'dismissed', label: 'Descartados' },
+const FILTERS: Array<{ status: ModerationStatus; labelKey: string }> = [
+  { status: 'pending', labelKey: 'admin.filterPending' },
+  { status: 'reviewing', labelKey: 'admin.filterReviewing' },
+  { status: 'resolved', labelKey: 'admin.filterResolved' },
+  { status: 'dismissed', labelKey: 'admin.filterDismissed' },
 ]
 
 /**
@@ -61,6 +62,7 @@ const FILTERS: Array<{ status: ModerationStatus; label: string }> = [
  * es NUEVO, y marcarlos al montar borraría esa señal antes de leerla.
  */
 function TeamInbox() {
+  const { t } = useTranslation()
   const { data: notifications = [] } = useNotifications()
   const markCategory = useMarkCategoryRead()
 
@@ -74,7 +76,7 @@ function TeamInbox() {
           <BellRing size={17} strokeWidth={2.2} />
         </span>
         <h2 className="min-w-0 flex-1 text-sm font-extrabold text-neutral-900 dark:text-white">
-          {unread.length === 1 ? '1 aviso nuevo del equipo' : `${unread.length} avisos nuevos del equipo`}
+          {t('admin.teamInbox', { count: unread.length })}
         </h2>
         <button
           type="button"
@@ -83,7 +85,7 @@ function TeamInbox() {
           className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-bold text-[#D41F2D] transition-colors hover:text-[#b11a25] disabled:opacity-50"
         >
           <CheckCheck size={14} />
-          Marcar leídos
+          {t('admin.markRead')}
         </button>
       </div>
       <ul className="m-0 list-none divide-y divide-neutral-100 p-0 dark:divide-neutral-800">
@@ -113,6 +115,7 @@ function snapshotText(report: ContentReport): string {
 }
 
 export function ReportsPanel() {
+  const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
   const showToast = useUIStore((state) => state.showToast)
   const [searchParams] = useSearchParams()
@@ -152,8 +155,8 @@ export function ReportsPanel() {
 
   return (
     <AdminScreen
-      title="Denuncias"
-      description="Reportes de la comunidad: tomar el caso, descartar o eliminar. La lista se actualiza en tiempo real."
+      title={t('admin.sections.reports')}
+      description={t('admin.sections.reportsHint')}
     >
       <TeamInbox />
 
@@ -171,7 +174,7 @@ export function ReportsPanel() {
                   : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
               }`}
             >
-              {filter.label}
+              {t(filter.labelKey)}
               {isActive && reports.length > 0 && (
                 <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-black">
                   {reports.length}
@@ -185,14 +188,14 @@ export function ReportsPanel() {
       {queue.isLoading ? (
         <AdminLoading />
       ) : queue.error ? (
-        <AdminError message="No se pudo cargar la cola de denuncias." />
+        <AdminError message={t('admin.reportsFailed')} />
       ) : reports.length === 0 ? (
         <AdminEmpty
           icon={
             <CheckCircle2 size={40} strokeWidth={1.5} className="text-emerald-300 dark:text-emerald-800" />
           }
-          title="Todo al día"
-          hint="No hay reportes en esta etapa."
+          title={t('admin.allClear')}
+          hint={t('admin.noReportsHere')}
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -354,7 +357,7 @@ export function ReportsPanel() {
             onChange={(event) => setNote(event.target.value)}
             maxLength={1000}
             rows={3}
-            placeholder="Nota interna de resolución (opcional)…"
+            placeholder={t('admin.resolutionNote')}
             className="w-full resize-none rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-medium text-neutral-900 shadow-sm outline-none transition-all placeholder:text-neutral-400 focus:border-[#D41F2D] focus:bg-white dark:border-neutral-700/80 dark:bg-neutral-800/60 dark:text-white dark:focus:bg-neutral-900"
           />
           {resolution?.action === 'delete' && (

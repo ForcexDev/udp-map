@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import { Check, Star, UserRound } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
 import { dbErrorMessage, isUserFacingDbError } from '@/shared/utils/dbError'
@@ -22,12 +24,14 @@ interface EventAttendeesDialogProps {
  */
 export function EventAttendeesDialog({ pinId, eventTitle, onClose }: EventAttendeesDialogProps) {
   const { t } = useTranslation()
+  const [profileId, setProfileId] = useState<string | null>(null)
   const { data: attendees = [], isPending, error } = useEventAttendees(pinId)
 
   const going = attendees.filter((a) => a.status === 'going')
   const interested = attendees.filter((a) => a.status === 'interested')
 
   return (
+    <>
     <Dialog
       open={pinId !== null}
       onOpenChange={(open) => !open && onClose()}
@@ -51,6 +55,7 @@ export function EventAttendeesDialog({ pinId, eventTitle, onClose }: EventAttend
             label={t('events.attendeesGoing', { count: going.length, defaultValue: `${going.length} van` })}
             people={going}
             accent="text-[#D41F2D]"
+            onSelectPerson={setProfileId}
           />
           <Group
             icon={<Star size={13} />}
@@ -60,10 +65,14 @@ export function EventAttendeesDialog({ pinId, eventTitle, onClose }: EventAttend
             })}
             people={interested}
             accent="text-neutral-500"
+            onSelectPerson={setProfileId}
           />
         </div>
       )}
     </Dialog>
+
+      <PublicProfileModal userId={profileId} onClose={() => setProfileId(null)} />
+    </>
   )
 }
 
@@ -72,9 +81,10 @@ interface GroupProps {
   label: string
   people: { user_id: string; name: string | null; avatar_url: string | null }[]
   accent: string
+  onSelectPerson: (userId: string) => void
 }
 
-function Group({ icon, label, people, accent }: GroupProps) {
+function Group({ icon, label, people, accent, onSelectPerson }: GroupProps) {
   const { t } = useTranslation()
   if (people.length === 0) return null
 
@@ -86,7 +96,15 @@ function Group({ icon, label, people, accent }: GroupProps) {
       </h3>
       <ul className="m-0 flex flex-col gap-1.5 p-0 list-none">
         {people.map((person) => (
-          <li key={person.user_id} className="flex items-center gap-2.5">
+          <li key={person.user_id}>
+            {/* La fila abre el perfil. `PublicProfileModal` ya existía —lo usa
+                la tabla de líderes—, así que ver quién es alguien que va a tu
+                evento no necesitaba pantalla nueva, solo enchufarla. */}
+            <button
+              type="button"
+              onClick={() => onSelectPerson(person.user_id)}
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-1.5 py-1 text-left transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            >
             {person.avatar_url ? (
               <img
                 src={person.avatar_url}
@@ -101,6 +119,7 @@ function Group({ icon, label, people, accent }: GroupProps) {
             <span className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
               {person.name ?? t('common.noName', 'Sin nombre')}
             </span>
+            </button>
           </li>
         ))}
       </ul>

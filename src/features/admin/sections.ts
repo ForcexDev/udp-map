@@ -29,9 +29,9 @@ export interface AdminSection {
   /** Ruta absoluta. `end` marca la que solo casa exacta. */
   to: string
   end?: boolean
-  label: string
+  labelKey: string
   /** Se enseña bajo el título de la sección: para qué sirve esta pantalla. */
-  description: string
+  descriptionKey: string
   icon: LucideIcon
   /** Trazar polígonos pide ratón. La lista lo dice en vez de dejar que alguien
    *  lo descubra abriendo una pantalla vacía en el teléfono. */
@@ -42,57 +42,57 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     to: '/admin',
     end: true,
-    label: 'Resumen',
-    description: 'Cómo va la comunidad y qué necesita atención ahora mismo.',
+    labelKey: 'admin.sections.dashboard',
+    descriptionKey: 'admin.sections.dashboardHint',
     icon: LayoutDashboard,
   },
   {
     to: '/admin/moderacion',
-    label: 'Denuncias',
-    description: 'Reportes de la comunidad: tomar el caso, descartar o eliminar.',
+    labelKey: 'admin.sections.reports',
+    descriptionKey: 'admin.sections.reportsHint',
     icon: ShieldAlert,
   },
   {
     to: '/admin/usuarios',
-    label: 'Usuarios',
-    description: 'Quién está registrado y qué rol tiene cada uno.',
+    labelKey: 'admin.sections.users',
+    descriptionKey: 'admin.sections.usersHint',
     icon: Users,
   },
   {
     to: '/admin/contenido',
-    label: 'Contenido',
-    description: 'Todo lo publicado en el mapa, para revisarlo o retirarlo.',
+    labelKey: 'admin.sections.content',
+    descriptionKey: 'admin.sections.contentHint',
     icon: MapPin,
   },
   {
     to: '/admin/facultades',
-    label: 'Facultades',
-    description: 'Nombre, campus e imagen. El perímetro se traza en el editor.',
+    labelKey: 'admin.sections.faculties',
+    descriptionKey: 'admin.sections.facultiesHint',
     icon: Building2,
   },
   {
     to: '/admin/difusion',
-    label: 'Difusión',
-    description: 'Enviar un aviso a todos los dispositivos suscritos.',
+    labelKey: 'admin.sections.broadcast',
+    descriptionKey: 'admin.sections.broadcastHint',
     icon: Megaphone,
   },
   {
     to: '/admin/actividad',
-    label: 'Actividad',
-    description: 'Lo último que ha pasado en la aplicación.',
+    labelKey: 'admin.sections.activity',
+    descriptionKey: 'admin.sections.activityHint',
     icon: Activity,
   },
   {
     to: '/admin/mapeo',
-    label: 'Mapeo',
-    description: 'Edificios, plantas y áreas del campus.',
+    labelKey: 'admin.sections.mapping',
+    descriptionKey: 'admin.sections.mappingHint',
     icon: PenTool,
     desktopOnly: true,
   },
   {
     to: '/admin/ajustes',
-    label: 'Ajustes',
-    description: 'Este dispositivo y las herramientas que cambian cómo se ve el mapa.',
+    labelKey: 'admin.sections.settings',
+    descriptionKey: 'admin.sections.settingsHint',
     icon: Settings,
   },
 ]

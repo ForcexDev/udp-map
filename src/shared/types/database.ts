@@ -269,6 +269,17 @@ export type NotificationType =
   | 'announcement'
   | 'pin_verified'
   | 'pin_comment'
+  | 'event_official'
+
+/** Qué avisos quiere alguien, por categoría y canal. Sin fila = todo sí. */
+export interface NotificationPreference {
+  category: NotificationCategory
+  in_app: boolean
+  push: boolean
+}
+
+/** Las piezas de moderación que se reparten una a una. */
+export type ModeratorCapability = 'mapping' | 'reports' | 'verify' | 'content' | 'official'
 
 export interface AppNotification {
   id: string

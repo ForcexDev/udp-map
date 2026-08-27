@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "gen:agents": "node scripts/gen_agents.mjs",
     "deploy:push": "npx --yes supabase functions deploy send-push",
-    "supabase:login": "npx --yes supabase login"
+    "supabase:login": "npx --yes supabase login",
+    "check:i18n": "node scripts/check_i18n.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

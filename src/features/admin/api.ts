@@ -1,5 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
-import type { Profile, Pin, Role } from '@/shared/types/database'
+import type { Profile, Pin, Role, ModeratorCapability } from '@/shared/types/database'
 import type { DashboardStats, ActivityEntry, ActivityFeed, AdminUserFilter, AdminPinFilter } from './types'
 import { demoDb } from '@/features/pins/demoStore'
 import { REASON_LABELS } from '@/features/moderation/labels'
@@ -169,6 +169,8 @@ export async function adminDeletePin(pinId: string): Promise<void> {
 
 export interface PushSubscriber {
   userId: string
+  /** El identificador del dispositivo. Es lo que se da de baja. */
+  endpoint: string | null
   name: string | null
   role: string | null
   /** El `user_agent` crudo. Resumirlo es cosa de la interfaz. */
@@ -185,9 +187,9 @@ export interface PushSubscriber {
 export async function fetchPushSubscribers(): Promise<PushSubscriber[] | null> {
   if (!supabase) {
     return [
-      { userId: 'demo-admin', name: 'Admin Demo', role: 'admin', userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/141', createdAt: new Date(Date.now() - 4 * 86400000).toISOString() },
-      { userId: 'demo-mod', name: 'Moderador Demo', role: 'moderator', userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2) Safari', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
-      { userId: 'demo-student', name: 'Estudiante Demo', role: 'student', userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/141', createdAt: new Date(Date.now() - 3600000).toISOString() },
+      { userId: 'demo-admin', endpoint: 'https://push.example/demo-1', name: 'Admin Demo', role: 'admin', userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/141', createdAt: new Date(Date.now() - 4 * 86400000).toISOString() },
+      { userId: 'demo-mod', endpoint: 'https://push.example/demo-2', name: 'Moderador Demo', role: 'moderator', userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2) Safari', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+      { userId: 'demo-student', endpoint: 'https://push.example/demo-3', name: 'Estudiante Demo', role: 'student', userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/141', createdAt: new Date(Date.now() - 3600000).toISOString() },
     ]
   }
 
@@ -197,14 +199,82 @@ export async function fetchPushSubscribers(): Promise<PushSubscriber[] | null> {
     throw error
   }
 
-  return ((data ?? []) as Array<{ user_id: string; name: string | null; role: string | null; user_agent: string | null; created_at: string }>)
+  return ((data ?? []) as Array<{ user_id: string; endpoint?: string | null; name: string | null; role: string | null; user_agent: string | null; created_at: string }>)
     .map((row) => ({
       userId: row.user_id,
+      // `endpoint` solo llega con la migración 20260830000000. Sin él la fila se
+      // pinta igual, pero sin botón de baja: no hay a qué apuntar.
+      endpoint: row.endpoint ?? null,
       name: row.name,
       role: row.role,
       userAgent: row.user_agent,
       createdAt: row.created_at,
     }))
+}
+
+/**
+ * Da de baja un dispositivo concreto.
+ *
+ * Para las suscripciones que ya no puede quitar su dueño —un teléfono perdido,
+ * un navegador que nadie va a volver a abrir—, que si no se quedan inflando el
+ * "llegará a N dispositivos" para siempre.
+ */
+export async function deletePushSubscriberDevice(endpoint: string): Promise<void> {
+  if (!supabase) return
+
+  const { error } = await supabase.rpc('admin_delete_push_subscription', { p_endpoint: endpoint })
+  if (error) {
+    if (isMissingFunction(error)) {
+      throw new Error('Dar de baja un dispositivo necesita la migración 20260830000000 aplicada en Supabase.')
+    }
+    throw new Error(error.message || 'No se pudo dar de baja el dispositivo.')
+  }
+}
+
+// ── Permisos por moderador ──────────────────────────────────────────────────
+//
+// "Moderador" era un paquete cerrado: dárselo a alguien para que ayudara a
+// mapear le entregaba de paso el poder de borrar cualquier hilo del foro. Eso
+// empuja a no dar el rol a nadie, y así el trabajo se queda sin hacer.
+
+export const CAPABILITIES = [
+  { id: 'mapping', label: 'Mapeo', hint: 'Trazar edificios, plantas y áreas' },
+  { id: 'reports', label: 'Denuncias', hint: 'Ver y resolver la cola de moderación' },
+  { id: 'verify', label: 'Verificar', hint: 'Hacer permanentes los pines y alargar plazos' },
+  { id: 'content', label: 'Contenido', hint: 'Editar y borrar publicaciones ajenas' },
+  { id: 'official', label: 'Oficial', hint: 'Marcar eventos y publicar como entidad' },
+] as const
+
+/** Qué piezas tiene concedidas alguien. `null` si falta la migración. */
+export async function fetchUserCapabilities(userId: string): Promise<ModeratorCapability[] | null> {
+  if (!supabase) return ['mapping']
+
+  const { data, error } = await supabase.rpc('admin_user_capabilities', { p_user_id: userId })
+  if (error) {
+    if (isMissingFunction(error)) return null
+    throw error
+  }
+  return ((data ?? []) as { capability: ModeratorCapability }[]).map((row) => row.capability)
+}
+
+export async function setUserCapability(
+  userId: string,
+  capability: ModeratorCapability,
+  granted: boolean,
+): Promise<void> {
+  if (!supabase) return
+
+  const { error } = await supabase.rpc('admin_set_capability', {
+    p_user_id: userId,
+    p_capability: capability,
+    p_granted: granted,
+  })
+  if (error) {
+    if (isMissingFunction(error)) {
+      throw new Error('Repartir permisos necesita la migración 20260831000200 aplicada en Supabase.')
+    }
+    throw new Error(error.message || 'No se pudo cambiar el permiso.')
+  }
 }
 
 /** Lo que responde `admin_activity_log`. */

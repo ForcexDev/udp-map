@@ -1,3 +1,4 @@
+import { localizedName } from '@/shared/utils/localized'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -514,7 +515,7 @@ export function CreatePinModal() {
                               type="button"
                               onClick={() => setDeletedPhotoIds((prev) => [...prev, ph.id])}
                               className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-red-500 hover:scale-110 transition-all shadow-md"
-                              title="Eliminar foto"
+                              title={t('pin.removePhoto', 'Eliminar foto')}
                             >
                               <Trash2 size={14} className="text-white" />
                             </button>
@@ -534,7 +535,7 @@ export function CreatePinModal() {
                               type="button"
                               onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
                               className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-red-500 hover:scale-110 transition-all shadow-md"
-                              title="Quitar foto"
+                              title={t('pin.removePhoto', 'Eliminar foto')}
                             >
                               <Trash2 size={14} className="text-white" />
                             </button>
@@ -581,7 +582,7 @@ export function CreatePinModal() {
               >
                 <span className="truncate">
                   {form.watch('facultyId')
-                    ? FACULTIES.find(f => f.id === form.watch('facultyId'))?.name ?? t('pin.facultyNone')
+                    ? localizedName(FACULTIES.find(f => f.id === form.watch('facultyId')), i18n.language) || t('pin.facultyNone')
                     : t('pin.facultyNone')}
                 </span>
                 <svg 
@@ -625,7 +626,7 @@ export function CreatePinModal() {
                             : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
                         }`}
                       >
-                        {f.name}
+                        {localizedName(f, i18n.language)}
                       </button>
                     ))}
                   </div>
@@ -686,7 +687,7 @@ export function CreatePinModal() {
                               }`}
                               style={field.value === c.id ? { color: c.color } : {}}
                             >
-                              {c.name}
+                              {localizedName(c, i18n.language)}
                             </span>
                           </button>
                         ))}

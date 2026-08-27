@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
@@ -17,6 +18,7 @@ import { fetchDashboardStats } from './api'
 import { AdminError, AdminLoading, AdminScreen } from './AdminScreen'
 
 export function DashboardPanel() {
+  const { t } = useTranslation()
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: fetchDashboardStats,
@@ -24,13 +26,13 @@ export function DashboardPanel() {
 
   return (
     <AdminScreen
-      title="Resumen"
-      description="Cómo va la comunidad y qué necesita atención ahora mismo."
+      title={t('admin.sections.dashboard')}
+      description={t('admin.sections.dashboardHint')}
     >
       {isLoading ? (
         <AdminLoading />
       ) : error || !stats ? (
-        <AdminError message="No se pudieron cargar las métricas." />
+        <AdminError message={t('admin.statsFailed')} />
       ) : (
         <div className="flex flex-col gap-6">
           {/* Lo que necesita una decisión va primero y es un ENLACE, no un
@@ -47,11 +49,10 @@ export function DashboardPanel() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-extrabold leading-snug text-neutral-900 dark:text-white">
-                  {stats.pendingReports}{' '}
-                  {stats.pendingReports === 1 ? 'denuncia pendiente' : 'denuncias pendientes'}
+                  {t('admin.pendingReports', { count: stats.pendingReports })}
                 </span>
                 <span className="block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                  Nadie las ha tomado todavía.
+                  {t('admin.pendingReportsHint')}
                 </span>
               </span>
               <ChevronRight
@@ -63,11 +64,11 @@ export function DashboardPanel() {
 
           <section>
             <h2 className="mb-2.5 text-[11px] font-black uppercase tracking-widest text-neutral-400">
-              La comunidad
+              {t('admin.community')}
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <StatCard
-                label="Usuarios registrados"
+                label={t('admin.totalUsers')}
                 value={stats.totalUsers}
                 icon={Users}
                 tone="text-blue-500"
@@ -75,16 +76,16 @@ export function DashboardPanel() {
                 to="/admin/usuarios"
               />
               <StatCard
-                label="Karma repartido"
+                label={t('admin.totalKarma')}
                 value={stats.totalKarma}
                 icon={Flame}
                 tone="text-amber-500"
                 bg="bg-amber-50 dark:bg-amber-950/30"
               />
               <StatCard
-                label="Dispositivos suscritos"
+                label={t('admin.pushSubscribers')}
                 value={stats.pushSubscribers}
-                sub="Reciben las notificaciones push"
+                sub={t('admin.pushSubscribersHint')}
                 icon={BellRing}
                 tone="text-purple-500"
                 bg="bg-purple-50 dark:bg-purple-950/30"
@@ -95,13 +96,13 @@ export function DashboardPanel() {
 
           <section>
             <h2 className="mb-2.5 text-[11px] font-black uppercase tracking-widest text-neutral-400">
-              El mapa
+              {t('admin.theMap')}
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <StatCard
-                label="Pines vivos"
+                label={t('admin.activePins')}
                 value={stats.activePins}
-                sub={`${stats.totalPins} creados desde el principio`}
+                sub={t('admin.activePinsHint', { count: stats.totalPins })}
                 icon={MapPin}
                 tone="text-emerald-500"
                 bg="bg-emerald-50 dark:bg-emerald-950/30"
@@ -110,14 +111,14 @@ export function DashboardPanel() {
               {/* `pinsToday` se calculaba en `api.ts` y no se pintaba en ningún
                   sitio. Es la única cifra que dice si la app se está usando HOY. */}
               <StatCard
-                label="Publicados hoy"
+                label={t('admin.pinsToday')}
                 value={stats.pinsToday}
                 icon={Sparkles}
                 tone="text-[#D41F2D]"
                 bg="bg-red-50 dark:bg-red-950/30"
               />
               <StatCard
-                label="Eventos por venir"
+                label={t('admin.upcomingEvents')}
                 value={stats.upcomingEvents}
                 icon={CalendarDays}
                 tone="text-indigo-500"
@@ -129,32 +130,32 @@ export function DashboardPanel() {
           <section>
             <h2 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-neutral-400">
               <Award size={13} />
-              Roles
+              {t('admin.roles')}
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <RoleBox label="Estudiantes" value={stats.roleCounts.student} tone="text-blue-600 dark:text-blue-400" />
-              <RoleBox label="Moderadores" value={stats.roleCounts.moderator} tone="text-amber-600 dark:text-amber-500" />
-              <RoleBox label="Administradores" value={stats.roleCounts.admin} tone="text-[#D41F2D] dark:text-red-400" />
-              <RoleBox label="Invitados" value={stats.roleCounts.guest} tone="text-neutral-500" />
+              <RoleBox label={t('admin.students')} value={stats.roleCounts.student} tone="text-blue-600 dark:text-blue-400" />
+              <RoleBox label={t('admin.moderators')} value={stats.roleCounts.moderator} tone="text-amber-600 dark:text-amber-500" />
+              <RoleBox label={t('admin.admins')} value={stats.roleCounts.admin} tone="text-[#D41F2D] dark:text-red-400" />
+              <RoleBox label={t('admin.guests')} value={stats.roleCounts.guest} tone="text-neutral-500" />
             </div>
           </section>
 
           <section>
             <h2 className="mb-2.5 text-[11px] font-black uppercase tracking-widest text-neutral-400">
-              Herramientas
+              {t('admin.tools')}
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <ToolLink
                 to="/admin/mapeo"
                 icon={PenTool}
-                label="Editor de mapeo"
-                hint="Edificios, plantas y áreas. Necesita un computador."
+                label={t('admin.mappingTool')}
+                hint={t('admin.mappingToolHint')}
               />
               <ToolLink
                 to="/admin/facultades"
                 icon={Award}
-                label="Facultades"
-                hint="Nombre, campus e imagen de cada facultad."
+                label={t('admin.facultiesTool')}
+                hint={t('admin.facultiesToolHint')}
               />
             </div>
           </section>

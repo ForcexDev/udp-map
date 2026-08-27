@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { MapPinOff, ShieldCheck, Trash2 } from 'lucide-react'
@@ -30,6 +31,7 @@ const TYPE_TONE: Record<PinType, string> = {
 }
 
 export function ContentPanel() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const showToast = useUIStore((s) => s.showToast)
   const faculties = useFaculties()
@@ -58,12 +60,12 @@ export function ContentPanel() {
 
   return (
     <AdminScreen
-      title="Contenido"
-      description="Todo lo publicado en el mapa, para revisarlo o retirarlo."
+      title={t('admin.sections.content')}
+      description={t('admin.sections.contentHint')}
     >
       <div className="mb-5">
         <FilterPills
-          label="Filtrar pines por tipo"
+          label={t('admin.filterByType')}
           options={TYPE_OPTIONS}
           value={typeFilter}
           onChange={setTypeFilter}
@@ -75,7 +77,7 @@ export function ContentPanel() {
       ) : pins.length === 0 ? (
         <AdminEmpty
           icon={<MapPinOff size={40} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />}
-          title="No hay nada aquí"
+          title={t('admin.nothingHere')}
           hint={typeFilter === 'all' ? 'Todavía no se ha publicado nada.' : 'Prueba con otro tipo.'}
         />
       ) : (
@@ -158,7 +160,7 @@ export function ContentPanel() {
         <ConfirmDialog
           open={Boolean(pendingDelete)}
           onOpenChange={(open) => !open && setPendingDelete(null)}
-          title="Eliminar el pin"
+          title={t('admin.deletePin')}
           description={`«${pendingDelete.title}» desaparecerá del mapa con sus fotos y comentarios. No se puede deshacer.`}
           confirmText={deleteMutation.isPending ? 'Eliminando…' : 'Eliminar'}
           onConfirm={() => deleteMutation.mutate(pendingDelete.id)}

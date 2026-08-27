@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useUIStore } from '@/shared/stores/uiStore'
+import { useMyEvents } from '@/features/events/useEvents'
+import { MyEventsList } from '../components/MyEventsList'
 import type { Pin } from '@/shared/types/database'
 
 import { GuestGate } from '../components/GuestGate'
@@ -24,10 +26,11 @@ export function ProfilePage() {
   const selectPin = useUIStore((s) => s.selectPin)
 
   const [editOpen, setEditOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'reports' | 'badges' | 'leaderboard'>(() =>
-    searchParams.get('tab') === 'badges' ? 'badges' : searchParams.get('tab') === 'leaderboard' ? 'leaderboard' : 'reports',
+  const [activeTab, setActiveTab] = useState<'reports' | 'badges' | 'events' | 'leaderboard'>(() =>
+    searchParams.get('tab') === 'badges' ? 'badges' : searchParams.get('tab') === 'events' ? 'events' : searchParams.get('tab') === 'leaderboard' ? 'leaderboard' : 'reports',
   )
   const [leaderboardFaculty, setLeaderboardFaculty] = useState<string>('all')
+  const myEvents = useMyEvents()
   const [publicProfileId, setPublicProfileId] = useState<string | null>(null)
 
   const profileQuery = useQuery({
@@ -67,11 +70,11 @@ export function ProfilePage() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'badges' || tab === 'leaderboard' || tab === 'reports') setActiveTab(tab as 'reports' | 'badges' | 'leaderboard')
+    if (tab === 'badges' || tab === 'leaderboard' || tab === 'reports' || tab === 'events') setActiveTab(tab as 'reports' | 'badges' | 'events' | 'leaderboard')
   }, [searchParams])
 
   const handleTabChange = (val: string) => {
-    setActiveTab(val as 'reports' | 'badges' | 'leaderboard')
+    setActiveTab(val as 'reports' | 'badges' | 'events' | 'leaderboard')
     setSearchParams({ tab: val }, { replace: true })
   }
 
@@ -120,6 +123,13 @@ export function ProfilePage() {
           onViewOnMap={openOnMap}
           onEditProfile={() => setEditOpen(true)}
           onAdminPanel={() => navigate('/admin')}
+          myEvents={
+            <MyEventsList
+              events={myEvents.events}
+              loading={myEvents.isLoading}
+              onViewOnMap={(pin) => openOnMap(pin)}
+            />
+          }
           leaderboard={
             <LeaderboardTable
               data={leaderboardQuery.data}

@@ -1,3 +1,4 @@
+import { localizedName } from '@/shared/utils/localized'
 import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +18,7 @@ import { UserAvatar } from '@/shared/ui/UserAvatar'
 import { relativeTime } from '@/shared/utils/datetime'
 
 function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: string) => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const faculties = useFaculties()
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
@@ -76,7 +77,7 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
             </span>
           )}
           <span className="bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full whitespace-nowrap">
-            {faculty ? faculty.name.replace('Facultad de ', '') : t('forum.general', 'General')}
+            {faculty ? localizedName(faculty, i18n.language).replace(/^Facultad de |^Faculty of /, '') : t('forum.general', 'General')}
           </span>
         </div>
       </div>
@@ -157,7 +158,7 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
 }
 
 export function ForumPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const faculties = useFaculties()
   const guard = useGuard()
   const showToast = useUIStore((s) => s.showToast)
@@ -250,8 +251,10 @@ export function ForumPage() {
   const filteredFaculties = useMemo(() => {
     if (!channelSearch.trim()) return faculties
     const query = channelSearch.toLowerCase()
-    return faculties.filter((f) => f.name.toLowerCase().includes(query))
-  }, [faculties, channelSearch])
+    return faculties.filter((f) => localizedName(f, i18n.language).toLowerCase().includes(query))
+    // `i18n.language` entra en las dependencias: al cambiar de idioma, buscar
+    // "engineering" tiene que encontrar lo que en español era "ingeniería".
+  }, [faculties, channelSearch, i18n.language])
 
   const activeChannelName = activeFacultyId
     ? faculties.find((f) => f.id === activeFacultyId)?.name
@@ -298,7 +301,7 @@ export function ForumPage() {
             >
               <span className="truncate flex items-center gap-2">
                 <GraduationCap size={15} className="shrink-0" /> 
-                {f.name}
+                {localizedName(f, i18n.language)}
                 {recentActivityMap[f.id] && activeFacultyId !== f.id && (
                   <span className="h-2 w-2 rounded-full bg-[#D41F2D] animate-pulse shrink-0" title="Publicaciones recientes" />
                 )}
@@ -438,7 +441,7 @@ export function ForumPage() {
               type="text"
               value={channelSearch}
               onChange={(e) => setChannelSearch(e.target.value)}
-              placeholder="Buscar facultad..."
+              placeholder={t('map.searchFaculty', 'Buscar facultad…')}
               className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl pl-9 pr-3 py-2 text-xs font-medium outline-none focus:border-[#D41F2D] transition-all"
             />
           </div>
@@ -483,7 +486,7 @@ export function ForumPage() {
                   }`}
                 >
                   <span className="flex items-center gap-2 font-bold truncate text-[12.5px]">
-                    <GraduationCap size={16} className="shrink-0" /> {f.name}
+                    <GraduationCap size={16} className="shrink-0" /> {localizedName(f, i18n.language)}
                   </span>
                   {hasNew && !isActive && (
                     <span className="h-2.5 w-2.5 rounded-full bg-[#D41F2D] animate-pulse shrink-0" title="Hilo nuevo" />

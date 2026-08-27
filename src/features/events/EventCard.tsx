@@ -193,20 +193,6 @@ export function EventCard({
         </button>
       </div>
 
-      {/* Marcar asistencia no es anónimo: quien organiza abre "Quién va" y ve
-          nombre y avatar de cada persona, en las dos listas. Eso ya funcionaba y
-          NADIE se lo decía a quien pulsaba, que es lo mismo que enseñar datos de
-          alguien sin avisarle.
-
-          Va como línea fija y no como diálogo la primera vez: un diálogo se
-          descarta sin leer y luego no hay forma de recordar la regla, y aquí la
-          frase es corta y cierta siempre. A quien organiza no se le enseña —ya
-          sabe que ve la lista, es suya—. */}
-      {!isOrganizer && (
-        <p className="mt-2 text-center text-[11px] font-medium leading-snug text-neutral-400">
-          {t('events.rsvpVisibility', 'Quien organiza el evento verá tu nombre.')}
-        </p>
-      )}
     </div>
   )
 }

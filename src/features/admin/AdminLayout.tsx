@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, Outlet, Navigate, NavLink, useLocation } from 'react-router-dom'
 import { ArrowLeft, Check, ChevronDown, Monitor, ShieldAlert } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
@@ -8,6 +9,7 @@ import { useAuthStore } from '@/features/auth/authStore'
 import { ADMIN_SECTIONS, sectionForPath } from './sections'
 
 export function AdminLayout() {
+  const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const loading = useAuthStore((s) => s.loading)
@@ -24,7 +26,7 @@ export function AdminLayout() {
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-3 border-[#D41F2D] border-t-transparent" />
           <span className="text-xs font-bold text-neutral-400">
-            Verificando credenciales…
+            {t('admin.checkingCredentials', 'Verificando credenciales…')}
           </span>
         </div>
       </div>
@@ -45,11 +47,11 @@ export function AdminLayout() {
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link
               to="/mapa"
-              aria-label="Volver al mapa"
+              aria-label={t('admin.backToMap', 'Volver al mapa')}
               className="flex h-11 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-black uppercase tracking-wider text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-[#D41F2D] active:scale-95 dark:text-neutral-300 dark:hover:bg-neutral-800 sm:px-3"
             >
               <ArrowLeft size={16} />
-              <span className="hidden md:inline">Volver al mapa</span>
+              <span className="hidden md:inline">{t('admin.backToMap', 'Volver al mapa')}</span>
             </Link>
 
             <div className="hidden h-4 w-px shrink-0 bg-neutral-200 dark:bg-neutral-800 sm:block" />
@@ -63,7 +65,7 @@ export function AdminLayout() {
                   UDP Map
                 </span>
                 <span className="block truncate text-sm font-black tracking-tight text-neutral-900 dark:text-white">
-                  Administración
+                  {t('admin.title', 'Administración')}
                 </span>
               </div>
             </div>
@@ -98,14 +100,14 @@ export function AdminLayout() {
             <span className="flex min-w-0 items-center gap-2">
               {current && <current.icon size={15} className="shrink-0 text-[#D41F2D]" />}
               <span className="truncate text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-white">
-                {current?.label ?? 'Sección'}
+                {current ? t(current.labelKey) : t('admin.sectionsTitle', 'Secciones')}
               </span>
             </span>
             <ChevronDown size={15} className="shrink-0 text-neutral-400" />
           </button>
 
           <nav
-            aria-label="Secciones de administración"
+            aria-label={t('admin.sectionsTitle', 'Secciones')}
             className="hidden gap-1.5 overflow-x-auto no-scrollbar sm:flex"
           >
             {ADMIN_SECTIONS.map((section) => (
@@ -122,7 +124,7 @@ export function AdminLayout() {
                 }
               >
                 <section.icon size={14} />
-                {section.label}
+                {t(section.labelKey)}
               </NavLink>
             ))}
           </nav>
@@ -138,7 +140,7 @@ export function AdminLayout() {
       <Dialog
         open={picking}
         onOpenChange={setPicking}
-        title="Secciones"
+        title={t('admin.sectionsTitle', 'Secciones')}
         contentClassName="!bg-white dark:!bg-neutral-900"
       >
         <ul className="m-0 flex list-none flex-col gap-1 p-0">
@@ -168,7 +170,7 @@ export function AdminLayout() {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5">
                       <span className="text-sm font-bold text-neutral-900 dark:text-white">
-                        {section.label}
+                        {t(section.labelKey)}
                       </span>
                       {section.desktopOnly && (
                         <Monitor size={12} className="shrink-0 text-neutral-400" />
@@ -176,8 +178,8 @@ export function AdminLayout() {
                     </span>
                     <span className="block text-[11px] font-medium leading-snug text-neutral-400">
                       {section.desktopOnly
-                        ? 'Necesita un computador'
-                        : section.description}
+                        ? t('admin.needsComputer', 'Necesita un computador')
+                        : t(section.descriptionKey)}
                     </span>
                   </span>
                   {active && <Check size={16} className="shrink-0 text-[#D41F2D]" />}

@@ -63,6 +63,36 @@ Ambos son un copiar-pegar antiguo. Se corrigen en la Fase 3 junto con las catego
 
 ### 1.6 Hay mensajes en español clavados en el código ✅ RESUELTO (2026-08-26)
 
+**Comprobado de nuevo el 2026-08-27, y ahora con un comprobador en vez de a
+ojo**: `npm run check:i18n`. Responde tres preguntas que con 318 claves no se
+responden mirando — si falta alguna en un idioma (i18next cae al `defaultValue`,
+que está en español, y la app queda medio traducida sin avisar), si alguna se
+quedó sin traducir dentro del bloque inglés, y si las variables `{{…}}` casan
+entre los dos.
+
+Un segundo barrido buscó texto español clavado en JSX fuera de i18n y encontró
+seis, ya corregidos.
+
+**Y un tercero, el que faltaba**: los nombres de facultad y categoría no son
+claves de i18n, son DATOS con `name` y `name_en`. El patrón
+`i18n.language === 'en' ? x.name_en : x.name` estaba copiado en una docena de
+sitios y olvidado en otra docena, así que en inglés seguían saliendo "Sala",
+"Entrada" y "Facultad de Ingeniería y Ciencias" en medio de una interfaz
+traducida. Ahora lo resuelve `localizedName` en `shared/utils`, usado en los
+diecinueve sitios de pantalla. Los CAMPUS no pasan por ahí: "Campus República"
+es un nombre propio.
+
+**El panel de administración también se tradujo** (2026-08-27). Estaba fuera con
+el argumento de que era una herramienta interna en español, y el argumento no se
+sostuvo: `/admin` se abre desde la misma aplicación y quedaba como una isla sin
+traducir. Son 92 claves bajo `admin.*`, incluidas las etiquetas de rol — que
+estaban en constantes de módulo y por eso **se evaluaban una sola vez al
+importar**: aunque hubieran pasado por i18n, se habrían quedado en el idioma que
+hubiera al arrancar. Ahora se resuelven dentro del componente.
+
+Lo único que sigue en español es `features/mapping`, el editor de polígonos: es
+de computador y de moderador con la pieza `mapping`, y no lo abre nadie más.
+
 `i18n` estaba montado (`shared/lib/i18n.ts`, es/en) pero varios avisos se
 saltaban el sistema y salían siempre en español: los cuatro toasts de brújula y
 ubicación de `MapPage`/`MapView`, sus dos `aria-label` y casi todos los textos
@@ -1308,9 +1338,32 @@ En orden de lo que más rinde:
      lista con nombres (`EventAttendeesDialog`). Sale de `event_attendees`, que
      comprueba en la base que quien pregunta sea el autor: no es un `if` de
      interfaz.
-2. - [ ] **Sección "Mis eventos" en el perfil.** Hoy aprietas "Iré" y no cambia
-     nada en pantalla. Que el evento aparezca en algún sitio tuyo es lo que hace
-     que el botón se sienta como que hizo algo. Sigue pendiente.
+
+     **Ampliado el 2026-08-27**: cada nombre de esa lista abre el perfil de la
+     persona. No hizo falta pantalla nueva —`PublicProfileModal` ya existía para
+     la tabla de líderes—, solo enchufarla. Al hacerlo salió que ese modal era
+     z-40/z-50 y quedaba pintado DETRÁS del diálogo desde el que se abre: existía
+     y respondía al teclado, pero solo se veía borroso al fondo. Ahora es z-4600,
+     por encima del `Dialog` compartido. Es la tercera vez que muerde lo mismo —
+     ver el apunte sobre la escala de capas al final de §13.2.
+
+     Y quien marca asistencia ahora **sabe que su nombre se verá**: el aviso está
+     en la cabecera de la lista de eventos. Estaba en cada tarjeta y se repetía
+     tantas veces como eventos hubiera, así que dejaba de leerse.
+2. - [x] **Sección "Mis eventos" en el perfil.** Hecho el 2026-08-27. Antes,
+     pulsar "Iré" guardaba una fila y no cambiaba nada en pantalla salvo el
+     propio botón: un botón que no deja rastro en ningún sitio tuyo se siente
+     como que no hizo nada. Ahora hay pestaña propia, partida en "Por venir" y
+     "Ya pasaron", con la marca que le pusiste a cada evento y acceso al mapa.
+     Lo pasado se conserva porque responde la otra pregunta que uno se hace:
+     "¿fui a eso?".
+
+     Dos detalles que conviene no deshacer. Los eventos salen de una consulta
+     acotada por ids (`fetchEventsByIds`) y NO de `usePins`: la del mapa lleva
+     los filtros activos en su `queryKey`, así que "mis eventos" habría cambiado
+     según lo que estuviera filtrado en el mapa. Y el reparto entre pasado y
+     futuro usa `eventPhase`, el mismo que la agenda: si cambia qué cuenta como
+     terminado, cambia en un solo sitio.
 3. - [x] **Conteo público, pero con umbral.** Hecho el 2026-08-26, con las dos
      salidas que proponía esta línea a la vez: se suma "interesados" y "voy" en
      una cifra **y** hay umbral (`RSVP_PUBLIC_THRESHOLD`, hoy 5). Por debajo no
@@ -1580,18 +1633,33 @@ ninguno abría diálogos —el tutorial y "Sobre nosotros" se abren después de 
 el Sidebar—; lo destapó la confirmación de "Vaciar todo". Ahora es
 `z-4500`/`z-4510`, por encima de todo salvo el Toast.
 
-### 13.3 Buscar dentro de una facultad, no solo facultades
+### 13.3 Buscar salas, no solo facultades ✅ (2026-08-27)
 
-Hoy el buscador solo encuentra facultades. La idea es que, **estando dentro de
-una facultad**, sirva para encontrar lo que hay dentro: qué salas están libres
-ahora y qué ramo se está dando en cada una.
+El buscador cubría facultades, edificios y áreas. Las salas —que son pines con
+`room_code`— **no se buscaban**: escribir `E441.1.S106`, que es el código que la
+propia aplicación genera y enseña, devolvía "Sin resultados".
 
-Dependía de conseguir acceso al repositorio de salas y horarios de la
-universidad, que era el mismo bloqueo que tenía "Salas libres" en la §14. El
-modelo ya lo soporta: `pins.room_code` existe justamente para cruzar con ese
-sistema. **Ese bloqueo se levantó el 2026-08-10** (ver §14 y `docs/SALAS.md`);
-lo que ahora falta es que existan los pines de sala contra los que cruzar. Las
-dos cosas siguen saliendo del mismo trabajo.
+Las tres formas en que se busca una sala salen de **una sola regla** —subcadena
+sobre el código normalizado— y las tres funcionan:
+
+| Se escribe | Se obtiene |
+|---|---|
+| `E441` | El edificio y todas sus salas |
+| `106` | Las S106 de cualquier facultad |
+| `E441.1.S106` | Esa |
+
+Lo que sí hay es un ORDEN, en `shared/utils/roomSearch.ts`, y no es decorativo:
+con "106" casan la S106 de varios edificios y cualquier pin que mencione 106 de
+pasada, y quien escribe eso busca **una sala llamada 106**. Un pin SIN código no
+entra por muy bien que encaje su título: no es una sala del catálogo.
+
+Abrir una sala fija además su planta. Sin eso, el marcador de una del piso 2 no
+se dibuja mientras se mira el 1 (`floorVisibility`).
+
+**Lo que sigue abierto de la idea original**: qué salas están LIBRES ahora y qué
+ramo se da en cada una. Eso ya no es buscar, es cruzar con el horario — el
+catálogo está en `features/mapping/salasEit.ts` y el bloqueo se levantó el
+2026-08-10, pero cruzarlo con la hora actual es trabajo aparte.
 
 ### 13.4 El moderador no tiene facultad, y debería
 

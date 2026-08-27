@@ -59,10 +59,17 @@ function PublicProfileModalContent({ userId, onClose }: { userId: string; onClos
       <RadixDialog.Portal>
         {/* Opaco a propósito: el perfil ajeno es una pantalla, no una tarjeta
             flotando sobre el mapa. */}
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" />
+        {/* z-4600, por encima del `Dialog` compartido (z-4510).
+
+            El perfil se abre DESDE otro diálogo —la lista de asistentes de un
+            evento, la tabla de líderes—, así que es siempre el de encima. Con
+            los z-40/z-50 que tenía, abrirlo desde la lista de asistentes lo
+            dejaba pintado detrás: existía, respondía al teclado, y solo se veía
+            borroso al fondo. */}
+        <RadixDialog.Overlay className="fixed inset-0 z-[4600] bg-black/60 backdrop-blur-sm" />
         <RadixDialog.Content
           aria-describedby={undefined}
-          className="fixed inset-0 z-50 flex flex-col overflow-hidden premium-shadow
+          className="fixed inset-0 z-[4610] flex flex-col overflow-hidden premium-shadow
                      bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800
                      sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
                      sm:h-auto sm:max-h-[85dvh] sm:w-[calc(100vw-4rem)] sm:max-w-xl

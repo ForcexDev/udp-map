@@ -1,3 +1,4 @@
+import { localizedName } from '@/shared/utils/localized'
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SlidersHorizontal, Star, X } from 'lucide-react'
@@ -15,7 +16,7 @@ const TYPE_KEYS: { type: PinType; key: string }[] = [
 ]
 
 export function FiltersPanel() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const faculties = useFaculties()
   const [open, setOpen] = useState(false)
   const [facultyDropdownOpen, setFacultyDropdownOpen] = useState(false)
@@ -123,7 +124,7 @@ export function FiltersPanel() {
                 ) : (
                   <span className="text-[10px]">{c.emoji}</span>
                 )}
-                {c.name}
+                {localizedName(c, i18n.language)}
               </button>
             ))}
           </div>
@@ -139,7 +140,7 @@ export function FiltersPanel() {
             >
               <span className="truncate">
                 {facultyId
-                  ? faculties.find(f => f.id === facultyId)?.name ?? t('filters.allFaculties')
+                  ? localizedName(faculties.find(f => f.id === facultyId), i18n.language) || t('filters.allFaculties')
                   : t('filters.allFaculties')}
               </span>
               <svg
@@ -179,7 +180,7 @@ export function FiltersPanel() {
                         : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
                         }`}
                     >
-                      {f.name}
+                      {localizedName(f, i18n.language)}
                     </button>
                   ))}
                 </div>

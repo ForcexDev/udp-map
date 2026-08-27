@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/features/auth/authStore'
-import { fetchEventAttendees, fetchEventRsvpCounts, fetchUserRSVPs, setRSVP } from './api'
+import { fetchEventAttendees, fetchEventRsvpCounts, fetchEventsByIds, fetchUserRSVPs, setRSVP } from './api'
 
 export function useUserRSVPs() {
   const userId = useAuthStore((s) => s.user?.id)
@@ -54,4 +54,31 @@ export function useEventAttendees(pinId: string | null) {
     queryFn: () => fetchEventAttendees(pinId!),
     enabled: Boolean(pinId),
   })
+}
+
+/**
+ * Los eventos que marqué, con la marca que les puse.
+ *
+ * Existe porque hasta ahora pulsar "Asistiré" no cambiaba nada en pantalla
+ * salvo el propio botón: la fila se guardaba y no aparecía en ningún sitio
+ * tuyo (ROADMAP §13.1, punto 2). Un botón que no deja rastro se siente como
+ * que no hizo nada.
+ */
+export function useMyEvents() {
+  const rsvps = useUserRSVPs()
+  const pinIds = (rsvps.data ?? []).map((r) => r.pin_id)
+
+  const events = useQuery({
+    queryKey: ['my-events', [...pinIds].sort()],
+    queryFn: () => fetchEventsByIds(pinIds),
+    enabled: rsvps.isSuccess,
+  })
+
+  const statusOf = new Map((rsvps.data ?? []).map((r) => [r.pin_id, r.status]))
+
+  return {
+    events: (events.data ?? []).map((pin) => ({ pin, status: statusOf.get(pin.id) ?? null })),
+    isLoading: rsvps.isLoading || events.isLoading,
+    error: rsvps.error ?? events.error,
+  }
 }

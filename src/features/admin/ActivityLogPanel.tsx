@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+import i18n from '@/shared/lib/i18n'
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -67,14 +69,15 @@ function dayLabel(date: Date): string {
   const sameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 
-  if (sameDay(date, today)) return 'Hoy'
-  if (sameDay(date, yesterday)) return 'Ayer'
+  if (sameDay(date, today)) return i18n.t('admin.today')
+  if (sameDay(date, yesterday)) return i18n.t('admin.yesterday')
   return date.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 
 export function ActivityLogPanel() {
+  const { t } = useTranslation()
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin', 'activity'],
     queryFn: fetchRecentActivity,
@@ -97,14 +100,14 @@ export function ActivityLogPanel() {
 
   return (
     <AdminScreen
-      title="Actividad"
-      description="Quién ha hecho qué, en orden. Incluye lo que ya se borró."
+      title={t('admin.sections.activity')}
+      description={t('admin.sections.activityHint')}
       width="narrow"
     >
       {isLoading ? (
         <AdminLoading />
       ) : error ? (
-        <AdminError message="No se pudo cargar el registro de actividad." />
+        <AdminError message={t('admin.activityFailed')} />
       ) : (
         <div className="flex flex-col gap-6">
           {data && !data.fromLog && (
@@ -114,14 +117,10 @@ export function ActivityLogPanel() {
               <TriangleAlert size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
               <div className="min-w-0">
                 <p className="text-sm font-bold text-neutral-900 dark:text-white">
-                  El registro todavía no está activo
+                  {t('admin.logInactive')}
                 </p>
                 <p className="mt-1 text-xs font-medium leading-relaxed text-neutral-500 dark:text-neutral-400">
-                  Esto es una reconstrucción a partir de lo que sigue vivo: no
-                  incluye lo que se borró ni dice quién hizo cada cosa. Para
-                  tener el registro de verdad, aplica la migración
-                  <code className="mx-1 font-mono text-[11px]">20260828000000</code>
-                  en Supabase.
+                  {t('admin.logInactiveHint', { migration: '20260828000000' })}
                 </p>
               </div>
             </div>
@@ -130,8 +129,8 @@ export function ActivityLogPanel() {
           {groups.length === 0 ? (
             <AdminEmpty
               icon={<History size={40} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />}
-              title="Todavía nada"
-              hint="Aquí aparecerá cada publicación, verificación, denuncia y cambio de rol."
+              title={t('admin.nothingYet')}
+              hint={t('admin.activityEmptyHint')}
             />
           ) : (
             groups.map((group) => (

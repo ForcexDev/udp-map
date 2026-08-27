@@ -17,6 +17,7 @@ import {
 } from './useNotifications'
 import { groupNotifications, notificationLook } from './notificationMeta'
 import { PushCard } from './PushCard'
+import { NotificationPreferences } from './NotificationPreferences'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El centro de avisos.
@@ -196,6 +197,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div className="space-y-5 pb-12">
       <PushCard />
+      <NotificationPreferences />
 
       {isLoading ? (
         <p className="py-10 text-center text-sm font-semibold text-neutral-400">

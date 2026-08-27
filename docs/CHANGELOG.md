@@ -1,5 +1,8 @@
 ### Novedades en esta versión (v0.7.0)
 
+- Tus eventos marcados ahora aparecen en tu perfil
+- El buscador encuentra salas por código, edificio o número
+- Puedes ver el perfil de quien va a tu evento
 - Te avisamos cuando verifican tu publicación o alguien la comenta
 - Los avisos de la universidad ahora pueden llevarte al pin del que hablan
 - Actualizar la aplicación es mucho más rápido y ya no hay que insistir

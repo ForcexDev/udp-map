@@ -1,3 +1,4 @@
+import { localizedName } from '@/shared/utils/localized'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -77,7 +78,7 @@ function formatEventDate(startsAt: string, endsAt: string) {
 }
 
 export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const guard = useGuard()
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
@@ -210,7 +211,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
             <div className="mt-2 flex items-start gap-1.5 text-[12.5px] font-bold uppercase tracking-wide text-[#9d2235] dark:text-red-400">
               <MapPin size={13} className="mt-0.5 shrink-0" />
               <span className="min-w-0">
-                {faculty?.name}
+                {localizedName(faculty, i18n.language)}
                 {indoorParts.length > 0 && (
                   <span className="text-neutral-500 dark:text-neutral-400">
                     {faculty ? ' · ' : ''}

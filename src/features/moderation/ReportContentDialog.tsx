@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { Megaphone, UserX, AlertTriangle, EyeOff, HelpCircle, CheckCircle2, ShieldAlert, Loader2 } from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
@@ -20,6 +21,7 @@ export interface ReportTarget {
 }
 
 export function ReportContentDialog({ target, onClose }: { target: ReportTarget | null; onClose: () => void }) {
+  const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
   const showToast = useUIStore((state) => state.showToast)
   const mutation = useCreateContentReport()
@@ -100,7 +102,7 @@ export function ReportContentDialog({ target, onClose }: { target: ReportTarget 
             maxLength={1000}
             rows={3}
             className="w-full resize-none rounded-2xl border border-neutral-200 dark:border-neutral-700/80 bg-neutral-50 dark:bg-neutral-800/60 px-4 py-3 text-xs font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 outline-none focus:border-[#D41F2D] focus:bg-white dark:focus:bg-neutral-900 transition-all shadow-sm"
-            placeholder="Entrega contexto para facilitar la revisión…"
+            placeholder={t('moderation.detailsPlaceholder', 'Entrega contexto para facilitar la revisión…')}
           />
         </div>
 

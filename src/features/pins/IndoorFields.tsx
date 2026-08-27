@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect, useRef } from 'react'
 import { Building2, Layers } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -50,6 +51,7 @@ export function IndoorFields({
   onFloorChange,
   onRoomCodeChange,
 }: IndoorFieldsProps) {
+  const { t } = useTranslation()
   const { mapping } = useMapping()
   const activeFloor = useUIStore((s) => s.activeFloor)
 
@@ -143,7 +145,7 @@ export function IndoorFields({
 
       {isRoom && (
         <div className="space-y-3">
-          <label className={LABEL}>Código de sala</label>
+          <label className={LABEL}>{t('pin.roomCode', 'Código de sala')}</label>
           <input
             value={roomCode}
             onChange={(e) => handleRoomCode(e.target.value)}

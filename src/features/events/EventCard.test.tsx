@@ -84,21 +84,3 @@ describe('EventCard — conteo de asistencia', () => {
     expect(screen.queryByText(/van|apuntad/i)).toBeNull()
   })
 })
-
-describe('EventCard — avisar de que marcar asistencia no es anónimo', () => {
-  it('le dice a quien puede apuntarse que su nombre se verá', () => {
-    // Quien organiza abre "Quién va" y ve nombre y avatar de cada persona, en
-    // las dos listas. Eso ya funcionaba y nadie se lo decía a quien pulsaba,
-    // que es enseñar datos de alguien sin avisarle. La frase es corta a
-    // propósito: tiene que leerse antes de pulsar, no después.
-    renderCard()
-
-    expect(screen.getByText(/verá tu nombre/i)).toBeInTheDocument()
-  })
-
-  it('no se lo repite a quien organiza, que ya sabe que ve la lista', () => {
-    renderCard({ isOrganizer: true })
-
-    expect(screen.queryByText(/verá tu nombre/i)).toBeNull()
-  })
-})

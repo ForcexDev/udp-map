@@ -92,7 +92,7 @@ export function EventScheduleEditor({ rows, onChange, eventStartsAt, eventEndsAt
                       value={row.end}
                       onChange={(end) => update(row.key, { end })}
                       label={t('pin.scheduleEnd', 'Hora de término (opcional)')}
-                      placeholder="Sin fin"
+                      placeholder={t('pin.scheduleNoEnd', 'Sin fin')}
                       align="right"
                       clearable
                     />

@@ -1,3 +1,4 @@
+import { localizedName } from '@/shared/utils/localized'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog } from '@/shared/ui/Dialog'
@@ -18,7 +19,7 @@ interface CreateThreadModalProps {
 }
 
 export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }: CreateThreadModalProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const canPostOfficial = can(role, 'forum.postOfficial')
@@ -106,7 +107,7 @@ export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }
           <CustomSelect
             options={[
               { value: 'general', label: t('forum.generalTab', 'Tablón General') },
-              ...FACULTIES.map((f) => ({ value: f.id, label: f.name })),
+              ...FACULTIES.map((f) => ({ value: f.id, label: localizedName(f, i18n.language) })),
             ]}
             value={facultyId || 'general'}
             onChange={(val) => setFacultyId(val === 'general' ? null : val)}

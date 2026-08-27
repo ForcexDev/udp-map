@@ -1,3 +1,4 @@
+import { localizedName } from '@/shared/utils/localized'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X, Share2, Clock, Plus, MapPin, Layers, ArrowUpDown, AlertTriangle, Calendar } from 'lucide-react'
@@ -104,7 +105,7 @@ function FacultyHero({ owner, fallbackImage }: { owner: PlaceOwner; fallbackImag
 }
 
 export function FacultyDetail() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const selectedFacultyId = useUIStore((s) => s.selectedFacultyId)
   const selectFaculty = useUIStore((s) => s.selectFaculty)
   const selectPin = useUIStore((s) => s.selectPin)
@@ -253,10 +254,10 @@ export function FacultyDetail() {
 
   const handleShare = async () => {
     const url = `${window.location.origin}/mapa?faculty=${faculty.id}`
-    const text = `${faculty.name} — UDP Map`
+    const text = `${localizedName(faculty, i18n.language)} — UDP Map`
     try {
       if (navigator.share) {
-        await navigator.share({ title: faculty.name, text, url })
+        await navigator.share({ title: localizedName(faculty, i18n.language), text, url })
       } else {
         await navigator.clipboard.writeText(url)
         showToast(t('common.copied', 'Enlace copiado al portapapeles'))
@@ -386,7 +387,7 @@ export function FacultyDetail() {
     <DraggableBottomSheet
       isOpen={true}
       onClose={() => selectFaculty(null)}
-      ariaLabel={faculty.name}
+      ariaLabel={localizedName(faculty, i18n.language)}
       className="!p-0"
       // Tercer punto, más bajo que el compacto: solo el título y el contador
       // asomando, para consultar el mapa sin cerrar la ficha ni perder el sitio.
@@ -414,7 +415,7 @@ export function FacultyDetail() {
             hueco lo reserva el layout y da igual cuántos botones haya. */}
         <div className="flex shrink-0 items-start gap-3 p-5 pb-3">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <h2 className="text-xl font-bold leading-tight drop-shadow-sm">{faculty.name}</h2>
+            <h2 className="text-xl font-bold leading-tight drop-shadow-sm">{localizedName(faculty, i18n.language)}</h2>
             <p className="text-sm opacity-80">
               {visiblePins.length} {visiblePins.length === 1 ? 'post' : 'posts'}
               {place && <span className="opacity-70"> · {place.name}</span>}

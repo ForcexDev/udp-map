@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // La anatomía de una pantalla del panel.
@@ -80,17 +81,19 @@ export function AdminEmpty({
 
 /** Carga y error, con el mismo aspecto que las páginas públicas. */
 export function AdminLoading() {
+  const { t } = useTranslation()
   return (
     <div className="flex h-64 items-center justify-center text-sm font-semibold text-neutral-500">
-      Cargando…
+      {t('admin.loading', 'Cargando…')}
     </div>
   )
 }
 
 export function AdminError({ message }: { message?: string }) {
+  const { t } = useTranslation()
   return (
     <div className="flex h-64 items-center justify-center px-6 text-center text-sm font-semibold text-red-500">
-      {message ?? 'No se pudo cargar. Vuelve a intentarlo.'}
+      {message ?? t('admin.loadFailed', 'No se pudo cargar. Vuelve a intentarlo.')}
     </div>
   )
 }

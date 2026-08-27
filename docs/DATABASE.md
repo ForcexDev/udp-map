@@ -86,8 +86,12 @@ y el rechazo ocurre en el alta, no en la interfaz.
 | Ver y resolver denuncias | ❌ | ❌ | ❌ | ✅ | `content_reports_read_own_or_admin`, RPC `claim_moderation_report` y `resolve_moderation_report` |
 | Enviar una notificación push a todo el mundo | ❌ | ❌ | ❌ | ✅ | RPC `admin_broadcast_push_notification` |
 | Mandarse una push de prueba a uno mismo | ❌ | ❌ | ❌ | ✅ | RPC `admin_send_test_push_to_self` |
+| Trazar el mapeo interior *(con la pieza `mapping`)* | ❌ | ❌ | ⚙️ | ✅ | `has_capability('mapping')` |
+| Ver la cola de denuncias *(con la pieza `reports`)* | ❌ | ❌ | ⚙️ | ✅ | `has_capability('reports')` |
+| Elegir qué avisos recibir | ❌ | ✅ | ✅ | ✅ | `notification_preferences_own` |
 | Ver el registro de actividad | ❌ | ❌ | ❌ | ✅ | RLS `activity_log_read_admin` + RPC `admin_activity_log` |
 | Ver quién recibe los avisos push | ❌ | ❌ | ❌ | ✅ | RPC `admin_push_subscribers` |
+| Dar de baja el dispositivo de otro | ❌ | ❌ | ❌ | ✅ | RPC `admin_delete_push_subscription` |
 
 **El eje que separa los dos roles es "contenido y mapa" contra "plataforma y
 personas".** Un moderador manda sobre lo que se ve en el mapa: verifica, edita,
@@ -514,6 +518,15 @@ difundir algo a toda la universidad. Devuelve nombre, rol, `user_agent` y fechas
 — **no el correo**, que es el dato que convierte una lista en un directorio—, y
 comprueba el rol dentro de la función, no solo con el GRANT.
 
+`admin_delete_push_subscription(endpoint)` (migración `20260830000000`) existe
+para las suscripciones que ya no puede dar de baja su dueño: un teléfono
+perdido, un navegador que nadie va a volver a abrir. `push_subscriptions_own`
+solo deja borrar las propias, así que esas se quedaban inflando el "llegará a N
+dispositivos" para siempre. La cola de entregas ya limpia sola las que el
+servicio de push rechaza con 404 o 410, pero un endpoint válido de un teléfono
+que nadie mira nunca da error. La baja queda registrada como
+`push_unsubscribed`, porque es una acción de administración sobre alguien.
+
 La misma migración añade `admin_send_test_push_to_self()`. Existe porque probar
 el push obligaba a usar la difusión, que recorre **todas** las suscripciones:
 comprobar "¿me llega a mí?" le hacía sonar el teléfono a la universidad entera.
@@ -556,6 +569,46 @@ destino sin que nadie se enterara. El destino se valida contra
 `^/[A-Za-z0-9/_?=&%.-]*$`: **tiene que ser una ruta interna**, porque un aviso
 que puede mandar a toda la universidad a una web ajena con un toque es phishing
 servido por la propia aplicación.
+
+### Cada quien elige qué avisos quiere
+
+`notification_preferences` (migración `20260831000000`), con **dos ejes**: la
+categoría dice DE QUÉ es el aviso, y el canal POR DÓNDE llega. Alguien puede
+querer ver en la app que le comentaron un pin sin que le suene el teléfono a las
+once de la noche; un solo interruptor por categoría no permite decir eso.
+
+**La ausencia de fila es "sí a todo".** No se siembra nada al crear una cuenta:
+seis filas por usuario que casi siempre valen `true` son almacenamiento y
+mantenimiento a cambio de nada. Solo hay fila cuando alguien cambia algo, así
+que la tabla pesa lo que pesan las excepciones. La regla entera vive en
+`wants_notification(usuario, categoría, canal)`, y va como función —y no como
+subconsulta suelta— para que `create_notification` y `queue_notification_push`
+no puedan discrepar.
+
+Se aplica en dos sitios: `create_notification` no crea la fila si el canal
+`in_app` está apagado, y `queue_notification_push` no encola la entrega si lo
+está el `push`. El CHECK `push_needs_in_app` impide el estado imposible de
+"mándamelo al teléfono pero no lo guardes".
+
+**Los avisos de `audience = 'admin'` no son silenciables.** Quien modera tiene
+que enterarse de una denuncia; dejar que se apaguen sería quedarse sin vigilar
+la cola sin que nadie lo haya decidido.
+
+### El evento oficial avisa a su facultad
+
+`notify_faculty_official_event` (migración `20260831000100`). El ROADMAP §13.1
+lo resume: "el evento de campus no falla porque se te olvide, falla porque nunca
+te enteraste". El recordatorio ya existía para quien marcó, pero marcar exige
+haberse enterado — ese era el eslabón que faltaba.
+
+**Acotado a eventos oficiales, y eso es la mitad del diseño.** Marcar un evento
+como oficial es permiso de moderador, así que no puede usarlo cualquiera para
+escribirle a media universidad. Si valiera para cualquier evento, en una semana
+la gente apagaría los avisos enteros.
+
+Va solo a quien tiene esa facultad en su perfil, nunca a quien lo publica, y en
+UPDATE solo cuando **cruza** a oficial — sin eso, editarle el título a un evento
+ya oficial volvería a avisar a toda la facultad.
 
 ### El registro de actividad
 
@@ -602,6 +655,42 @@ para auditar nada.
 
 ---
 
+## 4.bis Permisos por persona, no por rol entero
+
+`moderator_capabilities` (migración `20260831000200`). Antes "moderador" era un
+paquete cerrado: dárselo a alguien para que ayudara a mapear le entregaba de
+paso el poder de borrar cualquier hilo del foro. Eso empuja a no dar el rol a
+nadie, que es como se queda el trabajo sin hacer.
+
+Cinco piezas: `mapping` (trazar edificios, plantas y áreas), `reports` (ver y
+resolver denuncias), `verify` (verificar pines y alargar plazos), `content`
+(editar y borrar contenido ajeno) y `official` (marcar eventos y publicar como
+entidad).
+
+`has_capability(pieza)` sustituye a `user_role() in ('moderator','admin')` allí
+donde se ha migrado. **`admin` siempre da true**: el administrador no necesita
+que le concedan nada, y hacerlo dependiente de una fila abriría el caso de un
+proyecto sin ningún administrador capaz de repararse a sí mismo.
+
+Se concede **solo por RPC** (`admin_set_capability`). Si un moderador pudiera
+escribir en la tabla, se concedería a sí mismo lo que quisiera — por eso
+`authenticated` solo tiene `SELECT`. Y solo se reparte entre moderadores:
+concederle capacidades a un estudiante crearía un moderador encubierto, con
+permisos reales y sin el rol que se lo explique a quien mire la lista.
+
+**Alcance actual.** Se aplica a las políticas del mapeo (`buildings`,
+`building_floors`, `areas`, `floor_plans`) y a la lectura de la cola de
+denuncias. Las demás —`pins_owner_or_mod`, el foro— siguen mirando el rol a
+secas. Reescribir las treinta políticas de golpe es la forma de meter un agujero
+sin darse cuenta; se irán moviendo una a una, con su comprobación.
+
+**Al aplicar la migración, los moderadores que ya existían reciben las cuatro
+capacidades que hoy tienen.** No es generosidad: quitarle permisos a alguien en
+silencio, durante una migración, es romperle el trabajo sin avisarle. Recortar
+se hace después, desde el panel y a propósito.
+
+---
+
 ## 5. Las funciones
 
 Casi todas son `SECURITY DEFINER`: se ejecutan con los permisos de `postgres`,
@@ -640,6 +729,11 @@ una tabla o función. Dos no lo hacen — ver la sección 11.
 | `admin_broadcast_push_notification(t, c)` | admin | Difunde un aviso a todo el que tenga push activado |
 | `admin_send_test_push_to_self()` | admin | La misma tubería, pero solo a quien la llama |
 | `admin_push_subscribers()` | admin | Quién recibe los avisos push, y desde qué dispositivo |
+| `admin_delete_push_subscription(endpoint)` | admin | Da de baja un dispositivo concreto |
+| `admin_set_capability(usuario, pieza, sí/no)` | admin | Concede o quita una pieza de moderación |
+| `admin_user_capabilities(usuario)` | admin | Qué piezas tiene concedidas alguien |
+| `has_capability(pieza)` | cualquiera | Si quien pregunta puede hacer eso. Lo usan las políticas |
+| `wants_notification(usuario, categoría, canal)` | cualquiera | Si esa persona quiere ese aviso |
 | `admin_activity_log(limite)` | admin | El registro de actividad, con el nombre de quien actuó |
 | `prune_activity_log(dias)` | admin | Poda el registro. Mínimo 7 días |
 

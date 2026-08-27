@@ -444,7 +444,7 @@ create table if not exists public.notifications (
   -- propio porque antes se guardaban como 'achievement'/'profile': un corte de
   -- agua le llegaba a cada estudiante disfrazado de logro y se le mezclaba
   -- entre sus insignias al filtrar.
-  type        text         not null check (type in ('achievement', 'forum_reply', 'event_reminder', 'moderation_report', 'moderation_update', 'announcement', 'pin_verified', 'pin_comment')),
+  type        text         not null check (type in ('achievement', 'forum_reply', 'event_reminder', 'moderation_report', 'moderation_update', 'announcement', 'pin_verified', 'pin_comment', 'event_official')),
   -- 'pins' es TU contenido en el mapa: ni tu perfil, ni el foro, ni un evento.
   category    text         not null check (category in ('profile', 'forum', 'events', 'moderation', 'system', 'pins')),
   audience    text         not null default 'personal' check (audience in ('personal', 'admin')),
@@ -544,6 +544,33 @@ create index if not exists idx_forum_threads_faculty  on public.forum_threads (f
 create index if not exists idx_forum_comments_thread  on public.forum_comments (thread_id);
 create index if not exists idx_forum_comments_parent  on public.forum_comments (parent_comment_id);
 
+create table if not exists public.notification_preferences (
+  user_id     uuid        not null references public.profiles(id) on delete cascade,
+  category    text        not null check (category in ('profile', 'forum', 'events', 'moderation', 'system', 'pins')),
+  /** Si se guarda la notificación en la campana. */
+  in_app      boolean     not null default true,
+  /** Si además sale al teléfono. Requiere in_app: no se puede mandar push de
+   *  algo que no existe. Lo impone el CHECK de abajo, no la interfaz. */
+  push        boolean     not null default true,
+  updated_at  timestamptz not null default now(),
+  primary key (user_id, category),
+  constraint push_needs_in_app check (in_app or not push)
+);
+
+create table if not exists public.moderator_capabilities (
+  user_id     uuid        not null references public.profiles(id) on delete cascade,
+  capability  text        not null check (capability in (
+                            'mapping',   -- trazar edificios, plantas y áreas
+                            'reports',   -- ver y resolver denuncias
+                            'verify',    -- verificar pines y alargar plazos
+                            'content',   -- editar y borrar contenido ajeno
+                            'official'   -- marcar eventos y publicar como entidad
+                          )),
+  granted_by  uuid        references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now(),
+  primary key (user_id, capability)
+);
+
 -- ── 3.9 Registro de actividad ───────────────────────────────────────────────
 
 -- Un log de solo-añadir para administración. Existe porque "actividad" antes se
@@ -563,7 +590,8 @@ create table if not exists public.activity_log (
                               'pin_verified', 'pin_unverified',
                               'report_filed', 'report_claimed',
                               'report_resolved', 'report_dismissed',
-                              'role_changed', 'broadcast_sent'
+                              'role_changed', 'broadcast_sent',
+                              'push_unsubscribed', 'capability_changed'
                             )),
   target_type  text         check (target_type is null or target_type in ('pin', 'report', 'profile', 'broadcast')),
   target_id    uuid,
@@ -1923,6 +1951,13 @@ declare
 begin
   if p_user_id is null then return null; end if;
 
+  -- Los avisos de trabajo del equipo NO son opcionales: quien modera tiene que
+  -- enterarse de una denuncia. Silenciarlos sería dejar la cola sin vigilar sin
+  -- que nadie decida hacerlo.
+  if p_audience = 'personal' and not public.wants_notification(p_user_id, p_category, 'in_app') then
+    return null;
+  end if;
+
   insert into public.notifications (
     user_id, actor_id, type, category, audience, title, body, url, payload, dedupe_key
   ) values (
@@ -2001,6 +2036,161 @@ begin
 end;
 $fn$;
 
+create or replace function public.wants_notification(
+  p_user_id  uuid,
+  p_category text,
+  p_channel  text  -- 'in_app' | 'push'
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+  select coalesce(
+    (select case when p_channel = 'push' then pref.push else pref.in_app end
+       from public.notification_preferences pref
+      where pref.user_id = p_user_id and pref.category = p_category),
+    true
+  );
+$fn$;
+
+create or replace function public.has_capability(p_capability text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+  select case
+    when public.user_role() = 'admin' then true
+    when public.user_role() <> 'moderator' then false
+    else exists (
+      select 1 from public.moderator_capabilities
+       where user_id = auth.uid() and capability = p_capability
+    )
+  end;
+$fn$;
+
+create or replace function public.admin_set_capability(
+  p_user_id    uuid,
+  p_capability text,
+  p_granted    boolean
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_rol    text;
+  v_nombre text;
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden repartir permisos.';
+  end if;
+
+  select role, name into v_rol, v_nombre from public.profiles where id = p_user_id;
+  if v_rol is null then
+    raise exception 'Usuario no encontrado.';
+  end if;
+  -- Conceder capacidades a un estudiante crearía un moderador encubierto: con
+  -- permisos reales y sin el rol que se lo explique a nadie que mire la lista.
+  if v_rol <> 'moderator' then
+    raise exception 'Los permisos se reparten entre moderadores. % tiene rol %.', coalesce(v_nombre, 'Esa persona'), v_rol;
+  end if;
+
+  if p_granted then
+    insert into public.moderator_capabilities (user_id, capability, granted_by)
+    values (p_user_id, p_capability, auth.uid())
+    on conflict (user_id, capability) do nothing;
+  else
+    delete from public.moderator_capabilities
+     where user_id = p_user_id and capability = p_capability;
+  end if;
+
+  perform public.log_activity(
+    'capability_changed',
+    coalesce(v_nombre, 'Sin nombre') || ': ' || (case when p_granted then '+' else '−' end) || p_capability,
+    'profile',
+    p_user_id,
+    jsonb_build_object('capability', p_capability, 'granted', p_granted)
+  );
+end;
+$fn$;
+
+create or replace function public.admin_user_capabilities(p_user_id uuid)
+returns table (capability text, granted_at timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden ver los permisos de otro.';
+  end if;
+  return query
+    select c.capability, c.created_at
+      from public.moderator_capabilities c
+     where c.user_id = p_user_id
+     order by c.capability;
+end;
+$fn$;
+
+create or replace function public.notify_faculty_official_event()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_persona   record;
+  v_cuando    text;
+  v_facultad  text;
+begin
+  -- Solo eventos, solo oficiales, solo con facultad a la que avisar.
+  if new.type <> 'event' or not new.is_official or new.faculty_id is null then
+    return new;
+  end if;
+
+  -- En UPDATE, solo cuando CRUZA a oficial. Sin esto, editarle el título a un
+  -- evento ya oficial volvería a avisar a toda la facultad.
+  if tg_op = 'UPDATE' and old.is_official then
+    return new;
+  end if;
+
+  select name into v_facultad from public.faculties where id = new.faculty_id;
+
+  v_cuando := case
+    when new.starts_at is null then ''
+    else ' · ' || to_char(new.starts_at at time zone 'America/Santiago', 'DD/MM HH24:MI')
+  end;
+
+  for v_persona in
+    select id from public.profiles
+     where faculty_id = new.faculty_id
+       and id <> coalesce(new.creator_id, '00000000-0000-0000-0000-000000000000'::uuid)
+  loop
+    perform public.create_notification(
+      v_persona.id,
+      'event_official',
+      'events',
+      coalesce(v_facultad, 'Tu facultad') || ': evento oficial',
+      left(new.title, 90) || v_cuando,
+      '/eventos?event=' || new.id::text,
+      -- Por evento y persona: si se edita, no se vuelve a avisar aunque el
+      -- trigger corriera otra vez.
+      'event_official:' || new.id::text,
+      jsonb_build_object('pinId', new.id, 'facultyId', new.faculty_id),
+      new.creator_id
+    );
+  end loop;
+
+  return new;
+end;
+$fn$;
+
 create or replace function public.queue_notification_push()
 returns trigger
 language plpgsql
@@ -2008,6 +2198,11 @@ security definer
 set search_path = public
 as $fn$
 begin
+  if new.audience = 'personal'
+     and not public.wants_notification(new.user_id, new.category, 'push') then
+    return new;
+  end if;
+
   insert into public.notification_push_deliveries (notification_id, subscription_id)
   select new.id, subscription.id
   from public.push_subscriptions subscription
@@ -2316,6 +2511,7 @@ returns table (
   user_id      uuid,
   name         text,
   role         text,
+  endpoint     text,
   user_agent   text,
   created_at   timestamptz,
   updated_at   timestamptz
@@ -2331,15 +2527,50 @@ begin
   end if;
 
   return query
-    select s.user_id, p.name, p.role, s.user_agent, s.created_at, s.updated_at
+    select s.user_id, p.name, p.role, s.endpoint, s.user_agent, s.created_at, s.updated_at
       from public.push_subscriptions s
       left join public.profiles p on p.id = s.user_id
-     -- Por persona y luego por dispositivo: alguien con el teléfono y el
-     -- portátil aparece dos veces, y esas dos veces tienen que salir juntas.
      order by p.name nulls last, s.created_at desc;
 end;
 $fn$;
 
+create or replace function public.admin_delete_push_subscription(p_endpoint text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_borradas integer;
+  v_dueno    uuid;
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden dar de baja un dispositivo.';
+  end if;
+
+  select user_id into v_dueno from public.push_subscriptions where endpoint = p_endpoint;
+  if v_dueno is null then
+    return false;
+  end if;
+
+  delete from public.push_subscriptions where endpoint = p_endpoint;
+  get diagnostics v_borradas = row_count;
+
+  -- Dar de baja el aparato de otra persona es una acción de administración
+  -- sobre alguien, así que queda registrada como cualquier otra.
+  if v_borradas > 0 then
+    perform public.log_activity(
+      'push_unsubscribed',
+      'Dispositivo dado de baja',
+      'profile',
+      v_dueno,
+      '{}'::jsonb
+    );
+  end if;
+
+  return v_borradas > 0;
+end;
+$fn$;
 
 create or replace function public.admin_broadcast_push_notification(
   p_title text,
@@ -2755,6 +2986,11 @@ create trigger on_role_change_activity_log
   after update of role on public.profiles
   for each row execute function public.trg_log_role_change();
 
+drop trigger if exists on_official_event_notification on public.pins;
+create trigger on_official_event_notification
+  after insert or update of is_official on public.pins
+  for each row execute function public.notify_faculty_official_event();
+
 drop trigger if exists on_pin_verified_notification on public.pins;
 create trigger on_pin_verified_notification
   after update of is_permanent on public.pins
@@ -2849,6 +3085,8 @@ alter table public.user_badges                  enable row level security;
 alter table public.content_reports              enable row level security;
 alter table public.notifications                enable row level security;
 alter table public.activity_log                 enable row level security;
+alter table public.notification_preferences     enable row level security;
+alter table public.moderator_capabilities       enable row level security;
 alter table public.push_subscriptions           enable row level security;
 alter table public.notification_push_deliveries enable row level security;
 alter table public.storage_cleanup_queue         enable row level security;
@@ -2894,7 +3132,7 @@ create policy floor_plans_read on public.floor_plans for select using (true);
 
 drop policy if exists floor_plans_admin on public.floor_plans;
 create policy floor_plans_admin on public.floor_plans
-  for all using (public.user_role() = any (array['moderator', 'admin']));
+  for all using (public.has_capability('mapping'));
 
 -- Mapeo interior: lo lee todo el mundo, incluido un invitado, porque sin eso el
 -- mapa no puede dibujar el interior de un edificio. Lo escribe quien modera.
@@ -2903,24 +3141,24 @@ create policy buildings_read on public.buildings for select using (true);
 
 drop policy if exists buildings_write on public.buildings;
 create policy buildings_write on public.buildings
-  for all using (public.user_role() = any (array['moderator', 'admin']))
-  with check (public.user_role() = any (array['moderator', 'admin']));
+  for all using (public.has_capability('mapping'))
+  with check (public.has_capability('mapping'));
 
 drop policy if exists building_floors_read on public.building_floors;
 create policy building_floors_read on public.building_floors for select using (true);
 
 drop policy if exists building_floors_write on public.building_floors;
 create policy building_floors_write on public.building_floors
-  for all using (public.user_role() = any (array['moderator', 'admin']))
-  with check (public.user_role() = any (array['moderator', 'admin']));
+  for all using (public.has_capability('mapping'))
+  with check (public.has_capability('mapping'));
 
 drop policy if exists areas_read on public.areas;
 create policy areas_read on public.areas for select using (true);
 
 drop policy if exists areas_write on public.areas;
 create policy areas_write on public.areas
-  for all using (public.user_role() = any (array['moderator', 'admin']))
-  with check (public.user_role() = any (array['moderator', 'admin']));
+  for all using (public.has_capability('mapping'))
+  with check (public.has_capability('mapping'));
 
 -- La lista de correos con rol admin solo la ve un admin.
 drop policy if exists admin_emails_admin on public.admin_emails;
@@ -3168,7 +3406,7 @@ create policy user_badges_read_all on public.user_badges for select using (true)
 
 drop policy if exists content_reports_read_own_or_admin on public.content_reports;
 create policy content_reports_read_own_or_admin on public.content_reports
-  for select using (reporter_id = auth.uid() or public.user_role() = 'admin');
+  for select using (reporter_id = auth.uid() or public.has_capability('reports'));
 
 drop policy if exists notifications_read_own on public.notifications;
 create policy notifications_read_own on public.notifications
@@ -3181,6 +3419,15 @@ create policy notifications_update_own on public.notifications
 drop policy if exists notifications_delete_own on public.notifications;
 create policy notifications_delete_own on public.notifications
   for delete using (user_id = auth.uid());
+
+drop policy if exists notification_preferences_own on public.notification_preferences;
+create policy notification_preferences_own on public.notification_preferences
+  for all using (user_id = auth.uid())
+  with check (user_id = auth.uid() and public.user_role() <> 'guest');
+
+drop policy if exists moderator_capabilities_read on public.moderator_capabilities;
+create policy moderator_capabilities_read on public.moderator_capabilities
+  for select using (user_id = auth.uid() or public.user_role() = 'admin');
 
 drop policy if exists activity_log_read_admin on public.activity_log;
 create policy activity_log_read_admin on public.activity_log
@@ -3302,6 +3549,15 @@ grant execute on function public.admin_count_push_subscribers()              to 
 grant execute on function public.admin_broadcast_push_notification(text, text, text) to authenticated, service_role;
 grant execute on function public.admin_send_test_push_to_self() to authenticated, service_role;
 grant execute on function public.admin_push_subscribers() to authenticated, service_role;
+grant execute on function public.has_capability(text) to anon, authenticated, service_role;
+grant execute on function public.admin_set_capability(uuid, text, boolean) to authenticated, service_role;
+grant execute on function public.admin_user_capabilities(uuid) to authenticated, service_role;
+grant execute on function public.wants_notification(uuid, text, text) to authenticated, service_role;
+revoke all on public.notification_preferences from anon, authenticated;
+grant select, insert, update, delete on public.notification_preferences to authenticated;
+revoke all on public.moderator_capabilities from anon, authenticated;
+grant select on public.moderator_capabilities to authenticated;
+grant execute on function public.admin_delete_push_subscription(text) to authenticated, service_role;
 grant execute on function public.admin_activity_log(integer) to authenticated, service_role;
 grant execute on function public.prune_activity_log(integer) to authenticated, service_role;
 revoke all on function public.log_activity(text, text, text, uuid, jsonb, uuid) from anon, authenticated;

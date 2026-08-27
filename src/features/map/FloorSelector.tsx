@@ -1,3 +1,4 @@
+import { localizedName } from '@/shared/utils/localized'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronUp, ChevronDown } from 'lucide-react'
@@ -32,7 +33,7 @@ import { facultyLevels, useMapping } from '@/features/mapping/useMapping'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function FloorSelector() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { mapping } = useMapping()
   const activeFacultyId = useUIStore((s) => s.activeFacultyId)
   const activeFloor = useUIStore((s) => s.activeFloor)
@@ -90,10 +91,10 @@ export function FloorSelector() {
         className="glass-hud flex w-11 flex-col items-stretch overflow-hidden rounded-2xl premium-shadow"
       >
         <p
-          title={faculty?.name}
+          title={localizedName(faculty, i18n.language)}
           className="truncate border-b border-neutral-200/60 px-1 py-1 text-center text-[9px] font-black uppercase tracking-tight text-neutral-500 dark:border-neutral-700/60"
         >
-          {faculty ? facultyShortName(faculty.name) : 'Pisos'}
+          {faculty ? facultyShortName(localizedName(faculty, i18n.language)) : t('indoor.floorsTitle', 'Piso')}
         </p>
 
         <button
