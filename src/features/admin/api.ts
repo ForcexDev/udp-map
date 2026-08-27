@@ -249,11 +249,16 @@ export async function sendSelfPushTest(): Promise<PushRunResult> {
 
   const { error } = await supabase.rpc('admin_send_test_push_to_self')
   if (error) {
-    // 42883 = la función no existe. Pasa cuando la migración 20260827000000
-    // todavía no se ha pegado en el SQL Editor, y el mensaje crudo de Postgres
-    // ("function public.admin_send_test_push_to_self() does not exist") no dice
-    // qué hacer.
-    if (error.code === '42883') {
+    // "La función no existe" llega por dos caminos distintos y hay que mirar
+    // los dos: `42883` es el código de Postgres, pero una RPC desconocida ni
+    // siquiera llega a Postgres — PostgREST la corta antes con un 404 y
+    // `PGRST202`. Comprobar solo el primero, que fue el primer intento, dejaba
+    // salir el texto crudo en inglés ("Could not find the function … in the
+    // schema cache"), que no le dice a nadie qué tiene que hacer.
+    const missingFunction = error.code === '42883'
+      || error.code === 'PGRST202'
+      || /could not find the function|does not exist/i.test(error.message ?? '')
+    if (missingFunction) {
       throw new Error('Falta aplicar la migración 20260827000000 en Supabase (SQL Editor).')
     }
     throw new Error(error.message || 'No se pudo encolar la prueba.')

@@ -15,6 +15,13 @@
       "port": 4173
     },
     {
+      "name": "udp-map-preview-5173",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--", "--port", "5173", "--strictPort"],
+      "port": 5173,
+      "autoPort": false
+    },
+    {
       "name": "udp-map-demo",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--mode", "demo"],
