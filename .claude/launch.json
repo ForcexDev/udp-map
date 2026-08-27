@@ -5,7 +5,8 @@
       "name": "udp-map-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 5173
+      "port": 5173,
+      "autoPort": false
     },
     {
       "name": "udp-map-preview",
@@ -16,8 +17,9 @@
     {
       "name": "udp-map-demo",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--mode", "demo", "--port", "5199", "--strictPort"],
-      "port": 5199
+      "runtimeArgs": ["run", "dev", "--", "--mode", "demo"],
+      "port": 5199,
+      "autoPort": true
     }
   ]
 }

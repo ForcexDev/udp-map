@@ -74,6 +74,17 @@ const APP_VERSION = computeAppVersion()
 const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev'
 
 export default defineConfig({
+  // El puerto por defecto sigue siendo 5173, y no es una preferencia: es el
+  // origen que tienen registrado el callback de Google OAuth y la lista CORS de
+  // la Edge Function send-push. Levantar ahí es lo que hace que se pueda
+  // iniciar sesión y probar el push en local.
+  //
+  // `PORT` existe para lo otro: arrancar una segunda instancia —el modo demo,
+  // que no necesita ni OAuth ni push— sin pelearse con la primera. Vite no lee
+  // esta variable por su cuenta.
+  server: {
+    port: Number(process.env.PORT) || 5173,
+  },
   define: {
     // Injected at build-time; available globally as __APP_VERSION__ / __BUILD_ID__
     __APP_VERSION__: JSON.stringify(APP_VERSION),
