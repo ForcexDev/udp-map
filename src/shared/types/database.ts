@@ -257,14 +257,16 @@ export interface UserBadge {
   badge?: Badge
 }
 
-export type NotificationCategory = 'profile' | 'forum' | 'events' | 'moderation'
+/** `system` son los avisos de difusión del panel — ver migración 20260827000000. */
+export type NotificationCategory = 'profile' | 'forum' | 'events' | 'moderation' | 'system'
 type NotificationAudience = 'personal' | 'admin'
-type NotificationType =
+export type NotificationType =
   | 'achievement'
   | 'forum_reply'
   | 'event_reminder'
   | 'moderation_report'
   | 'moderation_update'
+  | 'announcement'
 
 export interface AppNotification {
   id: string
