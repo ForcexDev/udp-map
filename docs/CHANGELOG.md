@@ -1,5 +1,10 @@
 ### Novedades en esta versión (v0.7.0)
 
+- Centro de avisos rehecho: agrupados por día, más legibles y con "Vaciar todo"
+- Arreglado el parpadeo del interruptor de notificaciones al abrir la pestaña de avisos
+- El icono de las notificaciones push ya no sale en blanco en Android
+- Tocar una notificación vuelve a abrir la app donde corresponde
+- Los avisos de la universidad ya no se mezclan con tus logros
 - Sistema de mapeo interior de edificios, plantas y salas UDP
 - Selector vertical de pisos y contexto de planta en zonas exteriores
 - Búsqueda y barra lateral ahora abren directamente la ficha del lugar

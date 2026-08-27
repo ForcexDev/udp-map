@@ -125,7 +125,7 @@ function NotificationRow({
           onClick={() => onDelete(notification.id)}
           title={t('notifications.delete', 'Eliminar aviso')}
           aria-label={t('notifications.delete', 'Eliminar aviso')}
-          className="grid h-11 w-10 cursor-pointer place-items-center rounded-xl text-neutral-300 transition-colors hover:bg-red-50 hover:text-[#D41F2D] dark:text-neutral-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+          className="grid h-11 w-10 cursor-pointer place-items-center rounded-xl text-neutral-400 transition-colors hover:bg-red-50 hover:text-[#D41F2D] dark:text-neutral-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
         >
           <Trash2 size={16} />
         </button>

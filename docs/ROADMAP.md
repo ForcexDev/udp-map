@@ -1394,6 +1394,30 @@ razón de que nadie supiera qué existe.
 - **Las secciones del panel son rutas**, no un `useState`. Antes no había
   enlace profundo, ni historial, ni "atrás": el panel entero era una sola URL.
 
+**Segunda tanda, el mismo 2026-08-27**, al rehacer el centro de avisos. Quedaban
+dos piezas de administración colgando del Sidebar:
+
+- **La cola de moderación salió de la pestaña de avisos.** Los avisos con
+  `audience: 'admin'` se pintaban ahí bajo un encabezado "Administración",
+  mezclados con los logros y las respuestas del foro de quien miraba. Es trabajo
+  del equipo, no correo personal. Ahora aparecen arriba de `/admin/moderacion`
+  como "lo que ha entrado desde la última visita" (`TeamInbox`), y **no se marcan
+  solos al entrar**: la razón de enseñarlos es saber qué es nuevo, y marcarlos al
+  montar borraría esa señal antes de leerla. La campana del mapa y el punto de la
+  pestaña dejaron de contarlos, porque prometían avisos que esa pestaña ya no
+  enseña.
+- **"Desbloquear mapa" salió de Ajustes** a `/admin/ajustes`, sección nueva del
+  panel. Estaba en la misma pantalla donde un estudiante elige idioma y tema,
+  escondido tras un `role === 'admin'`: ahí no lo encontraba quien lo necesitaba
+  y no pintaba nada para quien no. Con él se fue el estado del dispositivo —la
+  tarjeta de push y el endpoint registrado, que es el dato con el que se depura
+  de verdad "a mí no me llega"— y la prueba de push dirigida.
+- **El interruptor de push estaba escrito dos veces**, en `NotificationCenter` y
+  otra vez distinto en `BroadcastPanel`, con los textos ya separados. Ahora es
+  `PushCard` y lo usan los dos.
+- **Y el Sidebar se quedó con la PUERTA al panel**, que hasta entonces solo
+  existía enterrada en el perfil.
+
 El caso concreto, **cerrado el 2026-08-26**: el botón "Probar notificación"
 estaba para todo el mundo, invitados incluidos, en una sección de
 `shared/ui/Sidebar.tsx` sin ninguna comprobación de rol. Matiz: disparaba una
@@ -1485,23 +1509,76 @@ Dos casos que parecen el mismo y no lo son:
 nombre en inglés, campus e imagen— salieron del editor a `/admin/facultades`.
 El nombre del centro de alumnos (§13.4) tendrá su sitio ahí cuando exista.
 
-#### El centro de notificaciones
+#### El centro de notificaciones ✅ (2026-08-27)
 
-Se rehace con lo de arriba, y hay dos cosas concretas:
+Rehecho entero. Queda listo para lo que tenía que aguantar: el karma con su
+motivo (§10.5), la respuesta a una sugerencia de sala (`docs/SALAS.md` §12.5) y
+los avisos hacia el equipo.
 
-- ~~**Falta borrar.**~~ **Esto ya no es cierto** (comprobado el 2026-08-27):
-  borrar una notificación suelta existe de punta a punta —papelera por fila en
-  `NotificationCenter.tsx`, `useDeleteNotification`, `deleteNotification` y la
-  política `notifications_delete_own`—. Lo que sigue faltando es **vaciar de
-  golpe**: no hay equivalente de `markAllNotificationsRead` para el borrado, así
-  que una lista larga se limpia de una en una. Y no hay confirmación ni deshacer:
-  un toque destruye la notificación.
-- **La presentación.** Es de lo más flojo de la aplicación visualmente —tipografía
-  de 9 a 11 px casi entera, tres radios distintos en el mismo componente y ni una
-  cadena por i18n—, y es además donde va a caer todo lo nuevo: el karma con su motivo (§10.5), la
-  respuesta a una sugerencia de sala con su motivo (`docs/SALAS.md` §12.5) y los
-  avisos hacia el equipo. Rehacerlo antes de colgarle esas tres cosas, no
-  después.
+- **Vaciar de golpe, hecho.** `deleteAllNotifications` + `ConfirmDialog`. No hizo
+  falta migración: la política `notifications_delete_own` ya permitía el borrado
+  por lote, así que es un `delete().eq('user_id', …)` desde el cliente. Borrar
+  UNO sigue sin preguntar a propósito — un diálogo por fila hace insufrible
+  limpiar veinte.
+- **La presentación.** Agrupado por Hoy / Esta semana / Antes, un solo radio,
+  tipografía legible en vez de 9-11 px, icono y color por categoría, y todas las
+  cadenas por i18n en es/en. Los objetivos táctiles pasaron de 14 px a 44.
+- **Las mutaciones son optimistas** (`useNotifications.ts`). Antes cada una solo
+  invalidaba y esperaba al refetch, así que la fila borrada seguía ahí hasta que
+  respondía Supabase. En una lista donde se dan tres o cuatro toques seguidos,
+  esa espera se lee como que los botones no funcionan.
+
+**El parpadeo del interruptor de push, y por qué no era de pintura.** Al volver
+a la pestaña de avisos, el interruptor mostraba «Activar» medio segundo aunque
+estuvieran activadas. La causa: `usePushSubscription` guardaba el estado en un
+`useState` propio y **todos sus consumidores se desmontan** —el Sidebar hace
+`if (!isOpen) return null`, Radix desmonta la pestaña inactiva—, así que cada
+reaparición empezaba en `idle` y solo llegaba a `subscribed` tras
+`serviceWorker.ready`, `getSubscription()` y una RPC a Supabase. Encima `App`
+montaba una segunda instancia con su propio estado: dos verdades a la vez.
+
+Ahora vive en `pushStore.ts` (zustand), fuera de React. Tres cosas que conviene
+no deshacer, y que están comentadas en el archivo:
+
+1. `unknown` es un estado de verdad y pinta **esqueleto**, no «Activar».
+2. El último estado conocido se guarda en localStorage y siembra el store, así
+   ni la primera pintura tras recargar parpadea.
+3. `subscribed` lo decide el **navegador**; la sincronización con el servidor va
+   detrás y en segundo plano.
+
+**Y tres bugs de push que salieron al revisar la tubería entera:**
+
+- **El logo en blanco.** `badge` no es un icono a color: Android lo usa como
+  máscara de alfa y pinta de blanco todo pixel opaco. El badge era
+  `pwa-64x64.png`, un cuadrado rojo enteramente opaco, así que en la barra de
+  estado salía **una mancha blanca sólida**. Ahora hay
+  `public/notification-badge.png`: la silueta del pin sobre transparente.
+- **Tocar la notificación no hacía nada** en la PWA instalada de iOS.
+  `notificationclick` llamaba a `existingWindow.navigate()` **antes** del
+  `focus()`, y `navigate()` lanza cuando el cliente no está controlado por el
+  service worker — la excepción se llevaba por delante también el enfoque.
+  Ahora enfoca primero, y si `navigate()` falla abre ventana nueva.
+- **Un aviso de difusión llegaba disfrazado de logro.**
+  `admin_broadcast_push_notification` guardaba `type='achievement'`,
+  `category='profile'` y `url='/admin'` porque era lo que cabía en los CHECK.
+  Consecuencia: un corte de agua se le mezclaba a cada estudiante entre sus
+  insignias al filtrar por "Perfil", y al tocarlo lo mandaba a una pantalla de
+  la que rebota al mapa. Migración `20260827000000`: `announcement`/`system` y
+  `url = '/'`.
+
+**Probar el push ya no despierta a la universidad entera.** La única vía era la
+difusión, que recorre todas las suscripciones, así que "¿me llega a mí?" le
+sonaba el teléfono a todo el mundo y en la práctica no se probaba nunca. La
+misma migración añade `admin_send_test_push_to_self()`, y el botón vive en
+`/admin/ajustes`.
+
+**El `Dialog` compartido no se veía.** Era `z-40`/`z-50`, por debajo del Sidebar
+(2000), `CreatePinModal` (3000), el aviso emergente (3500) y el visor de fotos
+(4000): un diálogo abierto desde cualquiera de ellos existía en el DOM, respondía
+al teclado y al ratón, y quedaba **pintado detrás**. No había saltado porque
+ninguno abría diálogos —el tutorial y "Sobre nosotros" se abren después de cerrar
+el Sidebar—; lo destapó la confirmación de "Vaciar todo". Ahora es
+`z-4500`/`z-4510`, por encima de todo salvo el Toast.
 
 ### 13.3 Buscar dentro de una facultad, no solo facultades
 
