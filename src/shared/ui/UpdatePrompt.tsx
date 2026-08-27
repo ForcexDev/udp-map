@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowDownToLine, CheckCircle2 } from 'lucide-react'
 import { shouldShowUpdate } from '@/shared/utils/pwa'
+import { applyUpdate } from '@/shared/utils/swUpdate'
 
 const DISMISSED_KEY = 'udp-update-dismissed-build'
 
@@ -30,25 +31,6 @@ async function fetchUpdateInfo(signal: AbortSignal): Promise<UpdateInfo | null> 
     }
   } catch {
     return null
-  }
-}
-
-// ponytail: recarga incondicional tras 1500 ms. Techo: si el worker tarda más en
-// activar, la recarga la sirve el worker viejo y el aviso vuelve a aparecer; el
-// segundo intento sí entra. Subir el plazo solo si eso se observa en dispositivo.
-async function applyUpdate() {
-  try {
-    const registration = await navigator.serviceWorker?.getRegistration()
-    registration?.waiting?.postMessage({ type: 'SKIP_WAITING' })
-
-    await new Promise<void>((resolve) => {
-      navigator.serviceWorker?.addEventListener('controllerchange', () => resolve(), { once: true })
-      setTimeout(resolve, 1500)
-    })
-  } catch (err) {
-    console.error('Error applying SW update:', err)
-  } finally {
-    location.reload()
   }
 }
 
@@ -132,10 +114,14 @@ export function UpdatePrompt() {
         <div className="flex flex-col gap-2 flex-shrink-0">
           <button
             type="button"
+            // Nada de rehabilitar el botón por temporizador. Antes se volvía a
+            // habilitar a los 3 s aunque la descarga siguiera en curso, y eso
+            // es literalmente lo que invitaba a pulsarlo otra vez, y otra.
+            // `applyUpdate` termina SIEMPRE en `location.reload()`, así que la
+            // pantalla se va sola: no hay estado del que haya que salir.
             onClick={() => {
               setIsUpdating(true)
               void applyUpdate()
-              setTimeout(() => setIsUpdating(false), 3000)
             }}
             disabled={isUpdating}
             aria-busy={isUpdating}
@@ -143,6 +129,13 @@ export function UpdatePrompt() {
           >
             {isUpdating ? 'Actualizando…' : 'Actualizar ahora'}
           </button>
+          {isUpdating && (
+            // La descarga puede tardar decenas de segundos con datos móviles.
+            // Decirlo es lo que evita que se lea como "se quedó colgado".
+            <p className="px-2 text-center text-[12px] font-medium leading-snug text-neutral-500">
+              Descargando la versión nueva. Puede tardar unos segundos.
+            </p>
+          )}
           {!isUpdating && (
             <button
               type="button"

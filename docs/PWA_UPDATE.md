@@ -23,9 +23,14 @@ Si eso cambia, el stamp queda congelado y la detección deja de funcionar.
 
 **Cuándo se comprueba:** al montar y en cada `visibilitychange` con la pestaña visible.
 
-**Cómo se aplica:** `SKIP_WAITING` al worker en espera si lo hay, espera lo primero que
-llegue entre `controllerchange` y 1500 ms, y recarga siempre. No existe camino en el que
-el botón quede esperando.
+**Cómo se aplica:** `registration.update()` para forzar la comprobación, se **espera** a
+que haya un worker instalado (`waitForWaitingWorker`, hasta 30 s), se le manda
+`SKIP_WAITING`, se espera al `controllerchange` (hasta 10 s) y se recarga. El `finally`
+recarga pase lo que pase, así que no existe camino en el que el botón quede esperando.
+
+Los 30 s no son generosidad: **el precache son 9 MB**. Ese es el tiempo que tarda el
+worker nuevo en instalarse con datos móviles, y esperarlo es justo lo que arregla el
+bucle de más abajo.
 
 **Descarte:** "Más tarde" guarda el `buildId` del servidor en
 `localStorage['udp-update-dismissed-build']`. Sobrevive recargas y arranques en frío;
@@ -54,9 +59,22 @@ pestaña: el aviso aparece.
 
 ## Límites conocidos
 
-- El aviso puede salir antes de que el worker haya descargado el build nuevo. En esa
+- ~~El aviso puede salir antes de que el worker haya descargado el build nuevo. En esa
   ventana el primer toque recarga sobre la versión vieja y el aviso vuelve; el segundo
-  entra, porque la navegación dispara el chequeo de `sw.js`.
+  entra.~~ **Esto no era un límite: era el bug** (arreglado el 2026-08-27). Y no se
+  arreglaba solo al segundo intento — el usuario reportó "le doy a actualizar como 40
+  veces".
+
+  El aviso y el arreglo eran dos mecanismos que no se hablaban: el aviso sale con una
+  petición de 200 bytes a `update-info.json`, y activar la versión exige instalar 9 MB de
+  precache. Al pulsar no había nada en `waiting`, el `SKIP_WAITING` caía al vacío, se
+  recargaba a los 1500 ms sobre la versión vieja, y **cada recarga reiniciaba la
+  instalación desde cero**, así que no convergía nunca. Encima el botón se rehabilitaba
+  con un `setTimeout` de 3 s aunque la descarga siguiera, que es literalmente lo que
+  invitaba a pulsarlo otra vez.
+
+  Ahora se espera al worker antes de pedirle el relevo, el botón no se rehabilita solo, y
+  mientras tanto se dice que está descargando. Cubierto por `updateWorker.test.ts`.
 - Sin red no se avisa: la detección depende del fetch.
 - Fuera de Vercel, sin `VERCEL_GIT_COMMIT_SHA`, `buildId` queda fijo en `dev` y la
   detección se apaga en silencio.
