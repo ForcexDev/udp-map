@@ -4,6 +4,7 @@ import { Download, MapPin, Compass, GraduationCap, Hand, Check, Share, PlusSquar
 import { Dialog } from '@/shared/ui/Dialog'
 import { Button } from '@/shared/ui/Button'
 import { useUIStore } from '@/shared/stores/uiStore'
+import { useAuthStore } from '@/features/auth/authStore'
 import { isIOSDevice, isStandaloneDisplay } from '@/shared/utils/pwa'
 
 export function TutorialModal() {
@@ -11,6 +12,13 @@ export function TutorialModal() {
   const open = useUIStore((s) => s.tutorialOpen)
   const close = useUIStore((s) => s.closeTutorial)
   const showToast = useUIStore((s) => s.showToast)
+
+  // Si el usuario necesita completar su perfil (ProfileSetupModal abierto),
+  // el tutorial se esconde para no apilar dos modales encima. Se verá cuando
+  // el setup termine y faculty_id deje de ser null.
+  const user = useAuthStore((s) => s.user)
+  const needsSetup = !!user && user.faculty_id === null
+  const effectiveOpen = open && !needsSetup
 
   const [isStandalone, setIsStandalone] = useState(false)
   const [showSafariGuide, setShowSafariGuide] = useState(false)
@@ -45,7 +53,7 @@ export function TutorialModal() {
 
   return (
     <Dialog
-      open={open}
+      open={effectiveOpen}
       onOpenChange={(o) => !o && close()}
       title={t('tutorial.title', 'Bienvenido a UDP Map')}
       description={t('tutorial.subtitle', 'Explora tu campus, descubre facultades y comparte eventos.')}

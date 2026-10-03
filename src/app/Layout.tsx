@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { CalendarDays, Map, MessagesSquare, UserRound } from 'lucide-react'
 import { Sidebar } from '@/shared/ui/Sidebar'
 import { LoginModal } from '@/features/auth/LoginModal'
+import { ProfileSetupModal } from '@/features/auth/ProfileSetupModal'
 import { Toast } from '@/shared/ui/Toast'
 import { NotificationUrlHandler } from '@/features/notifications/NotificationUrlHandler'
 import { NotificationBanner } from '@/features/notifications/NotificationBanner'
@@ -61,6 +62,7 @@ export function Layout() {
       <Sidebar />
       <NotificationUrlHandler />
       <LoginModal />
+      <ProfileSetupModal />
       <AboutModal />
       <Toast />
     </div>

@@ -14,7 +14,6 @@ import { roomSubtitle } from '@/features/map/roomSubtitle'
 import { PinDetail } from '@/features/pins/PinDetail'
 import { CreatePinModal } from '@/features/pins/CreatePinModal'
 import { TutorialModal } from './TutorialModal'
-import { ProfileSetupModal } from '@/features/auth/ProfileSetupModal'
 import { updatePinLocation } from '@/features/pins/api'
 import { useAuthStore } from '@/features/auth/authStore'
 import type { Faculty, Pin } from '@/shared/types/database'
@@ -932,7 +931,6 @@ export function MapPage() {
       </AnimatePresence>
       <CreatePinModal />
       <TutorialModal />
-      <ProfileSetupModal />
     </div>
   )
 }

@@ -166,7 +166,11 @@ export function CustomSelect({
             // hacia el elemento de atrás — el famoso "selecciona el de abajo".
             pointerEvents: 'auto',
           }}
-          className={`z-50 max-h-60 overflow-y-auto bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-xl shadow-2xl p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
+          // z-[4520]: tiene que ganarle al Overlay (z-4500) y al Content
+          // (z-4510) de Radix Dialog. Con z-50 el menú quedaba pintado DETRÁS
+          // del overlay cuando el CustomSelect vivía dentro de un modal
+          // (ProfileSetupModal), así que "no dejaba seleccionar la facultad".
+          className={`z-[4520] max-h-60 overflow-y-auto bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-xl shadow-2xl p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
         >
           {searchable && (
             // `sticky` y no fuera del contenedor con scroll: así el campo se
