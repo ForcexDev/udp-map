@@ -50,16 +50,16 @@ export function NotificationBanner() {
       className="fixed left-3 right-3 z-[3500] pointer-events-auto sm:left-auto sm:right-4 sm:w-96 animate-fade-up"
       style={{ top: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
     >
-      <div className="glass-hud p-4 rounded-2xl shadow-2xl border border-neutral-200/80 dark:border-neutral-700/80 flex items-start gap-3">
+      <div className="glass-hud p-4 rounded-2xl shadow-2xl border border-[#E6E0D5] dark:border-white/[0.08] flex items-start gap-3 bg-white/95 dark:bg-[#1E222D]/95 backdrop-blur-md">
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${look.bg} ${look.fg}`}>
           <CategoryIcon size={18} strokeWidth={2.2} />
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-black text-neutral-900 dark:text-white truncate">
+          <p className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
             {activeBanner.title}
           </p>
-          <p className="text-[11px] text-neutral-600 dark:text-neutral-300 font-medium line-clamp-2 mt-0.5 leading-snug">
+          <p className="text-[11px] text-stone-600 dark:text-stone-300 font-normal line-clamp-2 mt-0.5 leading-snug">
             {activeBanner.body}
           </p>
           
@@ -67,14 +67,14 @@ export function NotificationBanner() {
             <button
               type="button"
               onClick={handleView}
-              className="px-3 py-1 rounded-lg bg-[#D41F2D] text-white text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all shadow-sm cursor-pointer"
+              className="px-3 py-1 rounded-xl bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] dark:hover:bg-[#c22b38] text-white text-xs font-semibold active:scale-95 transition-all shadow-sm cursor-pointer"
             >
               {t('notifications.bannerView', 'Ver')}
             </button>
             <button
               type="button"
               onClick={() => setActiveBanner(null)}
-              className="px-2 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 text-[10px] font-bold uppercase tracking-wider hover:text-neutral-800 dark:hover:text-neutral-200 transition-all cursor-pointer"
+              className="px-2.5 py-1 rounded-xl bg-[#EFECE4] dark:bg-white/[0.08] text-stone-600 dark:text-stone-300 text-xs font-semibold hover:bg-[#E2DDD2] dark:hover:bg-white/[0.12] hover:text-stone-900 dark:hover:text-white transition-all cursor-pointer"
             >
               {t('notifications.bannerDismiss', 'Ignorar')}
             </button>
@@ -84,7 +84,7 @@ export function NotificationBanner() {
         <button
           type="button"
           onClick={() => setActiveBanner(null)}
-          className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors p-1 cursor-pointer"
+          className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors p-1 cursor-pointer"
           aria-label={t('common.close', 'Cerrar')}
         >
           <X size={16} />

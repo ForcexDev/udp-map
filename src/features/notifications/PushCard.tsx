@@ -24,11 +24,11 @@ export function PushCard() {
 
   if (state === 'unknown') {
     return (
-      <div className="flex items-center gap-3 rounded-3xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="h-11 w-11 shrink-0 animate-pulse rounded-2xl bg-neutral-100 dark:bg-neutral-800" />
+      <div className="flex items-center gap-3 rounded-2xl border border-[#E6E0D5] bg-white p-4 dark:border-white/[0.07] dark:bg-[#1E222D]">
+        <div className="h-11 w-11 shrink-0 animate-pulse rounded-xl bg-[#EFECE4] dark:bg-white/[0.08]" />
         <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="h-3 w-32 animate-pulse rounded-full bg-neutral-100 dark:bg-neutral-800" />
-          <div className="h-2.5 w-44 animate-pulse rounded-full bg-neutral-100 dark:bg-neutral-800" />
+          <div className="h-3 w-32 animate-pulse rounded-full bg-[#EFECE4] dark:bg-white/[0.08]" />
+          <div className="h-2.5 w-44 animate-pulse rounded-full bg-[#EFECE4] dark:bg-white/[0.08]" />
         </div>
       </div>
     )
@@ -61,22 +61,22 @@ export function PushCard() {
 
   return (
     <div
-      className={`rounded-3xl border p-4 transition-colors ${
+      className={`rounded-2xl border p-4 transition-colors ${
         on
-          ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/60 dark:bg-emerald-950/20'
+          ? 'border-emerald-300/60 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/20'
           : blocked
-            ? 'border-amber-200 bg-amber-50/60 dark:border-amber-900/60 dark:bg-amber-950/20'
-            : 'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900'
+            ? 'border-amber-300/60 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/20'
+            : 'border-[#E6E0D5] bg-white dark:border-white/[0.07] dark:bg-[#1E222D]'
       }`}
     >
       <div className="flex items-center gap-3">
         <span
-          className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
             on
-              ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
               : blocked
-                ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                : 'bg-[#EFECE4] text-stone-500 dark:bg-white/[0.08] dark:text-stone-400'
           }`}
         >
           {busy ? (
@@ -91,8 +91,8 @@ export function PushCard() {
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold leading-tight text-neutral-900 dark:text-white">{title}</p>
-          <p className="mt-0.5 text-xs font-medium leading-snug text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm font-bold leading-tight text-stone-900 dark:text-stone-100">{title}</p>
+          <p className="mt-0.5 text-xs font-normal leading-snug text-stone-500 dark:text-stone-400">
             {subtitle}
           </p>
         </div>
@@ -105,7 +105,7 @@ export function PushCard() {
             <button
               type="button"
               onClick={openTutorial}
-              className="h-10 shrink-0 rounded-full bg-[#D41F2D] px-4 text-xs font-bold text-white transition-colors hover:bg-[#b11a25] active:scale-95"
+              className="h-10 shrink-0 rounded-2xl bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] dark:hover:bg-[#c22b38] px-4 text-xs font-semibold text-white transition-colors active:scale-95"
             >
               {t('notifications.push.install', 'Cómo instalar')}
             </button>
@@ -114,7 +114,7 @@ export function PushCard() {
               type="button"
               onClick={() => void unsubscribe()}
               disabled={busy}
-              className="h-10 shrink-0 rounded-full border border-neutral-200 bg-white px-4 text-xs font-bold text-neutral-600 transition-colors hover:bg-neutral-100 active:scale-95 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="h-10 shrink-0 rounded-2xl border border-[#E6E0D5] bg-white px-4 text-xs font-semibold text-stone-700 transition-colors hover:bg-[#FAF8F5] active:scale-95 disabled:opacity-40 dark:border-white/[0.08] dark:bg-[#1E222D] dark:text-stone-300 dark:hover:bg-white/[0.05]"
             >
               {t('notifications.push.disable', 'Desactivar')}
             </button>
@@ -123,7 +123,7 @@ export function PushCard() {
               type="button"
               onClick={() => void subscribe()}
               disabled={busy}
-              className="h-10 shrink-0 rounded-full bg-[#D41F2D] px-4 text-xs font-bold text-white transition-colors hover:bg-[#b11a25] active:scale-95 disabled:opacity-40"
+              className="h-10 shrink-0 rounded-2xl bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] dark:hover:bg-[#c22b38] px-4 text-xs font-semibold text-white transition-colors active:scale-95 disabled:opacity-40"
             >
               {busy
                 ? t('notifications.push.enabling', 'Activando…')
@@ -136,7 +136,7 @@ export function PushCard() {
       </div>
 
       {error && (
-        <p className="mt-3 rounded-2xl bg-red-50 px-3 py-2 text-xs font-medium leading-snug text-red-600 dark:bg-red-950/40 dark:text-red-400">
+        <p className="mt-3 rounded-xl bg-red-50/80 px-3 py-2 text-xs font-medium leading-snug text-red-600 dark:bg-red-950/40 dark:text-red-400">
           {error}
         </p>
       )}

@@ -69,8 +69,8 @@ function NotificationRow({
     <li
       className={`relative flex items-start gap-3 rounded-2xl p-2.5 transition-colors ${
         isRead
-          ? 'hover:bg-neutral-50 dark:hover:bg-neutral-800/40'
-          : 'bg-red-50/50 dark:bg-red-950/15'
+          ? 'hover:bg-[#FAF8F5] dark:hover:bg-white/[0.04]'
+          : 'bg-[#FBECEB]/60 dark:bg-[#D93846]/10'
       }`}
     >
       <span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full ${look.bg} ${look.fg}`}>
@@ -85,16 +85,16 @@ function NotificationRow({
         <p
           className={`text-[13px] leading-snug ${
             isRead
-              ? 'font-semibold text-neutral-600 dark:text-neutral-300'
-              : 'font-bold text-neutral-900 dark:text-white'
+              ? 'font-medium text-stone-700 dark:text-stone-300'
+              : 'font-bold text-stone-900 dark:text-stone-100'
           }`}
         >
           {notification.title}
         </p>
-        <p className="mt-0.5 text-xs font-medium leading-relaxed text-neutral-500 dark:text-neutral-400">
+        <p className="mt-0.5 text-xs font-normal leading-relaxed text-stone-500 dark:text-stone-400">
           {notification.body}
         </p>
-        <span className="mt-1 block text-[11px] font-semibold text-neutral-400 dark:text-neutral-500">
+        <span className="mt-1 block text-[11px] font-medium text-stone-400 dark:text-stone-500 tabular-nums">
           {timeLabel(t, notification.created_at)}
         </span>
       </button>
@@ -109,11 +109,11 @@ function NotificationRow({
           aria-label={isRead
             ? t('notifications.markUnread', 'Marcar como no leída')
             : t('notifications.markRead', 'Marcar como leída')}
-          className="grid h-11 w-9 cursor-pointer place-items-center text-neutral-300 transition-colors hover:text-neutral-500 dark:text-neutral-600 dark:hover:text-neutral-400"
+          className="grid h-11 w-9 cursor-pointer place-items-center text-stone-300 transition-colors hover:text-stone-500 dark:text-stone-600 dark:hover:text-stone-400"
         >
           {isRead
             ? <Circle size={13} />
-            : <span className="block h-2.5 w-2.5 rounded-full bg-[#D41F2D] shadow-[0_0_8px_rgba(212,31,45,0.6)]" />}
+            : <span className="block h-2.5 w-2.5 rounded-full bg-[#C22B38] dark:bg-[#D93846] shadow-[0_0_8px_rgba(194,43,56,0.5)]" />}
         </button>
 
         <button
@@ -121,7 +121,7 @@ function NotificationRow({
           onClick={() => onDelete(notification.id)}
           title={t('notifications.delete', 'Eliminar aviso')}
           aria-label={t('notifications.delete', 'Eliminar aviso')}
-          className="grid h-11 w-10 cursor-pointer place-items-center rounded-xl text-neutral-400 transition-colors hover:bg-red-50 hover:text-[#D41F2D] dark:text-neutral-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+          className="grid h-11 w-10 cursor-pointer place-items-center rounded-xl text-stone-400 transition-colors hover:bg-[#FBECEB] hover:text-[#C22B38] dark:text-stone-500 dark:hover:bg-[#D93846]/20 dark:hover:text-[#D93846]"
         >
           <Trash2 size={16} />
         </button>
@@ -176,12 +176,12 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
 
   if (!user) {
     return (
-      <div className="rounded-3xl border border-dashed border-neutral-200 p-8 text-center dark:border-neutral-700">
-        <Bell size={30} strokeWidth={1.5} className="mx-auto text-neutral-300 dark:text-neutral-600" />
-        <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">
+      <div className="rounded-3xl border border-dashed border-[#E6E0D5] p-8 text-center dark:border-white/[0.1]">
+        <Bell size={30} strokeWidth={1.5} className="mx-auto text-stone-300 dark:text-stone-600" />
+        <p className="mt-3 text-sm font-bold text-stone-700 dark:text-stone-200">
           {t('notifications.signedOut', 'Inicia sesión para ver tus avisos')}
         </p>
-        <p className="mt-1 text-xs font-medium text-neutral-400">
+        <p className="mt-1 text-xs font-medium text-stone-400 dark:text-stone-500">
           {t('notifications.signedOutHint', 'Son privados y van asociados a tu cuenta UDP.')}
         </p>
       </div>
@@ -200,7 +200,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
       <NotificationPreferences />
 
       {isLoading ? (
-        <p className="py-10 text-center text-sm font-semibold text-neutral-400">
+        <p className="py-10 text-center text-sm font-semibold text-stone-400 dark:text-stone-500">
           {t('notifications.loading', 'Cargando avisos…')}
         </p>
       ) : isError ? (
@@ -209,18 +209,18 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
            pantalla decía "No tienes avisos" con la red caída o la sesión
            caducada — que es la peor mentira posible aquí: el usuario deja de
            mirar justo cuando hay algo que no le está llegando. */
-        <div className="rounded-3xl border border-dashed border-amber-300 py-10 text-center dark:border-amber-900/60">
+        <div className="rounded-3xl border border-dashed border-amber-300/80 p-8 text-center dark:border-amber-900/60">
           <TriangleAlert size={28} strokeWidth={1.5} className="mx-auto text-amber-500" />
-          <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">
+          <p className="mt-3 text-sm font-bold text-stone-700 dark:text-stone-200">
             {t('notifications.loadFailed', 'No se pudieron cargar tus avisos')}
           </p>
-          <p className="mx-auto mt-1 max-w-[16rem] text-xs font-medium leading-relaxed text-neutral-400">
+          <p className="mx-auto mt-1 max-w-[16rem] text-xs font-medium leading-relaxed text-stone-400 dark:text-stone-500">
             {t('notifications.loadFailedHint', 'Revisa tu conexión. Si acabas de volver, puede que tu sesión haya caducado.')}
           </p>
           <button
             type="button"
             onClick={() => void refetch()}
-            className="mt-4 h-10 cursor-pointer rounded-full bg-[#D41F2D] px-5 text-xs font-bold text-white transition-colors hover:bg-[#b11a25] active:scale-95"
+            className="mt-4 h-10 cursor-pointer rounded-2xl bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] px-5 text-xs font-semibold text-white transition-colors active:scale-95"
           >
             {t('notifications.retry', 'Reintentar')}
           </button>
@@ -229,11 +229,11 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
         <>
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
                 {t('notifications.title', 'Tus avisos')}
               </h3>
               {unreadCount > 0 && (
-                <span className="rounded-full bg-[#D41F2D] px-1.5 py-0.5 text-[10px] font-black leading-none text-white">
+                <span className="rounded-full bg-[#C22B38] dark:bg-[#D93846] px-2 py-0.5 text-[11px] font-bold leading-none text-white tabular-nums">
                   {unreadCount}
                 </span>
               )}
@@ -244,7 +244,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
                 type="button"
                 onClick={() => markAll.mutate()}
                 disabled={markAll.isPending}
-                className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-bold text-[#D41F2D] transition-colors hover:text-[#b11a25] disabled:opacity-50"
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs font-semibold text-[#C22B38] dark:text-[#D93846] transition-colors hover:opacity-80 disabled:opacity-50"
               >
                 <CheckCheck size={14} />
                 {t('notifications.markAllRead', 'Marcar leídas')}
@@ -267,15 +267,15 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
                     type="button"
                     aria-pressed={active}
                     onClick={() => setFilter(option.value)}
-                    className={`flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-xs font-bold transition-colors active:scale-95 ${
+                    className={`flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-2xl px-3.5 text-xs font-semibold transition-colors active:scale-95 ${
                       active
-                        ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                        : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+                        ? 'bg-stone-900 text-[#FAF8F5] dark:bg-stone-100 dark:text-stone-950 shadow-sm'
+                        : 'border border-[#E6E0D5] bg-white text-stone-600 hover:bg-[#FAF8F5] dark:border-white/[0.08] dark:bg-[#1E222D] dark:text-stone-300 dark:hover:bg-white/[0.05]'
                     }`}
                   >
                     {option.label}
                     {count > 0 && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#D41F2D]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#C22B38] dark:bg-[#D93846]" />
                     )}
                   </button>
                 )
@@ -287,7 +287,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
             <div className="space-y-5">
               {groups.map((group) => (
                 <section key={group.id}>
-                  <h4 className="mb-1.5 px-1 text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
+                  <h4 className="mb-1.5 px-1 text-xs font-semibold text-stone-400 dark:text-stone-500">
                     {GROUP_LABEL[group.id]}
                   </h4>
                   <ul className="m-0 list-none space-y-0.5 p-0">
@@ -308,22 +308,22 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
                 type="button"
                 onClick={() => setClearing(true)}
                 disabled={deleteAll.isPending}
-                className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white text-xs font-bold text-neutral-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-[#D41F2D] active:scale-[0.98] disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:border-red-900/60 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-[#E6E0D5] bg-white text-xs font-semibold text-stone-500 transition-colors hover:border-[#FBECEB] hover:bg-[#FBECEB] hover:text-[#C22B38] active:scale-[0.98] disabled:opacity-50 dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-400 dark:hover:border-[#D93846]/20 dark:hover:bg-[#D93846]/10 dark:hover:text-[#D93846]"
               >
                 <Trash2 size={14} />
                 {t('notifications.clearAll', 'Vaciar todo')}
               </button>
             </div>
           ) : (
-            <div className="rounded-3xl border border-dashed border-neutral-200 py-12 text-center dark:border-neutral-800">
-              <BellRing size={30} strokeWidth={1.5} className="mx-auto text-neutral-300 dark:text-neutral-600" />
-              <p className="mt-3 text-sm font-bold text-neutral-600 dark:text-neutral-300">
+            <div className="rounded-3xl border border-dashed border-[#E6E0D5] py-12 text-center dark:border-white/[0.08]">
+              <BellRing size={30} strokeWidth={1.5} className="mx-auto text-stone-300 dark:text-stone-600" />
+              <p className="mt-3 text-sm font-semibold text-stone-600 dark:text-stone-300">
                 {personal.length === 0
                   ? t('notifications.empty', 'No tienes avisos')
                   : t('notifications.emptyFiltered', 'Nada en esta categoría')}
               </p>
               {personal.length === 0 && (
-                <p className="mx-auto mt-1 max-w-[15rem] text-xs font-medium leading-relaxed text-neutral-400">
+                <p className="mx-auto mt-1 max-w-[15rem] text-xs font-medium leading-relaxed text-stone-400 dark:text-stone-500">
                   {t('notifications.emptyHint', 'Aquí llegarán las respuestas del foro, los recordatorios de eventos y tus logros.')}
                 </p>
               )}
