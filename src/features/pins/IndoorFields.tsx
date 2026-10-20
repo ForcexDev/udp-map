@@ -36,10 +36,13 @@ interface IndoorFieldsProps {
   onRoomCodeChange: (code: string) => void
 }
 
-const LABEL = 'text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1'
-const CHIP = 'rounded-xl px-4 py-2 text-xs font-black transition-all'
-const CHIP_ON = 'bg-[#D41F2D] text-white shadow-sm'
-const CHIP_OFF = 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
+const LABEL = 'text-xs font-semibold text-stone-500 dark:text-stone-400 ml-0.5'
+const CHIP_BASE = 'shrink-0 cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold tabular-nums transition-all'
+const CHIP_OFF =
+  'border border-[#E6E0D5] bg-white text-stone-600 hover:text-stone-900 dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-400 dark:hover:text-stone-100'
+const CHIP_EXTERIOR_ON = 'bg-stone-900 text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950'
+const CHIP_FLOOR_ON =
+  'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
 
 export function IndoorFields({
   lat,
@@ -112,48 +115,51 @@ export function IndoorFields({
   if (levels.length === 0 && !isRoom) return null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {levels.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <label className={LABEL}>Piso</label>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => onFloorChange(null)}
               aria-pressed={floor === null}
-              className={`${CHIP} ${floor === null ? CHIP_ON : CHIP_OFF}`}
+              className={`${CHIP_BASE} ${floor === null ? CHIP_EXTERIOR_ON : CHIP_OFF}`}
             >
               Exterior
             </button>
-            {levels.map((l) => (
-              <button
-                key={l.level}
-                type="button"
-                onClick={() => onFloorChange(l.level)}
-                aria-pressed={floor === l.level}
-                className={`${CHIP} ${floor === l.level ? CHIP_ON : CHIP_OFF}`}
-              >
-                {floorName(l.level, l.label)}
-              </button>
-            ))}
+            {levels.map((l) => {
+              const isActive = floor === l.level
+              return (
+                <button
+                  key={l.level}
+                  type="button"
+                  onClick={() => onFloorChange(l.level)}
+                  aria-pressed={isActive}
+                  className={`${CHIP_BASE} ${isActive ? CHIP_FLOOR_ON : CHIP_OFF}`}
+                >
+                  {floorName(l.level, l.label)}
+                </button>
+              )
+            })}
           </div>
-          <p className="ml-1 text-[11px] leading-snug text-neutral-400">
+          <p className="ml-0.5 text-xs text-stone-400 dark:text-stone-500">
             Exterior es para lo que está al aire libre: el patio, la entrada, la calle.
           </p>
         </div>
       )}
 
       {isRoom && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           <label className={LABEL}>{t('pin.roomCode', 'Código de sala')}</label>
           <input
             value={roomCode}
             onChange={(e) => handleRoomCode(e.target.value)}
             maxLength={40}
             placeholder="E441.1.S101 · SMV-03 · A-302"
-            className="w-full rounded-2xl border border-neutral-100 bg-neutral-50/70 px-6 py-4 font-mono text-sm font-bold text-neutral-700 shadow-sm outline-none transition-colors focus:border-[#D41F2D] dark:border-neutral-700 dark:bg-neutral-800/70 dark:text-neutral-300"
+            className="w-full rounded-2xl border border-[#E6E0D5] bg-white px-4 py-3 font-mono text-sm font-bold tabular-nums text-stone-800 shadow-xs outline-none transition-colors focus:border-[#C22B38] dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-200 dark:focus:border-[#D93846]"
           />
-          <p className="ml-1 text-[11px] leading-snug text-neutral-400">
+          <p className="ml-0.5 text-xs text-stone-400 dark:text-stone-500">
             Opcional. Si tu sala no tiene código, déjalo vacío.
           </p>
         </div>
@@ -161,13 +167,13 @@ export function IndoorFields({
 
       {/* Comprobación antes de publicar: dice dónde va a quedar el pin. */}
       {breadcrumb.length > 0 && (
-        <div className="flex items-center gap-2.5 rounded-2xl border border-neutral-100 bg-neutral-50/70 px-5 py-3.5 dark:border-neutral-700 dark:bg-neutral-800/70">
-          <Building2 size={15} className="shrink-0 text-neutral-400" />
-          <span className="min-w-0 flex-1 truncate text-xs font-bold text-neutral-600 dark:text-neutral-400">
+        <div className="flex items-center gap-2.5 rounded-2xl border border-[#E6E0D5] bg-white px-4 py-3 shadow-xs dark:border-white/[0.07] dark:bg-[#1E222D]">
+          <Building2 size={16} className="shrink-0 text-stone-400 dark:text-stone-500" />
+          <span className="min-w-0 flex-1 truncate text-xs font-semibold text-stone-700 dark:text-stone-300">
             {breadcrumb.join(' · ')}
             {floor !== null && (
-              <span className="ml-1.5 inline-flex items-center gap-1 text-neutral-400">
-                <Layers size={11} />
+              <span className="ml-1.5 inline-flex items-center gap-1 font-bold tabular-nums text-[#B02330] dark:text-rose-300">
+                <Layers size={12} />
                 {floorName(floor, levels.find((l) => l.level === floor)?.label ?? null)}
               </span>
             )}
