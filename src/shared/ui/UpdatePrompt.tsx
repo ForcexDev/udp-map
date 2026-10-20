@@ -78,35 +78,35 @@ export function UpdatePrompt() {
       {/* animate-fade-in es la de la casa (index.css). Antes había aquí
           `animate-in slide-in-from-bottom-4`, de tailwindcss-animate, que este
           proyecto no usa: eran clases muertas y el aviso aparecía de golpe. */}
-      <div className="w-full max-w-[340px] sm:max-w-[400px] max-h-[70dvh] rounded-[22px] p-5 shadow-3xl flex flex-col gap-4 bg-white dark:bg-neutral-900 animate-fade-in border border-neutral-200/50 dark:border-neutral-800/50 overflow-hidden pointer-events-auto">
+      <div className="w-full max-w-[340px] sm:max-w-[400px] max-h-[70dvh] rounded-3xl p-5 premium-shadow flex flex-col gap-4 bg-[#FAF8F5] dark:bg-[#151820] animate-fade-in border border-[#E5DEC9] dark:border-white/10 overflow-hidden pointer-events-auto">
 
         <div className="flex flex-col items-center text-center mt-1 gap-2.5 flex-shrink-0">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 bg-[#EFECE4] dark:bg-white/[0.08] text-stone-900 dark:text-stone-100">
             <ArrowDownToLine size={24} strokeWidth={2} />
           </div>
           <div>
-            <h3 className="text-[18px] font-black tracking-tight text-neutral-900 dark:text-white leading-tight">
+            <h3 className="text-base font-bold tracking-tight text-stone-900 dark:text-stone-100 leading-tight">
               {info.version ? `Actualización disponible (${info.version})` : 'Actualización disponible'}
             </h3>
-            <p className="text-[13px] font-medium mt-0.5 leading-snug px-2 text-neutral-500">
+            <p className="text-xs font-normal mt-0.5 leading-snug px-2 text-stone-500 dark:text-stone-400">
               Hay una nueva versión de la aplicación.
             </p>
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50 dark:bg-neutral-800/50 rounded-2xl p-3.5 border border-neutral-100 dark:border-neutral-800 pr-2">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-white dark:bg-[#1E222D] rounded-2xl p-3.5 border border-[#E6E0D5] dark:border-white/[0.07] pr-2">
           <ul className="flex flex-col gap-2.5">
             {info.improvements.length > 0 ? (
               info.improvements.map((item, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <CheckCircle2 size={16} className="text-[#D41F2D] mt-0.5 flex-shrink-0" strokeWidth={2.5} />
-                  <span className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300 leading-snug">
+                  <CheckCircle2 size={16} className="text-[#C22B38] dark:text-[#D93846] mt-0.5 flex-shrink-0" strokeWidth={2.5} />
+                  <span className="text-xs font-medium text-stone-700 dark:text-stone-300 leading-snug">
                     {item}
                   </span>
                 </li>
               ))
             ) : (
-              <li className="text-[13px] text-neutral-500 text-center font-medium">Mejoras de rendimiento.</li>
+              <li className="text-xs text-stone-500 dark:text-stone-400 text-center font-medium">Mejoras de rendimiento.</li>
             )}
           </ul>
         </div>
@@ -125,14 +125,14 @@ export function UpdatePrompt() {
             }}
             disabled={isUpdating}
             aria-busy={isUpdating}
-            className="w-full py-3 px-4 bg-[#D41F2D] hover:bg-[#b01a25] text-white rounded-full text-sm font-bold transition-all active:scale-95 shadow-sm disabled:cursor-wait disabled:opacity-70"
+            className="w-full py-3 px-4 bg-[#C22B38] hover:bg-[#A82430] dark:bg-[#D93846] dark:hover:bg-[#C22B38] text-white rounded-2xl text-sm font-semibold transition-all active:scale-95 shadow-xs disabled:cursor-wait disabled:opacity-70"
           >
             {isUpdating ? 'Actualizando…' : 'Actualizar ahora'}
           </button>
           {isUpdating && (
             // La descarga puede tardar decenas de segundos con datos móviles.
             // Decirlo es lo que evita que se lea como "se quedó colgado".
-            <p className="px-2 text-center text-[12px] font-medium leading-snug text-neutral-500">
+            <p className="px-2 text-center text-xs font-normal leading-snug text-stone-500 dark:text-stone-400">
               Descargando la versión nueva. Puede tardar unos segundos.
             </p>
           )}
@@ -140,7 +140,7 @@ export function UpdatePrompt() {
             <button
               type="button"
               onClick={handleDismiss}
-              className="w-full py-2.5 px-4 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 rounded-full text-sm font-semibold transition-colors"
+              className="w-full py-2.5 px-4 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 rounded-2xl text-xs font-semibold transition-colors"
             >
               Más tarde
             </button>

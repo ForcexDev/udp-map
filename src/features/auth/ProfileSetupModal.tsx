@@ -62,14 +62,14 @@ export function ProfileSetupModal() {
       hideClose={true} // Bloquear cerrado accidental (obligatorio)
       title={t('auth.setupProfile', 'Configura tu Perfil')}
       description={t('auth.setupProfileDesc', 'Cuéntanos de qué facultad eres para personalizar tu experiencia.')}
-      contentClassName="!bg-white dark:!bg-neutral-900 sm:max-w-md shadow-2xl rounded-2xl"
+      contentClassName="!bg-[#FAF8F5] dark:!bg-[#151820] sm:max-w-md border border-[#E5DEC9] dark:border-white/10 rounded-3xl premium-shadow"
     >
       <div className="flex flex-col gap-5 py-2">
         
         {/* Facultad */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <MapPin size={16} className="text-[#D41F2D]" />
+          <label className="text-sm font-semibold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+            <MapPin size={16} className="text-[#C22B38] dark:text-[#D93846]" />
             {t('auth.faculty', 'Facultad')}
           </label>
           <CustomSelect
@@ -89,8 +89,8 @@ export function ProfileSetupModal() {
 
         {/* Carrera */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <GraduationCap size={16} className="text-[#D41F2D]" />
+          <label className="text-sm font-semibold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+            <GraduationCap size={16} className="text-[#C22B38] dark:text-[#D93846]" />
             {t('auth.career', 'Carrera')}
           </label>
           <CustomSelect
@@ -113,11 +113,11 @@ export function ProfileSetupModal() {
 
       </div>
 
-      <div className="mt-6 flex flex-col gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+      <div className="mt-6 flex flex-col gap-2 pt-3 border-t border-[#E5DEC9] dark:border-white/10">
         <Button 
           onClick={handleSave} 
           disabled={!facultyId || (!career && availableCareers.length > 0) || loading}
-          className="w-full bg-[#D41F2D] hover:bg-[#b11a25] text-white rounded-full py-2.5 font-bold uppercase tracking-wider text-xs"
+          className="w-full bg-[#C22B38] hover:bg-[#A82430] dark:bg-[#D93846] dark:hover:bg-[#C22B38] text-white rounded-2xl py-3 text-sm font-semibold shadow-xs transition-opacity"
         >
           {loading ? t('common.saving', 'Guardando...') : t('common.save', 'Guardar y Continuar')}
         </Button>

@@ -23,7 +23,7 @@ function minuteOptions(current: string): string[] {
 }
 
 const COLUMN = 'flex-1 max-h-[168px] overflow-y-auto hide-scrollbar flex flex-col gap-0.5 pr-0.5'
-const OPTION = 'h-8 shrink-0 rounded-lg text-xs font-bold tabular-nums transition-all cursor-pointer'
+const OPTION = 'h-8 shrink-0 rounded-xl text-xs font-semibold tabular-nums transition-all cursor-pointer'
 
 /**
  * Selector de hora con panel propio, hermano de CustomDateTimePicker.
@@ -87,18 +87,18 @@ export function CustomTimePicker({
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={label}
         aria-expanded={isOpen}
-        className={`flex w-full cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold shadow-sm outline-none transition-all ${
+        className={`flex w-full cursor-pointer items-center gap-2 rounded-2xl border px-3 py-2.5 text-sm font-semibold shadow-xs outline-none transition-all ${
           error
-            ? 'border-red-500 bg-red-50/50 text-red-900 dark:bg-red-950/30 dark:text-red-200'
+            ? 'border-rose-500 bg-rose-50/50 text-rose-900 dark:bg-rose-950/30 dark:text-rose-200'
             : isOpen
-              ? 'border-[#D41F2D] bg-white ring-4 ring-red-500/10 dark:bg-neutral-900'
-              : 'border-neutral-200 bg-neutral-50/80 hover:border-neutral-300 dark:border-neutral-700/80 dark:bg-neutral-800/80'
+              ? 'border-[#C22B38] bg-white ring-4 ring-[#C22B38]/10 dark:bg-[#1E222D] dark:border-[#D93846]'
+              : 'border-[#E6E0D5] bg-white hover:bg-[#FAF8F5] dark:border-white/[0.07] dark:bg-[#1E222D] dark:hover:bg-[#252A37]'
         }`}
       >
-        <Clock size={14} className={value ? 'shrink-0 text-[#D41F2D]' : 'shrink-0 text-neutral-400'} />
+        <Clock size={14} className={value ? 'shrink-0 text-[#C22B38] dark:text-[#D93846]' : 'shrink-0 text-stone-400'} />
         <span
           className={`tabular-nums ${
-            value ? 'font-bold text-neutral-900 dark:text-white' : 'text-neutral-400'
+            value ? 'font-bold text-stone-900 dark:text-stone-100' : 'text-stone-400'
           }`}
         >
           {value || placeholder}
@@ -107,9 +107,9 @@ export function CustomTimePicker({
 
       {isOpen && (
         <div
-          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full z-50 mt-2 w-[188px] animate-scale-in rounded-2xl border border-neutral-200 bg-white p-3 shadow-2xl dark:border-neutral-700/80 dark:bg-neutral-900`}
+          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full z-50 mt-2 w-[188px] animate-scale-in rounded-2xl border border-[#E6E0D5] bg-white p-3 premium-shadow dark:border-white/[0.09] dark:bg-[#1E222D]`}
         >
-          <div className="mb-2 flex gap-2 text-center text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">
+          <div className="mb-2 flex gap-2 text-center text-xs font-semibold text-stone-400 dark:text-stone-500">
             <span className="flex-1">Hora</span>
             <span className="flex-1">Min</span>
           </div>
@@ -126,8 +126,8 @@ export function CustomTimePicker({
                     onClick={() => pickHour(h)}
                     className={`${OPTION} ${
                       selected
-                        ? 'bg-[#D41F2D] font-extrabold text-white shadow-sm'
-                        : 'text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800'
+                        ? 'bg-[#C22B38] font-bold text-white shadow-xs dark:bg-[#D93846]'
+                        : 'text-stone-800 hover:bg-[#EFECE4] dark:text-stone-200 dark:hover:bg-white/[0.08]'
                     }`}
                   >
                     {h}
@@ -147,8 +147,8 @@ export function CustomTimePicker({
                     onClick={() => pickMinute(m)}
                     className={`${OPTION} ${
                       selected
-                        ? 'bg-[#D41F2D] font-extrabold text-white shadow-sm'
-                        : 'text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800'
+                        ? 'bg-[#C22B38] font-bold text-white shadow-xs dark:bg-[#D93846]'
+                        : 'text-stone-800 hover:bg-[#EFECE4] dark:text-stone-200 dark:hover:bg-white/[0.08]'
                     }`}
                   >
                     {m}
@@ -158,7 +158,7 @@ export function CustomTimePicker({
             </div>
           </div>
 
-          <div className="mt-3 flex items-center gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+          <div className="mt-3 flex items-center gap-2 border-t border-[#E6E0D5] pt-3 dark:border-white/[0.07]">
             {clearable && (
               <button
                 type="button"
@@ -166,7 +166,7 @@ export function CustomTimePicker({
                   onChange('')
                   setIsOpen(false)
                 }}
-                className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-neutral-100 py-1.5 text-[10px] font-bold text-neutral-600 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-[#EFECE4] py-1.5 text-xs font-semibold text-stone-600 transition-colors hover:bg-stone-200 dark:bg-white/[0.08] dark:text-stone-300 dark:hover:bg-white/[0.12]"
               >
                 <X size={12} /> Sin hora
               </button>
@@ -174,7 +174,7 @@ export function CustomTimePicker({
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-[#D41F2D] py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-[#b11a25]"
+              className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-[#C22B38] py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#A82430] dark:bg-[#D93846] dark:hover:bg-[#C22B38] shadow-xs"
             >
               <Check size={12} /> Listo
             </button>
