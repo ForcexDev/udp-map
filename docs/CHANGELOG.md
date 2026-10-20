@@ -1,5 +1,12 @@
-### Novedades en esta versión (v0.7.0)
+### Novedades en esta versión (v0.8.0)
 
+- Rediseño integral de la interfaz con estética cálida, bordes suaves y mejor legibilidad
+- Nueva Lente Contextual sobre el mapa para filtrar edificio y planta sin tapar la vista
+- Selector de pisos adaptable que se convierte en carrusel cuando hay muchas plantas
+- Nueva guía paso a paso al pulsar "Cómo llegar" con ruta accesible ("Sin escaleras") y conexión vertical
+- Cabecera de facultad reorganizada en dos filas desahogadas para evitar choques de botones
+- Barra de navegación inferior más limpia y botón central directo para publicar en el mapa
+- Píldoras de salas en el mapa con código tabular de lectura rápida
 - Tus eventos marcados ahora aparecen en tu perfil
 - El buscador encuentra salas por código, edificio o número
 - Puedes ver el perfil de quien va a tu evento
@@ -8,19 +15,3 @@
 - Actualizar la aplicación es mucho más rápido y ya no hay que insistir
 - Al marcar asistencia a un evento se te dice que quien organiza verá tu nombre
 - Centro de avisos rehecho: agrupados por día, más legibles y con "Vaciar todo"
-- Arreglado el parpadeo del interruptor de notificaciones al abrir la pestaña de avisos
-- El icono de las notificaciones push ya no sale en blanco en Android
-- Tocar una notificación vuelve a abrir la app donde corresponde
-- Los avisos de la universidad ya no se mezclan con tus logros
-- Sistema de mapeo interior de edificios, plantas y salas UDP
-- Selector vertical de pisos y contexto de planta en zonas exteriores
-- Búsqueda y barra lateral ahora abren directamente la ficha del lugar
-- Ficha de facultad reorganizada en secciones: reportes, eventos y lugares
-- Galerías de fotos dedicadas para áreas exteriores (patios, plazas, canchas)
-- Límite de texto en descripciones ampliado (1500 caracteres) para permitir enlaces largos
-- Control mejorado para autores: ahora pueden extender la fecha de fin de sus eventos
-- Identificación automática de salas y espacios (ej. E441.1.S101)
-- Cronogramas de eventos y bloques horarios disponibles en las publicaciones
-- Nueva categoría "Escalera", para marcar por dónde se sube cuando no hay ascensor
-- La categoría "Computación" pasa a llamarse "Sala de computación"
-- La categoría de evento "Deportivo" pasa a llamarse "Competencia"
