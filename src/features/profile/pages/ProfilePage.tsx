@@ -88,17 +88,17 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto overflow-x-hidden max-w-full w-full overscroll-x-none touch-pan-y bg-neutral-50 dark:bg-neutral-950">
-      <div className="mx-auto w-full max-w-2xl min-h-full pt-safe overflow-x-hidden">
+    <div className="h-full w-full max-w-full overflow-x-hidden overflow-y-auto overscroll-x-none bg-[#FAF8F5] touch-pan-y dark:bg-[#151820]">
+      <div className="mx-auto min-h-full w-full max-w-2xl overflow-x-hidden pt-safe pb-16">
 
         {/* Topbar */}
-        <div className="flex items-center justify-between px-5 py-3">
-          <h1 className="text-[21px] font-black tracking-tight text-neutral-900 dark:text-white m-0">
+        <div className="flex items-center justify-between px-5 py-3.5">
+          <h1 className="m-0 text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             {t('profile.title', 'Perfil')}
           </h1>
           <button
             onClick={() => void signOut()}
-            className="text-[12.5px] font-bold text-neutral-500 dark:text-neutral-400 hover:text-[#D41F2D] bg-transparent border-none p-0 cursor-pointer transition-colors"
+            className="cursor-pointer border-none bg-transparent p-0 text-xs font-semibold text-stone-500 transition-colors hover:text-[#C22B38] dark:text-stone-400 dark:hover:text-[#D93846]"
           >
             {t('auth.signOut', 'Cerrar sesión')}
           </button>

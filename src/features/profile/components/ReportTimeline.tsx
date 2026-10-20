@@ -30,23 +30,23 @@ export function ReportTimeline({ pins, loading, onViewOnMap }: ReportTimelinePro
 
   return (
     <div className="px-5 pb-6">
-      <div className="flex justify-between items-baseline mb-3">
-        <h2 className="text-[11px] font-black text-neutral-400 uppercase tracking-widest m-0">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="m-0 text-xs font-bold text-stone-500 dark:text-stone-400">
           {t('profile.activePosts', 'Publicaciones activas')}
         </h2>
-        <span className="text-[11px] font-bold text-neutral-400">
+        <span className="text-xs font-semibold text-stone-400 dark:text-stone-500">
           {t('profile.total', { n: pins.length, defaultValue: `${pins.length} total` })}
         </span>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-6 h-6 border-2 border-[#D41F2D] border-t-transparent rounded-full animate-spin" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#C22B38] border-t-transparent dark:border-[#D93846]" />
         </div>
       ) : pins.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50 py-12 px-6 text-center shadow-sm">
-          <MapPinned size={36} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />
-          <p className="text-[13px] font-bold text-neutral-500 dark:text-neutral-400 m-0 mt-1">
+        <div className="flex flex-col items-center gap-2 rounded-3xl border border-[#E6E0D5] bg-white px-6 py-12 text-center shadow-xs dark:border-white/[0.07] dark:bg-[#1E222D]">
+          <MapPinned size={36} strokeWidth={1.5} className="text-stone-300 dark:text-stone-600" />
+          <p className="m-0 mt-1 text-xs font-medium text-stone-500 dark:text-stone-400">
             {t('profile.noActivePosts', 'No hay publicaciones activas.')}
           </p>
         </div>

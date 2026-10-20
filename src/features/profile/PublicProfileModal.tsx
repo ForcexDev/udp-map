@@ -70,19 +70,19 @@ function PublicProfileModalContent({ userId, onClose }: { userId: string; onClos
         <RadixDialog.Content
           aria-describedby={undefined}
           className="fixed inset-0 z-[4610] flex flex-col overflow-hidden premium-shadow
-                     bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800
+                     bg-[#FAF8F5] dark:bg-[#151820] border-[#E6E0D5] dark:border-white/[0.07]
                      sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
                      sm:h-auto sm:max-h-[85dvh] sm:w-[calc(100vw-4rem)] sm:max-w-xl
                      sm:rounded-3xl sm:border"
         >
           {/* Topbar: anatomía compacta y elegante */}
-          <div className="flex items-center justify-between gap-3 px-5 pt-[calc(0.875rem+env(safe-area-inset-top,0px))] pb-3 sm:py-3.5 shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-            <RadixDialog.Title className="text-base sm:text-lg font-black tracking-tight text-neutral-900 dark:text-white m-0">
+          <div className="flex items-center justify-between gap-3 px-5 pt-[calc(0.875rem+env(safe-area-inset-top,0px))] pb-3 sm:py-3.5 shrink-0 border-b border-[#E6E0D5] dark:border-white/[0.07] bg-white dark:bg-[#1E222D]">
+            <RadixDialog.Title className="text-base sm:text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100 m-0">
               {t('profile.title', 'Perfil')}
             </RadixDialog.Title>
             <RadixDialog.Close
               aria-label={t('common.close', 'Cerrar')}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-neutral-900 dark:hover:text-white transition-all cursor-pointer border-none"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EFECE4] dark:bg-white/[0.08] text-stone-600 dark:text-stone-300 hover:bg-[#E2DDD2] dark:hover:bg-white/[0.12] hover:text-stone-900 dark:hover:text-white transition-all cursor-pointer border-none"
             >
               <X size={16} strokeWidth={2.2} />
             </RadixDialog.Close>
@@ -91,7 +91,7 @@ function PublicProfileModalContent({ userId, onClose }: { userId: string; onClos
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y hide-scrollbar pb-safe">
             {loading ? (
               <div className="flex justify-center items-center h-40">
-                <div className="w-6 h-6 border-2 border-[#D41F2D] border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-[#C22B38] dark:border-[#D93846] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : profile ? (
               <ProfileView
@@ -115,7 +115,7 @@ function PublicProfileModalContent({ userId, onClose }: { userId: string; onClos
                 onViewOnMap={openOnMap}
               />
             ) : (
-              <div className="py-10 text-center text-sm font-bold text-neutral-500">
+              <div className="py-10 text-center text-sm font-semibold text-stone-500 dark:text-stone-400">
                 {t('profile.notFound', 'Usuario no encontrado.')}
               </div>
             )}
