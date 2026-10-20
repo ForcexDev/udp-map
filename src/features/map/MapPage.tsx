@@ -2,11 +2,10 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import i18n from '@/shared/lib/i18n'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, X, Accessibility, Menu, MapPin, Search, Loader2, ChevronDown, Bell, Building2, DoorOpen } from 'lucide-react'
+import { X, Menu, MapPin, Search, Loader2, ChevronDown, Bell, Building2, DoorOpen } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useNotifications } from '@/features/notifications/useNotifications'
-import { useGuard } from '@/features/auth/useGuard'
 import { AnimatePresence } from 'framer-motion'
 import { usePins } from '@/features/pins/usePins'
 import { searchRooms } from '@/shared/utils/roomSearch'
@@ -19,11 +18,12 @@ import { useAuthStore } from '@/features/auth/authStore'
 import type { Faculty, Pin } from '@/shared/types/database'
 import { CAMPUSES } from '@/shared/data/campusData'
 import { useFaculties } from '@/shared/data/facultyStore'
-import { formatDistance, type LatLng } from '@/shared/utils/geo'
+import { type LatLng } from '@/shared/utils/geo'
 import { MapView, getMapCenter } from './MapView'
 import { FacultyDetail } from './FacultyDetail'
 import { FiltersPanel } from './FiltersPanel'
-import { FloorSelector } from './FloorSelector'
+import { ContextLens } from './ContextLens'
+import { WayfinderSheet } from './WayfinderSheet'
 import { getWalkingRoute, type WalkingRoute } from './routing'
 import { isLocationOutOfBounds } from './campusBoundary'
 import { isPinLocationOccupied } from '@/shared/utils/pinLocation'
@@ -48,16 +48,16 @@ function SearchRow({
   return (
     <button
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2.5 text-left transition-all hover:bg-neutral-100/60 active:scale-[0.98] dark:hover:bg-neutral-800/60"
+      className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2.5 text-left transition-all hover:bg-[#FAF8F5]/80 active:scale-[0.98] dark:hover:bg-white/[0.05]"
     >
-      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800">
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-600 dark:bg-white/[0.08] dark:text-stone-300">
         {icon}
       </div>
       <div className="flex min-w-0 flex-col">
-        <span className="truncate text-[12px] font-extrabold leading-snug text-neutral-800 dark:text-neutral-200">
+        <span className="truncate text-xs font-bold leading-snug text-stone-900 dark:text-stone-100">
           {title}
         </span>
-        <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500">
+        <span className="text-[11px] font-medium text-stone-500 dark:text-stone-400">
           {subtitle}
         </span>
       </div>
@@ -216,13 +216,11 @@ function useUserLocation() {
 
 export function MapPage() {
   const { t, i18n } = useTranslation()
-  const guard = useGuard()
   const { pins, favoriteIds } = usePins()
   const { mapping } = useMapping()
   const role = useAuthStore((s) => s.role)
   const pickingLocation = useUIStore((s) => s.pickingLocation)
   const cancelPickingLocation = useUIStore((s) => s.cancelPickingLocation)
-  const startPickingLocation = useUIStore((s) => s.startPickingLocation)
   const movingPinId = useUIStore((s) => s.movingPinId)
   const cancelMovingPin = useUIStore((s) => s.cancelMovingPin)
   const selectedPinId = useUIStore((s) => s.selectedPinId)
@@ -230,7 +228,7 @@ export function MapPage() {
   const routeTargetPinId = useUIStore((s) => s.routeTargetPinId)
   const setRouteTarget = useUIStore((s) => s.setRouteTarget)
   const accessibleRoute = useUIStore((s) => s.accessibleRoute)
-  const setAccessibleRoute = useUIStore((s) => s.setAccessibleRoute)
+
   const campusId = useUIStore((s) => s.campusId)
   const setCampusId = useUIStore((s) => s.setCampusId)
   const showToast = useUIStore((s) => s.showToast)
@@ -423,7 +421,7 @@ export function MapPage() {
       {searchResults.buildings.map((b) => (
         <SearchRow
           key={b.id}
-          icon={<Building2 size={14} className="text-neutral-500" strokeWidth={2.5} />}
+          icon={<Building2 size={14} className="text-stone-500 dark:text-stone-400" strokeWidth={2.2} />}
           title={b.name}
           subtitle={b.aliases[0] ?? 'Edificio'}
           onClick={() => handleSelectMapped(b.footprint, b.faculty_id)}
@@ -432,7 +430,7 @@ export function MapPage() {
       {searchResults.rooms.map((pin) => (
         <SearchRow
           key={pin.id}
-          icon={<DoorOpen size={14} className="text-neutral-500" strokeWidth={2.5} />}
+          icon={<DoorOpen size={14} className="text-stone-500 dark:text-stone-400" strokeWidth={2.2} />}
           title={pin.title}
           subtitle={roomSubtitle(pin, faculties, i18n.language)}
           onClick={() => handleSelectRoom(pin)}
@@ -441,7 +439,7 @@ export function MapPage() {
       {searchResults.areas.map((a) => (
         <SearchRow
           key={a.id}
-          icon={<MapPin size={14} className="text-neutral-500" strokeWidth={2.5} />}
+          icon={<MapPin size={14} className="text-stone-500 dark:text-stone-400" strokeWidth={2.2} />}
           title={a.name}
           subtitle={a.custom_kind ?? AREA_STYLES[a.kind].label}
           onClick={() => handleSelectMapped(a.polygon, a.faculty_id, a.floor)}
@@ -587,10 +585,6 @@ export function MapPage() {
     useUIStore.getState().setDraftLocation(center)
   }
 
-  const onCreateClick = () => {
-    if (!guard('pin.create.report')) return
-    startPickingLocation()
-  }
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -605,13 +599,13 @@ export function MapPage() {
 
       {/* ── TOP HUD ─────────────────────────────────────── */}
       {!pickingLocation && !movingPinId && (
-        <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none px-3 pb-3 pt-safe-hud sm:px-5 sm:pb-5 flex flex-col gap-2">
+        <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none px-3 pb-3 pt-safe-hud sm:px-5 sm:pb-5 flex flex-col gap-2.5">
           {/* Top Bar: Search (Left) + Bell & Sidebar (Right) */}
           <div className="flex items-start justify-between gap-2.5 w-full pointer-events-auto">
             {/* Search Input on Left */}
             <div className="flex-1 max-w-xs sm:max-w-md relative z-40" ref={searchRef}>
-              <div className="glass-hud h-10 rounded-full premium-shadow flex items-center gap-2 px-3.5 w-full">
-                <Search size={18} className="text-neutral-400 flex-shrink-0" strokeWidth={2} />
+              <div className="glass-hud h-11 rounded-2xl premium-shadow flex items-center gap-3 px-4 w-full">
+                <Search size={18} className="text-stone-400 dark:text-stone-500 flex-shrink-0" strokeWidth={2} />
                 <input
                   type="text"
                   value={searchQuery}
@@ -627,12 +621,12 @@ export function MapPage() {
                     window.scrollTo(0, 0)
                   }}
                   placeholder={t('map.searchFaculty', 'Buscar facultad...')}
-                  className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm font-semibold text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none truncate"
+                  className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm font-semibold text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 outline-none truncate"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => { setSearchQuery(''); setSearchOpen(false) }}
-                    className="text-neutral-400 hover:text-neutral-600 transition-colors cursor-pointer"
+                    className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300 transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -641,25 +635,25 @@ export function MapPage() {
 
               {/* Search Dropdown */}
               {searchOpen && (
-                <div className="absolute top-14 left-0 right-0 glass-hud rounded-2xl premium-shadow animate-scale-in overflow-hidden">
+                <div className="absolute top-14 left-0 right-0 glass-hud rounded-2xl premium-shadow animate-scale-in overflow-hidden border border-[#E5DEC9] dark:border-white/10">
                   {filteredFaculties.length > 0 ? (
-                    <div className="max-h-72 overflow-y-auto p-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-thumb]:rounded-full">
+                    <div className="max-h-72 overflow-y-auto p-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-thumb]:rounded-full">
                       {filteredFaculties.map((f) => {
                         const campus = CAMPUSES.find((c) => c.id === f.campus_id)
                         return (
                           <button
                             key={f.id}
                             onClick={() => handleSelectFaculty(f)}
-                            className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 active:scale-[0.98] cursor-pointer"
+                            className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all hover:bg-[#FAF8F5]/80 dark:hover:bg-white/[0.05] active:scale-[0.98] cursor-pointer"
                           >
-                            <div className="w-8 h-8 rounded-xl bg-[#D41F2D]/10 flex items-center justify-center flex-shrink-0">
-                              <MapPin size={14} className="text-[#D41F2D]" strokeWidth={2.5} />
+                            <div className="w-8 h-8 rounded-xl bg-[#C22B38]/10 flex items-center justify-center flex-shrink-0">
+                              <MapPin size={14} className="text-[#C22B38]" strokeWidth={2.5} />
                             </div>
                             <div className="flex flex-col min-w-0">
-                              <span className="text-[12px] font-extrabold text-neutral-800 dark:text-neutral-200 leading-snug">
+                              <span className="text-xs font-bold text-stone-900 dark:text-stone-100 leading-snug">
                                 {i18n.language === 'en' ? f.name_en : f.name}
                               </span>
-                              <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
+                              <span className="text-[11px] text-stone-500 dark:text-stone-400 font-medium">
                                 {campus?.name ?? ''}
                               </span>
                             </div>
@@ -671,7 +665,7 @@ export function MapPage() {
                           de las facultades porque son más específicos: quien
                           escribe "ingeniería" quiere la facultad, no una sala. */}
                       {hasMappedResults && (
-                        <div className="mt-1 border-t border-neutral-200/60 pt-1 dark:border-neutral-700/60">
+                        <div className="mt-1 border-t border-[#E5DEC9] pt-1 dark:border-white/10">
                           {mappedRows}
                         </div>
                       )}
@@ -679,7 +673,7 @@ export function MapPage() {
                   ) : hasMappedResults ? (
                     <div className="max-h-72 overflow-y-auto p-2">{mappedRows}</div>
                   ) : (
-                    <p className="text-sm text-neutral-400 text-center py-6">
+                    <p className="text-sm text-stone-400 dark:text-stone-500 text-center py-6">
                       {t('map.noResults', 'Sin resultados')}
                     </p>
                   )}
@@ -688,17 +682,17 @@ export function MapPage() {
             </div>
 
             {/* Top Right Actions: Bell + Menu (aligned with Sidebar right edge!) */}
-            <div className="flex items-center gap-2 flex-shrink-0 z-40">
+            <div className="flex items-center gap-2.5 flex-shrink-0 z-40">
               {/* Notification Bell Button */}
               <button
                 type="button"
                 onClick={openNotifications}
-                className="relative w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-transform active:scale-90 flex-shrink-0 cursor-pointer"
+                className="relative w-11 h-11 rounded-2xl glass-hud premium-shadow flex items-center justify-center transition-transform active:scale-90 flex-shrink-0 cursor-pointer"
                 aria-label={t('sidebar.notifications', 'Notificaciones')}
               >
-                <Bell size={18} className="text-neutral-700 dark:text-neutral-300" strokeWidth={2.2} />
+                <Bell size={18} className="text-stone-700 dark:text-stone-300" strokeWidth={2.2} />
                 {unreadNotificationsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[#D41F2D] border-2 border-white dark:border-neutral-900 text-white text-[9px] font-black leading-none flex items-center justify-center px-1 shadow-sm">
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-[#C22B38] border-2 border-white dark:border-stone-900 text-white text-[9px] font-bold leading-none flex items-center justify-center px-1 shadow-xs">
                     {unreadNotificationsCount}
                   </span>
                 )}
@@ -708,22 +702,25 @@ export function MapPage() {
               <button
                 type="button"
                 onClick={openSidebar}
-                className="w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-transform active:scale-90 flex-shrink-0 cursor-pointer"
+                className="w-11 h-11 rounded-2xl glass-hud premium-shadow flex items-center justify-center transition-transform active:scale-90 flex-shrink-0 cursor-pointer"
                 aria-label={t('sidebar.settings')}
               >
-                <Menu size={18} className="text-neutral-700 dark:text-neutral-300" strokeWidth={2.5} />
+                <Menu size={18} className="text-stone-700 dark:text-stone-300" strokeWidth={2.5} />
               </button>
             </div>
           </div>
           
-          <div className="pointer-events-auto self-start mt-1">
+          <div className="pointer-events-auto self-start">
             <FiltersPanel />
+          </div>
+          <div className="pointer-events-auto w-full max-w-lg">
+            <ContextLens />
           </div>
         </div>
       )}
 
-      {/* Selector de plantas: aparece al entrar en una facultad mapeada. */}
-      {!pickingLocation && !movingPinId && !selectedPin && <FloorSelector />}
+
+
 
       {/* ── PLACEMENT MODE ──────────────────────────────── */}
       {(pickingLocation || movingPinId) && (
@@ -733,7 +730,7 @@ export function MapPage() {
             <div className="relative flex flex-col items-center -mt-10">
               <div className="reticle-float flex flex-col items-center">
                 <div
-                  className="bg-[#D41F2D] border-[2.5px] border-white flex items-center justify-center shadow-[0_8px_32px_rgba(212,31,45,0.45)]"
+                  className="bg-[#C22B38] border-[2.5px] border-white flex items-center justify-center shadow-[0_8px_32px_rgba(194,43,56,0.4)]"
                   style={{
                     width: '38px',
                     height: '38px',
@@ -745,24 +742,24 @@ export function MapPage() {
                 </div>
               </div>
               <div className="relative w-8 h-2 -mt-0.5">
-                <div className="absolute inset-0 bg-[#D41F2D] rounded-full opacity-20 blur-[3px]" />
-                <div className="absolute inset-[-4px] bg-[#D41F2D] rounded-full reticle-pulse-ring" />
+                <div className="absolute inset-0 bg-[#C22B38] rounded-full opacity-20 blur-[3px]" />
+                <div className="absolute inset-[-4px] bg-[#C22B38] rounded-full reticle-pulse-ring" />
               </div>
             </div>
           </div>
 
           {/* Placement bottom sheet */}
           <div className="absolute bottom-4 left-3 right-3 z-30 animate-fade-up sm:left-auto sm:right-4 sm:w-96">
-            <div className="glass-hud p-5 rounded-[22px] shadow-3xl flex flex-col gap-4">
+            <div className="glass-hud p-5 rounded-[28px] premium-shadow border border-[#E5DEC9] dark:border-white/10 flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 ${movingPinId ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-500' : 'bg-red-50 dark:bg-red-900/30 text-[#D41F2D]'} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                  <MapPin size={20} strokeWidth={2.5} />
+                <div className={`w-10 h-10 ${movingPinId ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-[#C22B38]/10 text-[#C22B38]'} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                  <MapPin size={20} strokeWidth={2.2} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-black text-neutral-900 dark:text-white tracking-tight">
+                  <span className="text-sm font-bold text-stone-900 dark:text-stone-100 tracking-tight">
                     {movingPinId ? t('pin.relocateTitle', 'Reubicar pin') : t('pin.pickLocation')}
                   </span>
-                  <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
+                  <span className="text-xs text-stone-500 dark:text-stone-400 font-medium mt-0.5">
                     {movingPinId ? t('pin.relocateHint', 'Mueve el mapa para reubicar este pin') : t('pin.pickLocationHint', 'Mueve el mapa para ajustar la ubicación')}
                   </span>
                 </div>
@@ -773,14 +770,14 @@ export function MapPage() {
                     if (movingPinId) cancelMovingPin()
                     else cancelPickingLocation()
                   }}
-                  className="flex-1 h-12 bg-neutral-100/60 dark:bg-neutral-800 text-neutral-500 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
+                  className="flex-1 h-11 bg-[#EFECE4] dark:bg-white/[0.08] text-stone-700 dark:text-stone-300 rounded-2xl font-semibold text-xs active:scale-95 transition-all cursor-pointer"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   onClick={confirmPlacement}
                   disabled={movePin.isPending}
-                  className={`flex-[2] h-12 ${movingPinId ? 'bg-blue-600 shadow-[0_8px_24px_-8px_rgba(37,99,235,0.4)]' : 'bg-[#D41F2D] red-shadow'} text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50`}
+                  className={`flex-[2] h-11 ${movingPinId ? 'bg-blue-600 text-white shadow-xs' : 'bg-[#C22B38] text-white shadow-xs'} rounded-2xl font-semibold text-xs active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer`}
                 >
                   {movingPinId
                     ? (movePin.isPending ? <Loader2 size={16} className="animate-spin" /> : t('pin.confirmMove', 'Guardar ubicación'))
@@ -794,53 +791,12 @@ export function MapPage() {
 
       {/* ── ROUTE INFO BAR ──────────────────────────────── */}
       {route && routeTarget && (
-        <div className="pointer-events-auto absolute bottom-20 left-3 right-3 z-20 sm:left-auto sm:right-4 sm:w-96">
-          <div className="glass-hud rounded-2xl premium-shadow px-4 py-3 flex items-center gap-3">
-            <span className="font-semibold text-sm text-neutral-900 dark:text-white">
-              {t('pin.routeInfo', {
-                distance: formatDistance(route.distanceMeters),
-                minutes: Math.max(1, Math.round(route.durationSeconds / 60)),
-              })}
-            </span>
-            {route.source === 'fallback' && (
-              <span className="text-xs text-neutral-500">{t('pin.routeApprox')}</span>
-            )}
-            <div className="ml-auto flex items-center gap-1">
-              <button
-                onClick={() => setAccessibleRoute(!accessibleRoute)}
-                aria-pressed={accessibleRoute}
-                title={t('pin.accessibleRoute')}
-                aria-label={t('pin.accessibleRoute')}
-                className={`rounded-full p-1.5 ${accessibleRoute
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                  : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
-                  }`}
-              >
-                <Accessibility size={16} />
-              </button>
-              <button
-                onClick={() => setRouteTarget(null)}
-                aria-label={t('common.close')}
-                className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── FAB: Create pin ───────────────────────────── */}
-      {!pickingLocation && !movingPinId && !selectedPin && !selectedFacultyId && !routeTarget && (
-        <div className="absolute bottom-[4.5rem] right-4 z-30">
-          <button
-            onClick={onCreateClick}
-            aria-label={t('pin.create')}
-            className="w-12 h-12 bg-[#D41F2D] text-white rounded-full red-shadow flex items-center justify-center transition-transform active:scale-90"
-          >
-            <Plus size={28} strokeWidth={3} />
-          </button>
-        </div>
+        <WayfinderSheet
+          targetPin={routeTarget}
+          allPins={pins}
+          durationSeconds={route.durationSeconds}
+          distanceMeters={route.distanceMeters}
+        />
       )}
 
       {/* ── HUD Controls (Campus + 2D/3D Selectors) ───────────────────────────── */}
@@ -851,7 +807,7 @@ export function MapPage() {
             <div className="relative">
               <button
                 onClick={() => setCampusDropdownOpen(!campusDropdownOpen)}
-                className="flex items-center gap-2 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800 text-[11px] font-black uppercase tracking-wider text-neutral-800 dark:text-neutral-200 transition-all duration-200 active:scale-95 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                className="flex items-center gap-2 glass-hud px-4 py-2.5 rounded-2xl premium-shadow border border-[#E5DEC9] dark:border-white/10 text-xs font-semibold text-stone-800 dark:text-stone-200 transition-all duration-200 active:scale-95 cursor-pointer hover:bg-[#FAF8F5] dark:hover:bg-white/[0.06]"
               >
                 <span>Sede: {campusId === 'ejercito' ? 'Centro' : campusId === 'republica' ? 'República' : 'Huechuraba'}</span>
                 <ChevronDown size={14} className={`transition-transform duration-200 ${campusDropdownOpen ? 'rotate-180' : ''}`} />
@@ -866,26 +822,26 @@ export function MapPage() {
                   />
                   
                   {/* Pop up menu (above the button) - Aligned to left */}
-                  <div className="absolute bottom-full mb-2 left-0 z-50 w-44 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md p-1.5 rounded-2xl shadow-2xl border border-neutral-100 dark:border-neutral-800 flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <div className="absolute bottom-full mb-2 left-0 z-50 w-44 glass-hud p-1.5 rounded-2xl premium-shadow border border-[#E5DEC9] dark:border-white/10 flex flex-col gap-1 animate-in fade-in slide-in-from-bottom-2 duration-200">
                     {CAMPUSES.map((c) => {
-                      const displayName = c.id === 'ejercito' ? 'Centro' : c.id === 'republica' ? 'República' : 'Huechuraba'
-                      const isActive = campusId === c.id
+                      const displayName = c.id === 'ejercito' ? 'Centro' : c.id === 'republica' ? 'República' : 'Huechuraba';
+                      const isActive = campusId === c.id;
                       return (
                         <button
                           key={c.id}
                           onClick={() => {
-                            handleSelectCampus(c.id)
-                            setCampusDropdownOpen(false)
+                            handleSelectCampus(c.id);
+                            setCampusDropdownOpen(false);
                           }}
-                          className={`w-full text-left px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                          className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
                             isActive
-                              ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md'
-                              : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/50 hover:text-neutral-900 dark:hover:text-white'
+                              ? 'bg-stone-900 text-[#FAF8F5] dark:bg-stone-100 dark:text-stone-950 shadow-xs'
+                              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-[#FAF8F5] dark:hover:bg-white/[0.05]'
                           }`}
                         >
                           {displayName}
                         </button>
-                      )
+                      );
                     })}
                   </div>
                 </>
@@ -895,23 +851,23 @@ export function MapPage() {
 
           {/* 2D / 3D Selector (Right) */}
           <div className="absolute bottom-5 right-3 sm:right-4 z-30 transition-all duration-300">
-            <div className="flex items-center gap-1 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md p-1 rounded-2xl shadow-xl border border-neutral-100 dark:border-neutral-800">
+            <div className="flex items-center gap-1 glass-hud p-1 rounded-2xl premium-shadow border border-[#E5DEC9] dark:border-white/10">
               <button
                 onClick={() => setViewMode('2d')}
-                className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95 cursor-pointer ${
                   viewMode === '2d'
-                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
-                    : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                    ? 'bg-stone-900 text-[#FAF8F5] dark:bg-stone-100 dark:text-stone-950 shadow-xs'
+                    : 'text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100'
                 }`}
               >
                 2D
               </button>
               <button
                 onClick={() => setViewMode('3d')}
-                className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95 cursor-pointer ${
                   viewMode === '3d'
-                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-md scale-105'
-                    : 'text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300'
+                    ? 'bg-stone-900 text-[#FAF8F5] dark:bg-stone-100 dark:text-stone-950 shadow-xs'
+                    : 'text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100'
                 }`}
               >
                 3D

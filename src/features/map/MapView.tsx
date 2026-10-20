@@ -46,6 +46,11 @@ interface MapViewProps {
   onRequestLocation?: () => Promise<{ lat: number; lng: number } | null>
 }
 
+function shortRoomCode(code: string): string {
+  const lastDot = code.lastIndexOf('.')
+  return lastDot === -1 ? code : code.slice(lastDot + 1)
+}
+
 function markerColor(pin: Pin): string {
   if (pin.category_id) return categoryById(pin.category_id)?.color ?? '#64748b'
   if (pin.type === 'place') return PLACE_COLOR
@@ -486,17 +491,25 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       // vuelve, que es exactamente el parpadeo que se veía al panear. Mismo
       // criterio que el efecto del reloj de más abajo, que por eso solo toca
       // clases y variables CSS.
-      const renderKey = `${pin.category_id ?? ''}|${pin.type}|${pin.floor ?? ''}`
+      const isRoom = pin.category_id === 'sala' && Boolean(pin.room_code)
+      const renderKey = `${pin.category_id ?? ''}|${pin.type}|${pin.floor ?? ''}|${pin.room_code ?? ''}`
       if (el.dataset.render !== renderKey) {
         el.dataset.render = renderKey
-        el.innerHTML = markerSvgContent(pin)
-        // Insignia de planta: sin ella, dos pines de pisos distintos en la misma
-        // vertical son indistinguibles cuando se ven todas las plantas a la vez.
-        if (pin.floor !== null) {
-          const badge = document.createElement('span')
-          badge.className = 'pin-marker__floor'
-          badge.textContent = pin.floor < 0 ? `S${Math.abs(pin.floor)}` : String(pin.floor)
-          el.appendChild(badge)
+        if (isRoom && pin.room_code) {
+          el.className =
+            'pin-marker pin-marker--room !w-auto !h-auto !rounded-2xl !px-3 !py-1.5 !bg-[#FAF8F5] dark:!bg-[#151820] !border !border-[#E5DEC9] dark:!border-white/10 !shadow-md flex items-center gap-1.5 cursor-pointer'
+          el.innerHTML = `<span class="w-2 h-2 rounded-full bg-sky-500 shrink-0"></span><span class="text-xs font-bold tabular-nums text-stone-900 dark:text-stone-100 whitespace-nowrap">${shortRoomCode(pin.room_code)}</span>`
+        } else {
+          el.className = 'pin-marker'
+          el.innerHTML = markerSvgContent(pin)
+          // Insignia de planta: sin ella, dos pines de pisos distintos en la misma
+          // vertical son indistinguibles cuando se ven todas las plantas a la vez.
+          if (pin.floor !== null) {
+            const badge = document.createElement('span')
+            badge.className = 'pin-marker__floor'
+            badge.textContent = pin.floor < 0 ? `S${Math.abs(pin.floor)}` : String(pin.floor)
+            el.appendChild(badge)
+          }
         }
       }
       el.style.setProperty('--pin-color', markerColor(pin))
@@ -510,7 +523,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       // vencer" y un permanente es justo lo que nunca vence. Qué cuenta como
       // fija lo decide el catálogo, no una regla derivada — el porqué está en
       // `isFixedInfraCategory`.
-      el.classList.toggle('pin-marker--fixed', isFixedInfraCategory(pin.category_id))
+      el.classList.toggle('pin-marker--fixed', !isRoom && isFixedInfraCategory(pin.category_id))
       marker.setLngLat([pin.lng, pin.lat])
     }
   }, [pins, selectedPinId, activeFacultyId, activeFloor])
@@ -953,12 +966,12 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
           }
         }}
         aria-label={i18n.t('map.centerOnMe', 'Centrar en mi ubicación')}
-        className="absolute right-3 top-[72px] sm:right-5 sm:top-[80px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95"
+        className="absolute right-3 top-[80px] sm:right-5 sm:top-[88px] z-30 w-11 h-11 rounded-2xl glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 cursor-pointer"
       >
         {isTrackingLocation ? (
-          <LocateFixed size={20} className="text-[#D41F2D]" />
+          <LocateFixed size={20} className="text-[#C22B38]" />
         ) : (
-          <Locate size={20} className="text-neutral-700 dark:text-neutral-300" />
+          <Locate size={20} className="text-stone-700 dark:text-stone-300" />
         )}
       </button>
 
@@ -980,7 +993,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
           className="w-6.5 h-6.5 select-none pointer-events-none"
         >
           {/* North needle (Red) */}
-          <path d="M12 3L16 12H8L12 3Z" fill="#D41F2D" />
+          <path d="M12 3L16 12H8L12 3Z" fill="#C22B38" />
           {/* South needle (Grey/Light Grey) */}
           <path d="M12 21L8 12H16L12 21Z" fill="#A3A3A3" className="dark:fill-neutral-400" />
         </svg>
