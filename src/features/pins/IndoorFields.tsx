@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { useEffect, useRef } from 'react'
-import { Building2, Layers } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Building2, ChevronLeft, ChevronRight, Layers } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { facultyIdAt } from '@/shared/data/facultyStore'
 import { floorFromRoomCode } from '@/shared/utils/roomCode'
@@ -37,7 +37,8 @@ interface IndoorFieldsProps {
 }
 
 const LABEL = 'text-xs font-semibold text-stone-500 dark:text-stone-400 ml-0.5'
-const CHIP_BASE = 'shrink-0 cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold tabular-nums transition-all'
+const CHIP_BASE =
+  'shrink-0 snap-center cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold tabular-nums transition-all'
 const CHIP_OFF =
   'border border-[#E6E0D5] bg-white text-stone-600 hover:text-stone-900 dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-400 dark:hover:text-stone-100'
 const CHIP_EXTERIOR_ON = 'bg-stone-900 text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950'
@@ -98,6 +99,43 @@ export function IndoorFields({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSelectFloor, facultyId, building?.id])
 
+  const trackRef = useRef<HTMLDivElement | null>(null)
+  const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  const [isOverflowing, setIsOverflowing] = useState(false)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const updateScrollState = useCallback(() => {
+    const el = trackRef.current
+    if (!el) return
+    const overflows = el.scrollWidth > el.clientWidth + 2
+    setIsOverflowing(overflows)
+    setCanScrollLeft(overflows && el.scrollLeft > 2)
+    setCanScrollRight(overflows && el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+  }, [])
+
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el) return
+    updateScrollState()
+    const ro = new ResizeObserver(() => updateScrollState())
+    ro.observe(el)
+    el.addEventListener('scroll', updateScrollState, { passive: true })
+    return () => {
+      ro.disconnect()
+      el.removeEventListener('scroll', updateScrollState)
+    }
+  }, [updateScrollState, levels.length])
+
+  useEffect(() => {
+    const key = floor === null ? 'exterior' : String(floor)
+    const btn = chipRefs.current.get(key)
+    const track = trackRef.current
+    if (!btn || !track) return
+    const targetLeft = btn.offsetLeft - track.clientWidth / 2 + btn.clientWidth / 2
+    track.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
+  }, [floor])
+
   // El código de sala puede traer la planta dentro (`E441.3.S301`). Es una
   // sugerencia: rellena el selector y se puede cambiar. Los códigos que no
   // siguen ningún esquema conocido no dicen nada y no pasa nada.
@@ -119,29 +157,67 @@ export function IndoorFields({
       {levels.length > 0 && (
         <div className="space-y-2.5">
           <label className={LABEL}>Piso</label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => onFloorChange(null)}
-              aria-pressed={floor === null}
-              className={`${CHIP_BASE} ${floor === null ? CHIP_EXTERIOR_ON : CHIP_OFF}`}
+          <div className="flex items-center gap-1">
+            {isOverflowing && (
+              <button
+                type="button"
+                onClick={() => trackRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
+                disabled={!canScrollLeft}
+                aria-label={t('indoor.floorDown', 'Bajar un piso')}
+                className="flex h-8 w-7 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-[#E6E0D5] bg-white text-stone-500 transition-opacity hover:text-stone-900 disabled:pointer-events-none disabled:opacity-25 dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-400 dark:hover:text-stone-100"
+              >
+                <ChevronLeft size={15} strokeWidth={2.5} />
+              </button>
+            )}
+
+            <div
+              ref={trackRef}
+              className="no-scrollbar flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory py-0.5"
             >
-              Exterior
-            </button>
-            {levels.map((l) => {
-              const isActive = floor === l.level
-              return (
-                <button
-                  key={l.level}
-                  type="button"
-                  onClick={() => onFloorChange(l.level)}
-                  aria-pressed={isActive}
-                  className={`${CHIP_BASE} ${isActive ? CHIP_FLOOR_ON : CHIP_OFF}`}
-                >
-                  {floorName(l.level, l.label)}
-                </button>
-              )
-            })}
+              <button
+                ref={(node) => {
+                  if (node) chipRefs.current.set('exterior', node)
+                  else chipRefs.current.delete('exterior')
+                }}
+                type="button"
+                onClick={() => onFloorChange(null)}
+                aria-pressed={floor === null}
+                className={`${CHIP_BASE} ${floor === null ? CHIP_EXTERIOR_ON : CHIP_OFF}`}
+              >
+                Exterior
+              </button>
+              {levels.map((l) => {
+                const isActive = floor === l.level
+                const key = String(l.level)
+                return (
+                  <button
+                    key={l.level}
+                    ref={(node) => {
+                      if (node) chipRefs.current.set(key, node)
+                      else chipRefs.current.delete(key)
+                    }}
+                    type="button"
+                    onClick={() => onFloorChange(l.level)}
+                    aria-pressed={isActive}
+                    className={`${CHIP_BASE} ${isActive ? CHIP_FLOOR_ON : CHIP_OFF}`}
+                  >
+                    {floorName(l.level, l.label)}
+                  </button>
+                )
+              })}
+            </div>
+
+            {isOverflowing && (
+              <button
+                type="button"
+                onClick={() => trackRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
+                disabled={!canScrollRight}
+                aria-label={t('indoor.floorUp', 'Subir un piso')}
+                className="flex h-8 w-7 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-[#E6E0D5] bg-white text-stone-500 transition-opacity hover:text-stone-900 disabled:pointer-events-none disabled:opacity-25 dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-400 dark:hover:text-stone-100"
+              >
+                <ChevronRight size={15} strokeWidth={2.5} />
+              </button>
+            )}
           </div>
           <p className="ml-0.5 text-xs text-stone-400 dark:text-stone-500">
             Exterior es para lo que está al aire libre: el patio, la entrada, la calle.
