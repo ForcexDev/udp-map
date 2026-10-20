@@ -19,7 +19,7 @@ import { useNowTick } from '@/shared/lib/useNowTick'
 import i18n from '@/shared/lib/i18n'
 import { pinScaleForZoom } from '@/shared/utils/pinScale'
 import { publishBounds } from '@/features/pins/usePins'
-import { MAP_STYLE_LIGHT, MAP_STYLE_DARK, DEFAULT_ZOOM } from './mapConfig'
+import { MAP_STYLE_LIGHT, MAP_STYLE_DARK, DEFAULT_ZOOM, applyMapThemePalette } from './mapConfig'
 import { addFacultyLayers, PERIMETER_FILL_LAYER, refreshFacultyPerimeters } from './facultyLayers'
 import {
   addMappingLayers,
@@ -119,7 +119,12 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
   const devUnlockSetting = useUIStore((s) => s.devUnlockMap)
   const role = useAuthStore((s) => s.role)
   const devUnlockMap = role === 'admin' && devUnlockSetting
-  const mapStyleUrl = theme === 'dark' ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
+  const isDarkMode =
+    theme === 'dark' ||
+    (theme === 'system' &&
+      typeof document !== 'undefined' &&
+      document.documentElement.classList.contains('dark'))
+  const mapStyleUrl = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
 
   const [bearing, setBearing] = useState(0)
   const [pitch, setPitch] = useState(0)
@@ -231,7 +236,13 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
     map.on('pitch', updateOrientation)
 
     map.on('style.load', () => {
-      const isDark = useUIStore.getState().theme === 'dark'
+      const t = useUIStore.getState().theme
+      const isDark =
+        t === 'dark' ||
+        (t === 'system' &&
+          typeof document !== 'undefined' &&
+          document.documentElement.classList.contains('dark'))
+      applyMapThemePalette(map, isDark)
       addFacultyLayers(map)
       addMappingLayers(map, isDark)
       addBoundaryMask(map, isDark)
@@ -355,6 +366,13 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       map.setStyle(mapStyleUrl)
     }
   }, [mapStyleUrl])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || styleEpoch === 0) return
+    applyMapThemePalette(map, isDarkMode)
+    addBoundaryMask(map, isDarkMode)
+  }, [isDarkMode, styleEpoch])
 
   // ── Cambio de campus → flyTo ──
   useEffect(() => {
@@ -760,7 +778,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
   useEffect(() => {
     const map = mapRef.current
     if (!map || styleEpoch === 0) return
-    addMappingLayers(map, theme === 'dark')
+    addMappingLayers(map, isDarkMode)
     updateMappingData(
       map,
       mapping.buildings,
@@ -769,7 +787,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       activeFacultyId,
       activeFloor,
     )
-  }, [mapping, activeFacultyId, activeFloor, styleEpoch, theme])
+  }, [mapping, activeFacultyId, activeFloor, styleEpoch, isDarkMode])
 
   // ── Entrar y salir de una FACULTAD según el zoom y el centro ──
   //

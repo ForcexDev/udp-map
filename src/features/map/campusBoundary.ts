@@ -122,7 +122,7 @@ const LINE_LAYER = 'campus-boundary-line-layer'
  * área exterior para que combine con el tema.
  */
 export function addBoundaryMask(map: MapLibreMap, dark: boolean) {
-  const maskColor = dark ? '#0b0e14' : '#eaeef2'
+  const maskColor = dark ? '#181B24' : '#EFE5DC'
 
   if (!map.getSource(MASK_SOURCE)) {
     map.addSource(MASK_SOURCE, { type: 'geojson', data: boundaryMaskGeoJSON() })

@@ -5,7 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Feature, FeatureCollection, Polygon, Position } from 'geojson'
 import type { Area, Building, Pin } from '@/shared/types/database'
 import { facultyPerimeter, useFaculties } from '@/shared/data/facultyStore'
-import { MAP_STYLE_LIGHT } from '@/features/map/mapConfig'
+import { MAP_STYLE_LIGHT, applyMapThemePalette } from '@/features/map/mapConfig'
 import { useUIStore } from '@/shared/stores/uiStore'
 import {
   grainAngle,
@@ -192,6 +192,7 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
       for (const id of ['faculty', 'buildings', 'ghost', 'areas', 'draft'] as const) {
         map.addSource(id, { type: 'geojson', data: EMPTY })
       }
+      applyMapThemePalette(map, false)
       map.addSource('pins', { type: 'geojson', data: EMPTY })
       map.addSource('draft-vertices', { type: 'geojson', data: EMPTY })
 

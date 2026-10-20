@@ -26,7 +26,7 @@ import { facultyPerimeterEntries, facultyPerimetersGeoJSON } from '@/shared/data
 // ─────────────────────────────────────────────────────────────────
 
 /** Rojo UDP para los edificios de la facultad. */
-const FACULTY_RED = '#D41F2D'
+const FACULTY_RED = '#C22B38'
 
 /**
  * `within` exige que la huella del edificio quede COMPLETA dentro del polígono

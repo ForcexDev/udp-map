@@ -774,7 +774,8 @@ body {
    Invertimos el mapa claro (que sí tiene POIs) para simular el modo oscuro,
    dejando intactos los marcadores (que no son parte del canvas). */
 .dark .maplibregl-canvas {
-  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.92);
+/* El modo oscuro del mapa se pinta de forma nativa sobre las capas de MapLibre
+   en `applyMapThemePalette` (mapConfig.ts), sin invertir el canvas con filter. */
 }
 
 
