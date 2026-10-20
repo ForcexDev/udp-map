@@ -1777,6 +1777,7 @@ Dos cuidados:
 - **Ruteo accesible fino** (§4): destino en la entrada o rampa accesible más cercana, y continuación por ascensor hasta la planta correcta.
 - **Interior como imagen.** Si algún día consigues el plano de una planta en imagen, se puede poner bajo el mapa ajustando las cuatro esquinas y usarlo de calco para dibujar las áreas encima. `floor_plans.image_overlay` y `floor_plans.bounds` ya existen sin usar (`baseline.sql:196-208`), y MapLibre soporta un source `type: 'image'`.
 - **Capacidad de sala**, para "busco una sala libre para 6 personas". Un campo más en el pin `sala` cuando haga falta.
+- **Arreglar el versionado automático en Vercel (`__APP_VERSION__`)**: Vercel construye desde un clon superficial (`--depth=10`) por defecto, por lo que `git rev-list --count HEAD` en `vite.config.ts` devuelve siempre `10` (p. ej. `0.8+10`) en lugar del conteo real de commits. Falta activar `VERCEL_DEEP_CLONE=true` o usar una fuente de versión que no dependa del historial local truncado.
 - ~~Validación de plantas por edificio en servidor.~~ **Hecha el 2026-08-10**, ver §15.
 
 ---
