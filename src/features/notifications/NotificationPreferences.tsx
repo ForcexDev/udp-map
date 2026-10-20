@@ -66,29 +66,29 @@ export function NotificationPreferences() {
   if (!userId) return null
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="overflow-hidden rounded-2xl border border-[#E6E0D5] bg-white dark:border-white/[0.07] dark:bg-[#1E222D]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full cursor-pointer items-center gap-3 p-3.5 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
+        className="flex w-full cursor-pointer items-center gap-3 p-3.5 text-left transition-colors hover:bg-[#FAF8F5] dark:hover:bg-white/[0.04]"
       >
-        <span className="min-w-0 flex-1 text-[11px] font-black uppercase tracking-[0.18em] text-neutral-400">
+        <span className="min-w-0 flex-1 text-xs font-bold text-stone-500 dark:text-stone-400">
           {t('notifications.preferences', 'Qué avisos quiero')}
         </span>
         <ChevronDown
           size={16}
-          className={`shrink-0 text-neutral-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 text-stone-400 transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
       {open && (
-        <div className="border-t border-neutral-100 dark:border-neutral-800">
+        <div className="border-t border-[#E6E0D5] dark:border-white/[0.07]">
           <div className="flex items-center gap-2 px-3.5 pt-2.5 pb-1">
             <span className="min-w-0 flex-1" />
-            <span className="w-11 shrink-0 text-center text-[9px] font-black uppercase tracking-wider text-neutral-400">
+            <span className="w-11 shrink-0 text-center text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase">
               {t('notifications.channelApp', 'App')}
             </span>
-            <span className="grid w-11 shrink-0 place-items-center text-neutral-400">
+            <span className="grid w-11 shrink-0 place-items-center text-stone-400 dark:text-stone-500">
               <Smartphone size={12} />
             </span>
           </div>
@@ -103,7 +103,7 @@ export function NotificationPreferences() {
                   <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ${look.bg} ${look.fg}`}>
                     <Icon size={15} />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-stone-800 dark:text-stone-200">
                     {LABELS[category] ?? category}
                   </span>
 
@@ -126,7 +126,7 @@ export function NotificationPreferences() {
             })}
           </ul>
 
-          <p className="px-3.5 pb-3 pt-1 text-[11px] font-medium leading-snug text-neutral-400">
+          <p className="px-3.5 pb-3 pt-1 text-[11px] font-normal leading-snug text-stone-400 dark:text-stone-500">
             {t(
               'notifications.preferencesHint',
               'Los avisos de moderación no se pueden apagar: son trabajo del equipo.',
@@ -158,7 +158,7 @@ function Toggle({
       disabled={disabled}
       onClick={() => onChange(!on)}
       className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
-        on ? 'bg-[#D41F2D]' : 'bg-neutral-300 dark:bg-neutral-600'
+        on ? 'bg-[#C22B38] dark:bg-[#D93846]' : 'bg-stone-300 dark:bg-stone-600'
       } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
       <span

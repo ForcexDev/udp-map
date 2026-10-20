@@ -43,9 +43,9 @@ export function EventAttendeesDialog({ pinId, eventTitle, onClose }: EventAttend
           {isUserFacingDbError(error) ? dbErrorMessage(error) : t('common.error')}
         </p>
       ) : isPending ? (
-        <p className="text-sm text-neutral-500">{t('common.loading', 'Cargando…')}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">{t('common.loading', 'Cargando…')}</p>
       ) : attendees.length === 0 ? (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-stone-500 dark:text-stone-400">
           {t('events.attendeesEmpty', 'Todavía no se ha apuntado nadie.')}
         </p>
       ) : (
@@ -54,7 +54,7 @@ export function EventAttendeesDialog({ pinId, eventTitle, onClose }: EventAttend
             icon={<Check size={13} />}
             label={t('events.attendeesGoing', { count: going.length, defaultValue: `${going.length} van` })}
             people={going}
-            accent="text-[#D41F2D]"
+            accent="text-[#C22B38] dark:text-[#D93846]"
             onSelectPerson={setProfileId}
           />
           <Group
@@ -64,7 +64,7 @@ export function EventAttendeesDialog({ pinId, eventTitle, onClose }: EventAttend
               defaultValue: `${interested.length} interesados`,
             })}
             people={interested}
-            accent="text-neutral-500"
+            accent="text-stone-500 dark:text-stone-400"
             onSelectPerson={setProfileId}
           />
         </div>
@@ -90,11 +90,11 @@ function Group({ icon, label, people, accent, onSelectPerson }: GroupProps) {
 
   return (
     <section className="flex flex-col gap-2">
-      <h3 className={`flex items-center gap-1.5 m-0 text-[11px] font-black uppercase tracking-[0.15em] ${accent}`}>
+      <h3 className={`m-0 flex items-center gap-1.5 text-xs font-bold ${accent}`}>
         {icon}
         {label}
       </h3>
-      <ul className="m-0 flex flex-col gap-1.5 p-0 list-none">
+      <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
         {people.map((person) => (
           <li key={person.user_id}>
             {/* La fila abre el perfil. `PublicProfileModal` ya existía —lo usa
@@ -103,7 +103,7 @@ function Group({ icon, label, people, accent, onSelectPerson }: GroupProps) {
             <button
               type="button"
               onClick={() => onSelectPerson(person.user_id)}
-              className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-1.5 py-1 text-left transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-[#EFECE4] dark:hover:bg-white/[0.08]"
             >
             {person.avatar_url ? (
               <img
@@ -112,11 +112,11 @@ function Group({ icon, label, people, accent, onSelectPerson }: GroupProps) {
                 className="h-7 w-7 shrink-0 rounded-full object-cover"
               />
             ) : (
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-neutral-100 text-neutral-400 dark:bg-neutral-800">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#EFECE4] text-stone-500 dark:bg-white/[0.08] dark:text-stone-400">
                 <UserRound size={14} />
               </span>
             )}
-            <span className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+            <span className="truncate text-xs font-semibold text-stone-800 dark:text-stone-200">
               {person.name ?? t('common.noName', 'Sin nombre')}
             </span>
             </button>

@@ -145,42 +145,42 @@ export function CustomDateTimePicker({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl border transition-all cursor-pointer shadow-sm text-sm font-semibold outline-none ${
+        className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl border transition-all cursor-pointer shadow-xs text-sm font-semibold outline-none ${
           error
-            ? 'border-red-500 bg-red-50/50 text-red-900 dark:bg-red-950/30 dark:text-red-200'
+            ? 'border-rose-500 bg-rose-50/50 text-rose-900 dark:bg-rose-950/30 dark:text-rose-200'
             : isOpen
-              ? 'border-[#D41F2D] ring-4 ring-red-500/10 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white'
-              : 'border-neutral-200 dark:border-neutral-700/80 bg-neutral-50/80 dark:bg-neutral-800/80 text-neutral-800 dark:text-neutral-200 hover:border-neutral-300'
+              ? 'border-[#C22B38] ring-4 ring-[#C22B38]/10 bg-white dark:bg-[#1E222D] text-stone-900 dark:text-stone-100 dark:border-[#D93846]'
+              : 'border-[#E6E0D5] dark:border-white/[0.07] bg-white dark:bg-[#1E222D] text-stone-800 dark:text-stone-200 hover:border-stone-300 dark:hover:border-white/20'
         }`}
       >
         <span className="flex items-center gap-2.5 truncate">
-          <CalendarIcon size={16} className={selectedDate ? 'text-[#D41F2D]' : 'text-neutral-400'} />
-          <span className={selectedDate ? 'font-bold text-neutral-900 dark:text-white' : 'text-neutral-400'}>
+          <CalendarIcon size={16} className={selectedDate ? 'text-[#C22B38] dark:text-[#D93846]' : 'text-stone-400'} />
+          <span className={selectedDate ? 'font-semibold text-stone-900 dark:text-stone-100 tabular-nums' : 'text-stone-400'}>
             {formatDisplay()}
           </span>
         </span>
-        <Clock size={15} className="text-neutral-400 shrink-0" />
+        <Clock size={15} className="text-stone-400 shrink-0" />
       </button>
 
       {/* Popover Panel */}
       {isOpen && (
-        <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full mt-2 z-50 w-full sm:w-[320px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl shadow-2xl p-4 animate-scale-in`}>
+        <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full mt-2 z-50 w-full sm:w-[320px] bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.09] rounded-2xl premium-shadow p-4 animate-scale-in`}>
           {/* Header Mes y Año */}
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-neutral-100 dark:border-neutral-800">
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#E6E0D5] dark:border-white/[0.07]">
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition-colors"
+              className="p-1.5 rounded-xl hover:bg-[#EFECE4] dark:hover:bg-white/[0.08] text-stone-600 dark:text-stone-300 transition-colors"
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="text-xs font-black uppercase tracking-wider text-neutral-900 dark:text-white">
+            <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
               {MONTH_NAMES[month]} {year}
             </span>
             <button
               type="button"
               onClick={handleNextMonth}
-              className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition-colors"
+              className="p-1.5 rounded-xl hover:bg-[#EFECE4] dark:hover:bg-white/[0.08] text-stone-600 dark:text-stone-300 transition-colors"
             >
               <ChevronRight size={16} />
             </button>
@@ -191,28 +191,28 @@ export function CustomDateTimePicker({
             <button
               type="button"
               onClick={() => handleQuickSelect(0)}
-              className="flex-1 py-1 px-2 text-[10px] font-bold rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-[#D41F2D] hover:text-white transition-all text-center"
+              className="flex-1 py-1.5 px-2 text-xs font-semibold rounded-xl bg-[#EFECE4] dark:bg-white/[0.08] text-stone-700 dark:text-stone-300 hover:bg-[#C22B38] hover:text-white dark:hover:bg-[#D93846] transition-all text-center"
             >
               Hoy
             </button>
             <button
               type="button"
               onClick={() => handleQuickSelect(1)}
-              className="flex-1 py-1 px-2 text-[10px] font-bold rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-[#D41F2D] hover:text-white transition-all text-center"
+              className="flex-1 py-1.5 px-2 text-xs font-semibold rounded-xl bg-[#EFECE4] dark:bg-white/[0.08] text-stone-700 dark:text-stone-300 hover:bg-[#C22B38] hover:text-white dark:hover:bg-[#D93846] transition-all text-center"
             >
               Mañana
             </button>
             <button
               type="button"
               onClick={() => handleQuickSelect(7)}
-              className="flex-1 py-1 px-2 text-[10px] font-bold rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-[#D41F2D] hover:text-white transition-all text-center"
+              className="flex-1 py-1.5 px-2 text-xs font-semibold rounded-xl bg-[#EFECE4] dark:bg-white/[0.08] text-stone-700 dark:text-stone-300 hover:bg-[#C22B38] hover:text-white dark:hover:bg-[#D93846] transition-all text-center"
             >
               En 1 sem
             </button>
           </div>
 
           {/* Días de la semana */}
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-extrabold text-neutral-400 uppercase mb-1">
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-stone-400 dark:text-stone-500 mb-1">
             {DAY_SHORT_NAMES.map((d) => (
               <div key={d} className="py-1">{d}</div>
             ))}
@@ -242,12 +242,12 @@ export function CustomDateTimePicker({
                   key={day}
                   type="button"
                   onClick={() => handleDaySelect(day)}
-                  className={`h-8 rounded-lg text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
+                  className={`h-8 rounded-xl text-xs font-semibold tabular-nums flex items-center justify-center transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-[#D41F2D] text-white shadow-sm font-extrabold scale-105'
+                      ? 'bg-[#C22B38] text-white shadow-xs font-bold scale-105 dark:bg-[#D93846]'
                       : isToday
-                        ? 'border border-[#D41F2D] text-[#D41F2D] dark:text-red-400 font-extrabold'
-                        : 'text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                        ? 'border border-[#C22B38] text-[#C22B38] dark:border-[#D93846] dark:text-[#D93846] font-bold'
+                        : 'text-stone-800 dark:text-stone-200 hover:bg-[#EFECE4] dark:hover:bg-white/[0.08]'
                   }`}
                 >
                   {day}
@@ -257,9 +257,9 @@ export function CustomDateTimePicker({
           </div>
 
           {/* Selector de Hora y Minutos */}
-          <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-500 dark:text-neutral-400">
-              <Clock size={14} className="text-[#D41F2D]" />
+          <div className="pt-3 border-t border-[#E6E0D5] dark:border-white/[0.07] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-500 dark:text-stone-400">
+              <Clock size={14} className="text-[#C22B38] dark:text-[#D93846]" />
               Hora:
             </div>
 
@@ -268,7 +268,7 @@ export function CustomDateTimePicker({
               <select
                 value={hours}
                 onChange={(e) => handleHourChange(Number(e.target.value))}
-                className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1 text-xs font-bold text-neutral-900 dark:text-white outline-none cursor-pointer"
+                className="bg-[#EFECE4] dark:bg-white/[0.08] border border-[#E6E0D5] dark:border-white/[0.09] rounded-xl px-2 py-1 text-xs font-semibold tabular-nums text-stone-900 dark:text-stone-100 outline-none cursor-pointer"
               >
                 {Array.from({ length: 24 }).map((_, h) => (
                   <option key={h} value={h}>
@@ -277,13 +277,13 @@ export function CustomDateTimePicker({
                 ))}
               </select>
 
-              <span className="font-bold text-neutral-400">:</span>
+              <span className="font-semibold text-stone-400">:</span>
 
               {/* Selector Minutos */}
               <select
                 value={minutes}
                 onChange={(e) => handleMinuteChange(Number(e.target.value))}
-                className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1 text-xs font-bold text-neutral-900 dark:text-white outline-none cursor-pointer"
+                className="bg-[#EFECE4] dark:bg-white/[0.08] border border-[#E6E0D5] dark:border-white/[0.09] rounded-xl px-2 py-1 text-xs font-semibold tabular-nums text-stone-900 dark:text-stone-100 outline-none cursor-pointer"
               >
                 {[0, 15, 30, 45].map((m) => (
                   <option key={m} value={m}>
@@ -296,7 +296,7 @@ export function CustomDateTimePicker({
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="ml-1 bg-[#D41F2D] hover:bg-[#b11a25] text-white p-1.5 rounded-lg transition-colors cursor-pointer"
+                className="ml-1 bg-[#C22B38] hover:bg-[#A82430] dark:bg-[#D93846] dark:hover:bg-[#C22B38] text-white p-1.5 rounded-xl transition-colors cursor-pointer shadow-xs"
               >
                 <Check size={14} />
               </button>

@@ -21,24 +21,24 @@ export function ProfileHeader({ name, email, avatarUrl, role, onEditProfile, onA
       <div className="flex items-center gap-4">
         <UserAvatar name={name} src={avatarUrl} className="w-[58px] h-[58px] text-[46px]" />
         <div className="min-w-0">
-          <p className="text-[18px] font-black tracking-tight text-neutral-900 dark:text-white m-0 truncate">
+          <p className="m-0 truncate text-[18px] font-bold tracking-tight text-stone-900 dark:text-stone-100">
             {name}
           </p>
-          <p className="text-[12.5px] font-semibold text-neutral-400 m-0 mt-0.5 truncate">
+          <p className="m-0 mt-0.5 truncate text-xs font-medium text-stone-500 dark:text-stone-400">
             {handleFromEmail(email, name)}
           </p>
-          <p className={`mt-1 text-[11px] font-black uppercase tracking-wider ${ROLE_COLORS[role]}`}>
+          <p className={`mt-1 text-xs font-semibold ${ROLE_COLORS[role]}`}>
             {t(`profile.roles.${role}`, role)}
           </p>
         </div>
       </div>
 
       {(onEditProfile || onAdminPanel) && (
-        <div className="flex gap-2 mt-4">
+        <div className="mt-4 flex gap-2">
           {onEditProfile && (
             <button
               onClick={onEditProfile}
-              className="flex-1 px-4 h-9 rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-bold text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+              className="flex-1 cursor-pointer rounded-2xl border border-[#E6E0D5] bg-white px-4 h-9 text-xs font-semibold text-stone-900 shadow-xs transition-all hover:bg-[#FAF8F5] dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-100 dark:hover:bg-white/[0.04]"
             >
               {t('profile.editProfile', 'Editar perfil')}
             </button>
@@ -46,7 +46,7 @@ export function ProfileHeader({ name, email, avatarUrl, role, onEditProfile, onA
           {role === 'admin' && onAdminPanel && (
             <button
               onClick={onAdminPanel}
-              className="flex-1 flex items-center justify-center gap-1.5 px-4 h-9 rounded-full bg-[#D41F2D] text-white text-xs font-bold hover:bg-[#b11a25] transition-colors cursor-pointer"
+              className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-2xl bg-[#C22B38] px-4 h-9 text-xs font-semibold text-white shadow-xs transition-all hover:bg-[#a8242f] dark:bg-[#D93846] dark:hover:bg-[#c22b38]"
             >
               <ShieldAlert size={14} />
               Panel admin

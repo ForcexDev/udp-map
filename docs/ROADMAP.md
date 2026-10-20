@@ -1777,6 +1777,7 @@ Dos cuidados:
 - **Ruteo accesible fino** (§4): destino en la entrada o rampa accesible más cercana, y continuación por ascensor hasta la planta correcta.
 - **Interior como imagen.** Si algún día consigues el plano de una planta en imagen, se puede poner bajo el mapa ajustando las cuatro esquinas y usarlo de calco para dibujar las áreas encima. `floor_plans.image_overlay` y `floor_plans.bounds` ya existen sin usar (`baseline.sql:196-208`), y MapLibre soporta un source `type: 'image'`.
 - **Capacidad de sala**, para "busco una sala libre para 6 personas". Un campo más en el pin `sala` cuando haga falta.
+- **Arreglar el versionado automático en Vercel (`__APP_VERSION__`)**: Vercel construye desde un clon superficial (`--depth=10`) por defecto, por lo que `git rev-list --count HEAD` en `vite.config.ts` devuelve siempre `10` (p. ej. `0.8+10`) en lugar del conteo real de commits. Falta activar `VERCEL_DEEP_CLONE=true` o usar una fuente de versión que no dependa del historial local truncado.
 - ~~Validación de plantas por edificio en servidor.~~ **Hecha el 2026-08-10**, ver §15.
 
 ---
@@ -1814,3 +1815,15 @@ migración `20260810000000_pin_floor_server_validation.sql` trae al final la
 consulta que las lista. Mientras una siga mal, editarla fallará — es correcto,
 pero conviene saberlo.
 
+
+---
+
+## 16. Rediseño integral de interfaz: Lente Contextual y Guía Paso a Paso ✅ HECHO (2026-10-20)
+
+Rediseño de toda la capa visual y espacial en la rama `rediseño-interfaz`:
+
+- **Paleta Piedra Cálida (`#FAF8F5`) y Pizarra Nocturna (`#151820`)** con acento Terracota UDP (`#C22B38` / `#D93846`) y eliminación de `font-black` / `uppercase` masivos en favor de `font-bold` / `font-semibold` y códigos con `tabular-nums`.
+- **Lente Contextual (`ContextLens.tsx`)**: Unifica la selección de edificio (`placeFocus`) y planta (`activeFloor`) en una sola barra horizontal acolchada bajo el buscador, despejando los bordes laterales del mapa.
+- **Guía Paso a Paso (`WayfinderSheet.tsx`)**: Sustituye la antigua barra de ruta por un asistente en 3 pasos interactivos (1. Acceso desde la calle/rampa → 2. Conector vertical ascensor/escalera o hall → 3. Sala o destino en planta) con conmutador **"Sin escaleras"** (`accessibleRoute`).
+- **Barra de navegación inferior en 5 columnas (`Layout.tsx`)**: Integra el botón central `+` de publicación y da aire a los iconos.
+- **Pines de sala diferenciados (`MapView.tsx`)**: Las salas con `room_code` se muestran como pastilla compacta con código corto (`S106`) y punto celeste.

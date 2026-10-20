@@ -138,7 +138,7 @@ export function CustomSelect({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full min-w-0 flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700/80 bg-neutral-50 dark:bg-neutral-800/80 text-xs sm:text-sm font-semibold text-neutral-900 dark:text-white outline-none focus:border-[#D41F2D] transition-all cursor-pointer shadow-sm active:scale-[0.99] ${buttonClassName}`}
+        className={`w-full min-w-0 flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-2xl border border-[#E6E0D5] bg-white text-xs sm:text-sm font-semibold text-stone-900 outline-none transition-all cursor-pointer shadow-xs active:scale-[0.99] hover:bg-[#FAF8F5] focus:border-[#C22B38] dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-100 dark:hover:bg-[#252A37] dark:focus:border-[#D93846] ${buttonClassName}`}
       >
         <span className="flex min-w-0 items-center gap-2 truncate">
           {selectedOption?.icon}
@@ -146,7 +146,7 @@ export function CustomSelect({
         </span>
         <ChevronDown
           size={15}
-          className={`text-neutral-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#D41F2D]' : ''}`}
+          className={`text-stone-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#C22B38] dark:text-[#D93846]' : ''}`}
         />
       </button>
 
@@ -170,14 +170,14 @@ export function CustomSelect({
           // (z-4510) de Radix Dialog. Con z-50 el menú quedaba pintado DETRÁS
           // del overlay cuando el CustomSelect vivía dentro de un modal
           // (ProfileSetupModal), así que "no dejaba seleccionar la facultad".
-          className={`z-[4520] max-h-60 overflow-y-auto bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-xl shadow-2xl p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
+          className={`z-[4520] max-h-60 overflow-y-auto bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.09] rounded-2xl premium-shadow p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
         >
           {searchable && (
             // `sticky` y no fuera del contenedor con scroll: así el campo se
             // queda a la vista mientras recorres una lista larga.
-            <div className="sticky top-0 z-10 -m-1.5 mb-1 border-b border-neutral-100 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex items-center gap-2 rounded-lg bg-neutral-100 px-2.5 py-1.5 dark:bg-neutral-800">
-                <Search size={13} className="shrink-0 text-neutral-400" />
+            <div className="sticky top-0 z-10 -m-1.5 mb-1 border-b border-[#E6E0D5] bg-white p-2 dark:border-white/[0.07] dark:bg-[#1E222D]">
+              <div className="flex items-center gap-2 rounded-xl bg-[#EFECE4] px-2.5 py-1.5 dark:bg-white/[0.08]">
+                <Search size={13} className="shrink-0 text-stone-400 dark:text-stone-500" />
                 <input
                   autoFocus
                   value={query}
@@ -194,14 +194,14 @@ export function CustomSelect({
                     setIsOpen(false)
                   }}
                   placeholder={searchPlaceholder}
-                  className="w-full min-w-0 bg-transparent text-xs font-semibold text-neutral-900 outline-none placeholder:font-medium placeholder:text-neutral-400 dark:text-white"
+                  className="w-full min-w-0 bg-transparent text-xs font-semibold text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500"
                 />
               </div>
             </div>
           )}
 
           {visibleOptions.length === 0 && (
-            <p className="px-3 py-4 text-center text-[11px] font-medium text-neutral-400">
+            <p className="px-3 py-4 text-center text-xs font-medium text-stone-400 dark:text-stone-500">
               Nada coincide con «{query.trim()}».
             </p>
           )}
@@ -216,10 +216,10 @@ export function CustomSelect({
                   onChange(option.value)
                   setIsOpen(false)
                 }}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all text-left cursor-pointer my-0.5 ${
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer my-0.5 ${
                   isSelected
-                    ? 'bg-[#D41F2D] text-white shadow-sm'
-                    : 'text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                    ? 'bg-[#C22B38] text-white shadow-xs dark:bg-[#D93846]'
+                    : 'text-stone-700 dark:text-stone-200 hover:bg-[#EFECE4] dark:hover:bg-white/[0.08]'
                 }`}
               >
                 <span className="flex items-center gap-2 truncate">

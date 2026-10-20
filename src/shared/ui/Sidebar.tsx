@@ -84,12 +84,12 @@ export function Sidebar() {
     <div className="sidebar-root fixed inset-0 z-[2000] flex justify-end">
       {/* Overlay */}
       <div
-        className="sidebar-overlay absolute inset-0 bg-black/10 backdrop-blur-md"
+        className="sidebar-overlay absolute inset-0 bg-black/20 backdrop-blur-md"
         onClick={close}
       />
 
       {/* Panel */}
-      <div className="sidebar-panel relative w-full max-w-sm sm:max-w-md h-full bg-white dark:bg-neutral-900 flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.1)] border-l border-neutral-100 dark:border-neutral-800">
+      <div className="sidebar-panel relative w-full max-w-sm sm:max-w-md h-full bg-[#FAF8F5] dark:bg-[#151820] flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.1)] border-l border-[#E5DEC9] dark:border-white/10">
       <Tabs.Root
         value={tab}
         onValueChange={(v) => setTab(v as SidebarTab)}
@@ -99,10 +99,10 @@ export function Sidebar() {
         <div className="sidebar-header p-6 sm:p-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight mt-1">
+              <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mt-1">
                 {t('nav.map', 'Mapa')}
               </h2>
-              <div className="w-[2px] h-7 rounded-full bg-neutral-200 dark:bg-neutral-700"></div>
+              <div className="w-[2px] h-7 rounded-full bg-[#E5DEC9] dark:bg-white/10"></div>
               <img 
                 src="/udp-logo-full.png" 
                 alt="Universidad Diego Portales" 
@@ -112,18 +112,16 @@ export function Sidebar() {
             <button
               onClick={close}
               aria-label={t('common.close')}
-              className="w-9 h-9 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 active:scale-90 transition-all cursor-pointer"
+              className="w-9 h-9 flex items-center justify-center bg-[#EFECE4] dark:bg-white/[0.08] text-stone-500 dark:text-stone-400 rounded-full hover:bg-[#E5DEC9] dark:hover:bg-white/[0.12] active:scale-90 transition-all cursor-pointer"
             >
               <X size={18} />
             </button>
           </div>
 
-          {/* Tabs Menu on Top with Sliding Animation.
-              La pastilla es hermana de Tabs.List (no hija) para no meter nodos
-              ajenos dentro del role="tablist". */}
-          <div className="relative mt-2 p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-2xl w-full select-none">
+          {/* Tabs Menu on Top with Sliding Animation */}
+          <div className="relative mt-2 p-1 bg-[#EFECE4] dark:bg-white/[0.06] rounded-2xl w-full select-none">
             <div
-              className="absolute top-1 bottom-1 bg-white dark:bg-neutral-700 rounded-[14px] shadow-sm transition-all duration-300 ease-out pointer-events-none"
+              className="absolute top-1 bottom-1 bg-white dark:bg-[#1E222D] rounded-[14px] shadow-xs transition-all duration-300 ease-out pointer-events-none"
               style={{
                 width: 'calc((100% - 8px) / 3)',
                 left: `calc(4px + ${tabActiveIndex} * ((100% - 8px) / 3))`,
@@ -134,12 +132,12 @@ export function Sidebar() {
                 <Tabs.Trigger
                   key={key}
                   value={key}
-                  className="py-2.5 rounded-[14px] text-[10px] font-black tracking-wider transition-colors duration-200 flex items-center justify-center gap-1.5 uppercase cursor-pointer outline-none text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 data-[state=active]:text-neutral-900 dark:data-[state=active]:text-white focus-visible:ring-2 focus-visible:ring-[#D41F2D]"
+                  className="py-2.5 rounded-[14px] text-xs font-bold tracking-wide transition-colors duration-200 flex items-center justify-center gap-1.5 cursor-pointer outline-none text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 data-[state=active]:text-stone-900 dark:data-[state=active]:text-stone-100 focus-visible:ring-2 focus-visible:ring-[#C22B38]"
                 >
                   <Icon size={14} className="flex-shrink-0" />
                   <span className="truncate">{label}</span>
                   {key === 'notifications' && unreadNotifications > 0 && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#D41F2D] flex-shrink-0 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#C22B38] dark:bg-[#D93846] flex-shrink-0 animate-pulse" />
                   )}
                 </Tabs.Trigger>
               ))}
@@ -151,22 +149,22 @@ export function Sidebar() {
         <div className="sidebar-content min-h-0 flex-1 overflow-y-auto px-6 sm:px-8 py-6 no-scrollbar">
           <Tabs.Content value="places" className="outline-none">
             <div className="space-y-6 pb-12">
-              <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em] mb-1">
+              <h4 className="text-xs font-bold text-stone-900 dark:text-stone-200 uppercase tracking-wider mb-1">
                 {t('sidebar.faculties', 'Facultades')}
               </h4>
               <div className="relative">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('sidebar.searchFaculty', 'Buscar facultad...')}
-                  className="w-full pl-10 pr-4 py-3 rounded-[16px] bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-sm font-medium placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#D41F2D]/20 focus:border-[#D41F2D]/30 transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white dark:bg-[#1E222D] border border-[#E5DEC9] dark:border-white/10 text-sm font-medium text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#C22B38]/20 focus:border-[#C22B38] transition-all"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer"
                   >
                     <X size={14} />
                   </button>
@@ -175,7 +173,7 @@ export function Sidebar() {
               <div className="space-y-4">
                 {groupedFaculties.map(({ campus, faculties }) => (
                   <div key={campus.id}>
-                    <p className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-[0.2em] mb-2 px-1">
+                    <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-2 px-1">
                       {campus.name}
                     </p>
                     <div className="space-y-1.5">
@@ -183,12 +181,12 @@ export function Sidebar() {
                         <button
                           key={f.id}
                           onClick={() => handleSelectFaculty(f)}
-                          className="w-full flex items-center gap-3 p-3 rounded-[14px] text-left transition-all border border-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:border-neutral-200 dark:hover:border-neutral-700 active:scale-[0.98]"
+                          className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all border border-transparent hover:bg-white dark:hover:bg-[#1E222D] hover:border-[#E5DEC9] dark:hover:border-white/10 active:scale-[0.98] cursor-pointer"
                         >
                           <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
                             <img src="/udp-shield.png" alt="Escudo UDP" className="w-full h-full object-contain dark:invert opacity-90" />
                           </div>
-                          <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 leading-tight">
+                          <span className="text-sm font-semibold text-stone-800 dark:text-stone-200 leading-tight">
                             {i18n.language === 'en' ? f.name_en : f.name}
                           </span>
                         </button>
@@ -197,7 +195,7 @@ export function Sidebar() {
                   </div>
                 ))}
                 {groupedFaculties.length === 0 && (
-                  <p className="text-sm text-neutral-400 dark:text-neutral-500 text-center py-6">
+                  <p className="text-sm text-stone-400 dark:text-stone-500 text-center py-6">
                     {t('sidebar.noResults', 'Sin resultados')}
                   </p>
                 )}
@@ -213,12 +211,12 @@ export function Sidebar() {
             <div className="space-y-8 pb-12">
               {/* Language toggle */}
               <section className="space-y-4">
-                <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em]">
+                <h4 className="text-xs font-bold text-stone-900 dark:text-stone-200 uppercase tracking-wider">
                   {t('common.language')}
                 </h4>
-                <div className="relative flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl w-full select-none">
+                <div className="relative flex p-1.5 bg-[#EFECE4] dark:bg-white/[0.06] rounded-2xl w-full select-none">
                   <div
-                    className="absolute top-1.5 bottom-1.5 left-1.5 bg-white dark:bg-neutral-700 rounded-[14px] shadow-sm transition-transform duration-300 ease-out pointer-events-none"
+                    className="absolute top-1.5 bottom-1.5 left-1.5 bg-white dark:bg-[#1E222D] rounded-[14px] shadow-xs transition-transform duration-300 ease-out pointer-events-none"
                     style={{
                       width: 'calc((100% - 12px) / 2)',
                       transform: `translateX(${langActiveIndex * 100}%)`,
@@ -226,20 +224,20 @@ export function Sidebar() {
                   />
                   <button
                     onClick={() => setLanguage('es')}
-                    className={`relative z-10 flex-1 py-2.5 rounded-[14px] text-[11px] font-black tracking-wide transition-colors duration-300 flex items-center justify-center gap-2 ${
+                    className={`relative z-10 flex-1 py-2.5 rounded-[14px] text-xs font-bold tracking-wide transition-colors duration-300 flex items-center justify-center gap-2 cursor-pointer ${
                       langActiveIndex === 0
-                        ? 'text-neutral-900 dark:text-white'
-                        : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
+                        ? 'text-stone-900 dark:text-stone-100'
+                        : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
                     }`}
                   >
                     <Globe size={14} /> Español
                   </button>
                   <button
                     onClick={() => setLanguage('en')}
-                    className={`relative z-10 flex-1 py-2.5 rounded-[14px] text-[11px] font-black tracking-wide transition-colors duration-300 flex items-center justify-center gap-2 ${
+                    className={`relative z-10 flex-1 py-2.5 rounded-[14px] text-xs font-bold tracking-wide transition-colors duration-300 flex items-center justify-center gap-2 cursor-pointer ${
                       langActiveIndex === 1
-                        ? 'text-neutral-900 dark:text-white'
-                        : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
+                        ? 'text-stone-900 dark:text-stone-100'
+                        : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
                     }`}
                   >
                     <Globe size={14} /> English
@@ -249,7 +247,7 @@ export function Sidebar() {
 
               {/* Theme toggle */}
               <section className="space-y-4">
-                <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em]">
+                <h4 className="text-xs font-bold text-stone-900 dark:text-stone-200 uppercase tracking-wider">
                   {t('common.theme')}
                 </h4>
                 <ThemeSwitcher />
@@ -257,7 +255,7 @@ export function Sidebar() {
 
               {/* Help / Tutorial */}
               <section className="space-y-4">
-                <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em]">
+                <h4 className="text-xs font-bold text-stone-900 dark:text-stone-200 uppercase tracking-wider">
                   {t('sidebar.help', 'Ayuda')}
                 </h4>
                 <button
@@ -265,7 +263,7 @@ export function Sidebar() {
                     openTutorial()
                     close()
                   }}
-                  className="w-full p-4 rounded-[18px] bg-neutral-50/50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-700 flex items-center gap-3 font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 active:scale-[0.98] transition-all"
+                  className="w-full p-4 rounded-2xl bg-white dark:bg-[#1E222D] border border-[#E5DEC9] dark:border-white/10 flex items-center gap-3 font-semibold text-stone-700 dark:text-stone-300 hover:bg-[#FAF8F5] dark:hover:bg-[#252A37] active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <HelpCircle size={18} />
                   <span className="text-sm">
@@ -277,7 +275,7 @@ export function Sidebar() {
                     openAbout()
                     close()
                   }}
-                  className="w-full p-4 rounded-[18px] bg-neutral-50/50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-700 flex items-center gap-3 font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 active:scale-[0.98] transition-all"
+                  className="w-full p-4 rounded-2xl bg-white dark:bg-[#1E222D] border border-[#E5DEC9] dark:border-white/10 flex items-center gap-3 font-semibold text-stone-700 dark:text-stone-300 hover:bg-[#FAF8F5] dark:hover:bg-[#252A37] active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <Info size={18} />
                   <span className="text-sm">
@@ -286,15 +284,10 @@ export function Sidebar() {
                 </button>
               </section>
 
-              {/* Administración.
-                  Aquí había un interruptor de "Desbloquear mapa". Se fue a
-                  /admin/ajustes: es una herramienta de administración, y la
-                  regla del proyecto es que esas viven en el panel y en ningún
-                  otro sitio (ROADMAP §13.2). Lo que queda es la PUERTA al
-                  panel, que hasta ahora solo estaba enterrada en el perfil. */}
+              {/* Administración */}
               {role === 'admin' && (
                 <section className="space-y-4">
-                  <h4 className="text-[11px] font-black text-neutral-900 dark:text-neutral-200 uppercase tracking-[0.2em]">
+                  <h4 className="text-xs font-bold text-stone-900 dark:text-stone-200 uppercase tracking-wider">
                     Administrador
                   </h4>
                   <button
@@ -302,20 +295,20 @@ export function Sidebar() {
                       navigate('/admin')
                       close()
                     }}
-                    className="w-full p-4 rounded-[18px] bg-red-50/60 dark:bg-red-950/20 border border-red-100 dark:border-red-900/40 flex items-center gap-3 text-left transition-all hover:bg-red-50 dark:hover:bg-red-950/40 active:scale-[0.98]"
+                    className="w-full p-4 rounded-2xl bg-[#FBECEB]/60 dark:bg-[#D93846]/10 border border-[#F2D0CE] dark:border-[#D93846]/20 flex items-center gap-3 text-left transition-all hover:bg-[#FBECEB] dark:hover:bg-[#D93846]/20 active:scale-[0.98] cursor-pointer"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/60 text-[#D41F2D] dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#FBECEB] dark:bg-[#D93846]/20 text-[#C22B38] dark:text-rose-400 flex items-center justify-center flex-shrink-0">
                       <ShieldAlert size={18} strokeWidth={2.2} />
                     </div>
                     <div className="flex flex-col flex-1 min-w-0">
-                      <span className="text-sm font-bold text-neutral-900 dark:text-white">
+                      <span className="text-sm font-bold text-stone-900 dark:text-stone-100">
                         {t('sidebar.adminPanel', 'Panel de administración')}
                       </span>
-                      <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                      <span className="text-xs font-medium text-stone-500 dark:text-stone-400">
                         {t('sidebar.adminPanelHint', 'Denuncias, usuarios y herramientas del mapa')}
                       </span>
                     </div>
-                    <ChevronRight size={16} className="flex-shrink-0 text-neutral-300 dark:text-neutral-600" />
+                    <ChevronRight size={16} className="flex-shrink-0 text-stone-400 dark:text-stone-500" />
                   </button>
                 </section>
               )}
@@ -325,7 +318,7 @@ export function Sidebar() {
                 {user ? (
                   <button
                     onClick={() => void signOut()}
-                    className="w-full p-4 rounded-[18px] bg-red-50 dark:bg-red-950/50 text-[#D41F2D] font-bold flex items-center justify-center gap-3 border border-red-100 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/30 active:scale-[0.97] transition-all"
+                    className="w-full p-4 rounded-2xl bg-[#FBECEB] dark:bg-[#D93846]/15 text-[#C22B38] dark:text-rose-300 font-bold flex items-center justify-center gap-3 border border-[#F2D0CE] dark:border-[#D93846]/20 hover:opacity-90 active:scale-[0.97] transition-all cursor-pointer"
                   >
                     <LogOut size={18} strokeWidth={2.5} />
                     {t('auth.signOut')}
@@ -336,7 +329,7 @@ export function Sidebar() {
                       openLoginModal()
                       close()
                     }}
-                    className="w-full p-4 rounded-[18px] bg-[#D41F2D] text-white font-bold flex items-center justify-center gap-3 red-shadow hover:bg-[#b11a25] active:scale-[0.97] transition-all"
+                    className="w-full p-4 rounded-2xl bg-[#C22B38] text-white font-bold flex items-center justify-center gap-3 shadow-xs hover:bg-[#9E1F2A] active:scale-[0.97] transition-all cursor-pointer dark:bg-[#D93846]"
                   >
                     {t('auth.signIn')}
                   </button>

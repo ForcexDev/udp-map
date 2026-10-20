@@ -69,7 +69,7 @@ export function MyEventsList({ events, loading, onViewOnMap }: MyEventsListProps
 
   if (loading) {
     return (
-      <p className="px-5 py-8 text-center text-sm font-semibold text-neutral-400">
+      <p className="px-5 py-8 text-center text-sm font-semibold text-stone-400">
         {t('common.loading', 'Cargando…')}
       </p>
     )
@@ -77,12 +77,12 @@ export function MyEventsList({ events, loading, onViewOnMap }: MyEventsListProps
 
   if (events.length === 0) {
     return (
-      <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-dashed border-neutral-200 p-10 text-center dark:border-neutral-800">
-        <CalendarDays size={34} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />
-        <p className="mt-1 font-bold text-neutral-700 dark:text-neutral-300">
+      <div className="mx-5 flex flex-col items-center gap-2 rounded-3xl border border-dashed border-[#E5DEC9] p-10 text-center dark:border-white/10">
+        <CalendarDays size={34} strokeWidth={1.5} className="text-stone-300 dark:text-stone-600" />
+        <p className="mt-1 font-bold text-stone-700 dark:text-stone-300">
           {t('profile.noEvents', 'Todavía no marcaste ningún evento')}
         </p>
-        <p className="max-w-[18rem] text-xs font-medium leading-relaxed text-neutral-400">
+        <p className="max-w-[18rem] text-xs font-medium leading-relaxed text-stone-500 dark:text-stone-400">
           {t('profile.noEventsHint', 'Cuando marques “Asistiré” o “Me interesa” en Eventos, aparecerán aquí.')}
         </p>
       </div>
@@ -129,7 +129,7 @@ function Section({
 
   return (
     <section>
-      <h3 className="mb-2.5 text-[11px] font-black uppercase tracking-widest text-neutral-400">
+      <h3 className="mb-2.5 text-xs font-bold text-stone-500 dark:text-stone-400">
         {title}
       </h3>
       <ul className={`m-0 flex list-none flex-col gap-2 p-0 ${faded ? 'opacity-60' : ''}`}>
@@ -141,13 +141,13 @@ function Section({
               <button
                 type="button"
                 onClick={() => onViewOnMap(pin)}
-                className="flex w-full cursor-pointer items-start gap-3 rounded-3xl border border-neutral-200 bg-white p-3.5 text-left shadow-sm transition-all hover:shadow-md active:scale-[0.99] dark:border-neutral-800 dark:bg-neutral-900"
+                className="flex w-full cursor-pointer items-start gap-3 rounded-2xl border border-[#E6E0D5] bg-white p-3.5 text-left shadow-xs transition-all hover:shadow-md active:scale-[0.99] dark:border-white/[0.07] dark:bg-[#1E222D]"
               >
                 <span
-                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
                     status === 'going'
-                      ? 'bg-red-50 text-[#D41F2D] dark:bg-red-950/30'
-                      : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
+                      ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
+                      : 'bg-[#EFECE4] text-stone-600 dark:bg-white/[0.08] dark:text-stone-300'
                   }`}
                 >
                   {status === 'going' ? <CalendarCheck size={18} /> : <Star size={18} />}
@@ -155,20 +155,20 @@ function Section({
 
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
-                    <span className="min-w-0 truncate text-sm font-extrabold text-neutral-900 dark:text-white">
+                    <span className="min-w-0 truncate text-sm font-bold text-stone-900 dark:text-stone-100">
                       {pin.title}
                     </span>
                     {live && (
-                      <span className="shrink-0 rounded-full bg-[#D41F2D] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+                      <span className="shrink-0 rounded-xl border border-[#F2D0CE] bg-[#FBECEB] px-2 py-0.5 text-xs font-semibold text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300">
                         {t('events.live', 'En vivo')}
                       </span>
                     )}
                   </span>
-                  <span className="mt-0.5 block truncate text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                  <span className="mt-0.5 block truncate text-xs font-medium text-stone-500 dark:text-stone-400">
                     {whenLabel(pin)}
                     {faculty && ` · ${localizedName(faculty, i18n.language)}`}
                   </span>
-                  <span className="mt-1 flex items-center gap-1 text-[11px] font-bold text-neutral-400">
+                  <span className="mt-1 flex items-center gap-1 text-xs font-semibold text-stone-400 dark:text-stone-500">
                     {status === 'going' ? <Check size={11} /> : <Star size={11} />}
                     {status === 'going'
                       ? t('events.rsvpGoing', 'Asistiré')
@@ -176,7 +176,7 @@ function Section({
                   </span>
                 </span>
 
-                <MapPin size={15} className="mt-1 shrink-0 text-neutral-300 dark:text-neutral-600" />
+                <MapPin size={15} className="mt-1 shrink-0 text-stone-300 dark:text-stone-600" />
               </button>
             </li>
           )

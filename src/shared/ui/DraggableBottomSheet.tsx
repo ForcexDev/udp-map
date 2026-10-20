@@ -157,14 +157,14 @@ export function DraggableBottomSheet({
     >
       <div
         ref={innerRef}
-        className="pointer-events-auto w-full flex flex-col rounded-t-[32px] glass-hud shadow-[0_-8px_32px_rgba(0,0,0,0.15)] sm:rounded-[32px] overflow-hidden max-h-full"
+        className="pointer-events-auto w-full flex flex-col rounded-t-[32px] border-t border-[#E5DEC9] bg-[#FAF8F5] shadow-[0_-14px_38px_rgba(28,25,23,0.10)] sm:rounded-[32px] sm:border dark:border-white/10 dark:bg-[#151820] overflow-hidden max-h-full"
       >
         {/* Drag Handle */}
         <div
           className="w-full flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
           onPointerDown={(e) => dragControls.start(e)}
         >
-          <div className="w-12 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600 pointer-events-none" />
+          <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700 pointer-events-none" />
         </div>
 
         {/* Content wrapper */}

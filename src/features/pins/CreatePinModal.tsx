@@ -334,11 +334,7 @@ export function CreatePinModal() {
         showToast(t(floorKey))
         return
       }
-      // Las funciones de la base explican por qué rechazan algo ("No puedes
-      // cambiar la categoría de un pin verificado", "Un pin no puede tener más
-      // de 5 fotos"). Ese mensaje vale más que un genérico, pero solo se enseña
-      // si viene de un `raise exception` nuestro: un fallo técnico no debe
-      // salir de los logs.
+      // Las funciones de la base explican por qué rechazan algo.
       showToast(isUserFacingDbError(error) ? message : t('common.error'))
     },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['pins'] }),
@@ -382,27 +378,27 @@ export function CreatePinModal() {
         <RadixDialog.Overlay className="fixed inset-0 z-[3000] bg-black/40 backdrop-blur-md animate-fade-in" />
         <RadixDialog.Content
           aria-describedby={undefined}
-          className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-[3001] w-full sm:w-[520px] h-[100dvh] sm:h-[85dvh] sm:max-h-[85dvh] bg-white dark:bg-neutral-900 sm:rounded-[28px] flex flex-col shadow-2xl animate-slide-in-bottom sm:animate-scale-in overflow-hidden"
+          className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-[3001] w-full sm:w-[520px] h-[100dvh] sm:h-[85dvh] sm:max-h-[85dvh] bg-[#FAF8F5] dark:bg-[#151820] sm:rounded-[28px] border border-[#E5DEC9] dark:border-white/10 flex flex-col shadow-2xl animate-slide-in-bottom sm:animate-scale-in overflow-hidden"
         >
           {/* Header */}
-          <div className="px-5 sm:px-7 pt-4 sm:pt-6 pb-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0">
+          <div className="px-5 sm:px-7 pt-4 sm:pt-6 pb-4 border-b border-[#E5DEC9] dark:border-white/10 flex items-center justify-between shrink-0">
             <div className="flex flex-col min-w-0 pr-2">
-              <RadixDialog.Title className="text-lg sm:text-xl font-black text-neutral-900 dark:text-white tracking-tight leading-tight">
+              <RadixDialog.Title className="text-lg sm:text-xl font-bold text-stone-900 dark:text-stone-100 tracking-tight leading-tight">
                 {editingPin ? t('pin.editTitle', 'Editar Pin') : t('pin.createTitle')}
               </RadixDialog.Title>
-              <p className="text-[10px] sm:text-[11px] font-black text-[#D41F2D] uppercase tracking-wider truncate mt-0.5 flex items-center gap-1">
-                <MapPin size={12} className="shrink-0 text-[#D41F2D]" />
+              <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846] truncate mt-0.5 flex items-center gap-1">
+                <MapPin size={13} className="shrink-0" />
                 <span>{facultyName}</span>
               </p>
             </div>
 
-            {/* Small Discrete Close Button (X) matching PinDetail */}
             <RadixDialog.Close asChild>
               <button
                 type="button"
-                className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-400 hover:text-neutral-900 dark:hover:text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
+                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-[#EFECE4] text-stone-700 transition-colors hover:bg-stone-200 dark:bg-white/[0.08] dark:text-stone-200 dark:hover:bg-white/15"
+                aria-label={t('common.close', 'Cerrar')}
               >
-                <X size={16} strokeWidth={2.5} />
+                <X size={18} />
               </button>
             </RadixDialog.Close>
           </div>
@@ -410,18 +406,18 @@ export function CreatePinModal() {
           {/* Body */}
           <form
             onSubmit={submit}
-            className="flex-1 overflow-y-auto px-5 sm:px-7 py-5 space-y-5 sm:space-y-6 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-400"
+            className="flex-1 overflow-y-auto px-5 sm:px-7 py-5 space-y-5 sm:space-y-6 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-stone-400"
           >
-            {/* Type selector (Sleek Capsule Tabs) */}
+            {/* Type selector (Capsule Tabs con acabado cálido) */}
             {availableTypes.length > 1 && (!editingPin || can(role, 'pin.moderate')) && (
-              <div className="p-1 bg-neutral-100 dark:bg-neutral-800/80 rounded-full flex gap-1" role="radiogroup">
+              <div className="p-1 bg-[#EFECE4] dark:bg-white/[0.08] rounded-2xl flex gap-1" role="radiogroup">
                 {availableTypes.map((v) => (
                   <label
                     key={v}
-                    className={`flex-1 py-1.5 rounded-full text-[11px] font-extrabold tracking-wider uppercase transition-all cursor-pointer text-center ${
+                    className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center ${
                       type === v
-                        ? 'bg-[#D41F2D] text-white shadow-sm'
-                        : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                        ? 'bg-stone-900 text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950'
+                        : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
                     }`}
                   >
                     <input type="radio" value={v} className="sr-only" {...form.register('type')} />
@@ -434,8 +430,8 @@ export function CreatePinModal() {
             {/* Title */}
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
-                <Sparkles size={15} className="text-[#D41F2D]" strokeWidth={2.5} />
-                <label className="text-[11px] font-black text-neutral-400 uppercase tracking-wider">{t('pin.title')}</label>
+                <Sparkles size={15} className="text-[#C22B38] dark:text-[#D93846]" strokeWidth={2.2} />
+                <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.title')}</label>
               </div>
               <div className="space-y-1.5">
                 <input
@@ -447,14 +443,14 @@ export function CreatePinModal() {
                         ? t('pin.titlePlaceholderPlace', 'Ej: Sala de Estudio A-102, Microondas...')
                         : t('pin.titlePlaceholderReport', 'Ej: Baño averiado, fuga de agua...')
                   }
-                  className="w-full text-base sm:text-lg font-bold text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 bg-transparent border-none outline-none focus:ring-0 p-0 tracking-tight truncate"
+                  className="w-full text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 bg-transparent border-none outline-none focus:ring-0 p-0 tracking-tight truncate"
                   autoComplete="off"
                 />
-                <div className="h-1 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-                  <div className={`h-full bg-[#D41F2D] transition-all duration-700 ease-out ${title?.length > 0 ? 'w-full' : 'w-0'}`}></div>
+                <div className="h-1 w-full bg-[#E5DEC9] dark:bg-white/10 rounded-full overflow-hidden">
+                  <div className={`h-full bg-[#C22B38] dark:bg-[#D93846] transition-all duration-700 ease-out ${title?.length > 0 ? 'w-full' : 'w-0'}`} />
                 </div>
                 {form.formState.errors.title && (
-                  <p className="text-xs font-bold text-[#D41F2D]">
+                  <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846]">
                     {form.formState.errors.title.type === 'too_small'
                       ? t('common.minChars', { n: 3 })
                       : t('common.maxChars', { n: 80 })}
@@ -465,48 +461,42 @@ export function CreatePinModal() {
 
             {/* Description */}
             <div className="space-y-2">
-              <label className="text-[11px] font-black text-neutral-400 uppercase tracking-wider">{t('pin.description')}</label>
-              {/* Tres filas: con dos no se leía ni la primera frase al editar, y
-                  con seis el campo se comía media pantalla para un texto que
-                  casi siempre son dos líneas. Sigue estirable a mano. */}
+              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.description')}</label>
               <textarea
                 rows={3}
                 {...form.register('description')}
                 placeholder={t('pin.descriptionPlaceholder', '¿Qué está pasando? (opcional)')}
-                className="w-full min-h-[84px] bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl px-4 py-3 text-sm font-medium leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 outline-none focus:border-[#D41F2D] focus:bg-white dark:focus:bg-neutral-900 transition-all resize-y shadow-sm"
+                className="w-full min-h-[84px] bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] rounded-2xl px-4 py-3 text-sm font-medium leading-relaxed text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 outline-none focus:border-[#C22B38] dark:focus:border-[#D93846] transition-all resize-y shadow-xs"
               />
-              {/* Sin esto, pasarse de largo dejaba el borde en rojo y el botón sin
-                  hacer nada: el formulario no guardaba y no decía por qué. El
-                  contador solo aparece cerca del tope para no meter ruido. */}
               {form.formState.errors.description ? (
-                <p className="text-xs font-bold text-[#D41F2D]">
+                <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846]">
                   {t('common.maxChars', { n: MAX_DESCRIPTION })}
                 </p>
               ) : (description?.length ?? 0) > MAX_DESCRIPTION * 0.8 ? (
-                <p className="text-xs font-medium text-neutral-400">
+                <p className="text-xs font-medium text-stone-400 dark:text-stone-500">
                   {description?.length ?? 0} / {MAX_DESCRIPTION}
                 </p>
               ) : null}
             </div>
 
-            {/* Photos (Nativa UI con carrusel horizontal) */}
+            {/* Photos */}
             {(() => {
               const existingPhotos = (editingPin?.pin_photos ?? []).filter((p) => !deletedPhotoIds.includes(p.id))
               const totalCount = existingPhotos.length + photos.length
 
               return (
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-neutral-400 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
                     {t('pin.photos')}
                   </label>
                   <div className="flex flex-col gap-3">
                     {totalCount > 0 && (
-                      <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 -mx-5 px-5 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-700 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+                      <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 -mx-5 px-5 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:h-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-stone-300 dark:sm:[&::-webkit-scrollbar-thumb]:bg-stone-700 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
                         {/* Fotos guardadas en base de datos */}
                         {existingPhotos.map((ph) => (
                           <div
                             key={ph.id}
-                            className={`relative shrink-0 snap-center rounded-2xl overflow-hidden shadow-sm border border-neutral-100 dark:border-neutral-800 transition-all ${
+                            className={`relative shrink-0 snap-center rounded-2xl overflow-hidden shadow-xs border border-[#E6E0D5] dark:border-white/[0.07] transition-all ${
                               totalCount === 1 ? 'w-full aspect-[4/3] sm:aspect-video' : 'w-[75%] sm:w-[60%] aspect-square sm:aspect-[4/3]'
                             }`}
                           >
@@ -514,7 +504,7 @@ export function CreatePinModal() {
                             <button
                               type="button"
                               onClick={() => setDeletedPhotoIds((prev) => [...prev, ph.id])}
-                              className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-red-500 hover:scale-110 transition-all shadow-md"
+                              className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-md rounded-xl flex items-center justify-center hover:bg-red-500 hover:scale-105 transition-all shadow-md cursor-pointer"
                               title={t('pin.removePhoto', 'Eliminar foto')}
                             >
                               <Trash2 size={14} className="text-white" />
@@ -526,7 +516,7 @@ export function CreatePinModal() {
                         {photos.map((file, i) => (
                           <div
                             key={`new-${i}`}
-                            className={`relative shrink-0 snap-center rounded-2xl overflow-hidden shadow-sm border border-neutral-100 dark:border-neutral-800 transition-all ${
+                            className={`relative shrink-0 snap-center rounded-2xl overflow-hidden shadow-xs border border-[#E6E0D5] dark:border-white/[0.07] transition-all ${
                               totalCount === 1 ? 'w-full aspect-[4/3] sm:aspect-video' : 'w-[75%] sm:w-[60%] aspect-square sm:aspect-[4/3]'
                             }`}
                           >
@@ -534,7 +524,7 @@ export function CreatePinModal() {
                             <button
                               type="button"
                               onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
-                              className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-red-500 hover:scale-110 transition-all shadow-md"
+                              className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-md rounded-xl flex items-center justify-center hover:bg-red-500 hover:scale-105 transition-all shadow-md cursor-pointer"
                               title={t('pin.removePhoto', 'Eliminar foto')}
                             >
                               <Trash2 size={14} className="text-white" />
@@ -549,10 +539,10 @@ export function CreatePinModal() {
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="w-full h-14 bg-neutral-50 dark:bg-neutral-800/80 border border-dashed border-neutral-200 dark:border-neutral-700/80 hover:border-[#D41F2D] rounded-2xl flex items-center justify-center gap-2 text-neutral-500 dark:text-neutral-400 hover:text-[#D41F2D] transition-all cursor-pointer shadow-sm active:scale-[0.99]"
+                          className="w-full h-14 bg-white dark:bg-[#1E222D] border border-dashed border-[#E6E0D5] dark:border-white/[0.12] hover:border-[#C22B38] rounded-2xl flex items-center justify-center gap-2 text-stone-600 dark:text-stone-400 hover:text-[#C22B38] transition-all cursor-pointer shadow-xs active:scale-[0.99]"
                         >
                           <Camera size={18} strokeWidth={2} />
-                          <span className="text-xs font-bold uppercase tracking-wider">{t('pin.addPhotos')}</span>
+                          <span className="text-xs font-semibold">{t('pin.addPhotos')}</span>
                         </button>
                         <input
                           type="file"
@@ -570,14 +560,14 @@ export function CreatePinModal() {
             })()}
 
             {/* Faculty */}
-            <div className="space-y-6 relative">
-              <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.faculty')}</label>
+            <div className="space-y-2 relative">
+              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.faculty')}</label>
               <button
                 type="button"
                 disabled={isVerifiedLocked}
                 onClick={() => setFacultyDropdownOpen(!facultyDropdownOpen)}
-                className={`w-full border border-neutral-100 dark:border-neutral-700 rounded-2xl px-6 py-4 text-sm font-bold text-neutral-800 dark:text-neutral-200 outline-none focus:ring-4 focus:ring-red-500/10 transition-all shadow-sm flex items-center justify-between ${
-                  isVerifiedLocked ? 'bg-neutral-100 dark:bg-neutral-800/80 cursor-not-allowed opacity-70' : 'bg-neutral-50/70 dark:bg-neutral-800/70'
+                className={`w-full border border-[#E6E0D5] dark:border-white/[0.07] rounded-2xl px-5 py-3.5 text-sm font-semibold text-stone-800 dark:text-stone-200 outline-none transition-all shadow-xs flex items-center justify-between cursor-pointer ${
+                  isVerifiedLocked ? 'bg-stone-100 dark:bg-stone-800/80 cursor-not-allowed opacity-70' : 'bg-white dark:bg-[#1E222D]'
                 }`}
               >
                 <span className="truncate">
@@ -586,7 +576,7 @@ export function CreatePinModal() {
                     : t('pin.facultyNone')}
                 </span>
                 <svg 
-                  className={`w-5 h-5 ml-2 transition-transform text-neutral-400 ${facultyDropdownOpen ? 'rotate-180' : ''}`} 
+                  className={`w-5 h-5 ml-2 transition-transform text-stone-400 ${facultyDropdownOpen ? 'rotate-180' : ''}`} 
                   fill="none" 
                   viewBox="0 0 24 24" 
                   stroke="currentColor"
@@ -596,18 +586,18 @@ export function CreatePinModal() {
               </button>
 
               {facultyDropdownOpen && (
-                <div className="absolute top-[88px] left-0 right-0 z-[4000] rounded-2xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xl overflow-hidden animate-scale-in">
-                  <div className="max-h-56 overflow-y-auto p-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <div className="absolute top-[72px] left-0 right-0 z-[4000] rounded-2xl bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.10] shadow-xl overflow-hidden animate-scale-in">
+                  <div className="max-h-56 overflow-y-auto p-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-thumb]:rounded-full">
                     <button
                       type="button"
                       onClick={() => {
                         form.setValue('facultyId', null, { shouldValidate: true })
                         setFacultyDropdownOpen(false)
                       }}
-                      className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-colors ${
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                         !form.watch('facultyId')
-                          ? 'bg-red-50 dark:bg-red-900/10 text-[#D41F2D] font-bold' 
-                          : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                          ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300' 
+                          : 'text-stone-700 dark:text-stone-300 hover:bg-[#F4F0E8] dark:hover:bg-white/[0.08]'
                       }`}
                     >
                       {t('pin.facultyNone')}
@@ -620,10 +610,10 @@ export function CreatePinModal() {
                           form.setValue('facultyId', f.id, { shouldValidate: true })
                           setFacultyDropdownOpen(false)
                         }}
-                        className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-colors ${
+                        className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                           form.watch('facultyId') === f.id
-                            ? 'bg-red-50 dark:bg-red-900/10 text-[#D41F2D] font-bold' 
-                            : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                            ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300' 
+                            : 'text-stone-700 dark:text-stone-300 hover:bg-[#F4F0E8] dark:hover:bg-white/[0.08]'
                         }`}
                       >
                         {localizedName(f, i18n.language)}
@@ -635,9 +625,9 @@ export function CreatePinModal() {
             </div>
 
             {/* Categories */}
-            <div className="space-y-6">
-              <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.category')}</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.category')}</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 <Controller
                   name="categoryId"
                   control={form.control}
@@ -649,48 +639,51 @@ export function CreatePinModal() {
                     })
                     return (
                       <>
-                        {activeCategories.map(c => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            disabled={isVerifiedLocked && field.value !== c.id}
-                            onClick={() => field.onChange(c.id)}
-                            className={`flex flex-col items-center gap-3 p-4 rounded-[24px] border-2 transition-all ${
-                              field.value === c.id
-                                ? 'shadow-lg scale-[1.02]'
-                                : 'bg-neutral-50/50 dark:bg-neutral-800/50 border-transparent hover:border-neutral-200 dark:hover:border-neutral-700'
-                            } ${isVerifiedLocked && field.value !== c.id ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
-                            style={field.value === c.id ? { 
-                              borderColor: c.color, 
-                              backgroundColor: `color-mix(in srgb, ${c.color} 10%, transparent)` 
-                            } : {}}
-                          >
-                            <div
-                              className={`w-11 h-11 rounded-[16px] flex items-center justify-center shrink-0 transition-all ${
-                                field.value === c.id 
-                                  ? 'text-white shadow-lg' 
-                                  : 'bg-white dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-100 dark:border-neutral-700'
-                              }`}
-                              style={field.value === c.id ? { backgroundColor: c.color } : {}}
+                        {activeCategories.map(c => {
+                          const isSelected = field.value === c.id
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              disabled={isVerifiedLocked && !isSelected}
+                              onClick={() => field.onChange(c.id)}
+                              className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'shadow-xs border-current bg-white dark:bg-[#1E222D]'
+                                  : 'bg-white dark:bg-[#1E222D] border-[#E6E0D5] dark:border-white/[0.07] hover:border-stone-400'
+                              } ${isVerifiedLocked && !isSelected ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
+                              style={isSelected ? { 
+                                borderColor: c.color, 
+                                backgroundColor: `color-mix(in srgb, ${c.color} 8%, transparent)` 
+                              } : {}}
                             >
-                              {c.svgPath ? (
-                                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-                                  <path d={c.svgPath} />
-                                </svg>
-                              ) : (
-                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                              )}
-                            </div>
-                            <span 
-                              className={`text-[9px] font-black uppercase tracking-widest text-center leading-none ${
-                                field.value !== c.id && 'text-neutral-500 dark:text-neutral-400'
-                              }`}
-                              style={field.value === c.id ? { color: c.color } : {}}
-                            >
-                              {localizedName(c, i18n.language)}
-                            </span>
-                          </button>
-                        ))}
+                              <div
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                                  isSelected 
+                                    ? 'text-white shadow-xs' 
+                                    : 'bg-[#EFECE4] dark:bg-white/[0.08] text-stone-500 dark:text-stone-400'
+                                }`}
+                                style={isSelected ? { backgroundColor: c.color } : {}}
+                              >
+                                {c.svgPath ? (
+                                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                    <path d={c.svgPath} />
+                                  </svg>
+                                ) : (
+                                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                                )}
+                              </div>
+                              <span 
+                                className={`text-xs font-semibold text-center leading-tight ${
+                                  !isSelected && 'text-stone-700 dark:text-stone-300'
+                                }`}
+                                style={isSelected ? { color: c.color } : {}}
+                              >
+                                {localizedName(c, i18n.language)}
+                              </span>
+                            </button>
+                          )
+                        })}
                       </>
                     )
                   }}
@@ -700,9 +693,9 @@ export function CreatePinModal() {
 
             {/* Event Dates */}
             {type === 'event' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">Fecha de Inicio</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">Fecha de Inicio</label>
                   <Controller
                     name="startsAt"
                     control={form.control}
@@ -717,11 +710,11 @@ export function CreatePinModal() {
                     )}
                   />
                   {form.formState.errors.startsAt && (
-                    <p className="text-xs font-bold text-[#D41F2D] mt-1 ml-1">{form.formState.errors.startsAt.message}</p>
+                    <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846] mt-1">{form.formState.errors.startsAt.message}</p>
                   )}
                 </div>
-                <div className="space-y-3">
-                  <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">Fecha de Término</label>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">Fecha de Término</label>
                   <Controller
                     name="endsAt"
                     control={form.control}
@@ -736,14 +729,13 @@ export function CreatePinModal() {
                     )}
                   />
                   {form.formState.errors.endsAt && (
-                    <p className="text-xs font-bold text-[#D41F2D] mt-1 ml-1">{form.formState.errors.endsAt.message}</p>
+                    <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846] mt-1">{form.formState.errors.endsAt.message}</p>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Programa del evento: va pegado a las fechas porque es una
-                subdivisión de ellas, no un campo independiente. */}
+            {/* Programa del evento */}
             {type === 'event' && (
               <EventScheduleEditor
                 rows={scheduleRows}
@@ -757,12 +749,7 @@ export function CreatePinModal() {
               />
             )}
 
-            {/* Planta y código de sala.
-                También al EDITAR: corregir en qué piso está una sala es la
-                edición más probable de todas, y hasta ahora este bloque solo se
-                montaba al crear, así que no había forma de arreglarlo. La base
-                lo permite —`floor` y `room_code` no están entre los campos que
-                protege protect_pin_sensitive_fields—, faltaba el formulario. */}
+            {/* Planta y código de sala */}
             {indoorPoint && (
               <IndoorFields
                 lat={indoorPoint.lat}
@@ -778,11 +765,11 @@ export function CreatePinModal() {
 
             {/* Coordinates */}
             {!editingPin && draftLocation && (
-              <div className="space-y-6">
-                <label className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">{t('pin.coordinates', 'Coordenadas')}</label>
-                <div className="w-full bg-neutral-50/70 dark:bg-neutral-800/70 border border-neutral-100 dark:border-neutral-700 rounded-2xl px-6 py-4 flex items-center gap-3 shadow-sm">
-                  <MapPin size={18} className="text-neutral-400 shrink-0" />
-                  <span className="text-sm font-mono font-bold text-neutral-600 dark:text-neutral-400">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.coordinates', 'Coordenadas')}</label>
+                <div className="w-full bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] rounded-2xl px-5 py-3 flex items-center gap-2.5 shadow-xs">
+                  <MapPin size={16} className="text-stone-400 shrink-0" />
+                  <span className="text-xs font-mono font-semibold tabular-nums text-stone-600 dark:text-stone-400">
                     {draftLocation.lat.toFixed(6)}, {draftLocation.lng.toFixed(6)}
                   </span>
                 </div>
@@ -791,17 +778,17 @@ export function CreatePinModal() {
 
             {/* Admin Toggle: isOfficial */}
             {can(role, 'pin.moderate') && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between gap-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-5 shadow-sm transition-all">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4 bg-sky-500/10 dark:bg-sky-500/15 border border-sky-500/20 dark:border-sky-500/30 rounded-2xl p-4 shadow-xs transition-all">
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
-                      <BadgeCheck size={18} className="text-blue-500 shrink-0" strokeWidth={2.2} />
-                      <label className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] cursor-pointer">
+                      <BadgeCheck size={18} className="text-sky-600 dark:text-sky-400 shrink-0" strokeWidth={2.2} />
+                      <label className="text-xs font-semibold text-sky-700 dark:text-sky-300 cursor-pointer">
                         {t('pin.officialToggle', 'Publicar como Oficial')}
                       </label>
                     </div>
-                    <p className="text-[11px] sm:text-xs text-neutral-500 dark:text-neutral-400 font-medium leading-snug pl-6">
-                      El autor se mostrará como <span className="font-bold text-[#D41F2D]">{role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP'}</span>.
+                    <p className="text-xs text-stone-600 dark:text-stone-400 font-normal leading-snug pl-6">
+                      El autor se mostrará como <span className="font-semibold text-[#C22B38] dark:text-[#D93846]">{role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP'}</span>.
                     </p>
                   </div>
                   <Controller
@@ -813,12 +800,12 @@ export function CreatePinModal() {
                         role="switch"
                         aria-checked={field.value}
                         onClick={() => field.onChange(!field.value)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                          field.value ? 'bg-blue-600' : 'bg-neutral-300 dark:bg-neutral-600'
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          field.value ? 'bg-sky-600' : 'bg-stone-300 dark:bg-stone-600'
                         }`}
                       >
                         <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
                             field.value ? 'translate-x-5' : 'translate-x-0'
                           }`}
                         />
@@ -834,23 +821,23 @@ export function CreatePinModal() {
               <button
                 type="submit"
                 disabled={!title?.trim() || create.isPending || (!editingPin && !draftLocation)}
-                className="w-full h-11 bg-[#D41F2D] hover:bg-[#b11a25] text-white rounded-full font-extrabold uppercase text-xs tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-20 disabled:grayscale cursor-pointer"
+                className="w-full h-11 bg-[#C22B38] hover:bg-[#9E1F2A] dark:bg-[#D93846] dark:hover:bg-[#B82532] text-white rounded-2xl font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale cursor-pointer"
               >
                 {create.isPending ? <Loader2 size={16} className="animate-spin" /> : editingPin ? t('pin.update', 'Guardar') : t('pin.submit')}
-                {!create.isPending && <ArrowRight size={16} strokeWidth={3} />}
+                {!create.isPending && <ArrowRight size={16} strokeWidth={2.5} />}
               </button>
             </div>
           </form>
 
           {/* Submit Button Sticky Bottom (Mobile only) */}
-          <div className="sm:hidden px-5 pt-3 pb-[max(1.2rem,env(safe-area-inset-bottom))] bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 shrink-0">
+          <div className="sm:hidden px-5 pt-3 pb-[max(1.2rem,env(safe-area-inset-bottom))] bg-[#FAF8F5] dark:bg-[#151820] border-t border-[#E5DEC9] dark:border-white/10 shrink-0">
             <button
               onClick={submit}
               disabled={!title?.trim() || create.isPending || (!editingPin && !draftLocation)}
-              className="w-full h-11 bg-[#D41F2D] hover:bg-[#b11a25] text-white rounded-full font-extrabold uppercase text-xs tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-20 disabled:grayscale cursor-pointer"
+              className="w-full h-11 bg-[#C22B38] hover:bg-[#9E1F2A] dark:bg-[#D93846] dark:hover:bg-[#B82532] text-white rounded-2xl font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale cursor-pointer"
             >
               {create.isPending ? <Loader2 size={16} className="animate-spin" /> : editingPin ? t('pin.update', 'Guardar') : t('pin.submit')}
-              {!create.isPending && <ArrowRight size={16} strokeWidth={3} />}
+              {!create.isPending && <ArrowRight size={16} strokeWidth={2.5} />}
             </button>
           </div>
         </RadixDialog.Content>

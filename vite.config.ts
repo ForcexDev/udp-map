@@ -20,6 +20,10 @@ import path from 'node:path'
 // Si git no está disponible (una exportación en zip), se cae a la versión de
 // package.json a secas.
 // ---------------------------------------------------------------------------
+// TODO: Arreglar el versionado automático en Vercel. Como Vercel construye desde
+// un clon superficial (--depth=10) por defecto, `git rev-list --count HEAD`
+// devuelve siempre 10 (ej. 0.8+10) a menos que se active VERCEL_DEEP_CLONE=true
+// o se reemplace el cálculo por un identificador real en build time.
 function computeAppVersion(): string {
   const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'))
   const [major, minor] = (pkg.version as string).split('.')

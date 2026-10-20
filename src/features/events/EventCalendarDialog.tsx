@@ -59,31 +59,31 @@ export function EventCalendarDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={t('events.goToDate', 'Ir a una fecha')}
-      contentClassName="!bg-white dark:!bg-neutral-900 sm:max-w-sm"
+      contentClassName="!bg-white dark:!bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] sm:max-w-sm rounded-3xl"
     >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-black capitalize text-neutral-900 dark:text-white m-0">{monthName}</h3>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="m-0 text-base font-bold capitalize text-stone-900 dark:text-stone-100">{monthName}</h3>
         <div className="flex gap-1">
           <button
             onClick={() => setCursor(new Date(year, month - 1, 1))}
             aria-label={t('events.prevMonth', 'Mes anterior')}
-            className="rounded-xl p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="cursor-pointer rounded-xl p-2 text-stone-600 transition-colors hover:bg-[#EFECE4] dark:text-stone-300 dark:hover:bg-white/[0.08]"
           >
             <ChevronLeft size={18} />
           </button>
           <button
             onClick={() => setCursor(new Date(year, month + 1, 1))}
             aria-label={t('events.nextMonth', 'Mes siguiente')}
-            className="rounded-xl p-2 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="cursor-pointer rounded-xl p-2 text-stone-600 transition-colors hover:bg-[#EFECE4] dark:text-stone-300 dark:hover:bg-white/[0.08]"
           >
             <ChevronRight size={18} />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+      <div className="mb-2 grid grid-cols-7 gap-1 text-center">
         {WEEKDAYS.map((d, i) => (
-          <span key={i} className="text-[11px] font-black uppercase text-neutral-400">
+          <span key={i} className="text-xs font-semibold text-stone-400 dark:text-stone-500">
             {d}
           </span>
         ))}
@@ -107,19 +107,19 @@ export function EventCalendarDialog({
                 onSelectDay(date)
                 onOpenChange(false)
               }}
-              className={`relative flex aspect-square flex-col items-center justify-center rounded-2xl text-sm font-bold transition-all ${
+              className={`relative flex aspect-square cursor-pointer flex-col items-center justify-center rounded-2xl text-xs font-semibold tabular-nums transition-all ${
                 isSelected
-                  ? 'bg-neutral-900 text-white shadow-md dark:bg-white dark:text-neutral-900'
+                  ? 'bg-stone-900 text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950'
                   : isToday
-                    ? 'border border-[#D41F2D]/20 bg-[#D41F2D]/10 text-[#D41F2D]'
-                    : 'text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800'
+                    ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
+                    : 'text-stone-700 hover:bg-[#EFECE4] dark:text-stone-300 dark:hover:bg-white/[0.08]'
               }`}
             >
               <span className={daysWithEvents.has(day) ? '-translate-y-0.5' : ''}>{day}</span>
               {daysWithEvents.has(day) && (
                 <span
                   className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${
-                    isSelected ? 'bg-white dark:bg-neutral-900' : 'bg-[#D41F2D]'
+                    isSelected ? 'bg-white dark:bg-stone-950' : 'bg-[#C22B38] dark:bg-[#D93846]'
                   }`}
                 />
               )}

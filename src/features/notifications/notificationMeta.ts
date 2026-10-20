@@ -44,7 +44,7 @@ const LOOKS: Record<NotificationCategory, CategoryLook> = {
   },
   moderation: {
     icon: ShieldAlert,
-    fg: 'text-[#D41F2D] dark:text-red-400',
+    fg: 'text-[#C22B38] dark:text-[#D93846]',
     bg: 'bg-red-100 dark:bg-red-950/50',
   },
   // Tu contenido en el mapa: te verificaron un pin, o alguien lo comentó.
@@ -55,15 +55,15 @@ const LOOKS: Record<NotificationCategory, CategoryLook> = {
   },
   system: {
     icon: Megaphone,
-    fg: 'text-[#D41F2D] dark:text-red-400',
+    fg: 'text-[#C22B38] dark:text-[#D93846]',
     bg: 'bg-red-100 dark:bg-red-950/50',
   },
 }
 
 const FALLBACK: CategoryLook = {
   icon: Bell,
-  fg: 'text-neutral-500 dark:text-neutral-400',
-  bg: 'bg-neutral-100 dark:bg-neutral-800',
+  fg: 'text-stone-500 dark:text-stone-400',
+  bg: 'bg-[#EFECE4] dark:bg-white/[0.08]',
 }
 
 /**

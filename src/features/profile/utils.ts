@@ -17,8 +17,8 @@ export function handleFromEmail(email: string | null | undefined, fallbackName?:
 }
 
 export const ROLE_COLORS: Record<Role, string> = {
-  guest: 'text-neutral-500',
+  guest: 'text-stone-500',
   student: 'text-blue-600 dark:text-blue-400',
   moderator: 'text-amber-600 dark:text-amber-500',
-  admin: 'text-[#D41F2D] dark:text-red-400',
+  admin: 'text-[#C22B38] dark:text-[#D93846]',
 }

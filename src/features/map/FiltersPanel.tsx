@@ -57,25 +57,25 @@ export function FiltersPanel() {
             useUIStore.getState().selectPin(null)
           }}
           aria-label={t('filters.title')}
-          className="glass-hud flex h-10 items-center gap-1.5 rounded-full px-4 text-[14px] font-semibold premium-shadow active:scale-95 transition-transform"
+          className="glass-hud flex h-10 items-center gap-2 rounded-2xl px-4 text-xs font-semibold premium-shadow active:scale-95 transition-transform text-stone-700 dark:text-stone-300 cursor-pointer"
         >
           <SlidersHorizontal size={15} />
           {t('filters.title')}
         </button>
       ) : (
-        <div className="glass-hud w-72 max-h-[calc(100dvh-220px)] sm:max-h-[calc(100dvh-120px)] overflow-y-auto rounded-[22px] p-5 shadow-3xl animate-scale-in [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:sm:[&::-webkit-scrollbar-thumb]:bg-neutral-600 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+        <div className="glass-hud w-72 max-h-[calc(100dvh-220px)] sm:max-h-[calc(100dvh-120px)] overflow-y-auto rounded-[24px] p-4.5 premium-shadow animate-scale-in border border-[#E5DEC9] dark:border-white/10 [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-stone-300 dark:sm:[&::-webkit-scrollbar-thumb]:bg-stone-600 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
           <div className="mb-4 flex items-center justify-between shrink-0">
-            <h2 className="text-sm font-black tracking-tight">{t('filters.title')}</h2>
+            <h2 className="text-sm font-bold tracking-tight text-stone-900 dark:text-stone-100">{t('filters.title')}</h2>
             <button
               onClick={() => setOpen(false)}
               aria-label={t('common.close')}
-              className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#EFECE4] text-stone-600 hover:text-stone-900 dark:bg-white/[0.08] dark:text-stone-300 dark:hover:text-stone-100 transition-colors cursor-pointer"
             >
               <X size={16} />
             </button>
           </div>
 
-          <p className="mb-2 text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">
+          <p className="mb-2 text-xs font-semibold text-stone-500 dark:text-stone-400">
             {t('filters.types')}
           </p>
           <div className="mb-4 flex flex-wrap gap-1.5">
@@ -94,7 +94,7 @@ export function FiltersPanel() {
             ))}
           </div>
 
-          <p className="mb-2 text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">
+          <p className="mb-2 text-xs font-semibold text-stone-500 dark:text-stone-400">
             {t('filters.category')}
           </p>
           <div className="mb-4 flex flex-wrap gap-1.5">
@@ -129,14 +129,14 @@ export function FiltersPanel() {
             ))}
           </div>
 
-          <p className="mb-2 text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">
+          <p className="mb-2 text-xs font-semibold text-stone-500 dark:text-stone-400">
             {t('filters.faculty')}
           </p>
           <div className="relative mb-4">
             <button
               type="button"
               onClick={() => setFacultyDropdownOpen(!facultyDropdownOpen)}
-              className="w-full rounded-xl border border-neutral-200 bg-white/60 dark:bg-neutral-800/60 dark:border-neutral-700 px-3 py-2 text-sm font-medium backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-[#D41F2D]/20 flex justify-between items-center transition-colors"
+              className="w-full rounded-xl border border-[#E5DEC9] bg-white dark:bg-[#1E222D] dark:border-white/10 px-3.5 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none flex justify-between items-center transition-colors cursor-pointer"
             >
               <span className="truncate">
                 {facultyId
@@ -154,8 +154,8 @@ export function FiltersPanel() {
             </button>
 
             {facultyDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xl overflow-hidden animate-scale-in">
-                <div className="max-h-48 overflow-y-auto p-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-thumb]:rounded-full">
+              <div className="absolute top-full left-0 right-0 mt-1.5 z-50 rounded-2xl glass-hud border border-[#E5DEC9] dark:border-white/10 premium-shadow overflow-hidden animate-scale-in">
+                <div className="max-h-48 overflow-y-auto p-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-stone-300 dark:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-thumb]:rounded-full">
                   <button
                     onClick={() => {
                       setFacultyId(null)
@@ -205,7 +205,7 @@ export function FiltersPanel() {
 
           <button
             onClick={clear}
-            className="w-full text-center text-xs font-bold text-[#D41F2D] hover:underline"
+            className="w-full text-center text-xs font-semibold text-[#C22B38] dark:text-[#D93846] hover:underline cursor-pointer"
           >
             {t('filters.clear')}
           </button>

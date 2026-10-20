@@ -57,24 +57,24 @@ export function TutorialModal() {
       onOpenChange={(o) => !o && close()}
       title={t('tutorial.title', 'Bienvenido a UDP Map')}
       description={t('tutorial.subtitle', 'Explora tu campus, descubre facultades y comparte eventos.')}
-      contentClassName="!bg-white dark:!bg-neutral-900 sm:max-w-md max-h-[85dvh] overflow-y-auto p-4 sm:p-5"
+      contentClassName="!bg-[#FAF8F5] dark:!bg-[#151820] border border-[#E5DEC9] dark:border-white/10 sm:max-w-md max-h-[85dvh] overflow-y-auto p-4 sm:p-5 rounded-[28px]"
     >
       <div className="flex flex-col gap-3 py-1">
         {/* Smart PWA Install Card */}
         {!isStandalone ? (
-          <div className="rounded-2xl border border-[#D41F2D]/20 bg-[#D41F2D]/[0.05] p-3.5 dark:border-red-900/50 dark:bg-red-950/25 flex flex-col gap-2.5">
+          <div className="rounded-2xl border border-[#C22B38]/20 bg-[#C22B38]/[0.05] p-3.5 dark:border-[#D93846]/30 dark:bg-[#D93846]/15 flex flex-col gap-2.5">
             <div>
-              <h3 className="text-xs sm:text-sm font-extrabold text-neutral-900 dark:text-white leading-tight">
+              <h3 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 leading-tight">
                 {t('tutorial.installTitle', 'Instala UDP Map para disfrutarla al máximo')}
               </h3>
-              <p className="mt-1 text-[11px] leading-snug font-medium text-neutral-600 dark:text-neutral-300">
+              <p className="mt-1 text-xs leading-snug font-normal text-stone-600 dark:text-stone-300">
                 {t('tutorial.installBenefit', 'Acceso instantáneo desde tu pantalla de inicio sin barra de navegador.')}
               </p>
             </div>
 
             <button
               onClick={handleInstallClick}
-              className="w-full py-2.5 px-4 bg-[#D41F2D] hover:bg-[#b01a25] text-white rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer mt-0.5"
+              className="w-full py-2.5 px-4 bg-[#C22B38] hover:bg-[#a8222f] dark:bg-[#D93846] text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer mt-0.5"
             >
               <Download size={16} strokeWidth={2.5} />
               <span>{isIOS ? t('tutorial.installIOS', 'Ver cómo instalar en iPhone') : t('tutorial.installAction', 'Instalar aplicación')}</span>
@@ -106,7 +106,7 @@ export function TutorialModal() {
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/30 px-3.5 py-2.5 rounded-2xl">
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/50 dark:border-emerald-900/30 px-3.5 py-2.5 rounded-2xl">
             <Check size={16} strokeWidth={2.5} />
             <span>{t('tutorial.installedAlready', 'Aplicación instalada y lista para usar')}</span>
           </div>
@@ -114,42 +114,42 @@ export function TutorialModal() {
 
         {/* 2x2 Feature Grid */}
         <div className="grid grid-cols-2 gap-2 mt-0.5">
-          <div className="flex flex-col p-2.5 sm:p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/60 dark:bg-neutral-800/40">
+          <div className="flex flex-col p-3 rounded-2xl border border-[#E5DEC9] dark:border-white/[0.08] bg-white dark:bg-[#1E222D]">
             <div className="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center mb-1">
               <Hand size={15} />
             </div>
-            <span className="text-xs font-extrabold text-neutral-900 dark:text-white leading-tight">{t('tutorial.cardExploreTitle', 'Explora en 3D')}</span>
-            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-tight mt-0.5">{t('tutorial.cardExploreBody', 'Navega e inclina la vista para ver los edificios en 3D.')}</span>
+            <span className="text-xs font-bold text-stone-900 dark:text-stone-100 leading-tight">{t('tutorial.cardExploreTitle', 'Explora en 3D')}</span>
+            <span className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight mt-1">{t('tutorial.cardExploreBody', 'Navega e inclina la vista para ver los edificios en 3D.')}</span>
           </div>
 
-          <div className="flex flex-col p-2.5 sm:p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/60 dark:bg-neutral-800/40">
-            <div className="w-7 h-7 rounded-xl bg-red-50 dark:bg-red-900/30 text-[#D41F2D] flex items-center justify-center mb-1">
+          <div className="flex flex-col p-3 rounded-2xl border border-[#E5DEC9] dark:border-white/[0.08] bg-white dark:bg-[#1E222D]">
+            <div className="w-7 h-7 rounded-xl bg-[#C22B38]/10 text-[#C22B38] flex items-center justify-center mb-1">
               <MapPin size={15} />
             </div>
-            <span className="text-xs font-extrabold text-neutral-900 dark:text-white leading-tight">{t('tutorial.cardPinsTitle', 'Pines y reportes')}</span>
-            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-tight mt-0.5">{t('tutorial.cardPinsBody', 'Publica eventos, comida, salas o avisos útiles con (+).')}</span>
+            <span className="text-xs font-bold text-stone-900 dark:text-stone-100 leading-tight">{t('tutorial.cardPinsTitle', 'Pines y reportes')}</span>
+            <span className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight mt-1">{t('tutorial.cardPinsBody', 'Publica eventos, comida, salas o avisos útiles con (+).')}</span>
           </div>
 
-          <div className="flex flex-col p-2.5 sm:p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/60 dark:bg-neutral-800/40">
+          <div className="flex flex-col p-3 rounded-2xl border border-[#E5DEC9] dark:border-white/[0.08] bg-white dark:bg-[#1E222D]">
             <div className="w-7 h-7 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-500 dark:text-amber-400 flex items-center justify-center mb-1">
               <Compass size={15} />
             </div>
-            <span className="text-xs font-extrabold text-neutral-900 dark:text-white leading-tight">{t('tutorial.cardSearchTitle', 'Búsqueda y rutas')}</span>
-            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-tight mt-0.5">{t('tutorial.cardSearchBody', 'Encuentra facultades al instante y calcula rutas a pie.')}</span>
+            <span className="text-xs font-bold text-stone-900 dark:text-stone-100 leading-tight">{t('tutorial.cardSearchTitle', 'Búsqueda y rutas')}</span>
+            <span className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight mt-1">{t('tutorial.cardSearchBody', 'Encuentra facultades al instante y calcula rutas a pie.')}</span>
           </div>
 
-          <div className="flex flex-col p-2.5 sm:p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/60 dark:bg-neutral-800/40">
+          <div className="flex flex-col p-3 rounded-2xl border border-[#E5DEC9] dark:border-white/[0.08] bg-white dark:bg-[#1E222D]">
             <div className="w-7 h-7 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 dark:text-emerald-400 flex items-center justify-center mb-1">
               <GraduationCap size={15} />
             </div>
-            <span className="text-xs font-extrabold text-neutral-900 dark:text-white leading-tight">{t('tutorial.cardCommunityTitle', 'Comunidad UDP')}</span>
-            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-tight mt-0.5">{t('tutorial.cardCommunityBody', 'Inicia sesión con tu correo @mail.udp.cl para votar y comentar.')}</span>
+            <span className="text-xs font-bold text-stone-900 dark:text-stone-100 leading-tight">{t('tutorial.cardCommunityTitle', 'Comunidad UDP')}</span>
+            <span className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight mt-1">{t('tutorial.cardCommunityBody', 'Inicia sesión con tu correo @mail.udp.cl para votar y comentar.')}</span>
           </div>
         </div>
       </div>
 
       <div className="mt-3 pt-1">
-        <Button onClick={close} className="w-full font-extrabold py-2.5 text-xs sm:text-sm">
+        <Button onClick={close} className="w-full font-semibold py-3 text-xs sm:text-sm rounded-2xl bg-[#C22B38] dark:bg-[#D93846] text-white hover:opacity-95 shadow-xs">
           {t('tutorial.start', '¡Entendido, a explorar!')}
         </Button>
       </div>

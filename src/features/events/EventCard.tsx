@@ -75,40 +75,40 @@ export function EventCard({
   return (
     <div
       onClick={() => onSelect(event)}
-      className={`group bg-white dark:bg-neutral-900 border rounded-3xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md transition-all cursor-pointer ${
+      className={`group flex cursor-pointer flex-col gap-3 rounded-2xl border bg-white p-4 shadow-xs transition-all hover:shadow-md dark:bg-[#1E222D] ${
         phase === 'live'
-          ? 'border-[#D41F2D]/40 ring-1 ring-[#D41F2D]/20'
-          : 'border-neutral-200 dark:border-neutral-800'
+          ? 'border-[#C22B38]/40 ring-1 ring-[#C22B38]/20 dark:border-[#D93846]/40 dark:ring-[#D93846]/20'
+          : 'border-[#E6E0D5] dark:border-white/[0.07]'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5 min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <Icon size={16} className="mt-0.5 shrink-0" style={{ color: cat?.color }} />
-          <h3 className="m-0 text-left text-[15px] font-extrabold leading-snug text-neutral-900 dark:text-white group-hover:text-[#D41F2D] transition-colors">
+          <h3 className="m-0 text-left text-[15px] font-bold leading-snug text-stone-900 transition-colors group-hover:text-[#C22B38] dark:text-stone-100 dark:group-hover:text-[#D93846]">
             {event.title}
           </h3>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
           {phase === 'live' && (
-            <span className="flex items-center gap-1.5 rounded-full bg-[#D41F2D] px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
-              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+            <span className="flex items-center gap-1.5 rounded-xl border border-[#F2D0CE] bg-[#FBECEB] px-2.5 py-0.5 text-xs font-semibold text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#C22B38] dark:bg-[#D93846] animate-pulse" />
               {t('events.live', 'En vivo')}
             </span>
           )}
           {event.is_official && (
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+            <span className="rounded-xl border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-400">
               {t('events.official', 'Oficial')}
             </span>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+      <div className="flex flex-col gap-1.5 text-xs font-medium text-stone-500 dark:text-stone-400">
         {event.starts_at && (
           <div className="flex items-center gap-1.5">
             <Clock size={14} className="shrink-0" />
-            <span>
+            <span className="tabular-nums">
               {time(event.starts_at)}
               {event.ends_at && ` - ${time(event.ends_at)}`}
             </span>
@@ -129,7 +129,7 @@ export function EventCard({
                   e.stopPropagation()
                   onShowAttendees(event)
                 }}
-                className="font-bold text-[#D41F2D] hover:underline"
+                className="cursor-pointer font-semibold text-[#C22B38] hover:underline dark:text-[#D93846]"
               >
                 {t('events.attendeesGoing', {
                   count: rsvpCount?.going ?? 0,
@@ -162,19 +162,19 @@ export function EventCard({
         )}
       </div>
 
-      <div className="flex gap-2 border-t border-neutral-100 dark:border-neutral-800 pt-3">
+      <div className="flex gap-2 border-t border-[#E5DEC9] pt-3 dark:border-white/10">
         <button
           onClick={(e) => {
             e.stopPropagation()
             onRSVPChange(event.id, userStatus === 'going' ? null : 'going')
           }}
-          className={`flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-bold transition-all ${
+          className={`flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl text-xs font-semibold transition-all ${
             userStatus === 'going'
-              ? 'bg-[#D41F2D] text-white shadow-sm'
-              : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+              ? 'bg-[#C22B38] text-white shadow-xs dark:bg-[#D93846]'
+              : 'bg-[#EFECE4] text-stone-700 hover:bg-[#e6e2d8] dark:bg-white/[0.08] dark:text-stone-200 dark:hover:bg-white/[0.12]'
           }`}
         >
-          {userStatus === 'going' && <Check size={12} />}
+          {userStatus === 'going' && <Check size={14} />}
           {t('events.rsvpGoing', 'Asistiré')}
         </button>
         <button
@@ -182,13 +182,13 @@ export function EventCard({
             e.stopPropagation()
             onRSVPChange(event.id, userStatus === 'interested' ? null : 'interested')
           }}
-          className={`flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-bold transition-all ${
+          className={`flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl text-xs font-semibold transition-all ${
             userStatus === 'interested'
-              ? 'bg-neutral-900 text-white shadow-sm dark:bg-white dark:text-neutral-900'
-              : 'bg-neutral-50 text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+              ? 'bg-stone-900 text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950'
+              : 'bg-[#EFECE4] text-stone-700 hover:bg-[#e6e2d8] dark:bg-white/[0.08] dark:text-stone-200 dark:hover:bg-white/[0.12]'
           }`}
         >
-          {userStatus === 'interested' && <Check size={12} />}
+          {userStatus === 'interested' && <Check size={14} />}
           {t('events.rsvpInterested', 'Me interesa')}
         </button>
       </div>

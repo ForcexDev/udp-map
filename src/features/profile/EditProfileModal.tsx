@@ -61,7 +61,7 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
   }
 
   const fieldClass =
-    'w-full p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700/80 text-sm font-semibold focus:outline-none focus:border-[#D41F2D] focus:bg-white dark:focus:bg-neutral-900 transition-all shadow-sm'
+    'w-full p-3 rounded-2xl bg-[#FAF8F5] dark:bg-[#151820] border border-[#E6E0D5] dark:border-white/[0.07] text-sm font-semibold text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:border-[#C22B38] dark:focus:border-[#D93846] focus:bg-white dark:focus:bg-[#1E222D] transition-all shadow-sm'
 
   return (
     <Dialog
@@ -69,13 +69,13 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
       onOpenChange={onOpenChange}
       title={t('profile.editProfile')}
       description={t('profile.editProfileDesc')}
-      contentClassName="!bg-white dark:!bg-neutral-900 sm:max-w-md shadow-2xl rounded-2xl overflow-x-hidden max-w-full overscroll-x-none touch-pan-y"
+      contentClassName="!bg-white dark:!bg-[#1E222D] sm:max-w-md shadow-2xl rounded-3xl border border-[#E6E0D5] dark:border-white/[0.07] overflow-x-hidden max-w-full overscroll-x-none touch-pan-y"
     >
       <div className="flex flex-col gap-5 py-2 overflow-x-hidden max-w-full overscroll-x-none touch-pan-y">
         {/* Nombre */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <UserRound size={16} className="text-[#D41F2D]" />
+          <label className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+            <UserRound size={16} className="text-[#C22B38] dark:text-[#D93846]" />
             {t('profile.name')}
           </label>
           <input
@@ -90,8 +90,8 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
 
         {/* Facultad */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <MapPin size={16} className="text-[#D41F2D]" />
+          <label className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+            <MapPin size={16} className="text-[#C22B38] dark:text-[#D93846]" />
             {t('auth.faculty', 'Facultad')}
           </label>
           <CustomSelect
@@ -111,8 +111,8 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
 
         {/* Carrera */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <GraduationCap size={16} className="text-[#D41F2D]" />
+          <label className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+            <GraduationCap size={16} className="text-[#C22B38] dark:text-[#D93846]" />
             {t('auth.career', 'Carrera')}
           </label>
           <CustomSelect
@@ -134,11 +134,11 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
         </div>
       </div>
 
-      <div className="mt-6 flex gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800">
-        <Button variant="secondary" onClick={() => onOpenChange(false)} className="flex-1 rounded-full">
+      <div className="mt-6 flex gap-2 pt-3 border-t border-[#E6E0D5] dark:border-white/[0.07]">
+        <Button variant="secondary" onClick={() => onOpenChange(false)} className="flex-1 rounded-2xl">
           {t('common.cancel')}
         </Button>
-        <Button onClick={handleSave} disabled={!canSave || loading} className="flex-1 bg-[#D41F2D] hover:bg-[#b11a25] text-white rounded-full">
+        <Button onClick={handleSave} disabled={!canSave || loading} className="flex-1 bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] dark:hover:bg-[#c22b38] text-white rounded-2xl">
           {loading ? t('common.saving', 'Guardando...') : t('common.save', 'Guardar')}
         </Button>
       </div>
