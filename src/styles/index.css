@@ -96,6 +96,25 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Marcador de sala con código tabular (píldora cálida sobre el mapa).
+   Se alterna con classList.toggle('pin-marker--room') sin reescribir
+   el.className para NO borrar las clases maplibregl-marker que MapLibre
+   añade al construir el Marker (son las que le dan position: absolute). */
+.pin-marker.pin-marker--room {
+  width: auto;
+  height: auto;
+  padding: 5px 10px;
+  border-radius: 14px;
+  background: #FAF8F5;
+  border: 1px solid #E5DEC9;
+  gap: 6px;
+}
+
+.dark .pin-marker.pin-marker--room {
+  background: #151820;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
 /* ── Glass Effects ──────────────────────────────────────── */
 .glass-hud {
   background: rgba(250, 248, 245, 0.95);

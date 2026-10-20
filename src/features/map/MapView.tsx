@@ -495,12 +495,14 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       const renderKey = `${pin.category_id ?? ''}|${pin.type}|${pin.floor ?? ''}|${pin.room_code ?? ''}`
       if (el.dataset.render !== renderKey) {
         el.dataset.render = renderKey
+        // NUNCA reasignar `el.className`: MapLibre añade `maplibregl-marker` y
+        // `maplibregl-marker-anchor-bottom` al construir el Marker, que son las
+        // clases que le dan `position: absolute; top: 0; left: 0`. Pisarlas saca
+        // los pines al flujo del documento y los deja flotando desanclados.
+        el.classList.toggle('pin-marker--room', isRoom)
         if (isRoom && pin.room_code) {
-          el.className =
-            'pin-marker pin-marker--room !w-auto !h-auto !rounded-2xl !px-3 !py-1.5 !bg-[#FAF8F5] dark:!bg-[#151820] !border !border-[#E5DEC9] dark:!border-white/10 !shadow-md flex items-center gap-1.5 cursor-pointer'
           el.innerHTML = `<span class="w-2 h-2 rounded-full bg-sky-500 shrink-0"></span><span class="text-xs font-bold tabular-nums text-stone-900 dark:text-stone-100 whitespace-nowrap">${shortRoomCode(pin.room_code)}</span>`
         } else {
-          el.className = 'pin-marker'
           el.innerHTML = markerSvgContent(pin)
           // Insignia de planta: sin ella, dos pines de pisos distintos en la misma
           // vertical son indistinguibles cuando se ven todas las plantas a la vez.
