@@ -158,21 +158,21 @@ export function EventsPage() {
   ]
 
   return (
-    <div className="h-full overflow-y-auto bg-neutral-50 dark:bg-neutral-950 pb-16">
+    <div className="h-full overflow-y-auto bg-[#FAF8F5] pb-16 dark:bg-[#151820]">
       <div className="mx-auto w-full max-w-3xl px-4 pt-safe-page">
         {/* Cabecera */}
-        <div className="mb-5 flex flex-col gap-4 border-b border-neutral-200 pb-4 dark:border-neutral-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-5 flex flex-col gap-4 border-b border-[#E5DEC9] pb-4 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
           <div className="pr-2">
-            <h1 className="text-2xl font-black text-neutral-900 dark:text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
               {t('events.title', 'Eventos')}
             </h1>
-            <p className="mt-1 text-xs font-medium text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-xs font-medium text-stone-500 dark:text-stone-400">
               {t('events.subtitle', 'Descubre y asiste a las actividades de los campus UDP')}
             </p>
           </div>
           <button
             onClick={handleCreateEvent}
-            className="flex w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[#D41F2D] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:bg-[#b11a25] active:scale-95 sm:w-auto"
+            className="flex w-full shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#C22B38] px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-[#a8242f] active:scale-95 sm:w-auto dark:bg-[#D93846] dark:hover:bg-[#c22b38]"
           >
             <Plus size={16} />
             {t('events.createEvent', 'Crear Evento')}
@@ -180,7 +180,7 @@ export function EventsPage() {
         </div>
 
         {isLoading && (
-          <div className="flex h-64 items-center justify-center text-sm font-semibold text-neutral-500">
+          <div className="flex h-64 items-center justify-center text-sm font-semibold text-stone-500">
             {t('common.loading')}
           </div>
         )}
@@ -198,7 +198,7 @@ export function EventsPage() {
                 decirlo, pero UNA vez: puesto en cada tarjeta —como estaba— se
                 repetía tantas veces como eventos hubiera y dejaba de leerse. */}
             {userId && (
-              <p className="mb-4 rounded-2xl bg-neutral-100/70 px-3.5 py-2.5 text-[11px] font-medium leading-snug text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">
+              <p className="mb-4 rounded-2xl bg-[#EFECE4] px-4 py-2.5 text-xs font-medium leading-snug text-stone-600 dark:bg-white/[0.08] dark:text-stone-300">
                 {t('events.rsvpVisibility', 'Al marcar “Asistiré” o “Me interesa”, quien organiza el evento verá tu nombre.')}
               </p>
             )}
@@ -206,8 +206,8 @@ export function EventsPage() {
             {/* En vivo: lo primero, porque es lo único accionable ahora mismo */}
             {liveEvents.length > 0 && (
               <section className="mb-5">
-                <h2 className="mb-2.5 flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-[#D41F2D]">
-                  <Radio size={13} />
+                <h2 className="mb-2.5 flex items-center gap-2 text-xs font-bold text-[#C22B38] dark:text-[#D93846]">
+                  <Radio size={14} />
                   {t('events.liveNow', 'En vivo ahora')}
                 </h2>
                 <div className="flex flex-col gap-3">
@@ -240,7 +240,7 @@ export function EventsPage() {
                 {pickedDay ? (
                   <button
                     onClick={() => setPickedDay(null)}
-                    className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full bg-neutral-900 px-3.5 py-2 text-xs font-bold text-white dark:bg-white dark:text-neutral-900"
+                    className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-2xl bg-stone-900 px-3.5 py-2 text-xs font-semibold text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950"
                   >
                     {pickedDay.toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'es-CL', {
                       day: 'numeric',
@@ -253,10 +253,10 @@ export function EventsPage() {
                     <button
                       key={r.id}
                       onClick={() => setRange(r.id)}
-                      className={`shrink-0 cursor-pointer rounded-full px-3.5 py-2 text-xs font-bold transition-colors ${
+                      className={`shrink-0 cursor-pointer rounded-2xl px-3.5 py-2 text-xs font-semibold transition-all ${
                         range === r.id
-                          ? 'bg-[#D41F2D] text-white shadow-sm'
-                          : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+                          ? 'bg-[#C22B38] text-white shadow-xs dark:bg-[#D93846]'
+                          : 'border border-[#E6E0D5] bg-white text-stone-600 hover:bg-[#FAF8F5] dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-300 dark:hover:bg-white/[0.04]'
                       }`}
                     >
                       {r.label}
@@ -269,7 +269,7 @@ export function EventsPage() {
                 onClick={() => setCalendarOpen(true)}
                 aria-label={t('events.goToDate', 'Ir a una fecha')}
                 title={t('events.goToDate', 'Ir a una fecha')}
-                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-white text-neutral-600 transition-colors hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 sm:w-auto sm:px-3.5 sm:text-xs sm:font-bold"
+                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-[#E6E0D5] bg-white text-stone-600 transition-colors hover:bg-[#FAF8F5] dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-300 dark:hover:bg-white/[0.04] sm:w-auto sm:px-3.5 sm:text-xs sm:font-semibold"
               >
                 <CalendarDays size={16} />
                 <span className="hidden sm:inline">{t('events.goToDate', 'Ir a una fecha')}</span>
@@ -278,12 +278,12 @@ export function EventsPage() {
 
             {/* Agenda */}
             {groups.length === 0 ? (
-              <div className="mx-auto mt-8 flex max-w-md flex-col items-center gap-2 rounded-3xl border border-neutral-100 bg-white p-12 text-center shadow-sm dark:border-neutral-800/80 dark:bg-neutral-900/50">
-                <CalendarX2 size={40} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />
-                <h3 className="mt-2 font-bold text-neutral-700 dark:text-neutral-300">
+              <div className="mx-auto mt-8 flex max-w-md flex-col items-center gap-2 rounded-3xl border border-[#E6E0D5] bg-white p-12 text-center shadow-xs dark:border-white/[0.07] dark:bg-[#1E222D]">
+                <CalendarX2 size={40} strokeWidth={1.5} className="text-stone-400 dark:text-stone-600" />
+                <h3 className="mt-2 text-base font-bold text-stone-800 dark:text-stone-200">
                   {t('events.noEventsTitle', 'No hay eventos por aquí')}
                 </h3>
-                <p className="text-xs font-medium text-neutral-400">
+                <p className="text-xs font-medium text-stone-500 dark:text-stone-400">
                   {pickedDay || range !== 'all'
                     ? t('events.noEventsInRange', 'Prueba con otro rango de fechas.')
                     : t('events.noEventsDesc', '¡Crea el primero y aparecerá en el mapa!')}
@@ -293,7 +293,7 @@ export function EventsPage() {
               <div className="flex flex-col gap-6">
                 {groups.map((group) => (
                   <section key={dayKey(group.date)}>
-                    <h2 className="sticky top-0 z-10 -mx-4 mb-2.5 bg-neutral-50/90 px-4 py-1.5 text-[11px] font-black uppercase tracking-widest text-neutral-400 backdrop-blur-sm dark:bg-neutral-950/90">
+                    <h2 className="sticky top-0 z-10 -mx-4 mb-2.5 bg-[#FAF8F5]/90 px-4 py-1.5 text-xs font-bold text-stone-500 backdrop-blur-md dark:bg-[#151820]/90 dark:text-stone-400">
                       {groupLabel(group.date)}
                     </h2>
                     <div className="flex flex-col gap-3">
