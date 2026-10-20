@@ -68,30 +68,30 @@ function CommentItem({
   const avatarSize = depth > 0 ? 'h-7 w-7' : 'h-9 w-9'
 
   return (
-    <div className={`relative flex gap-3 ${depth > 0 ? 'mt-2.5' : 'border-b border-neutral-100 dark:border-neutral-800/80 pb-3.5 last:border-0'}`}>
+    <div className={`relative flex gap-3 ${depth > 0 ? 'mt-2.5' : 'border-b border-[#E5DEC9] pb-3.5 last:border-0 dark:border-white/10'}`}>
       <UserAvatar
         name={node.author_name}
         src={node.author_avatar_url || (isCommentOwner ? user?.avatarUrl : null)}
         className={`mt-0.5 ${avatarSize} text-2xl shrink-0`}
       />
       
-      <div className="flex flex-1 flex-col relative min-w-0">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Author + Timestamp */}
         <div className="flex items-center justify-between gap-2 pr-1">
           <div className="flex items-center gap-2">
             <button 
               onClick={() => node.author_id && onUserClick(node.author_id)}
-              className="text-[13.5px] font-extrabold leading-tight text-neutral-900 dark:text-neutral-100 hover:underline text-left"
+              className="text-left text-[13.5px] font-bold leading-tight text-stone-900 hover:underline dark:text-stone-100 cursor-pointer"
             >
               {node.author_name || 'Estudiante UDP'}
             </button>
-            <span className="text-[10.5px] text-neutral-400 font-medium shrink-0">
+            <span className="shrink-0 text-[11px] font-medium text-stone-400 dark:text-stone-500">
               {relTime.value === 0 ? 'Ahora' : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`}
             </span>
           </div>
 
           {/* Quick Actions (Reply, Report, Delete) */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex shrink-0 items-center gap-1">
             <button
               onClick={() => {
                 if (isReplying) {
@@ -102,7 +102,7 @@ function CommentItem({
                   setReplyText('')
                 }
               }}
-              className="p-1 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors rounded-lg cursor-pointer"
+              className="cursor-pointer rounded-lg p-1 text-stone-400 transition-colors hover:text-stone-700 dark:hover:text-stone-200"
               title={t('forum.reply', 'Responder')}
             >
               <Reply size={13} />
@@ -110,7 +110,7 @@ function CommentItem({
             {user && !isCommentOwner && role !== 'guest' && (
               <button
                 onClick={() => onReport({ type: 'forum_comment', id: node.id })}
-                className="p-1 text-neutral-400 hover:text-[#D41F2D] transition-colors rounded-lg cursor-pointer"
+                className="cursor-pointer rounded-lg p-1 text-stone-400 transition-colors hover:text-[#C22B38] dark:hover:text-[#D93846]"
                 title="Reportar respuesta"
               >
                 <Flag size={13} />
@@ -119,7 +119,7 @@ function CommentItem({
             {(isCommentOwner || isModerator) && (
               <button
                 onClick={() => onDeleteComment(node.id)}
-                className="p-1 text-neutral-400 hover:text-red-500 transition-colors rounded-lg cursor-pointer"
+                className="cursor-pointer rounded-lg p-1 text-stone-400 transition-colors hover:text-red-500"
                 title={t('common.delete', 'Eliminar')}
               >
                 <Trash2 size={13} />
@@ -129,32 +129,32 @@ function CommentItem({
         </div>
 
         {/* Content */}
-        <p className="mt-1 text-[13.5px] leading-snug text-neutral-800 dark:text-neutral-200 break-words whitespace-pre-line">
+        <p className="mt-1 break-words text-[13.5px] leading-snug whitespace-pre-line text-stone-800 dark:text-stone-200">
           {node.content}
         </p>
 
         {/* Inline Reply Form */}
         {isReplying && (
-          <div className="flex flex-col gap-2 mt-2.5 bg-neutral-50 dark:bg-neutral-900 p-3 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+          <div className="mt-2.5 flex flex-col gap-2 rounded-2xl border border-[#E6E0D5] bg-[#FAF8F5] p-3 dark:border-white/[0.07] dark:bg-[#151820]">
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder={t('forum.replyPlaceholder', 'Escribe tu respuesta...')}
               rows={2}
               autoFocus
-              className="w-full bg-white dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#D41F2D] transition-all resize-none font-medium text-neutral-900 dark:text-white"
+              className="w-full resize-none rounded-xl border border-[#E6E0D5] bg-white px-3 py-2 text-xs font-medium text-stone-900 outline-none transition-all focus:border-[#C22B38] dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-100 dark:focus:border-[#D93846]"
             />
             <div className="flex justify-end gap-2">
               <button 
                 onClick={() => setReplyingToId(null)}
-                className="px-3 py-1 text-xs font-bold text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full transition-colors cursor-pointer"
+                className="cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold text-stone-500 transition-colors hover:bg-[#EFECE4] dark:hover:bg-white/[0.08]"
               >
                 {t('common.cancel')}
               </button>
               <button
                 onClick={() => onAddReply(node.id, node.author_name)}
                 disabled={!replyText.trim() || isSubmitting}
-                className="px-3.5 py-1 text-xs font-bold bg-[#D41F2D] hover:bg-[#b11a25] disabled:opacity-50 text-white rounded-full transition-colors shadow-sm cursor-pointer"
+                className="cursor-pointer rounded-xl bg-[#C22B38] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#a8242f] disabled:opacity-50 dark:bg-[#D93846] dark:hover:bg-[#c22b38]"
               >
                 {t('forum.sendReply', 'Responder')}
               </button>
@@ -164,12 +164,12 @@ function CommentItem({
 
         {/* Nested Replies Tree (Left Aligned starting near root avatar - Red Line Alignment) */}
         {node.replies.length > 0 && (
-          <div className={`flex flex-col mt-2 ${depth === 0 ? '-ml-7 sm:-ml-8 pl-2 space-y-2' : ''}`}>
+          <div className={`mt-2 flex flex-col ${depth === 0 ? '-ml-7 space-y-2 pl-2 sm:-ml-8' : ''}`}>
             {depth === 0 && (
               <button
                 type="button"
                 onClick={() => setShowAllReplies((current) => !current)}
-                className="self-start flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-extrabold text-neutral-600 dark:text-neutral-300 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 transition-colors my-1 cursor-pointer"
+                className="my-1 flex cursor-pointer items-center gap-1.5 self-start rounded-xl bg-[#EFECE4] px-3 py-1 text-xs font-semibold text-stone-700 transition-colors hover:bg-[#e4dfd4] dark:bg-white/[0.08] dark:text-stone-300 dark:hover:bg-white/[0.12]"
                 aria-expanded={showAllReplies}
               >
                 {showAllReplies
@@ -334,30 +334,30 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
       open={true}
       onOpenChange={(o) => !o && onClose()}
       title={t('forum.threadDetail', 'Hilo de Foro')}
-      contentClassName="!bg-white dark:!bg-neutral-900 sm:max-w-xl flex flex-col !overflow-hidden h-[90dvh] max-h-[90dvh] sm:h-[650px] sm:max-h-[85dvh] !rounded-t-[28px] sm:!rounded-2xl max-sm:fixed max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:top-auto max-sm:w-full"
+      contentClassName="!bg-white dark:!bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] sm:max-w-xl flex flex-col !overflow-hidden h-[90dvh] max-h-[90dvh] sm:h-[650px] sm:max-h-[85dvh] !rounded-t-[32px] sm:!rounded-3xl max-sm:fixed max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:top-auto max-sm:w-full"
     >
       {isLoadingThread && !thread ? (
-        <div className="flex h-48 items-center justify-center text-sm font-semibold text-neutral-500">
+        <div className="flex h-48 items-center justify-center text-sm font-semibold text-stone-500">
           {t('common.loading')}
         </div>
       ) : (
         thread && (
-          <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex flex-1 flex-col min-h-0">
             {/* Scrollable Area (Body, Vote bar, Comments) */}
-            <div className="flex-1 overflow-y-auto -mx-6 px-6 flex flex-col gap-4 min-h-0 pb-20">
+            <div className="-mx-6 flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto px-6 pb-20">
               {/* Header info / Meta */}
-              <div className="flex items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-3.5">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center justify-between gap-3 border-b border-[#E5DEC9] pb-3.5 dark:border-white/10">
+                <div className="flex min-w-0 items-center gap-3">
                   <UserAvatar
                     name={thread.author_name}
                     src={thread.author_avatar_url || (user && user.id === thread.author_id ? user.avatarUrl : null)}
-                    className="h-10 w-10 text-3xl shrink-0 cursor-pointer"
+                    className="h-10 w-10 shrink-0 cursor-pointer text-3xl"
                     onClick={() => thread.author_id && setProfileId(thread.author_id)}
                   />
-                  <div className="flex flex-col min-w-0">
+                  <div className="flex min-w-0 flex-col">
                     <button
                       onClick={() => thread.author_id && setProfileId(thread.author_id)}
-                      className="text-[14px] font-extrabold text-neutral-900 dark:text-neutral-100 text-left hover:underline"
+                      className="cursor-pointer text-left text-[14px] font-bold text-stone-900 hover:underline dark:text-stone-100"
                     >
                       <span className="flex items-center gap-1.5">
                         {thread.is_official
@@ -366,10 +366,10 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                         {thread.is_official && <BadgeCheck size={15} className="text-blue-500" aria-label={t('forum.official', 'Oficial')} />}
                       </span>
                     </button>
-                    <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 font-medium flex-wrap">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-stone-400 dark:text-stone-500">
                       <span>{relTime ? (relTime.value === 0 ? 'Ahora' : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`) : ''}</span>
                       <span>•</span>
-                      <span className="font-extrabold text-[#D41F2D]">
+                      <span className="font-bold text-[#C22B38] dark:text-[#D93846]">
                         {faculty ? localizedName(faculty, i18n.language) : t('forum.general', 'General')}
                       </span>
                     </div>
@@ -377,17 +377,17 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                 </div>
 
                 {/* Actions: Pin, Delete, Report */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex shrink-0 items-center gap-1.5">
                   {thread.is_pinned && (
-                    <span className="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-200 dark:border-amber-800/50">
-                      <PinIcon size={10} />
+                    <span className="flex items-center gap-1 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-400">
+                      <PinIcon size={11} />
                       Fijado
                     </span>
                   )}
                   {user && !isOwner && role !== 'guest' && (
                     <button
                       onClick={() => setReportTarget({ type: 'forum_thread', id: thread.id })}
-                      className="w-9 h-9 border border-neutral-200 dark:border-neutral-700 rounded-full text-neutral-500 hover:text-red-500 hover:border-red-300 dark:hover:border-red-800 transition-colors flex items-center justify-center cursor-pointer"
+                      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-[#E6E0D5] text-stone-500 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-500 dark:border-white/[0.07] dark:text-stone-400 dark:hover:border-red-900/50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                       title="Reportar hilo"
                     >
                       <Flag size={15} />
@@ -396,10 +396,10 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                   {isModerator && (
                     <button
                       onClick={handlePinToggle}
-                      className={`w-9 h-9 border rounded-full transition-colors flex items-center justify-center cursor-pointer ${
+                      className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border transition-colors ${
                         thread.is_pinned
-                          ? 'border-amber-400 text-amber-500 bg-amber-50 dark:bg-amber-950/20'
-                          : 'border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-amber-500'
+                          ? 'border-amber-400 bg-amber-50 text-amber-600 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400'
+                          : 'border-[#E6E0D5] text-stone-500 hover:text-amber-600 dark:border-white/[0.07] dark:text-stone-400'
                       }`}
                       title={thread.is_pinned ? t('forum.unpin', 'Desfijar') : t('forum.pin', 'Fijar')}
                     >
@@ -409,7 +409,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                   {(isOwner || isModerator) && (
                     <button
                       onClick={handleDeleteThread}
-                      className="w-9 h-9 border border-neutral-200 dark:border-neutral-700 rounded-full text-neutral-500 hover:text-red-500 hover:border-red-300 dark:hover:border-red-800 transition-colors flex items-center justify-center cursor-pointer"
+                      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-[#E6E0D5] text-stone-500 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-500 dark:border-white/[0.07] dark:text-stone-400 dark:hover:border-red-900/50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                       title={t('common.delete')}
                     >
                       <Trash2 size={15} />
@@ -420,15 +420,15 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
 
               {/* Title & Structured Description Block (Matching PinDetail) */}
               <div className="space-y-3">
-                <h2 className="text-lg sm:text-xl font-black text-neutral-900 dark:text-white leading-tight">
+                <h2 className="text-lg font-bold leading-tight text-stone-900 sm:text-xl dark:text-stone-100">
                   {thread.title}
                 </h2>
                 {thread.content && (
-                  <div className="rounded-2xl bg-neutral-50 dark:bg-neutral-800/60 p-4 border border-neutral-100 dark:border-neutral-700/60">
-                    <span className="block mb-1 text-[10px] font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                      {t('forum.description', 'DESCRIPCIÓN')}
+                  <div className="rounded-2xl border border-[#E6E0D5] bg-[#FAF8F5] p-4 dark:border-white/[0.07] dark:bg-[#151820]">
+                    <span className="mb-1 block text-xs font-bold text-stone-500 dark:text-stone-400">
+                      {t('forum.description', 'Descripción')}
                     </span>
-                    <p className="text-[13.5px] sm:text-[14px] leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-line font-normal">
+                    <p className="text-[13.5px] leading-relaxed font-normal whitespace-pre-line text-stone-800 sm:text-[14px] dark:text-stone-200">
                       {thread.content}
                     </p>
                   </div>
@@ -441,7 +441,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                   {thread.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full"
+                      className="rounded-xl bg-[#EFECE4] px-2.5 py-0.5 text-xs font-semibold text-stone-700 dark:bg-white/[0.08] dark:text-stone-300"
                     >
                       #{tag}
                     </span>
@@ -454,50 +454,50 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                 <div
                   role="group"
                   aria-label={t('forum.voteGroup', 'Votar hilo')}
-                  className="flex items-stretch overflow-hidden rounded-full border border-neutral-200 dark:border-neutral-700 h-9 bg-neutral-50 dark:bg-neutral-900/50"
+                  className="flex h-9 items-stretch overflow-hidden rounded-xl border border-[#E6E0D5] bg-[#FAF8F5] dark:border-white/[0.07] dark:bg-[#151820]"
                 >
                   <button
                     type="button"
                     onClick={() => handleVote(1)}
                     disabled={voteMutation.isPending}
-                    className={`px-4 flex items-center justify-center gap-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                    className={`flex cursor-pointer items-center justify-center gap-1.5 px-4 text-xs font-semibold transition-colors ${
                       userVote === 1
-                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                        : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                        : 'text-stone-500 hover:bg-[#EFECE4] dark:text-stone-400 dark:hover:bg-white/[0.08]'
                     }`}
                   >
-                    <ThumbsUp size={14} strokeWidth={2.5} />
-                    <span>{thread.votes_up}</span>
+                    <ThumbsUp size={14} strokeWidth={2.2} />
+                    <span className="tabular-nums">{thread.votes_up}</span>
                   </button>
-                  <div className="w-px bg-neutral-200 dark:bg-neutral-700" />
+                  <div className="w-px bg-[#E6E0D5] dark:bg-white/[0.07]" />
                   <button
                     type="button"
                     onClick={() => handleVote(-1)}
                     disabled={voteMutation.isPending}
-                    className={`px-4 flex items-center justify-center gap-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                    className={`flex cursor-pointer items-center justify-center gap-1.5 px-4 text-xs font-semibold transition-colors ${
                       userVote === -1
-                        ? 'bg-red-50 text-[#D41F2D] dark:bg-red-950/30 dark:text-red-400'
-                        : 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+                        ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
+                        : 'text-stone-500 hover:bg-[#EFECE4] dark:text-stone-400 dark:hover:bg-white/[0.08]'
                     }`}
                   >
-                    <ThumbsDown size={14} strokeWidth={2.5} />
-                    <span>{thread.votes_down}</span>
+                    <ThumbsDown size={14} strokeWidth={2.2} />
+                    <span className="tabular-nums">{thread.votes_down}</span>
                   </button>
                 </div>
               </div>
 
               {/* Comments Section Header (Matching PinDetail) */}
-              <div className="mt-4 border-t border-neutral-100 dark:border-neutral-800 pt-4 flex items-center justify-between">
-                <h3 className="text-[16px] sm:text-[17px] font-extrabold text-neutral-900 dark:text-neutral-100">
+              <div className="mt-4 flex items-center justify-between border-t border-[#E5DEC9] pt-4 dark:border-white/10">
+                <h3 className="text-[16px] font-bold text-stone-900 sm:text-[17px] dark:text-stone-100">
                   {t('forum.repliesCount', { defaultValue: 'Comentarios ({{count}})', count: comments.length })}
                 </h3>
               </div>
 
               {/* Comments List */}
               {isLoadingComments ? (
-                <div className="text-center py-6 text-xs font-semibold text-neutral-400">{t('common.loading')}</div>
+                <div className="py-6 text-center text-xs font-semibold text-stone-400">{t('common.loading')}</div>
               ) : commentTree.length === 0 ? (
-                <p className="text-xs text-neutral-400 py-6 text-center italic">{t('forum.noComments', 'Sé el primero en comentar...')}</p>
+                <p className="py-6 text-center text-xs italic text-stone-400">{t('forum.noComments', 'Sé el primero en comentar...')}</p>
               ) : (
                 <div className="flex flex-col gap-3">
                   {commentTree.map((node) => (
@@ -523,19 +523,19 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
             {/* Fixed Bottom Reply Input Bar (Matching CommentSection.tsx rectangular style) */}
             <form 
               onSubmit={handleAddComment} 
-              className="flex items-center gap-2 mt-auto pt-3.5 pb-4 border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 -mx-6 -mb-6 px-6 rounded-b-[28px] sm:rounded-b-2xl z-10 shrink-0 overflow-hidden"
+              className="-mx-6 -mb-6 mt-auto flex shrink-0 items-center gap-2 overflow-hidden rounded-b-[32px] border-t border-[#E5DEC9] bg-white px-6 pt-3.5 pb-4 sm:rounded-b-3xl dark:border-white/10 dark:bg-[#1E222D]"
             >
               <input
                 type="text"
                 value={newCommentText}
                 onChange={(e) => setNewCommentText(e.target.value)}
                 placeholder={t('forum.addCommentPlaceholder', 'Escribe un comentario...')}
-                className="min-w-0 flex-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800/80 px-3 py-2 text-sm outline-none focus:border-[#D41F2D] font-medium text-neutral-900 dark:text-white"
+                className="min-w-0 flex-1 rounded-2xl border border-[#E6E0D5] bg-[#FAF8F5] px-3.5 py-2.5 text-xs sm:text-sm font-medium text-stone-900 outline-none transition-all focus:border-[#C22B38] dark:border-white/[0.07] dark:bg-[#151820] dark:text-stone-100 dark:focus:border-[#D93846]"
               />
               <button
                 type="submit"
                 disabled={createCommentMutation.isPending || !newCommentText.trim()}
-                className="rounded-lg bg-[#D41F2D] p-2.5 text-white hover:bg-[#b11a25] disabled:opacity-50 transition-colors shrink-0 cursor-pointer flex items-center justify-center"
+                className="flex shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-[#C22B38] p-2.5 text-white transition-colors hover:bg-[#a8242f] disabled:opacity-50 dark:bg-[#D93846] dark:hover:bg-[#c22b38]"
               >
                 <Send size={16} />
               </button>
