@@ -1814,3 +1814,15 @@ migración `20260810000000_pin_floor_server_validation.sql` trae al final la
 consulta que las lista. Mientras una siga mal, editarla fallará — es correcto,
 pero conviene saberlo.
 
+
+---
+
+## 16. Rediseño integral de interfaz: Lente Contextual y Guía Paso a Paso ✅ HECHO (2026-10-20)
+
+Rediseño de toda la capa visual y espacial en la rama `rediseño-interfaz`:
+
+- **Paleta Piedra Cálida (`#FAF8F5`) y Pizarra Nocturna (`#151820`)** con acento Terracota UDP (`#C22B38` / `#D93846`) y eliminación de `font-black` / `uppercase` masivos en favor de `font-bold` / `font-semibold` y códigos con `tabular-nums`.
+- **Lente Contextual (`ContextLens.tsx`)**: Unifica la selección de edificio (`placeFocus`) y planta (`activeFloor`) en una sola barra horizontal acolchada bajo el buscador, despejando los bordes laterales del mapa.
+- **Guía Paso a Paso (`WayfinderSheet.tsx`)**: Sustituye la antigua barra de ruta por un asistente en 3 pasos interactivos (1. Acceso desde la calle/rampa → 2. Conector vertical ascensor/escalera o hall → 3. Sala o destino en planta) con conmutador **"Sin escaleras"** (`accessibleRoute`).
+- **Barra de navegación inferior en 5 columnas (`Layout.tsx`)**: Integra el botón central `+` de publicación y da aire a los iconos.
+- **Pines de sala diferenciados (`MapView.tsx`)**: Las salas con `room_code` se muestran como pastilla compacta con código corto (`S106`) y punto celeste.
