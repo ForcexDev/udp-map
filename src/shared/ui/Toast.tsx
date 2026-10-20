@@ -13,9 +13,9 @@ export function Toast() {
     >
       <div
         role="status"
-        className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-neutral-900/95 dark:bg-white/95 backdrop-blur-md px-4 py-3 text-xs sm:text-sm font-semibold text-white dark:text-neutral-900 shadow-2xl max-w-md w-auto border border-white/20 dark:border-black/10"
+        className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-[#FAF8F5]/95 text-stone-900 border border-[#E5DEC9] dark:bg-[#151820]/95 dark:text-stone-100 dark:border-white/10 backdrop-blur-md px-4 py-3 text-xs sm:text-sm font-semibold premium-shadow shadow-xl max-w-md w-auto"
       >
-        <Info size={18} className="flex-shrink-0 text-red-400 dark:text-red-600" />
+        <Info size={18} className="flex-shrink-0 text-[#C22B38] dark:text-[#D93846]" />
         <span className="leading-snug">{toast}</span>
       </div>
     </div>,

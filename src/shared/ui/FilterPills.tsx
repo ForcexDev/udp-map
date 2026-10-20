@@ -20,10 +20,10 @@ export function FilterPills<T extends string>({ options, value, onChange, label,
           type="button"
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
-          className={`flex h-11 shrink-0 items-center rounded-full px-3.5 text-xs font-bold transition-colors active:scale-95 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#D41F2D] ${
+          className={`flex h-10 shrink-0 items-center rounded-2xl px-3.5 text-xs font-semibold transition-colors active:scale-95 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#C22B38] ${
             value === option.value
-              ? 'bg-[#D41F2D] text-white shadow-sm'
-              : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+              ? 'bg-[#C22B38] text-white shadow-xs dark:bg-[#D93846]'
+              : 'border border-[#E5DEC9] bg-white text-stone-600 hover:bg-[#FAF8F5] dark:border-white/10 dark:bg-[#1E222D] dark:text-stone-300 dark:hover:bg-[#252A37]'
           }`}
         >
           {option.label}
