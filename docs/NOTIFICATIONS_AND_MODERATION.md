@@ -3,6 +3,11 @@
 La implementación está separada en etapas comprobables. Solo debe marcarse una etapa como lista después
 de validar su Definition of Done en Supabase y en navegadores reales.
 
+> **Estado (verificado 2026-10-21):** las etapas 1 a 7 están implementadas en el código. Las
+> casillas se conservan como criterio de verificación, no como plan pendiente. Los tipos de aviso,
+> las categorías y las tablas vigentes están en [DATABASE.md](DATABASE.md) §4 (la matriz de abajo
+> es la lista de orígenes con su destino); dónde tocar cada pieza, en [REPO_MAP.md](REPO_MAP.md).
+
 ## Matriz de notificaciones
 
 | Audiencia | Sección | Origen | Destino |
@@ -11,14 +16,19 @@ de validar su Definition of Done en Supabase y en navegadores reales.
 | Personal | Foro | Respuesta al hilo o comentario del usuario | `/foro?thread={id}` |
 | Personal | Eventos | Evento con RSVP dentro de los próximos 20 días | `/eventos?event={id}` |
 | Personal | Perfil | Resolución de un reporte enviado | `/perfil` |
-| Administrador | Moderación | Nuevo contenido reportado | `/moderacion?report={id}` |
+| Personal | Pines | Un pin tuyo queda verificado (`pin_verified`) | `/mapa?pin={id}` |
+| Personal | Pines | Comentario en un pin tuyo (`pin_comment`) | `/mapa?pin={id}` |
+| Personal | Eventos | Evento oficial de tu facultad (`event_official`) | `/eventos?event={id}` |
+| Personal | Sistema | Difusión del panel de administración (`announcement`) | La ruta que elija quien difunde (`/` por defecto) |
+| Administrador | Moderación | Nuevo contenido reportado | `/admin/moderacion?report={id}` (el SQL guarda `/moderacion?report={id}` y la app lo redirige) |
 
 Los administradores conservan sus avisos personales, pero Moderación se muestra en un bloque
 **Administración** separado. Los moderadores no acceden a esa cola.
 
 ## Etapa 1 — Esquema y RLS
 
-Alcance: migración `20260722000001_notifications_and_moderation.sql`.
+Alcance: el esquema vigente en `supabase/schema/baseline.sql`. La migración original
+`20260722000001_notifications_and_moderation.sql` se archivó en `supabase/_archive/migrations/`.
 
 ### Definition of Done
 
@@ -49,7 +59,7 @@ Configuración requerida:
 3. Configurar como secretos de `send-push`: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
    `VAPID_SUBJECT`, `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y opcionalmente `ALLOWED_ORIGINS` (lista de dominios separados por coma).
 4. Servir producción por HTTPS.
-5. **Configuración de CORS estricto:** La Edge Function autoriza por defecto únicamente coincidencias exactas con `http://localhost:5173` y `https://udp-map.vercel.app`. Si el dominio cambia en el futuro, se puede configurar en Supabase la variable de entorno `ALLOWED_ORIGINS=https://nuevo-dominio.cl`.
+5. **Configuración de CORS estricto:** La Edge Function autoriza por defecto únicamente coincidencias exactas con `http://localhost:5173`, `http://localhost:4173`, `http://localhost:3000` y `https://udp-map.vercel.app`. Si el dominio cambia en el futuro, se puede configurar en Supabase la variable de entorno `ALLOWED_ORIGINS=https://nuevo-dominio.cl`.
 
 ### Definition of Done
 
@@ -104,7 +114,9 @@ Despliegue requerido:
 
 ### Definition of Done
 
-- [ ] `/moderacion` redirige a estudiantes y moderadores.
+- [ ] La cola vive en `/admin/moderacion` y solo entran administradores: `AdminLayout` redirige a `/mapa` a
+  cualquier otro rol. La ruta vieja `/moderacion` se conserva porque `notify_content_report` sigue guardando
+  esa url en los avisos; `LegacyModerationRedirect` la reenvía a `/admin/moderacion` conservando `?report=`.
 - [ ] Admin filtra Pendientes, En revisión, Resueltos y Descartados.
 - [ ] **Tomar caso** asigna el reporte; otro admin no puede resolverlo mientras está asignado.
 - [ ] **Descartar** conserva el contenido y registra administrador, nota y hora.

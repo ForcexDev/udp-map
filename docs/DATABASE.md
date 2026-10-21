@@ -3,9 +3,12 @@
 Qué hay dentro, por qué está así, y qué hacer para manejarla.
 
 Este documento describe el estado **real** de producción, leído de los catálogos
-de Postgres el 3 de agosto de 2026 (PostgreSQL 17.6 sobre Supabase). No describe
-lo que dicen las migraciones: unas cuantas cosas se hicieron a mano en el
-dashboard y solo existen en la base.
+de Postgres el 3 de agosto de 2026 (PostgreSQL 17.6 sobre Supabase). Las
+migraciones posteriores, hasta `20260831000200`, se documentaron a medida que se
+escribían, no se leyeron de producción. La base manda sobre lo que dicen las
+migraciones: unas cuantas cosas se hicieron a mano en el dashboard y solo
+existen en la base. Para saber qué carpeta toca cada cambio, ver
+[`REPO_MAP.md`](REPO_MAP.md).
 
 ---
 
@@ -16,10 +19,12 @@ dashboard y solo existen en la base.
 | `supabase/schema/baseline.sql` | **La fuente de verdad del esquema.** Reconstruye la base entera sobre un proyecto vacío |
 | `supabase/seed/badges.sql` | Las 6 insignias. Se escribe a mano |
 | `supabase/seed/seed.sql` | Catálogo del campus. **Generado**, no editar |
+| `supabase/seed/fic_dummy_50_pins.sql` | Pines de prueba de la FIC (pese al nombre, trae 56) para desarrollo. A mano, **no se aplica en producción** |
+| `supabase/config.toml` | `verify_jwt = false` para `send-push` y `storage-gc`; el runbook de la sección 10 depende de eso |
 | `src/shared/data/campusData.ts` | Campus, carreras y categorías. Y la **semilla** del catálogo de facultades: nombres, campus y chinchetas. **Sin geometría** |
-| `scripts/gen_seed_full.ts` | Regenera `seed.sql` desde `campusData.ts` |
+| `scripts/gen_seed_full.ts` | Regenera `seed.sql` desde `campusData.ts`. No tiene script de npm: se ejecuta con un ejecutor de TypeScript (por ejemplo `tsx`) |
 | `supabase/_archive/migrations/` | Las 33 migraciones históricas. Ya aplicadas. **No ejecutar** |
-| `supabase/migrations/` | Migraciones nuevas, de aquí en adelante |
+| `supabase/migrations/` | Migraciones nuevas, de aquí en adelante. Desde `20260827` cada una trae un `.down.sql` que la deshace, también a aplicar a mano |
 
 La regla que evita que esto se vuelva a desordenar:
 
@@ -83,7 +88,8 @@ y el rechazo ocurre en el alta, no en la interfaz.
 | Entrar al panel de administración | ❌ | ❌ | ❌ | ✅ | cada RPC `admin_*` comprueba el rol |
 | Ver el perfil completo de otro, con su correo | ❌ | ❌ | ❌ | ✅ | `profiles_read_admin` |
 | Cambiar el rol de otro | ❌ | ❌ | ❌ | ✅ | RPC `admin_set_user_role` |
-| Ver y resolver denuncias | ❌ | ❌ | ❌ | ✅ | `content_reports_read_own_or_admin`, RPC `claim_moderation_report` y `resolve_moderation_report` |
+| Resolver denuncias | ❌ | ❌ | ❌ | ✅ | RPC `claim_moderation_report` y `resolve_moderation_report`, que comprueban `user_role() = 'admin'` por dentro |
+| Ver denuncias | ❌ | ❌ | ⚙️ | ✅ | `content_reports_read_own_or_admin`: las propias, o `has_capability('reports')` (cada quien ve las que puso) |
 | Enviar una notificación push a todo el mundo | ❌ | ❌ | ❌ | ✅ | RPC `admin_broadcast_push_notification` |
 | Mandarse una push de prueba a uno mismo | ❌ | ❌ | ❌ | ✅ | RPC `admin_send_test_push_to_self` |
 | Trazar el mapeo interior *(con la pieza `mapping`)* | ❌ | ❌ | ⚙️ | ✅ | `has_capability('mapping')` |
@@ -124,10 +130,10 @@ más abajo, en `pins`).
    tabla sobre `profiles`; lo tienen por columna, y `email` solo se le concede a
    `authenticated`. Por eso existe la vista `profiles_public`, que deja el correo
    fuera.
-2. **Row Level Security.** Qué filas ve o toca cada quien. Activo en las 23
-   tablas. Dos no tienen ninguna política a propósito — `pin_creation_events` y
-   `notification_push_deliveries` son internas y solo las tocan funciones
-   `SECURITY DEFINER` y `service_role`.
+2. **Row Level Security.** Qué filas ve o toca cada quien. Activo en las 32
+   tablas. Tres no tienen ninguna política a propósito — `pin_creation_events`,
+   `notification_push_deliveries` y `storage_cleanup_queue` son internas y solo
+   las tocan funciones `SECURITY DEFINER` y `service_role`.
 3. **Triggers de protección.** Qué **columnas** puede cambiar. RLS decide si
    podés editar tu pin; `protect_pin_sensitive_fields` decide que al editarlo no
    puedas marcarte como verificado. Sin esta capa, `pins_owner_update` sería un
@@ -212,7 +218,7 @@ cambiar, así que un error ahí sería solo ruido.
 
 ## 4. Las tablas
 
-29 en total, todas con RLS activo.
+32 en total, todas con RLS activo.
 
 ### Catálogo — se lee sin sesión, se escribe desde el seed
 
@@ -220,7 +226,7 @@ cambiar, así que un error ahí sería solo ruido.
 |---|---|---|
 | `campuses` | Los 3 campus con sus coordenadas | seed |
 | `faculties` | 17 facultades y edificios, con su perímetro en GeoJSON | seed / **admin desde `/admin/mapeo`** |
-| `careers` | 14 carreras, colgando de una facultad | seed |
+| `careers` | 39 carreras, colgando de una facultad | seed |
 | `categories` | 29 categorías de pin: color, icono SVG y `ttl_hours` | seed |
 | `badges` | Las 6 insignias | `badges.sql` |
 | `admin_emails` | Correos que reciben rol admin al registrarse | a mano |
@@ -469,8 +475,11 @@ respaldo para una facultad que todavía no tenga galería.
 
 ### Foro
 
-`forum_threads`, `forum_comments` (anidables mediante `parent_comment_id`) y
-`forum_votes`. Marcar un hilo como oficial exige ser moderador y poner un nombre
+`forum_threads`, `forum_comments` (`parent_comment_id` permite anidar en la
+base, pero la interfaz muestra un solo nivel: toda respuesta cuelga de su
+comentario raíz y lleva `@autor`) y `forum_votes`. Un hilo con `faculty_id` nulo
+es del tablón general, y `is_pinned` lo fija arriba. Los contadores de votos solo
+se escriben por RPC, ver `vote_thread` en la sección 5. Marcar un hilo como oficial exige ser moderador y poner un nombre
 de entidad no vacío, y eso se valida dentro de la propia política de INSERT.
 
 ### Moderación
@@ -533,20 +542,23 @@ comprobar "¿me llega a mí?" le hacía sonar el teléfono a la universidad ente
 
 ### Qué avisa la aplicación, y qué no avisaba
 
-Ocho tipos, y los dos últimos son de la migración `20260829000000`:
+Nueve tipos. `pin_verified` y `pin_comment` son de la migración
+`20260829000000`, y `event_official` de la `20260831000100` (ver más abajo, en
+"El evento oficial avisa a su facultad"):
 
 | Tipo | Categoría | Cuándo | Adónde lleva |
 |---|---|---|---|
 | `forum_reply` | forum | Responden tu hilo | `/foro?thread=…` |
 | `achievement` | profile | Ganas una insignia | `/perfil?tab=badges` |
 | `event_reminder` | events | Empieza un evento que marcaste | `/eventos?event=…` |
-| `moderation_report` | moderation | Entra una denuncia *(a admins)* | `/admin/moderacion?report=…` |
+| `moderation_report` | moderation | Entra una denuncia *(a admins)* | `/moderacion?report=…` (lo que guarda el aviso; la app lo redirige a `/admin/moderacion?report=…`) |
 | `moderation_update` | profile | Se resuelve la denuncia **que pusiste** | `/perfil` |
 | `announcement` | system | Difusión del panel | la ruta que elija quien difunde |
 | **`pin_verified`** | **pins** | Un moderador verifica tu publicación | `/mapa?pin=…` |
 | **`pin_comment`** | **pins** | Alguien comenta tu publicación | `/mapa?pin=…` |
+| `event_official` | events | Un moderador marca como oficial un evento de tu facultad | `/eventos?event=…` |
 
-**Los dos nuevos tapan huecos que se vieron al inventariar los seis anteriores:**
+**Los dos de pines tapan huecos que se vieron al inventariar los seis anteriores:**
 
 - **Verificar no avisaba a nadie.** `verify_and_make_permanent` da +25 de karma
   al autor y ahí se acababa: la persona se enteraba solo si volvía a mirar su
@@ -705,7 +717,8 @@ cualquiera que pueda llamarla hace lo que la función haga. Por eso todas las
 
 Y por eso también todas deben fijar `set search_path`: sin eso, quien llame
 puede anteponer un esquema propio y hacer que la función ejecute *su* versión de
-una tabla o función. Dos no lo hacen — ver la sección 11.
+una tabla o función. Todas lo fijan; si añades una función, hazlo también. La
+sección 12 cuenta las dos que no lo hacían y ya se corrigieron.
 
 ### Las que puede llamar la aplicación
 
@@ -726,7 +739,7 @@ una tabla o función. Dos no lo hacen — ver la sección 11.
 | `resolve_moderation_report(id, acción, nota)` | admin | La resuelve, borrando el contenido o descartándola |
 | `admin_set_user_role(usuario, rol)` | admin | Cambia el rol de otro. No puede cambiar el propio |
 | `admin_count_push_subscribers()` | admin | Cuántos navegadores suscritos |
-| `admin_broadcast_push_notification(t, c)` | admin | Difunde un aviso a todo el que tenga push activado |
+| `admin_broadcast_push_notification(t, c, url)` | admin | Difunde un aviso a todo el que tenga push activado; `url` debe ser una ruta interna |
 | `admin_send_test_push_to_self()` | admin | La misma tubería, pero solo a quien la llama |
 | `admin_push_subscribers()` | admin | Quién recibe los avisos push, y desde qué dispositivo |
 | `admin_delete_push_subscription(endpoint)` | admin | Da de baja un dispositivo concreto |
@@ -746,7 +759,11 @@ otros triggers y funciones.
 `enqueue_upcoming_event_notifications` · `check_explorer_badge` ·
 `check_guardian_badge` · `check_host_badge` · `check_photographer_badge` ·
 `check_pioneer_badge` · `handle_new_user` · y todos los `notify_*`, `on_*` y
-`protect_*`.
+`protect_*`. También las de trigger que no encajan en esos patrones:
+`authorize_pin_move`, `validate_pin_floor`, `prevent_occupied_pin_location`,
+`validate_rsvp_targets_event`, `enforce_*_photo_limit`,
+`enqueue_*_photo_cleanup`, `queue_notification_push`,
+`set_notification_updated_at` y `trg_log_*`.
 
 ---
 
@@ -801,7 +818,7 @@ Un solo bucket, `pin-photos`, público.
 
 La ruta no es libre. Las políticas restringen dónde y quién puede subir:
 - **`pins/{user_id}/{uuid}.jpg`**: fotos de pines. El bucket lee el segundo segmento para saber de quién es el archivo.
-- **`places/{kind}/{id}/{uuid}.jpg`**: galerías de lugares (`faculty` o `building`). Solo para administradores.
+- **`places/{kind}/{id}/{uuid}.jpg`**: galerías de lugares (`faculty`, `building` o `area`). Solo para administradores.
 
 | Operación | Quién |
 |---|---|
@@ -860,8 +877,10 @@ a crearlos a mano después de un reset.
 
 Edge Functions en `supabase/functions/`:
 
-- **`send-push`** — drena `notification_push_deliveries` y envía las
-  notificaciones Web Push. Se despliega con `npm run deploy:push`.
+- **`send-push`** — en cada pasada encola los recordatorios de eventos
+  (`enqueue_upcoming_event_notifications()`), drena `notification_push_deliveries`
+  y envía las notificaciones Web Push. Se invoca con `x-cron-secret` o con sesión
+  de administrador. Se despliega con `npm run deploy:push`.
 - **`storage-gc`** — drena `storage_cleanup_queue` y borra los archivos.
   `npx supabase functions deploy storage-gc`.
 
@@ -986,7 +1005,8 @@ Y después, a mano, porque nada de esto se puede exportar:
 ### Aplicar un cambio
 
 1. Escribir la migración en `supabase/migrations/`, con nombre
-   `<timestamp>_descripcion.sql`.
+   `<timestamp>_descripcion.sql`. Desde `20260827`, escribir también
+   `<timestamp>_descripcion.down.sql`, que la deshace; se aplica a mano igual.
 2. Ejecutarla en el SQL Editor. En este proyecto las migraciones se aplican a
    mano: no hay `db push` en CI ni en los scripts de npm.
 3. **Actualizar `baseline.sql` con el mismo cambio.**
@@ -1050,7 +1070,8 @@ comportamiento que se quiere, pero conviene saber de dónde salió.
 ### Los identificadores de las carreras cambian al reconstruir
 
 `careers.id` es `serial` y el seed no fija los valores. En producción van del 29
-al 42; sobre una base nueva irían del 1 al 14. No afecta a nada, porque
+al 42 (dato histórico, de cuando el seed tenía menos carreras); sobre una base
+nueva, con las 39 de hoy, irían del 1 al 39. No afecta a nada, porque
 `profiles.career` guarda el nombre y no el identificador.
 
 ---

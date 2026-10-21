@@ -3050,9 +3050,10 @@ create or replace view public.profiles_public
 -- =============================================================================
 -- 8. ROW LEVEL SECURITY
 -- =============================================================================
--- RLS activo en las 23 tablas. Dos de ellas quedan a propósito sin ninguna
--- política (pin_creation_events y notification_push_deliveries): son internas,
--- solo las tocan funciones SECURITY DEFINER y service_role.
+-- RLS activo en las 32 tablas. Tres de ellas quedan a propósito sin ninguna
+-- política (pin_creation_events, notification_push_deliveries y
+-- storage_cleanup_queue): son internas, solo las tocan funciones SECURITY
+-- DEFINER y service_role.
 --
 -- Las políticas usan el rol `public` de Postgres (todos los roles) y filtran
 -- por user_role(), no por el rol de conexión. Un guest es un usuario sin fila

@@ -21,7 +21,7 @@
 
 **UDP Map** permite a la comunidad de la Universidad Diego Portales interactuar en tiempo real mediante un **mapa colaborativo de pines**, un **calendario de eventos**, un **foro social por facultades**, un **sistema de notificaciones Web Push** y un **panel de administración y moderación**. Todo en una Progressive Web App (PWA) gratuita, mobile-first y bilingüe.
 
-> **Estado del Proyecto (v0.7.0):** Sprints 1 (Fundaciones), 2 (Motor de Pines), 3 (Eventos y Foro), 4 (Social y Moderación), 5 (Expansión Multicampus) y 6 (Mapeo Interior, Pisos y Salas) completados y operativos.
+> **Estado del Proyecto (v0.8.0):** el plan y los pendientes viven en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ### 🚀 Funcionalidades Principales
 
@@ -45,7 +45,7 @@
 
 ### Requisitos
 
-- [Node.js](https://nodejs.org/) v18+ / v20+
+- [Node.js](https://nodejs.org/) 24 (la versión que usa CI)
 - (Opcional) Proyecto en [Supabase](https://supabase.com) con Google Auth configurado para `@mail.udp.cl`
 
 ### Instalación y Desarrollo
@@ -86,17 +86,22 @@ src/
 │   ├── events/           → Calendario de eventos, filtros y gestión de RSVP
 │   ├── forum/            → Foro estudiantil, hilos por facultad y publicaciones oficiales
 │   ├── map/              → MapLibre GL, selectores de campus, perímetros GeoJSON y ruteo
+│   ├── mapping/          → Editor de mapeo interior: edificios, plantas y áreas (/admin/mapeo)
 │   ├── moderation/       → Cola de reportes de contenido y acciones de moderación
 │   ├── notifications/    → Suscripción Web Push, service worker y sidebar de notificaciones
 │   ├── pins/             → Motor común de pines: creador, fotos, expiración, votos y comentarios
+│   ├── places/           → Galerías de fotos de facultades y edificios
 │   └── profile/          → Perfil de usuario, perfil público, karma e insignias
 ├── shared/               → UI Kit (Tailwind + Radix), hooks, tipos DB autogenerados y utilidades
-└── styles/               → Estilos globales en Tailwind CSS (index.css)
+├── styles/               → Estilos globales en Tailwind CSS (index.css)
+└── test/                 → Dobles de entorno para jsdom (setup de Vitest)
 
 supabase/
-├── migrations/           → Esquema SQL, RLS, triggers, RPCs y parches de seguridad (SEC-001 a SEC-010)
-├── seed/                 → Datos iniciales (campus, facultades, categorías)
-└── functions/            → Edge Functions desplegables (`send-push` y `expire-pins`)
+├── schema/               → baseline.sql: reconstruye la base desde cero
+├── migrations/           → Migraciones incrementales desde agosto 2026 (se aplican a mano en el SQL Editor)
+├── _archive/             → Migraciones históricas ya integradas en el baseline
+├── seed/                 → Datos iniciales (campus, facultades, categorías, insignias)
+└── functions/            → Edge Functions desplegables (`send-push` y `storage-gc`; la expiración de pines es un job de pg_cron, no una función)
 ```
 
 ---
@@ -106,7 +111,7 @@ supabase/
 | Variable | Descripción | ¿Requerida? | ¿Expuesta en Frontend? |
 |---|---|---|---|
 | `VITE_SUPABASE_URL` | URL de la instancia de Supabase | Opcional (Demo si falta) | ✅ Sí |
-| `VITE_SUPABASE_ANON_KEY` | Clave anónima pública de Supabase | Opcional (Demo si falta) | ✅ Sí |
+| `VITE_SUPABASE_ANON_KEY` | Clave anónima pública de Supabase (`VITE_SUPABASE_PUBLISHABLE_KEY` se acepta como alias) | Opcional (Demo si falta) | ✅ Sí |
 | `VITE_ORS_API_KEY` | API Key de OpenRouteService (Ruteo peatonal real) | Opcional (Línea recta fallback) | ✅ Sí |
 | `VITE_GOOGLE_CLIENT_ID` | Client ID de Google OAuth para login nativo | Opcional | ✅ Sí |
 | `VITE_VAPID_PUBLIC_KEY` | Clave pública VAPID para notificaciones Web Push | Opcional | ✅ Sí |
@@ -135,7 +140,7 @@ supabase/
 ## 🧪 Pruebas y Comprobación de Calidad
 
 ```bash
-# Ejecutar suite de pruebas unitarias y de componentes (54 tests)
+# Ejecutar la suite de pruebas (Vitest)
 npm test
 
 # Verificación de tipos TypeScript
@@ -143,6 +148,12 @@ npm run typecheck
 
 # Linter de código
 npm run lint
+
+# Claves de traducción ES/EN al día
+npm run check:i18n
+
+# Lo que debe pasar antes de dar un cambio por terminado
+npm run typecheck && npx vitest run && npx eslint src
 ```
 
 ---
@@ -151,7 +162,7 @@ npm run lint
 
 Revisa la guía [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) para conocer el flujo de trabajo, estándares de código, seguridad en migraciones SQL y cómo enviar Pull Requests.
 
-La documentación viva son tres archivos: [docs/ROADMAP.md](docs/ROADMAP.md) (qué está hecho y qué falta), [docs/DATABASE.md](docs/DATABASE.md) (el esquema y por qué es así) y el propio CONTRIBUTING. Si trabajas con un agente de IA, las reglas del repositorio están en [CLAUDE.md](CLAUDE.md).
+La documentación viva está en `docs/`: [ROADMAP](docs/ROADMAP.md) (qué está hecho y qué falta), [DATABASE](docs/DATABASE.md) (el esquema y por qué es así), [CONTRIBUTING](docs/CONTRIBUTING.md), [SALAS](docs/SALAS.md) (código de sala y direcciones), [CHANGELOG](docs/CHANGELOG.md), [NOTIFICATIONS_AND_MODERATION](docs/NOTIFICATIONS_AND_MODERATION.md) y [PWA_UPDATE](docs/PWA_UPDATE.md). Para ubicarte en el código, [docs/REPO_MAP.md](docs/REPO_MAP.md) dice qué hay en cada carpeta y dónde tocar para cada cambio. Si trabajas con un agente de IA, las reglas del repositorio están en [CLAUDE.md](CLAUDE.md); `npm run gen:agents` regenera desde ahí los archivos para otras herramientas.
 
 ---
 

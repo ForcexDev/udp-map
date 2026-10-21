@@ -5,7 +5,8 @@ notificaciones y panel de administración, en una PWA bilingüe y mobile-first.
 
 Este documento cuenta **cómo se trabaja aquí y por qué el código es como es**.
 Para el estado del proyecto —lo hecho y lo que falta— mira [ROADMAP.md](ROADMAP.md);
-para la base de datos, [DATABASE.md](DATABASE.md).
+para la base de datos, [DATABASE.md](DATABASE.md); para saber qué hay en cada
+carpeta y dónde tocar para cada cambio, [REPO_MAP.md](REPO_MAP.md).
 
 > **Las reglas cortas viven en [`CLAUDE.md`](../CLAUDE.md)**, en la raíz: la regla
 > de los tres archivos, los comandos de verificación y las trampas del mapa que ya
@@ -19,10 +20,12 @@ para la base de datos, [DATABASE.md](DATABASE.md).
 
 1. **Haz fork** del repositorio y clona tu fork localmente.
 2. **Instala dependencias**: `npm install`
-3. **Configura el entorno**: Copia `.env.example` a `.env` y llena las variables de Supabase y Web Push (si cuentas con backend).
+3. **Configura el entorno**: Copia `.env.example` a `.env` y llena las variables de Supabase, OpenRouteService, Google y Web Push (si cuentas con backend). Sin `VITE_GOOGLE_CLIENT_ID` no funciona el login con Google.
 4. **Inicia el servidor de desarrollo**: `npm run dev`
 
 > **💡 Modo Demo Local:** Si no configuras Supabase en `.env` (dejando las variables vacías), la app corre en **modo demo** con datos en memoria y mocks. Esto te permite probar la interfaz de usuario (mapa, pines, foros, eventos, notificaciones) sin backend.
+
+> **Mantén el puerto 5173.** Es el origen registrado en Google OAuth y en la lista CORS de la Edge Function `send-push`; en otro puerto no podrás iniciar sesión ni probar el push. Para una segunda instancia en modo demo (que no necesita ni OAuth ni push) usa `PORT=5199 npm run dev`.
 
 ---
 
@@ -35,19 +38,19 @@ la versión corta de este árbol; aquí está lo que hace cada uno.
 src/
 ├── app/                  → Entrada (main.tsx), router (App.tsx) y layout global
 ├── features/
-│   ├── about/            → Licencias e información institucional
+│   ├── about/            → Modal «Sobre nosotros» con el equipo del proyecto
 │   ├── admin/            → Panel /admin, métricas y gestión de roles
-│   ├── auth/             → Supabase Auth, sesión, modo invitado y permissions.ts
+│   ├── auth/             → Sesión de Google (authStore, con modo demo), LoginModal, ProfileSetupModal (elegir facultad al registrarse), permissions.ts y useGuard
 │   ├── events/           → Calendario de eventos, filtros y RSVP
 │   ├── forum/            → Hilos por facultad y publicaciones oficiales
-│   ├── map/              → MapLibre GL, capas, perímetros y ruteo peatonal
+│   ├── map/              → MapLibre GL, capas de facultad y de mapeo interior, límites del campus, ruteo peatonal y paneles del mapa (Lente Contextual, selector de planta, guía de ruta, ficha de facultad)
 │   ├── mapping/          → Editor de mapeo interior: edificios, plantas y áreas
 │   ├── moderation/       → Cola de reportes de contenido (/moderacion)
 │   ├── notifications/    → Web Push, service worker y centro de notificaciones
 │   ├── pins/             → Motor común: creación, fotos, expiración, votos, comentarios
 │   ├── places/           → Galerías de foto de facultades y edificios
 │   └── profile/          → Perfil propio y público, karma e insignias
-├── shared/               → UI sin dominio, stores, utilidades puras, tipos y clientes
+├── shared/               → UI mayormente sin dominio (Sidebar es la excepción, ver la deuda), stores, utilidades puras, tipos y clientes
 └── styles/               → index.css (Tailwind 4 y las clases propias)
 ```
 
@@ -72,7 +75,7 @@ empeores sin darte cuenta.
 
 Cinco decisiones de arquitectura que nadie escribió cuando se tomaron, reconstruidas
 a posteriori. Vienen de una auditoría de julio de 2026; las cifras están
-reverificadas contra el código el 2026-08-05.
+reverificadas contra el código el 2026-10-21.
 
 Cada una separa la **intención** de lo que realmente pasó, porque en tres de las
 cinco no coinciden.
@@ -120,20 +123,24 @@ configurado a mano en `vite.config.ts`. Funciona.
 
 ### Deuda estructural conocida
 
-No es una lista de tareas: es dónde vas a chocar. Las cifras son del **2026-08-05**
+No es una lista de tareas: es dónde vas a chocar. Las cifras son del **2026-10-21**
 y solo sirven para ver la tendencia — si al leerlas han crecido más, el punto
 sigue en pie con más razón. Compruébalas con `wc -l` antes de citarlas.
 
 | Qué | Dónde | Por qué importa |
 |---|---|---|
 | Ciclos entre features | `map` ↔ `pins` ↔ `mapping` | Impide extraer o testear un módulo aislado. Cambiar cómo se ve un pin puede romper otra pantalla |
-| Componente que hace de todo | `map/MapPage.tsx` — **881 líneas** | Mezcla renderizado, orquestación de modales y APIs del dispositivo (giroscopio, geolocalización con parches para iOS y Brave) |
-| Formulario que hace de todo | `pins/CreatePinModal.tsx` — **835 líneas** | UI móvil y escritorio, validación, compresión de imágenes en canvas y errores de RPC, todo junto |
-| Cajón de sastre de red | `pins/api.ts` — **701 líneas** | Pines, comentarios, favoritos, votos y el camino del modo demo en un archivo |
-| Algoritmo mezclado con vista | `forum/ThreadDetailModal.tsx` — **551 líneas** | `buildCommentTree` y el renderizado recursivo conviven |
-| Store con demasiados temas | `shared/stores/uiStore.ts` | Modales, modo 2D/3D, interior, ruteo y avisos en el mismo sitio. Barato de partir, si molesta |
+| Componente que hace de todo | `map/MapPage.tsx` — **892 líneas** | Mezcla renderizado, orquestación de modales y APIs del dispositivo (giroscopio, geolocalización con parches para iOS y Brave) |
+| Formulario que hace de todo | `pins/CreatePinModal.tsx` — **847 líneas** | UI móvil y escritorio, validación, compresión de imágenes en canvas y errores de RPC, todo junto |
+| Cajón de sastre de red | `pins/api.ts` — **728 líneas** | Pines, comentarios, favoritos, votos y el camino del modo demo en un archivo |
+| Algoritmo mezclado con vista | `forum/ThreadDetailModal.tsx` — **552 líneas** | `buildCommentTree` y el renderizado recursivo conviven |
+| El mapa entero en un componente | `map/MapView.tsx` — **1023 líneas** | Crea el mapa, los marcadores DOM, el marcador de posición del usuario, la capa de ruta y los clics en el mismo archivo. Es el más grande del feature y el que guarda las trampas de marcadores de `CLAUDE.md` |
+| El editor de mapeo en una página | `mapping/MappingPage.tsx` — **1127 líneas** | Atajos de teclado globales (Shift, Alt, Enter, Escape), nueve `useMutation` de react-query (salas, facultades, áreas, edificios, plantas…) y la orquestación de paneles. Es el archivo de código más grande de `src/` |
+| Lienzo con su propio mapa | `mapping/MappingCanvas.tsx` — **873 líneas** | Segunda instancia de MapLibre con fuentes propias, dibujo de polígonos, marcadores de vértice y ajuste (snap, ortogonal) en un solo componente. `MappingProperties.tsx` (693) anda cerca del umbral |
+| Cruce de `shared/` hacia features | `shared/ui/Sidebar.tsx` — **345 líneas** | Importa `features/auth` y `features/notifications` (`NotificationCenter`, `useNotifications`): `shared/` depende de dominios, al revés de la regla. Sacar el centro de notificaciones por una propiedad o un slot lo resolvería |
+| Store con demasiados temas | `shared/stores/uiStore.ts` — **243 líneas** | Modales, modo 2D/3D, interior, ruteo y avisos en el mismo sitio. Barato de partir, si molesta |
 
-Las cuatro primeras **crecieron** desde julio. Si tocas uno de esos archivos y
+Las cuatro filas de agosto **crecieron** desde entonces (el resto se midió por primera vez el 2026-10-21). Si tocas uno de esos archivos y
 puedes sacar algo a un módulo aparte sin desviarte de tu tarea, hazlo.
 
 ---
@@ -142,10 +149,12 @@ puedes sacar algo a un módulo aparte sin desviarte de tu tarea, hazlo.
 
 La plataforma usa **Supabase Auth (Google Provider)**, restringido al dominio `@mail.udp.cl`. Todo usuario registrado posee una fila en `profiles`.
 
+El login real no usa la redirección de Supabase: el botón `GoogleLogin` (`@react-oauth/google`, dentro de `GoogleOAuthProvider` con `VITE_GOOGLE_CLIENT_ID`) entrega un ID token que `authStore.signInWithIdToken` canjea en Supabase. Sin credenciales, `signInDemo('student' | 'admin')` crea una sesión demo. `authStore` cierra la sesión a cualquier correo que no sea `@mail.udp.cl` (la base lo valida también: el cliente solo evita una sesión a medias). El perfil público se lee siempre de `profiles_public`, que no expone el email.
+
 Existen 4 roles controlados vía base de datos y `features/auth/permissions.ts`:
 
 1. **`guest`**: Usuarios sin inicio de sesión. Acceso de **solo lectura**. Toda interacción desplegará un modal solicitando inicio de sesión.
-2. **`student`**: Login normal `@mail.udp.cl`. Pueden crear pines temporales (`report`), eventos, hilos, comentarios, votos y RSVP. Rate limit preparado de 10 pines por día UTC.
+2. **`student`**: Login normal `@mail.udp.cl`. Pueden crear pines temporales (`report`), eventos, hilos, comentarios, votos y RSVP. Límite diario de 10 pines aplicado en la RPC `create_pin_with_daily_limit` (lanza `DAILY_PIN_LIMIT_REACHED`), no en el cliente.
 3. **`moderator`**: Estudiantes promovidos. Pueden crear lugares permanentes (`place`), verificar reportes, fijar hilos en el foro y publicar como CEE.
 4. **`admin`**: Acceso total. Además de moderación, acceden al panel `/admin`, asignan roles a otros usuarios (`admin_set_user_role`), desprotegen límites del mapa y gestionan la cola de moderación.
 
@@ -193,7 +202,7 @@ VITE_VAPID_PUBLIC_KEY=tu-vapid-public-key
 
 ### Tipado (TypeScript)
 - Evita el uso de `any`. El linter arrojará error (`Unexpected any`).
-- Los tipos de la base de datos se autogeneran en `src/shared/types/database.ts`. Utiliza las interfaces expuestas allí.
+- Los tipos de la base de datos se mantienen a mano en `src/shared/types/database.ts`, como espejo de `supabase/schema/baseline.sql`. Solo incluyen las tablas que consulta el cliente; las internas se omiten a propósito. Al cambiar el esquema, actualízalos junto con la migración (podrán regenerarse con `supabase gen types` cuando el proyecto esté linkeado). Utiliza las interfaces expuestas allí.
 
 ### Internacionalización (i18n)
 - La aplicación soporta Español e Inglés mediante `react-i18next`.
@@ -213,6 +222,8 @@ npm run typecheck && npx vitest run && npx eslint src
 Los tres tienen que pasar. `npm run build` corre además el typecheck, así que
 sirve como comprobación final.
 
+CI corre `npm run lint` (`eslint .` completo), el typecheck, `npm test` y el build; **no** corre `check:i18n` ni `gen:agents -- --check`. Por eso, si tocaste textos de interfaz, corre `npm run check:i18n`, y si tocaste `CLAUDE.md`, `npm run gen:agents` (CI no los comprueba hoy).
+
 Aún no hay una suite E2E ni pruebas de integración contra Supabase; si tu cambio depende de RLS, RPCs o triggers, agrega una validación reproducible además de las pruebas de frontend.
 
 ---
@@ -220,7 +231,7 @@ Aún no hay una suite E2E ni pruebas de integración contra Supabase; si tu camb
 ## 🔀 Proceso de Pull Request
 
 1. Trabaja sobre `main` actualizado y crea una rama: `feature/nuevo-foro`, `fix/boton-login`.
-2. Verifica en local antes de abrir nada. Si falla, CI lo rechaza igual.
+2. Verifica en local antes de abrir nada. Si falla, CI lo rechaza igual (con `eslint .` completo, no solo `src`).
 3. Título claro, y menciona el issue si lo hay (`Closes #12`).
 4. **Deja al día el documento que corresponda:** `ROADMAP.md` si cerraste un
    pendiente o cambiaste una decisión, `DATABASE.md` si tocaste el esquema,

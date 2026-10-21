@@ -5,11 +5,15 @@ qué formato tiene el código de sala de verdad —no el que suponíamos—, qu�
 edificio corresponde a qué dirección y a qué facultad, y qué haría falta para
 que una sala acabe siendo un pin en el mapa.
 
-**Aquí no se implementa nada.** Es deliberado: la parte cara de esto no es el
-código, es acordar el vocabulario. Mientras no esté claro que `E441.4.L.D` no se
-parte en tres, que el prefijo del código **es** la dirección postal y que una
-facultad puede tener cuatro direcciones, cualquier implementación va a nacer
-torcida. Cuando se implemente, este archivo es el contrato.
+**Primero se escribió, después se implementó.** Fue deliberado: la parte cara de
+esto no es el código, es acordar el vocabulario. Mientras no esté claro que
+`E441.4.L.D` no se parte en tres, que el prefijo del código **es** la dirección
+postal y que una facultad puede tener cuatro direcciones, cualquier
+implementación va a nacer torcida. Hoy este archivo es el contrato del módulo, y
+la implementación vive en `shared/utils/roomCode.ts`, `roomCatalog.ts` y
+`roomSearch.ts`, en `features/mapping/salasEit.ts` y `RoomImportPanel.tsx`, y en
+`features/map/roomSubtitle.ts` (ver §10). Dónde tocar para cada cambio:
+`docs/REPO_MAP.md`.
 
 Fecha del levantamiento: **2026-08-10**. Los datos de horario son un corte del
 segundo semestre 2026.
@@ -160,7 +164,7 @@ los **dos primeros** puntos y dejar el resto entero:
 E441.4.S401     → { edificio: 'E441', piso:  4, sala: 'S401'     }
 V432.-1.SIM     → { edificio: 'V432', piso: -1, sala: 'SIM'      }
 E441.4.L.D      → { edificio: 'E441', piso:  4, sala: 'L.D'      }   ← 4 trozos
-E441.5. LAB INF → { edificio: 'E441', piso:  5, sala: 'LAB INF'  }   ← espacio inicial
+E441.5. LAB INF → { edificio: 'E441', piso:  5, sala: ' LAB INF' }   ← espacio inicial, se conserva
 E278B.4.S402    → { edificio: 'E278B', piso: 4, sala: 'S402'     }   ← edificio con letra
 ```
 
@@ -169,10 +173,18 @@ Reglas que hay que respetar sí o sí:
 - **Partir por los dos primeros puntos, no por todos.** `place.split('.')` da
   cuatro trozos en `E441.4.L.D` y tira el laboratorio a la basura. Son 33
   registros del corte actual.
-- **Recortar espacios en la sala.** `E441.5. LAB INF` viene con un espacio
-  después del punto, y `Lab  Informática` del listado estático viene con dos
-  espacios en medio. Cualquier comparación tiene que normalizar espacios y
-  mayúsculas antes de cruzar.
+- **Normalizar espacios al comparar, no al parsear.** `E441.5. LAB INF` viene
+  con un espacio después del punto, y `Lab  Informática` del listado estático
+  viene con dos espacios en medio. `parseRoomCode` solo recorta el código
+  completo (los extremos) y devuelve la sala tal cual, con su espacio inicial
+  (`' LAB INF'`): el recorte, el colapso de espacios y las mayúsculas los hace
+  `normalizeRoomCode`, y cualquier comparación tiene que pasar por ahí antes de
+  cruzar. Quien recorta la sala al parsear es el comando de la §7, no el código.
+- **Hay un formato de respaldo, `A-302`.** `parseRoomCode` también reconoce
+  letras, guion y tres o cuatro dígitos: edificio `A`, sala `302`, y la planta es
+  el **primer dígito** (la sala 302 está en el 3.º). Si ese dígito es 0 la planta
+  queda en `null`, igual que con un `.0.` en el formato posicional. Es una
+  convención de la aplicación, no algo que haya salido del horario de la FIC.
 - **El piso puede ser negativo, y nunca es 0.** Coincide con la regla de la base
   (`check (level <> 0)` en `building_floors`, ver `docs/DATABASE.md` §4): la
   planta baja es el `1`. En los datos hay `-1`, `-2` y `-3`.
@@ -272,7 +284,8 @@ Dos cosas que la tabla dice de pasada y conviene no perder:
   como edificios separados.
 - **`E306` era el único hueco y ya está cerrado:** es la Facultad de Comercio,
   vecina del Aulario. Es además el edificio con **más salas de todo el
-  conjunto** (17), lo que encaja: ahí se dictan los ramos de plan común que la
+  conjunto** (17 en el corte del 08-10; 18 en el del 08-26, solo por detrás de
+  `E441`), lo que encaja: ahí se dictan los ramos de plan común que la
   FIC no alcanza a meter en sus dos edificios.
 
 ---
@@ -335,9 +348,12 @@ perímetro.
 
 ### Las 8 facultades que hacen falta ya existen
 
-Comprobado contra `src/shared/data/campusData.ts` el 2026-08-10: los 12
-edificios del catálogo caen sobre **ocho** facultades, y **las ocho están en el
-catálogo**. No hay que crear ninguna.
+Comprobado el 2026-08-10: los edificios de la tabla de abajo caen sobre
+**ocho** facultades, y **las ocho están en el catálogo de facultades**
+(`campusData.ts` como semilla, tabla `faculties` en vivo). No hay que crear
+ninguna. Los edificios, en cambio, **no** están en `campusData.ts`: ese archivo
+solo declara que el mapeo interior vive en `buildings` / `building_floors` /
+`areas`.
 
 | Facultad | `faculty_id` | Sus edificios |
 |---|---|---|
@@ -444,7 +460,7 @@ tiene ese piso.
   autocompleta el hueco**: puede ser una oficina, un baño o una bodega. Inventar
   una S103 mete un pin en un lugar que no es una sala.
 - **La capacidad no está en ningún lado.** El conteo de bloques la insinúa
-  (`E441.4.S403` con 25 bloques es claramente grande) pero no la dice. El
+  (`E441.4.S403` con 31 bloques es claramente grande) pero no la dice. El
   ROADMAP §14 ya anota "capacidad de sala" como campo futuro; se llenará a mano.
 - **Los pisos que aparecen aquí no son todos los pisos del edificio.** Son los
   pisos que tienen sala docente. `E441` tiene planta 1 a 5 y un −1, pero eso no
@@ -480,13 +496,15 @@ bloques pueden subir bastante.
 **Y solo se ven los ramos de la FIC.** Esto es lo que de verdad limita "sala
 libre":
 
-- **25 de las 61 salas (41 %) están en edificios que no son de la FIC** —
-  `E306` (17), `M253A` (4), `E278A` (2), `E278B` (1), `E326` (1).
+- **43 de las 82 salas (52 %) están en edificios que no son de la FIC** —
+  `E306` (18), `E326` (5), `E333` (5), `M253A` (5), `E278A` (3), `V275` (3),
+  `E278B` (2), `M253B` (1), `V210` (1). *(En el corte del 2026-08-10 eran 25 de
+  61, 41 %: el corte nuevo sumó 21 salas, 18 de ellas fuera de la FIC.)*
 - El **27 % de los bloques semanales** de la FIC se dictan fuera de sus dos
-  edificios.
+  edificios *(cifra del corte 2026-08-10; no se recalculó con el del 08-26)*.
 
 En `E441` y `V432` "no aparece en el horario" ≈ "está libre", porque son de la
-FIC y casi todo lo que pasa ahí es de la FIC. **En las otras 25 salas esa
+FIC y casi todo lo que pasa ahí es de la FIC. **En las otras 43 salas esa
 inferencia es falsa**: una sala de Comercio en `E306` puede estar ocupada por un
 ramo de Comercio que este archivo no ve, y la marcaríamos verde con gente
 dentro. Para esas salas el archivo sirve para decir "**ocupada**", nunca para
@@ -558,7 +576,7 @@ los pines `sala` de la base, que es justo el contenedor que no se queda atrás.
 Tres reglas para cuando toque implementarlo:
 
 - **El valor por defecto es "no sé", no "libre".** Tres estados —ocupada, libre,
-  sin datos— y las 25 salas fuera de la FIC viven en "sin datos" mientras no
+  sin datos— y las 43 salas fuera de la FIC viven en "sin datos" mientras no
   haya una fuente que las cubra.
 - **Normalizar antes de cruzar**: `trim()`, colapsar espacios, mayúsculas. Es lo
   que se les escapó con `LAB INF`.
@@ -569,7 +587,7 @@ Tres reglas para cuando toque implementarlo:
 
 ## 7. Cómo volver a derivar todo esto
 
-El corte de arriba es del 2026-08-10 y **caduca cada semestre**. Para rehacerlo
+El corte de arriba (§5.1) es del 2026-08-26 y **caduca cada semestre**. Para rehacerlo
 sin depender de que alguien lo haga a mano:
 
 ```bash
@@ -642,15 +660,18 @@ Por dónde empezar, por lo que más rinde:
 
 | Orden | Edificio | Salas | Por qué |
 |---|---|---|---|
-| 1.º | `E441` | 22 | El más grande, ya trazado en el mapa, y es "tu" facultad |
-| 2.º | `V432` | 14 | Ya trazado, completa la FIC — con los dos, 36 de 61 |
-| 3.º | `E306` | 17 | El segundo con más salas, y con él quedan 53 de 61 |
-| 4.º | `M253A`, `E278A/B`, `E326` | 8 | La cola, edificio por edificio |
+| 1.º | `E441` | 23 | El más grande, ya trazado en el mapa, y es "tu" facultad |
+| 2.º | `V432` | 16 | Ya trazado, completa la FIC — con los dos, 39 de 82 |
+| 3.º | `E306` | 18 | El segundo con más salas, y con él quedan 57 de 82 |
+| 4.º | `M253A`, `E278A/B`, `E326`, `E333`, `V275`, `M253B`, `V210` | 25 | La cola, edificio por edificio |
+
+*(Recontado con el corte del 2026-08-26, §5.1. El de 2026-08-10, con 61 salas,
+daba 22, 14 y 17 para los tres primeros.)*
 
 ### Por qué no hay un seed generado
 
-Se podría escribir el `INSERT` de las 61 salas ahora mismo. **No conviene**, y la
-razón es una sola pero decisiva: **las coordenadas serían inventadas**. Las 61
+Se podría escribir el `INSERT` de las 82 salas ahora mismo. **No conviene**, y la
+razón es una sola pero decisiva: **las coordenadas serían inventadas**. Las 82
 caerían apiladas en el centroide de su edificio, y después habría que arrastrar
 una por una — más trabajo que crearlas donde van, y con el riesgo de que alguna
 se quede sin mover y apunte a un sitio falso. El mapeo interior existe
@@ -669,8 +690,9 @@ Cuando toque cargar, el `INSERT` va con `creator_id =
 
 ## 9. Lo que este documento deja decidido
 
-- El código de sala se parte por **los dos primeros puntos**, y la sala se
-  recorta de espacios. `E441.4.L.D` ("Laboratorio D, piso 4") y
+- El código de sala se parte por **los dos primeros puntos**, y los espacios se
+  normalizan **al comparar** (`normalizeRoomCode`), no al parsear: `parseRoomCode`
+  devuelve `' LAB INF'` con su espacio. `E441.4.L.D` ("Laboratorio D, piso 4") y
   `E441.5. LAB INF` son los casos que rompen cualquier otra regla, y existen.
 - El prefijo del edificio **es una dirección postal**, no un nombre de facultad.
   La tabla de la §3 es la traducción, y vive aquí — no repartida por el código.
@@ -683,7 +705,7 @@ Cuando toque cargar, el `INSERT` va con `creator_id =
 - El horario lo publica la **facultad**, no los estudiantes: es el volcado de una
   consulta GraphQL a `public/data.json`. Lo que falta no es acceso técnico —CORS
   está abierto— sino hablar con quien lo mantiene.
-- **"No aparece en el horario" no significa "libre"** en 25 de las 61 salas. El
+- **"No aparece en el horario" no significa "libre"** en 43 de las 82 salas (corte 2026-08-26). El
   valor por defecto de una sala sin datos es "no sé", nunca verde.
 
 ---
@@ -695,10 +717,10 @@ respuesta honesta es **casi ninguna**. Lo que hay:
 
 | Qué | Dónde |
 |---|---|
-| La categoría `sala`, con `ttl_hours: 720` — distinta de `sala-libre`, que son 6 h | `campusData.ts:173` |
-| El campo de código de sala, que **solo aparece si la categoría es `sala`** (`isRoom`) | `IndoorFields.tsx:144`, `CreatePinModal.tsx:771` |
-| `pins.room_code`, que el autor puede editar con un `UPDATE` directo | `api.ts:419-434` |
-| El chip con el código en la ficha del pin | `PinDetail.tsx:220` |
+| La categoría `sala`, con `ttl_hours: 720` — distinta de `sala-libre`, que son 6 h | la entrada `sala` de `CATEGORIES` en `campusData.ts` |
+| El campo de código de sala, que **solo aparece si la categoría es `sala`** (`isRoom`) | `isRoom` en `IndoorFields.tsx`, pasado desde `CreatePinModal.tsx` |
+| `pins.room_code`, que el autor puede editar con un `UPDATE` directo | el bloque de `room_code` de `updatePin` en `features/pins/api.ts` |
+| El chip con el código en la ficha del pin | el chip de `room_code` en `PinDetail.tsx` |
 | La validación de planta en servidor | `trg_validate_pin_floor` (ROADMAP §15) |
 
 **Lo que se añadió el 2026-08-26** y que esta sección daba por inexistente:
@@ -710,6 +732,7 @@ respuesta honesta es **casi ninguna**. Lo que hay:
 | La descarga del `data.json`, que nunca lanza | `features/mapping/salasEit.ts` |
 | El importador de `/admin/mapeo` (§12.7 punto 3) | `features/mapping/RoomImportPanel.tsx` |
 | Las salas se dibujan más pequeñas que los avisos (22 px contra 26) | `isFixedInfraCategory`, `styles/index.css` |
+| `searchRooms` y `roomSubtitle`: el buscador del mapa encuentra salas por código, número o edificio, ordenadas por cuánto encajan (fecha de alta no registrada; verificado 2026-10-21) | `shared/utils/roomSearch.ts`, `features/map/roomSubtitle.ts`, usados en `MapPage.tsx` |
 
 **Lo que sigue sin existir:**
 
@@ -762,8 +785,8 @@ de `facultyPerimeters.ts`, y allí la copia mala estuvo mala meses sin que nadie
 lo notara (`docs/DATABASE.md` §4).
 
 Lo que sí: **leer, cachear y derivar**. El archivo trae `ETag` y
-`Last-Modified`, así que revalidar es barato, y con los 799 registros en memoria
-se calcula todo lo que hace falta:
+`Last-Modified`, así que revalidar es barato, y con todos los registros en
+memoria (1304 en el corte del 08-26) se calcula todo lo que hace falta:
 
 - si la sala está ocupada **ahora**,
 - **hasta qué hora** y qué ramo,
@@ -780,7 +803,7 @@ modelo desde el principio:
 |---|---|---|
 | **Ocupada** | El horario dice que hay clase ahora | Chip con el ramo y hasta qué hora |
 | **Libre** | Es sala de `E441` o `V432`, dentro de horario, y no aparece | Verde |
-| **Sin datos** | Las otras 25 salas, o fin de semana, o fuera de bloque | Sin chip. **No verde** |
+| **Sin datos** | Las otras 43 salas, o fin de semana, o fuera de bloque | Sin chip. **No verde** |
 
 Un verde falso es peor que no decir nada: alguien camina hasta el quinto piso
 para encontrar una clase dentro. `sala-libre` (el aviso humano, TTL 6 h) sigue
@@ -896,7 +919,7 @@ Ninguna migración de datos, pero sí tres cosas:
 
 1. **La regla de dibujo:** pin con `area_id` → se pinta el polígono con su
    código y **no** la chincheta; tocarlo abre la ficha del pin. Es lo que hoy no
-   existe, y es lo que hace que 61 salas no se vean como 61 chinchetas
+   existe, y es lo que hace que 82 salas no se vean como 82 chinchetas
    amontonadas. Va con Fase 4 (§9.2), y para las salas **sin** área trazada
    sigue valiendo la regla de ahí: marcador más pequeño, **solo tamaño, nunca
    tono** — el desvanecido ya significa "por vencer".
@@ -911,12 +934,12 @@ Ninguna migración de datos, pero sí tres cosas:
 ### La objeción del trabajo, que es la real
 
 "Modelarlo como administrador lleva trabajo" es cierto, y no se arregla con
-argumentos: 61 salas son 61 polígonos.
+argumentos: 82 salas son 82 polígonos.
 
 Lo que sí lo arregla es **que el editor proponga las salas**. `/admin/mapeo` lee
 el `data.json` (§1), y para el edificio abierto ofrece las salas que faltan con
 **código y planta ya rellenos** — el moderador solo dibuja el contorno. Ahí el
-trabajo deja de ser "inventar 61 fichas" y pasa a ser "trazar 61 rectángulos
+trabajo deja de ser "inventar 82 fichas" y pasa a ser "trazar 82 rectángulos
 sobre un plano", que es otra cosa.
 
 Y es también lo que hace defendible pedirle a la universidad —o a quien mantiene

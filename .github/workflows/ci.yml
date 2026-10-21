@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # Full history needed so git rev-list --count HEAD returns the correct
-          # total commit count used to compute the build version (0.SPRINT+COMMITS).
+          # total commit count used to compute the build version (MAJOR.MINOR+COMMITS).
           fetch-depth: 0
 
       - uses: actions/setup-node@v4

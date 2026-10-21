@@ -1,7 +1,7 @@
 # Hoja de ruta — UDP Map
 
 > **Documento vivo.** Es el plan del repositorio: qué está hecho y qué falta. Se
-> actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-08-27.
+> actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-10-21.
 >
 > Nació como el plan de mapeo interior y onboarding, y absorbió el backlog que
 > antes vivía repartido entre `PLAN.md` y `SPRINTS_STATUS.md`. Los dos se
@@ -16,11 +16,18 @@
 
 ## 1. Diagnóstico: qué hay hoy de verdad
 
-Verificado en código antes de planificar.
+Verificado en código antes de planificar. **Es un diagnóstico histórico** (de
+agosto): las secciones 1.1, 1.2, 1.3 y 1.5 están resueltas y se conservan para
+que se entienda de dónde viene el plan; las citas de archivo y línea que llevan
+son las de entonces. Lo que sigue pendiente de verdad lleva ⏳.
 
-### 1.1 `pins.floor` existe en la base, pero nunca se escribe
+### 1.1 `pins.floor` existe en la base, pero nunca se escribe ✅ RESUELTO (fase 3, verificado 2026-10-21)
 
-| Capa | Estado |
+Hoy `create_pin_with_daily_limit` recibe `p_floor`, `p_building_id`, `p_area_id`
+y `p_room_code`, y `createPin` escribe la planta que viene del formulario. La
+tabla de abajo es el estado de antes de la fase 3.
+
+| Capa | Estado (antes de la fase 3) |
 |---|---|
 | `pins.floor integer` y `pins.building text` | ✅ existen — `supabase/schema/baseline.sql:150-151` |
 | Tipo TS `Pin.floor` | ✅ existe — `src/shared/types/database.ts:69` |
@@ -32,7 +39,11 @@ La base puede guardar pisos; **el camino de escritura no existe**. Los 20 pines 
 
 A favor: `floor` y `building` **no** están protegidos por el trigger `protect_pin_sensitive_fields` (`supabase/migrations/20260803120200_pin_owner_field_rules.sql`), así que el autor puede editarlos con la policy `pins_owner_update` existente. **Editar el piso no requiere migración; solo crearlo con piso la requiere.**
 
-### 1.2 Los planos indoor demo están a 694 metros del edificio real
+### 1.2 Los planos indoor demo están a 694 metros del edificio real ✅ RESUELTO (verificado 2026-10-21)
+
+`DEMO_FLOOR_PLANS` se borró (Fase 0); el interior se dibuja desde `buildings`,
+`building_floors` y `areas`, que salen del editor y se leen vía `useMapping`.
+Lo de abajo es el diagnóstico original.
 
 El bug de tu foto 4/5, y no es de posición en pantalla: es geográfico.
 
@@ -44,28 +55,36 @@ Rectángulos inventados para la demo del Sprint 2, nunca georreferenciados. La U
 
 **El perímetro de la FIC, en cambio, es fiable** — lo trazaste tú a mano. Es el ancla sobre la que se apoya todo el mapeo interior.
 
-### 1.3 El selector de piso está anclado donde choca
+### 1.3 El selector de piso está anclado donde choca ✅ RESUELTO (verificado 2026-10-21)
 
-`IndoorPanel.tsx:19` → `right-3 top-[136px]`. Ubicación y brújula están en `top-[72px]` y `top-[120px]` (`MapView.tsx:730`, `743`): el panel cae **encima de la brújula**, y en móvil lo tapa el bottom sheet.
+`IndoorPanel` ya no existe: lo reemplazó `FloorSelector`, anclado a la derecha y
+centrado verticalmente (`right-3 top-1/2 -translate-y-1/2`). Las citas de abajo
+son históricas.
+
+`IndoorPanel.tsx:19` → `right-3 top-[136px]`. Ubicación y brújula estaban en `top-[72px]` y `top-[120px]` (en `MapView.tsx`; hoy el botón de ubicación va en `top-[80px]` y la brújula en `top-[120px]`): el panel caía **encima de la brújula**, y en móvil lo tapaba el bottom sheet.
 
 ### 1.4 Los datos de edificios de OSM están incompletos
 
 Falta al menos un edificio de la FIC en OpenStreetMap. Los edificios 3D rojos salen de filtrar OSM con tu perímetro (`facultyLayers.ts:109-130`), así que heredan los mismos huecos. La importación automática queda descartada como camino principal y sobrevive solo como un modo de dibujo (§6.3).
 
-### 1.5 Dos errores visibles en las categorías
+### 1.5 Dos errores visibles en las categorías ✅ CORREGIDO (Fase 3, verificado 2026-10-21)
 
-Al revisar `campusData.ts:136-173` aparecieron dos que conviene arreglar de paso:
+Hoy `casino` usa 🍽️ con un `svgPath` de cubiertos y `feria` usa 🎪 con el suyo
+propio, ambos en `campusData.ts`. Lo que sigue es lo que se encontró:
 
-- **`casino` usa un icono de hospital.** Emoji `🏥` y un `svgPath` de cruz médica (círculo con cruz), para lo que es una cafetería. `campusData.ts:149`.
-- **`feria` repite ese mismo `svgPath`** de círculo con cruz, que tampoco le corresponde. `campusData.ts:172`.
+Al revisar las categorías de `campusData.ts` aparecieron dos que convenía arreglar de paso:
 
-Ambos son un copiar-pegar antiguo. Se corrigen en la Fase 3 junto con las categorías nuevas.
+- **`casino` usaba un icono de hospital.** Emoji `🏥` y un `svgPath` de cruz médica (círculo con cruz), para lo que es una cafetería.
+- **`feria` repetía ese mismo `svgPath`** de círculo con cruz, que tampoco le correspondía.
+
+Ambos eran un copiar-pegar antiguo. Se corrigieron en la Fase 3 junto con las categorías nuevas.
 
 ### 1.6 Hay mensajes en español clavados en el código ✅ RESUELTO (2026-08-26)
 
 **Comprobado de nuevo el 2026-08-27, y ahora con un comprobador en vez de a
-ojo**: `npm run check:i18n`. Responde tres preguntas que con 318 claves no se
-responden mirando — si falta alguna en un idioma (i18next cae al `defaultValue`,
+ojo**: `npm run check:i18n`. Responde tres preguntas que con 318 claves (la
+cifra de ese día; se desfasa con cada clave nueva, recuéntala con el propio
+comprobador) no se responden mirando — si falta alguna en un idioma (i18next cae al `defaultValue`,
 que está en español, y la app queda medio traducida sin avisar), si alguna se
 quedó sin traducir dentro del bloque inglés, y si las variables `{{…}}` casan
 entre los dos.
@@ -79,7 +98,7 @@ claves de i18n, son DATOS con `name` y `name_en`. El patrón
 sitios y olvidado en otra docena, así que en inglés seguían saliendo "Sala",
 "Entrada" y "Facultad de Ingeniería y Ciencias" en medio de una interfaz
 traducida. Ahora lo resuelve `localizedName` en `shared/utils`, usado en los
-diecinueve sitios de pantalla. Los CAMPUS no pasan por ahí: "Campus República"
+sitios de pantalla (en diez archivos el 2026-10-21, sin contar su definición ni su test; la cifra se mueve). Los CAMPUS no pasan por ahí: "Campus República"
 es un nombre propio.
 
 **El panel de administración también se tradujo** (2026-08-27). Estaba fuera con
@@ -91,7 +110,9 @@ importar**: aunque hubieran pasado por i18n, se habrían quedado en el idioma qu
 hubiera al arrancar. Ahora se resuelven dentro del componente.
 
 Lo único que sigue en español es `features/mapping`, el editor de polígonos: es
-de computador y de moderador con la pieza `mapping`, y no lo abre nadie más.
+de computador y hoy solo lo abre el admin (`AdminLayout` manda a `/mapa` a
+todo el que no lo sea), así que sigue sin urgencia. Se verificó el 2026-10-21:
+`MappingPage.tsx` conserva mensajes en español clavados.
 
 `i18n` estaba montado (`shared/lib/i18n.ts`, es/en) pero varios avisos se
 saltaban el sistema y salían siempre en español: los cuatro toasts de brújula y
@@ -112,9 +133,9 @@ Dos cosas que salieron al hacerlo y conviene saber:
   `map.locationOutOfBounds`; de paso quedaron definidas `outOfBounds`,
   `searchFaculty` y `noResults`, que en inglés salían en español.
 
-### 1.7 Onboarding: nada coordina los diálogos
+### 1.7 Onboarding: nada coordina los diálogos ⏳ SIGUE PENDIENTE (verificado 2026-10-21)
 
-`TutorialModal` se abre para todos en el primer arranque (`uiStore.ts:116`), `ProfileSetupModal` si hay sesión sin facultad y sin poder cerrarse (`ProfileSetupModal.tsx:18`). Ambos se montan sueltos en `MapPage.tsx:753-754`: si alguien entra por primera vez y se registra en esa sesión, **compiten**.
+`TutorialModal` se abre para todos en el primer arranque (`tutorialOpen` en `uiStore`, con el flag `udpmap.tutorial`) y se monta en `MapPage`; `ProfileSetupModal` si hay sesión sin facultad y sin poder cerrarse, y se monta en `app/Layout.tsx`, no en `MapPage`. Están montados en sitios distintos y nadie los coordina: si alguien entra por primera vez y se registra en esa sesión, **compiten**.
 
 ---
 
@@ -130,29 +151,29 @@ No hay dos sistemas. Todo lo que se publica es una fila en `pins`, con tres tipo
 |---|---|---|---|
 | `report` | estudiante | **efímera**, según la categoría | categoría con TTL, votos |
 | `event` | estudiante (u oficial si es mod/admin) | hasta `ends_at` | RSVP, cronograma, late "en vivo" |
-| `place` | moderador / admin | permanente | hoy son las facultades sembradas |
+| `place` | moderador / admin (o la verificación de un reporte) | permanente | verificar un reporte lo convierte en `place`; en demo se siembran desde `FACULTIES` (`placeFromFaculty`) |
 
 Los tres comparten el mismo motor: fotos, comentarios, votos y favoritos.
 
 ### 2.2 El ciclo de vida es lo que mantiene el mapa limpio
 
-Cada categoría de reporte lleva un TTL (`campusData.ts:136-166`): un food truck dura 8 h, un baño 24 h, un objeto perdido 72 h. Al crearse, **el servidor** calcula `expires_at` desde `categories.ttl_hours` — no el navegador (migración `20260803120300`). En su última ventana de vida el marcador se desvanece y se dessatura (`expiryState` + `--pin-fade`, `MapView.tsx:429-465`), y al vencer desaparece.
+Cada categoría de reporte lleva un TTL (el catálogo de `campusData.ts`): un food truck dura 8 h, un baño 24 h, un objeto perdido 72 h. Al crearse, **el servidor** calcula `expires_at` desde `categories.ttl_hours` — no el navegador (migración `20260803120300`). En su última ventana de vida el marcador se desvanece y se dessatura (`expiryState` + `--pin-fade`, en `MapView.tsx`), y al vencer desaparece.
 
-Un moderador puede **verificar** un reporte y volverlo permanente: `promote_pin_to_permanent`, +25 de karma al autor e insignia de Cartógrafo. También puede extender el plazo (`extend_pin_ttl`, hasta 720 h) o deshacer (`unverify_pin`). Todo eso ya existe y funciona — y es la maquinaria sobre la que se apoyan las salas (§3).
+Un moderador puede **verificar** un reporte y volverlo permanente: `verify_and_make_permanent`, +25 de karma al autor e insignia de Cartógrafo. También puede extender el plazo (`extend_pin_ttl`, hasta 720 h) o deshacer (`unverify_pin`). Todo eso ya existe y funciona — y es la maquinaria sobre la que se apoyan las salas (§3).
 
 ### 2.3 Reglas de creación
 
 - **Máximo 10 pines por estudiante y día UTC** (`baseline.sql:733`). Moderadores y administradores exentos.
 - **Un punto exacto solo admite un pin vigente**: trigger `check_pin_location_available` → `PIN_LOCATION_OCCUPIED` (`baseline.sql:630-658`).
-- **La facultad se asigna sola** por perímetro: `facultyIdAt(lat, lng)` al crear (`api.ts:165`) y al mover (`api.ts:518`).
+- **La facultad se asigna sola** por perímetro: `facultyIdAt(lat, lng)` al crear (`createPin`) y al mover (`updatePinLocation`), ambas en `features/pins/api.ts`.
 - La creación pasa **solo** por la RPC `create_pin_with_daily_limit`; no hay policy de INSERT sobre `pins`.
 
 ### 2.4 Cómo se consumen
 
-- **En el mapa**: un marcador por pin, con icono y color de su categoría (`MapView.tsx:29-58`).
+- **En el mapa**: un marcador por pin, con icono y color de su categoría (`markerColor` y compañía en `MapView.tsx`).
 - **En la facultad**: al tocar un perímetro se abre `FacultyDetail`, una grilla con los posts no-`place` de esa facultad — tu foto 2.
 - **Filtros** (`filterStore.ts`): tipo, categoría, facultad y favoritos.
-- **Realtime**: cualquier cambio en `pins` invalida la lista (`usePins.ts:53-64`).
+- **Realtime**: cualquier cambio en `pins` invalida la lista (el efecto realtime de `usePins`).
 
 ### 2.5 Qué le falta
 
@@ -201,7 +222,7 @@ Las tres describen infraestructura fija, así que su destino natural es ser **ve
 
 > **Nota futura:** Considerar evaluar si `computación` (laboratorios de computación) se trata como un tipo de sala fija permanente similar a `sala` en próximas iteraciones.
 
-Cada una necesita su `svgPath` en el estilo de las demás (`campusData.ts:137-173`); `entrada` usa una variante de trazo aparte definida en `MapView.tsx:38`.
+Cada una necesita su `svgPath` en el estilo de las demás (el catálogo de `campusData.ts`). Este plan decía que `entrada` usaba una variante de trazo aparte en `MapView.tsx`; el 2026-10-21 no se encontró tal variante en el código, así que no cuentes con ella sin mirarlo.
 
 Sobre el **límite de 10 pines al día**: no lo toco. Mapear un edificio completo de salas es trabajo de moderador, y moderadores y admins están exentos (`baseline.sql:719`). El pin `sala` es para que un estudiante agregue **la sala suelta** que falta, no para mapeos masivos.
 
@@ -213,10 +234,13 @@ Eso permite algo útil: al escribir el código en el formulario, **se deducen el
 
 ```ts
 // src/shared/utils/roomCode.ts
-parseRoomCode('E441.1.S101')  // { building: 'E441', floor: 1, room: 'S101' }
-parseRoomCode('A-302')        // { building: 'A',    floor: 3, room: '302'  }
+parseRoomCode('E441.1.S101')  // { buildingCode: 'E441', floor: 1, room: 'S101' }
+parseRoomCode('A-302')        // { buildingCode: 'A',    floor: 3, room: '302'  }
 parseRoomCode('lo que sea')   // null → no se deduce nada, se elige a mano
 ```
+
+`buildingCode` es solo informativo: el edificio de verdad se deduce de la
+geometría (`buildingAt`), no del texto del código.
 
 > ⚠️ **Contrastado con los datos reales el 2026-08-10, y "se parte en tres" es
 > falso.** Hay que partir por los **dos primeros** puntos y recortar espacios:
@@ -274,6 +298,10 @@ una escalera que sube del 1 al 5 sigue siendo un pin de **una** planta, así que
 se ve en una sola. Eso es la §4.2, y sin ella la categoría cuenta media verdad.
 
 ### 4.2 Un ascensor no vive en una planta: las atraviesa
+
+> ⏳ **DECIDIDO, SIN IMPLEMENTAR** (a 2026-10-21 no existe `pins.floor_to`, ni en
+> el baseline ni en los tipos de `database.ts`). Lo de abajo es la decisión, no
+> el estado.
 
 Idea del 2026-08-10, y destapa un límite real del modelo.
 
@@ -357,6 +385,10 @@ Cuando dos áreas se solapan, **gana la de menor superficie**: un quiosco dentro
 
 ### 5.2 Tablas nuevas
 
+> Este SQL es el **diseño original**. Lo vigente está en `supabase/schema/baseline.sql`
+> y `docs/DATABASE.md`: por ejemplo `areas.id` es `uuid` (no `text`) y
+> `areas.kind` tiene default `'other'`. No lo copies como migración.
+
 ```sql
 -- ── Edificios ────────────────────────────────────────────────────────────
 create table public.buildings (
@@ -431,7 +463,7 @@ RLS: lectura pública, escritura solo moderador y admin. Mismo patrón que `floo
 and existing.floor is not distinct from new.floor
 ```
 
-El equivalente en el cliente está en `src/shared/utils/pinLocation.ts:16-21`, con su test al lado.
+El equivalente en el cliente es `isPinLocationOccupied` en `src/shared/utils/pinLocation.ts`, con su test al lado.
 
 **Trampa con la RPC.** `create or replace function` con firma distinta **crea una sobrecarga, no reemplaza**. La migración debe hacer primero:
 
@@ -457,7 +489,11 @@ Con eso, cuando termines de mapear, el único ajuste previsible es afinar colore
 
 ## 6. El editor `/admin/mapeo`
 
-Editor propio, para computador, solo admin. **Se construye sin necesitar ningún dato tuyo.**
+Editor propio, para computador. En la interfaz solo entra admin: `/admin/mapeo`
+cuelga de `AdminLayout`, que manda a `/mapa` a quien no lo sea. La base, en
+cambio, ya admite `has_capability('mapping')` en las políticas del mapeo (§13.4),
+así que abrirlo a moderadores con esa pieza es cosa de interfaz, no de RLS.
+**Se construye sin necesitar ningún dato tuyo.**
 
 ### 6.1 Disposición
 
@@ -472,7 +508,7 @@ Editor propio, para computador, solo admin. **Se construye sin necesitar ningún
 │ │  └ Piso 1 │                                      │ 62,4 m²      │
 │ ├ E333      │   ── huella del edificio ──          │ 4 vértices   │
 │ │  ├ Piso 1 │                                      │              │
-│ │  └ Subt.  │   [R] rect [P] polígono [D] dividir  │ [Eliminar]   │
+│ │  └ Subt.  │   [R] rect [P] polígono [T] calcar   │ [Eliminar]   │
 │ └ + Edificio│                                      │              │
 └─────────────┴──────────────────────────────────────┴──────────────┘
 ```
@@ -485,30 +521,41 @@ Los **pines ya existentes de esa planta se ven en el mapa** mientras dibujas. Si
 
 Las teselas de OpenFreeMap son de solo lectura, pero MapLibre pinta **tus capas encima** — es lo que ya hace `facultyLayers.ts` con los perímetros. Para el edificio que falta en OSM: dibujas su huella, le pones `height_m` (18 m ≈ 4 plantas) y una capa `fill-extrusion` alimentada por `buildings` lo levanta en 3D junto a los de OSM, en rojo UDP.
 
-### 6.3 Dibujar: cuatro modos y tres aceleradores
+### 6.3 Dibujar: tres modos y tres aceleradores
+
+> Corregido el 2026-10-21 contra el código. La herramienta activa es
+> `'select' | 'rect' | 'polygon' | 'trace' | 'room'` (`editorStore.ts`) y los
+> atajos de herramienta son solo `V`, `R`, `P` y `T`. **No hay modo "Duplicar"**
+> ni `Ctrl+D`, y tampoco `Ctrl+Shift+V`. Dividir en N y Copiar planta existen,
+> pero como botón del panel de propiedades (`onSplit`) y como menú
+> (`CopyFloorMenu`), sin atajo. `room` es la herramienta del importador de
+> salas, no un modo de dibujo: no traza nada, solo coloca.
 
 **Modos**
 
 1. **Rectángulo rotado** (`R`, por defecto). Dos clics marcan la diagonal, un tirador rota. La mayoría de edificios, halls y patios son rectángulos girados: **tres clics**.
 2. **Polígono libre** (`P`). Clic a clic, `Enter` para cerrar. Para formas en L.
 3. **Calcar de OSM** (`T`). Clic en un edificio existente y su contorno pasa a ser tu polígono, editable. Para los que **sí** están en OSM, con precisión catastral.
-4. **Duplicar** (`Ctrl+D`).
 
 **Aceleradores** — los tres que convierten horas en minutos:
 
 - **Modo ortogonal** (`Shift`). La primera arista fija la orientación del edificio; desde ahí los vértices se ajustan a múltiplos de 90° y 45° **respecto de esa orientación, no del norte**. Los edificios son rectilíneos pero casi nunca están alineados al norte: es lo que hace que un plano a mano salga limpio en vez de torcido.
-- **Dividir en N** (`D`). Dibujas un rectángulo sobre un tramo y lo partes en N iguales a lo largo del eje mayor.
-- **Copiar planta** (`Ctrl+Shift+V`). Duplica todas las áreas del piso 1 al 2 de un golpe. Y al editar una planta, **la de abajo se ve en fantasma** para calcar.
+- **Dividir en N** (botón del panel de propiedades, sin atajo). Dibujas un rectángulo sobre un tramo y lo partes en N iguales a lo largo del eje mayor.
+- **Copiar planta** (menú `CopyFloorMenu`, sin atajo). Duplica todas las áreas del piso 1 al 2 de un golpe. Y al editar una planta, **la de abajo se ve en fantasma** para calcar.
 
-**Vértices:** arrastrables, con puntos fantasma en el medio de cada arista para insertar, `Supr` para borrar, flechas del teclado para mover 10 cm. `Ctrl+Z` / `Ctrl+Y`.
+**Vértices:** arrastrables, con puntos fantasma en el medio de cada arista para insertar, `Supr` para borrar, flechas del teclado para mover 10 cm. `Ctrl+Z` / `Ctrl+Y` (o `Ctrl+Shift+Z` para rehacer).
 
 **Imanes:** un vértice a menos de ~1 m del borde del edificio, del perímetro de la facultad o de un área vecina se pega a él; `Alt` lo desactiva.
 
 **Lectura en vivo:** superficie en m² y longitud de la arista actual. Si un hall te da 600 m² en vez de 60, te enteras mientras dibujas.
 
-### 6.4 Reubicar pines en lote
+### 6.4 Reubicar pines en lote ✅ HECHO (verificado 2026-10-21)
 
-Pestaña aparte, y es la que te resuelve los 20 pines de hoy y los que vengan: tabla de los pines de un edificio con selector de **planta** por fila y guardado en lote. Sin esto, asignarle piso a los pines existentes sería uno por uno desde el mapa. `ContentPanel.tsx` ya lista y borra pines vía `fetchAdminPins`; falta un `adminSetPinFloor` en `src/features/admin/api.ts`.
+Implementado en `PinFloorPanel.tsx` (pestaña "Pines" de `/admin/mapeo`), que
+guarda en lote con `adminSetPinFloors` (`features/admin/api.ts`). Lo de abajo es
+el planteamiento original.
+
+Pestaña aparte, y es la que te resuelve los 20 pines de hoy y los que vengan: tabla de los pines de un edificio con selector de **planta** por fila y guardado en lote. Sin esto, asignarle piso a los pines existentes sería uno por uno desde el mapa. `ContentPanel.tsx` ya listaba y borraba pines vía `fetchAdminPins`; faltaba la escritura de planta en lote, que hoy es `adminSetPinFloors`.
 
 ### 6.5 Validaciones
 
@@ -602,7 +649,7 @@ ser **error**.
 
 ### 6.6 Sin dependencias nuevas
 
-Se escribe a mano, unas 400-500 líneas. El repo ya trabaja así (`MapView.tsx:390-421`, `campusBoundary.ts`, `facultyLayers.ts`), y es lo único que permite el modo ortogonal, dividir-en-N y copiar-planta.
+Se escribe a mano, unas 400-500 líneas. El repo ya trabaja así (`campusBoundary.ts`, `facultyLayers.ts`), y es lo único que permite el modo ortogonal, dividir-en-N y copiar-planta.
 
 ---
 
@@ -613,7 +660,7 @@ Cuatro cosas, todas pequeñas:
 1. **Selector de planta.** Si la ubicación cae dentro de un edificio con más de una planta, aparece con la planta activa del mapa preseleccionada. Si el edificio tiene una sola, no aparece y se guarda esa.
 2. **Campo de código de sala**, solo para la categoría `sala`. Al escribirlo se deducen edificio y planta (§3.4), como sugerencia editable.
 3. **Confirmación de dónde queda.** Bajo el título, en gris: `Edificio E441 · Piso 1 · Hall central`, calculado en vivo. Comprobación antes de publicar.
-4. **Aviso de sala duplicada.** Si ya hay un pin `sala` con el mismo `room_code` en ese edificio, se avisa antes de guardar — sin bloquear, porque puede ser una corrección legítima.
+4. ⏳ **Aviso de sala duplicada** (pendiente: verificado 2026-10-21, no hay lógica ni clave i18n para esto). Si ya hay un pin `sala` con el mismo `room_code` en ese edificio, se avisa antes de guardar — sin bloquear, porque puede ser una corrección legítima.
 
 El resto del formulario —título, descripción, categoría, fotos, fechas— queda igual.
 
@@ -639,20 +686,30 @@ El resto del formulario —título, descripción, categoría, fotos, fechas— q
 | `parking` | gris, 0.16 |
 | `green` | verde claro, 0.15 |
 
-Capas nuevas en `facultyLayers.ts`, sobre `faculty-perimeter-fill`:
+Capas en `features/map/mappingLayers.ts` (`addMappingLayers`), sobre `faculty-perimeter-fill` (`facultyLayers.ts` solo trae los perímetros). Ids reales, comprobados el 2026-10-21:
 
-- `building-fill` / `building-line` — huellas, desde zoom 16.
-- `building-extrusion` — solo para edificios con `height_m`.
-- `area-fill` / `area-line` — **solo de la planta activa**, desde zoom 17.5.
-- `area-label` — `symbol` con nombre e icono por tipo.
+- `mapping-buildings-fill` / `mapping-buildings-line` — huellas, desde `MAPPING_MIN_ZOOM` (16).
+- `mapping-buildings-3d` — solo para edificios con `height_m`.
+- `mapping-buildings-label` — nombre del edificio, desde zoom 16.5.
+- `mapping-areas-fill` / `mapping-areas-line` — de la planta activa, desde el mismo `MAPPING_MIN_ZOOM` (los exteriores se ven en todas las plantas); la entrada al interior propiamente dicha va por `INDOOR_MIN_ZOOM` (17.5).
+- `mapping-areas-label` — nombre del área, desde zoom 17.
 
-Al entrar a un edificio, lo que queda fuera se atenúa para que la planta activa mande visualmente. Al hacer clic en un área: se satura y aparece una **etiqueta compacta** con nombre, planta y actividad reciente. Prioridad de clic: pin > área > edificio > perímetro de facultad (este último ya en `MapView.tsx:210-239`).
+(Este plan decía `building-fill`, `building-extrusion`, `area-*` desde 17.5 y en `facultyLayers.ts`; la tercera pasada de la Fase 3 unificó los umbrales.)
+
+Al entrar a un edificio, lo que queda fuera se atenúa para que la planta activa mande visualmente. Al hacer clic en un área: se satura y aparece una **etiqueta compacta** con nombre, planta y actividad reciente (esa etiqueta se unificó después con la ficha de facultad; ver la tercera pasada de la Fase 3). Prioridad de clic: pin > área > edificio > perímetro de facultad, resuelta en el manejador `click` de `MapView.tsx`.
 
 ### 8.2 Selector de planta
 
 Columna vertical **a la derecha, centrada verticalmente** (`right-3 top-1/2 -translate-y-1/2`), como en Apple y Google Maps y como en la referencia que mandaste. No choca con ubicación y brújula arriba ni con sede y 2D/3D abajo. Aparece cuando el centro del mapa entra en un edificio de más de una planta, o al abrir un edificio o un pin con planta; se va al salir. Lista las plantas de `building_floors` de arriba abajo con su `label`, más un chip **"Todo"**. Entra en `default_floor`.
 
-`IndoorPanel` se reescribe como `FloorSelector`: pierde el botón de cerrar (deja de ser un modo del que se sale y pasa a ser un contexto) y lee de `building_floors`.
+> **Estado real (verificado 2026-10-21):** el diseño de arriba es el original.
+> `FloorSelector` es hoy un carrusel de una sola cara entre dos flechas, y lista
+> la unión de plantas de la **facultad** (`facultyLevels`), no las de un
+> edificio; el chip "Todo" sigue, como botón al pie, y apaga el filtro de
+> planta. Además, la selección de edificio y planta se
+> unifica en `ContextLens` bajo el buscador (§16).
+
+`IndoorPanel` fue reemplazado por `FloorSelector` ✅ (hecho): pierde el botón de cerrar (deja de ser un modo del que se sale y pasa a ser un contexto), y se integra con `ContextLens` (§16).
 
 **`DEMO_FLOOR_PLANS` se borra, no se corrige.**
 
@@ -662,9 +719,14 @@ Columna vertical **a la derecha, centrada verticalmente** (`right-3 top-1/2 -tra
 
 Con las salas como pines, esta sección deja de ser un remate y pasa a ser **crítica**: un edificio de 40 salas son 40 pines más. Sin esto, mapear la FIC empeora el mapa en vez de mejorarlo.
 
-Tenías razón en las dos objeciones iniciales. Los filtros **no** pueden ser el mecanismo — resolver un problema visual pidiéndole trabajo al usuario es trasladarle el problema. Y **pines más pequeños tiene poco recorrido**: hoy miden 26 px más 2 px de borde con el icono a 16 px (`src/styles/index.css:317-331`); bajo ~22 px se vuelven difíciles de tocar y el icono ilegible.
+Tenías razón en las dos objeciones iniciales. Los filtros **no** pueden ser el mecanismo — resolver un problema visual pidiéndole trabajo al usuario es trasladarle el problema. Y **pines más pequeños tiene poco recorrido**: hoy miden 26 px más 2 px de borde con el icono a 16 px (`--pin-base` en `.pin-marker`, `src/styles/index.css`; la variante fija `pin-marker--fixed` usa 22 px, §9.2); bajo ~22 px se vuelven difíciles de tocar y el icono ilegible.
 
 ### 9.1 Detalle por zoom (el mecanismo principal)
+
+> ⏳ **NO IMPLEMENTADO** (verificado 2026-10-21). No hay agrupación con contador
+> por facultad ni por edificio en `MapView`. Hoy solo existe la entrada a la
+> facultad por zoom con histéresis (`INDOOR_MIN_ZOOM` / `INDOOR_EXIT_ZOOM`) y el
+> filtrado por planta. La tabla es el diseño; ver Fase 4.
 
 | Zoom | Qué se ve | Al tocar |
 |---|---|---|
@@ -706,8 +768,8 @@ Así el interior de un edificio se lee como un plano —salas pequeñas con su n
 
 ### 9.3 Abanico y tamaño por zoom
 
-- **Abanico**: dos o más pines a menos de ~30 px se colapsan en un chip con el número y se abren en abanico al tocarlo.
-- **Tamaño según zoom** con `--pin-scale`: 26 px hasta zoom 18 y hasta 30 px de 19 en adelante. *(Los 20 px a zoom 17 que decía este plan se probaron el 2026-08-26 y se descartaron: de lejos el problema no es el tamaño de los pines sino su número, y encogerlos solo los volvía ilegibles.)*
+- ⏳ **Abanico** (pendiente: no hay lógica de colapso en el código; ver la Fase 4): dos o más pines a menos de ~30 px se colapsan en un chip con el número y se abren en abanico al tocarlo.
+- ✅ **Tamaño según zoom** (`pinScaleForZoom` en `shared/utils/pinScale.ts`) con `--pin-scale`: 26 px hasta zoom 18 y hasta 30 px de 19 en adelante. *(Los 20 px a zoom 17 que decía este plan se probaron el 2026-08-26 y se descartaron: de lejos el problema no es el tamaño de los pines sino su número, y encogerlos solo los volvía ilegibles.)*
 
 > **Repriorizado el 2026-08-05: el abanico deja de ser un remate.** Esta sección
 > estaba escrita como el adorno final de la §9.1, y es al revés. El detalle por
@@ -743,13 +805,18 @@ Pedido explícito, y hoy es el punto más flojo: hay mensajes clavados en españ
 
 | Situación | Dónde | Mensaje |
 |---|---|---|
-| `PIN_LOCATION_OCCUPIED` | toast | "Ya hay un pin en este punto **de esta planta**. Muévelo un poco o cambia de piso." ← hay que actualizar el actual, que no menciona el piso |
+| `PIN_LOCATION_OCCUPIED` | toast | "Ya hay un pin en este punto **de esta planta**. Muévelo un poco o cambia de piso." ✅ hecho (`locationOccupied` en `i18n.ts` ya menciona la planta) |
 | `DAILY_PIN_LIMIT_REACHED` | inline | ya resuelto, con la hora de reinicio vía `nextDailyPinReset` |
 | Invitado intenta publicar | modal de login | ya resuelto por `useGuard` |
 | Fuera del perímetro de toda facultad | inline, aviso | "Este punto queda fuera de las facultades mapeadas. Se publicará sin facultad asignada." |
 | Edificio con plantas y no eligió ninguna | inline, bloquea | "Elige en qué piso está." |
 | Código de sala sin formato conocido | inline, aviso | "No se reconoce el formato. Se guardará igual; elige el piso a mano." |
 | Código de sala repetido en el edificio | inline, aviso | "Ya existe un pin para S101 en este edificio." |
+
+⏳ **Pendiente** (verificado 2026-10-21): las demás filas de la tabla son plan, no
+existen todavía, y del título sugerido solo hay un placeholder distinto por tipo
+(evento, lugar, reporte) en `CreatePinModal.tsx`; no hay título sugerido por
+categoría ni propuesto desde `room_code`.
 
 **El título se sugiere según la categoría.** Anotado el 2026-08-10. Hoy el campo
 de título está igual de vacío tanto si publicas un baño como una sala, y el
@@ -797,16 +864,17 @@ Cuatro cosas concretas, de menos a más trabajo:
    permanente, y qué pasa si un moderador lo verifica. El caso de la sala está
    escrito como ejemplo en `docs/SALAS.md` §12.5, y sirve de molde para el
    resto.
-2. **Notificar el karma, con el motivo.** Hoy `adjust_karma` mueve el número y
-   **nadie se entera de por qué**: no hay ningún mensaje del tipo "ganaste 25 de
-   karma porque verificaron tu sala". Un contador que sube solo no enseña nada y
-   no motiva a nadie. Hace falta el evento y el texto, y una idea de dónde se
-   lee el historial.
+2. **Notificar el karma, con el motivo.** ⏳ *Parcial (verificado 2026-10-21):*
+   el karma por **verificación** ya se notifica —la migración `20260829000000`
+   avisa "ya es permanente. Ganaste 25 de karma"—. Lo que sigue abierto son los
+   demás usos de `adjust_karma`, que mueven el número y **nadie se entera de por
+   qué**. Un contador que sube solo no enseña nada y no motiva a nadie. Hace
+   falta el evento y el texto, y una idea de dónde se lee el historial.
 3. **Explicar la verificación y el cambio de tipo.** Cuando verifican un
    reporte, pasa a `type = 'place'` y deja de caducar. Es de las mejores cosas
    que hace la aplicación y es completamente invisible: ni el autor recibe aviso
    claro, ni se entiende qué cambió.
-4. **Una página de preguntas frecuentes.** Cuánto dura cada tipo de pin, cómo se
+4. ⏳ **Una página de preguntas frecuentes** (pendiente: no existe, verificado 2026-10-21). Cuánto dura cada tipo de pin, cómo se
    gana karma, qué hace un moderador, qué es una sala verificada, por qué mi pin
    desapareció. Va enlazada desde el menú y desde el formulario de creación.
 
@@ -816,13 +884,18 @@ como sitio donde ampliar.
 
 ### 10.6 Transversales
 
-- **Sin conexión**: banner de solo lectura; las acciones de escritura quedan deshabilitadas con explicación, no fallando al pulsarlas.
+- ⏳ **Sin conexión** (pendiente: no hay lógica de banner offline, verificado 2026-10-21): banner de solo lectura; las acciones de escritura quedan deshabilitadas con explicación, no fallando al pulsarlas.
 - **Carga**: esqueletos donde ya se usan; nunca un spinner a pantalla completa sobre el mapa.
 - **Permisos**: cuando una acción está fuera del rol, se explica qué rol hace falta en lugar de esconder el botón sin más.
 
 ---
 
 ## 11. Onboarding
+
+> ⏳ **NO IMPLEMENTADO** (a 2026-10-21): no existe `src/features/onboarding`, ni
+> `TourOverlay`, ni `tours.ts`, ni `OnboardingStep`. Solo hay `TutorialModal`
+> (flag `udpmap.tutorial`) y `ProfileSetupModal` sueltos. La guía paso a paso
+> de §16 es `WayfinderSheet`, no un tour.
 
 ### 11.1 Primero, un orquestador
 
@@ -859,7 +932,7 @@ Los pasos 2 y 3 son la razón de ser del tour: **áreas y plantas son lo menos e
 - `src/features/onboarding/` con `TourOverlay.tsx` (agujero + tooltip) y `tours.ts` (pasos declarativos).
 - El agujero, con un `div` a pantalla completa y `clip-path` sobre el rectángulo del objetivo (`getBoundingClientRect`). Framer Motion ya está.
 - Flags versionadas por tour: `udpmap.tour.map.v1`.
-- Submenú "Ver tutorial" en el sidebar, sobre el punto que ya existe (`Sidebar.tsx:258`).
+- Submenú "Ver tutorial" en el sidebar, sobre el punto que ya existe (el botón "Ver tutorial" de `src/shared/ui/Sidebar.tsx`).
 - Nunca arranca si ya estás haciendo algo: se pospone.
 
 ---
@@ -880,8 +953,8 @@ Ordenadas para que **nada dependa de datos que aún no tienes**.
 - [x] Migraciones: `area_kind`, `buildings`, `building_floors`, `areas`, con RLS
       (`20260804100000_indoor_mapping.sql`).
 - [x] Ruta `/admin/mapeo`: árbol, mapa y panel de propiedades.
-- [x] Modos rectángulo rotado, polígono libre, calcar de OSM, duplicar.
-- [x] Aceleradores: ortogonal, dividir-en-N, copiar planta, calco de la planta inferior.
+- [x] Modos rectángulo rotado, polígono libre, calcar de OSM (el "duplicar" que figuraba aquí no existe; ver §6.3).
+- [x] Aceleradores: ortogonal, dividir-en-N (botón), copiar planta (menú), calco de la planta inferior.
 - [x] Vértices, imanes, deshacer/rehacer, atajos, lectura de m².
 - [x] Validaciones y mensajes inline (§10.4), 11 pruebas.
 - [x] Pestaña de reubicación de pines en lote (§6.4).
@@ -930,7 +1003,7 @@ Ordenadas para que **nada dependa de datos que aún no tienes**.
       UPDATE escucha `floor` (antes, cambiar de planta se saltaba la comprobación).
 - [x] Categorías `sala`, `ascensor` y `rampa`; arreglados los iconos de `casino`
       (usaba una cruz médica) y `feria`.
-- [x] `roomCode.ts` con 9 pruebas. Solo deduce la planta, y calla si no reconoce
+- [x] `roomCode.ts` con sus pruebas (`roomCode.test.ts`). Solo deduce la planta, y calla si no reconoce
       el formato: `SMV-03` es un código válido que no dice nada.
 - [x] `createPin` manda la planta; `pinLocation.ts` la compara, con 5 pruebas.
 - [x] `IndoorFields` en el formulario: selector de planta, código de sala y
@@ -1224,7 +1297,8 @@ sabía qué eran.
       salto de mayor que se temía— y el resto (`undici`, `postcss`,
       `brace-expansion`, `fast-uri`, `js-yaml`, `nanoid`) salió con
       `npm audit fix`, sin `--force` y sin cambios de comportamiento.
-- [ ] **El rol `moderator` no está acotado por facultad** (§13.4). Ninguna
+- [ ] ⏳ **El rol `moderator` no está acotado por facultad** (§13.4; las piezas
+      de `moderator_capabilities` acotan el qué, no el dónde). Ninguna
       política usa `profiles.faculty_id`, así que un moderador lo es de las
       diecisiete facultades. Si el rol lo van a llevar los centros de alumnos,
       esto hay que cerrarlo antes de repartirlo.
@@ -1326,10 +1400,12 @@ no da más de sí. Ninguna bloquea nada hoy.
 
 ### 13.1 Los RSVP no llevan a ningún sitio
 
-Verificado el 2026-08-05: `event_rsvps` solo se lee **para el usuario actual**
-(`features/events/api.ts`), para saber si ya marcó. No hay conteo de asistentes,
-no hay sección "mis eventos", y **quien creó el evento no se entera de nada**.
-Marcar "Iré" guarda una fila y programa tu propio recordatorio; ahí termina.
+**Estado inicial** (verificado el 2026-08-05; ya resuelto por los puntos 1-3 de
+abajo): `event_rsvps` solo se leía **para el usuario actual**
+(`features/events/api.ts`), para saber si ya marcó. No había conteo de
+asistentes, ni sección "mis eventos", y **quien creó el evento no se enteraba de
+nada**. Marcar "Iré" guardaba una fila y programaba tu propio recordatorio; ahí
+terminaba.
 
 En orden de lo que más rinde:
 
@@ -1383,12 +1459,16 @@ Duplican la decisión. Ahora al menos "interesado" sirve para algo —engorda el
 conteo público—, que era la única condición que esta línea les ponía para
 justificarse, así que la pregunta se puede dejar dormida.
 
-Y la idea que probablemente vale más que las tres: **avisar a la facultad cuando
-se publica un evento oficial.** El evento de campus no falla porque se te
-olvide, falla porque nunca te enteraste; el recordatorio ya existe para quien
-marcó, y el hueco está en quien no sabe que el evento existe. La tubería está
-puesta: hay notificaciones y hay facultad en el perfil. Acotarlo a **eventos
-oficiales** para no provocar fatiga de notificaciones.
+4. - [x] **Avisar a la facultad cuando se publica un evento oficial.** Hecho
+     (`20260831000100_official_event_notifies_faculty.sql`, trigger
+     `notify_faculty_official_event`; verificado 2026-10-21). Era la idea que
+     probablemente valía más que las tres: el evento de campus no falla porque
+     se te olvide, falla porque nunca te enteraste; el recordatorio ya existía
+     para quien marcó, y el hueco estaba en quien no sabe que el evento existe.
+     Al marcar un evento como oficial avisa a quienes tienen esa facultad en su
+     perfil, nunca al autor, y respeta las preferencias de notificación. Va
+     acotado a **eventos oficiales** para no provocar fatiga. Detalle en
+     `docs/DATABASE.md`, "El evento oficial avisa a su facultad".
 
 ### 13.2 Notificaciones, panel de administración y cola de moderación
 
@@ -1477,8 +1557,10 @@ estaba para todo el mundo, invitados incluidos, en una sección de
 notificación **local** (`new Notification`), no una push, así que no filtraba
 nada del servidor — era una herramienta de depuración enviada a todos los
 usuarios, con sus textos clavados en español. Ya tenía casa
-(`features/admin/PushTestPanel.tsx`), así que no hubo que construir nada: se
-quitó.
+en el panel de administración (antes `PushTestPanel.tsx`, que ya no existe; hoy
+`features/admin/BroadcastPanel.tsx` para la difusión y
+`features/admin/SettingsPanel.tsx` para la prueba propia), así que no hubo que
+construir nada: se quitó.
 
 Activar las notificaciones **no** se perdió con él. La pestaña de avisos del
 mismo Sidebar monta `NotificationCenter`, que ya trae el interruptor de verdad
@@ -1663,6 +1745,17 @@ catálogo está en `features/mapping/salasEit.ts` y el bloqueo se levantó el
 
 ### 13.4 El moderador no tiene facultad, y debería
 
+> **Actualización (verificada 2026-10-21 contra `baseline.sql`):** en mapeo y
+> denuncias el rol ya no es un paquete cerrado. Existe `moderator_capabilities`
+> con cinco piezas —`mapping`, `reports`, `verify`, `content` y `official`— y
+> `has_capability()` (migración `20260831000200`; `docs/DATABASE.md` §4.bis), y
+> se concede por persona con `admin_set_capability`. Por ahora solo las
+> políticas del mapeo (`mapping`) y la lectura de denuncias (`reports`) la
+> usan; las demás siguen mirando el rol a secas. **Sigue abierto el alcance por
+> facultad**: ninguna política usa `profiles.faculty_id`. El texto de abajo es
+> el planteamiento original y conserva su sentido: las capacidades acotan el
+> *qué*, no el *dónde*.
+
 Levantado el 2026-08-10 al preguntarse qué separa de verdad a un moderador de un
 administrador. La lista real está en `docs/DATABASE.md` §2, ya corregida — la que
 había estaba incompleta.
@@ -1698,8 +1791,12 @@ Y hay dos permisos que quedan **al revés** de esa idea:
 2. **Mover las galerías de facultad, edificio y área** al moderador de esa
    facultad. Es curaduría de contenido, que es su eje.
 3. **Dejar el panel de administración solo para admin**, como está. Encaja con la
-   idea, y la cola de sugerencias de salas entonces vive en `/admin/mapeo`
-   —donde el moderador sí entra— y no en el panel (`docs/SALAS.md` §12.5).
+   idea, y la cola de sugerencias de salas entonces viviría en `/admin/mapeo` y no en
+   el panel (`docs/SALAS.md` §12.5). **Ojo: hoy un moderador NO llega ahí.**
+   `/admin/mapeo` cuelga de `AdminLayout`, que manda a `/mapa` a todo el que no
+   sea `admin`; la base ya permitiría el mapeo con la pieza `mapping`, pero hay
+   que abrir esa ruta a moderadores con esa capacidad antes de apoyar el flujo
+   en ella.
 4. **Decidir si hace falta un moderador sin facultad**, para quien coordine
    varias. Si hace falta, es un `faculty_id` nulo con significado de "todas", y
    más vale que sea explícito y no el estado por defecto de hoy.
@@ -1724,7 +1821,12 @@ Hoy hay **tres cadenas clavadas, y dos se contradicen**:
 |---|---|
 | `verify_and_make_permanent`, valor por defecto del parámetro | `'Centro de Alumnos FIC'` |
 | La misma función, respaldo si llega vacío | `'Centro de Alumnos UDP'` |
-| `CreateThreadModal.tsx:62` y `:174` | `role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP'` |
+| `CreateThreadModal.tsx` (dos sitios) | `role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP'` |
+
+(Revisado el 2026-10-21: la cadena `'Centro de Alumnos FIC'` aparece además en
+`CreatePinModal.tsx` —dos sitios—, `PinDetail.tsx`, los valores por defecto de
+`makePermanent` y `verifyPin` en `pins/api.ts` y `demoVerifyPin` en
+`pins/demoStore.ts`. El problema es más ancho que esta tabla.)
 
 O sea: **la base asume que todo moderador es del Centro de Alumnos de
 Ingeniería**, y el cliente lo repite. Un moderador de Psicología que verifique
@@ -1775,7 +1877,7 @@ Dos cuidados:
 
 - **Salas libres.** Cruzar `room_code` con el repositorio de salas de la universidad para pintar en verde las que están libres ahora. El modelo ya lo soporta. **La fuente apareció el 2026-08-10** (`salas.docencia-eit.cl/data.json`, 799 bloques de la FIC, con `Access-Control-Allow-Origin: *`), así que ni siquiera hace falta la Edge Function que se había supuesto: se puede leer desde el navegador y cachear con `ETag`. Lo que queda no es acceso técnico sino acordarlo con quien la mantiene — y, antes de eso, **cargar las salas como pines**. Todo el levantamiento está en `docs/SALAS.md`.
 - **Ruteo accesible fino** (§4): destino en la entrada o rampa accesible más cercana, y continuación por ascensor hasta la planta correcta.
-- **Interior como imagen.** Si algún día consigues el plano de una planta en imagen, se puede poner bajo el mapa ajustando las cuatro esquinas y usarlo de calco para dibujar las áreas encima. `floor_plans.image_overlay` y `floor_plans.bounds` ya existen sin usar (`baseline.sql:196-208`), y MapLibre soporta un source `type: 'image'`.
+- **Interior como imagen.** Si algún día consigues el plano de una planta en imagen, se puede poner bajo el mapa ajustando las cuatro esquinas y usarlo de calco para dibujar las áreas encima. `floor_plans.image_overlay` y `floor_plans.bounds` ya existen sin usar (tabla `floor_plans` del baseline), y MapLibre soporta un source `type: 'image'`.
 - **Capacidad de sala**, para "busco una sala libre para 6 personas". Un campo más en el pin `sala` cuando haga falta.
 - **Arreglar el versionado automático en Vercel (`__APP_VERSION__`)**: Vercel construye desde un clon superficial (`--depth=10`) por defecto, por lo que `git rev-list --count HEAD` en `vite.config.ts` devuelve siempre `10` (p. ej. `0.8+10`) en lugar del conteo real de commits. Falta activar `VERCEL_DEEP_CLONE=true` o usar una fuente de versión que no dependa del historial local truncado.
 - ~~Validación de plantas por edificio en servidor.~~ **Hecha el 2026-08-10**, ver §15.

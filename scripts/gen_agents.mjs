@@ -14,8 +14,10 @@
 //
 //   npm run gen:agents
 //
-// Y se comprueba en CI con `npm run gen:agents -- --check`, que falla si alguno
-// quedó desincronizado en vez de reescribirlo.
+// Y se comprueba con `npm run gen:agents -- --check`, que falla si alguno
+// quedó desincronizado en vez de reescribirlo. Ese paso todavía no está en CI.
+// En Windows con core.autocrlf la comparación byte a byte puede fallar por los
+// finales de línea aunque el contenido coincida.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'

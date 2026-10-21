@@ -2,7 +2,8 @@
 
 Cómo la app detecta y aplica una versión nueva. Implementación en
 [UpdatePrompt.tsx](../src/shared/ui/UpdatePrompt.tsx), decisión pura en
-[pwa.ts](../src/shared/utils/pwa.ts), stamps en [vite.config.ts](../vite.config.ts).
+[pwa.ts](../src/shared/utils/pwa.ts), aplicación del relevo en
+[swUpdate.ts](../src/shared/utils/swUpdate.ts), stamps en [vite.config.ts](../vite.config.ts).
 
 ## Diseño
 
@@ -74,7 +75,7 @@ pestaña: el aviso aparece.
   invitaba a pulsarlo otra vez.
 
   Ahora se espera al worker antes de pedirle el relevo, el botón no se rehabilita solo, y
-  mientras tanto se dice que está descargando. Cubierto por `updateWorker.test.ts`.
+  mientras tanto se dice que está descargando. Cubierto por `swUpdate.test.ts` (módulo `swUpdate.ts`, que contiene `waitForWaitingWorker`).
 - Sin red no se avisa: la detección depende del fetch.
 - Fuera de Vercel, sin `VERCEL_GIT_COMMIT_SHA`, `buildId` queda fijo en `dev` y la
   detección se apaga en silencio.

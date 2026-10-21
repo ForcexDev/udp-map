@@ -8,10 +8,14 @@
 |---|---|
 | El esquema de la base | La migración **+** `supabase/schema/baseline.sql` **+** `docs/DATABASE.md` |
 | Algo del plan: cerrar un pendiente, cambiar una decisión | `docs/ROADMAP.md` |
+| La estructura: crear, mover o borrar un archivo, una ruta o una Edge Function | `docs/REPO_MAP.md` |
 
 `docs/ROADMAP.md` es el plan vivo y la lista de pendientes. **`PLAN.md` y
 `SPRINTS_STATUS.md` ya no existen** — se borraron el 2026-08-05 y su contenido
 está ahí. Si buscas el estado del proyecto, es ese archivo.
+
+Si buscas **dónde vive algo** —qué hace cada archivo, qué rutas hay, qué tocar
+para cada tipo de cambio—, es `docs/REPO_MAP.md`.
 
 Antes de dar algo por terminado:
 
@@ -77,7 +81,7 @@ Arquitectura por features, no por capas técnicas.
 ```
 src/
 ├── features/<dominio>/     auth, map, mapping, pins, places, events, forum,
-│                           profile, admin, onboarding
+│                           profile, admin, moderation, notifications, about
 ├── shared/
 │   ├── data/               el catálogo: campusData (semilla), facultyStore (vivo)
 │   ├── stores/             zustand (uiStore, filterStore)
@@ -171,6 +175,7 @@ tocar el mapa.
 | Archivo | Qué es |
 |---|---|
 | `docs/ROADMAP.md` | El plan. Qué está hecho y qué falta. Se actualiza al cerrar algo. |
+| `docs/REPO_MAP.md` | Dónde vive cada cosa: archivos, rutas, dependencias entre features y qué tocar para cada cambio. Se actualiza al cambiar la estructura. |
 | `docs/DATABASE.md` | El esquema y por qué es así. Se actualiza con cada migración. |
 | `docs/CONTRIBUTING.md` | Cómo trabajar en el repositorio y cómo está organizado el código. |
 | `docs/SALAS.md` | El código de sala, el catálogo de salas y qué dirección es cada facultad. Léelo antes de tocar `room_code` o de asignar facultad por dirección. |

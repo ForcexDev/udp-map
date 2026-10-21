@@ -9,14 +9,19 @@ producción y no deben ejecutarse.
 
 ## La regla
 
-Cada cambio en la base son **dos cosas en el mismo commit**:
+Cada cambio en la base son **tres cosas en el mismo commit**:
 
 1. la migración nueva en esta carpeta, que es lo que se ejecuta contra la base;
 2. la actualización de [`../schema/baseline.sql`](../schema/baseline.sql), que
-   es lo que reconstruye la base desde cero.
+   es lo que reconstruye la base desde cero;
+3. la actualización de [`../../docs/DATABASE.md`](../../docs/DATABASE.md), que
+   explica por qué el esquema es así.
 
-Si las dos se separan, el baseline deja de describir la realidad y volvemos al
+Si se separan, el baseline deja de describir la realidad y volvemos al
 desorden que motivó todo esto.
+
+Desde `20260827` cada migración trae además un `<timestamp>_descripcion.down.sql`
+que la deshace. Se aplica a mano, igual que la migración.
 
 En este proyecto las migraciones se aplican **a mano** desde el SQL Editor: no
 hay `db push` ni en CI ni en los scripts de npm.

@@ -12,7 +12,7 @@
 //      la frase sale con un hueco.
 //
 // Se ejecuta con `node scripts/check_i18n.mjs`. Sale con código 1 si encuentra
-// algo, para poder colgarlo de CI el día que haya CI.
+// algo, para poder colgarlo de CI. Hoy CI existe pero no lo corre: es a mano.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { readFileSync } from 'node:fs'

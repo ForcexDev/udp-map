@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { can, isUdpEmail } from './permissions'
 
-describe('can() — matriz de permisos del plan §3', () => {
+describe('can() — matriz de permisos (docs/DATABASE.md §2)', () => {
   it('guest solo consume: ve pero no escribe', () => {
     expect(can('guest', 'pin.view')).toBe(true)
     expect(can('guest', 'pin.create.report')).toBe(false)
