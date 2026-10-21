@@ -1929,3 +1929,30 @@ Rediseño de toda la capa visual y espacial en la rama `rediseño-interfaz`:
 - **Guía Paso a Paso (`WayfinderSheet.tsx`)**: Sustituye la antigua barra de ruta por un asistente en 3 pasos interactivos (1. Acceso desde la calle/rampa → 2. Conector vertical ascensor/escalera o hall → 3. Sala o destino en planta) con conmutador **"Sin escaleras"** (`accessibleRoute`).
 - **Barra de navegación inferior en 5 columnas (`Layout.tsx`)**: Integra el botón central `+` de publicación y da aire a los iconos.
 - **Pines de sala diferenciados (`MapView.tsx`)**: Las salas con `room_code` se muestran como pastilla compacta con código corto (`S106`) y punto celeste.
+
+---
+
+## 17. Rework de notificaciones push ⏳ EN CURSO (Push 0 y 1 hechas en código, sin desplegar)
+
+**Lo que ya está en producción (`eba61ee`).** `send-push` dejó `npm:web-push` y
+cifra con Web Crypto (RFC 8291 + VAPID), envía el payload híbrido (bloque
+declarativo `web_push: 8030` + campos planos para el service worker) y manda
+`Urgency: high`. Con eso el iPhone recibe. No se aisló cuál de esos cambios fue el
+decisivo, así que **no se toca ninguna de esas piezas (cifrado, cabeceras, forma
+del payload) sin probar en un iPhone después.**
+
+**Fases.** Se llaman Push 0…6 para no chocar con las Fases 0–7 del mapeo (§12).
+El detalle está en "Orden propuesto" de la revisión.
+
+- **Push 0 — Proteger lo que funciona.** ✅ Hecha en código el 2026-10-21, sin desplegar. Cifrado y VAPID movidos sin cambios a `supabase/functions/_shared/webpush.ts`, con tests que corre vitest (vector del RFC 8291, ida y vuelta, firma VAPID). Par VAPID validado al cargar: si está mal, 500 sin tocar la cola. Errores de escritura en la base comprobados y en el diagnóstico.
+- **Push 1 — `send-push` más robusto, sin migración.** ✅ Hecha en código el 2026-10-21, sin desplegar. Respuestas clasificadas (404/410 expirada; 400/413/401/403 fallo terminal; 429/5xx/red reintento con `Retry-After`), tope de payload de 3993 B, timeout de 10 s, JWT reutilizado por origen 11 h, `APP_ORIGIN` opcional, sin reenvíos a una suscripción que ya dio 410 en la misma pasada. El `sub` VAPID sigue como en `eba61ee`: para quitar el correo de la UDP hay que poner un `mailto:` propio en el secreto `VAPID_SUBJECT` y probar en iPhone. Cifrado, cabeceras y forma del payload quedan idénticos.
+- **Push 2 — ⏳ Cola sin duplicados ni atascos.** Migración B+C (estado `expired`, trigger `BEFORE DELETE`, RPC de reclamo con *lease*, `revoke`/`grant`, índice de `subscription_id`) y `send-push` con la RPC, en lotes y con envíos en paralelo.
+- **Push 3 — ⏳ Suscripciones y avisos.** `register_push_subscription` con `p_old_endpoint`, `reminded_at` para el recordatorio que reaparece, recordatorios en su propio cron, purga, cron de `send-push` versionado, `wants_notification` cerrada, conteo de la difusión.
+- **Push 4 — ⏳ Cliente.** Estado `serverSync`, baja unificada, resincronizar por `user?.id` y service worker con `catch` que muestra algo; con tests.
+- **Push 5 — ⏳ F.** Diagnóstico en el panel: pasar `notificationId` a `send-push` y filtrar por él.
+- **Push 6 — ⏳ Opcional.** Adelgazar el payload, solo con el service worker nuevo adoptado y probado en iPhone.
+
+**Para desplegar Push 0 y 1:** `npm run deploy:push` a mano y probar en un
+iPhone después. Si algo falla, redesplegar `eba61ee`.
+
+Detalle: [bitácora](PUSH_REWORK_LOGBOOK.md) · [revisión](PUSH_REWORK_REVIEW.md).

@@ -1,26 +1,25 @@
 # Bitácora y Contexto Técnico: Auditoría y Rework de Web Push (iOS / Multi-plataforma)
 
 > **Fecha:** 2026-10-20
-> **Estado:** Fase 1 (Auditoría Estática) ✅ | Fase 2 (Diagnóstico en Vivo iOS + Windows) ✅ | Fase 3 (Rework Arquitectónico Completo) ⏳ Lista para ejecutar
+> **Estado (2026-10-21):** Fase 1 (Auditoría Estática) ✅ | Fase 2 (Diagnóstico en Vivo iOS + Windows) ✅ | Fase 3 (Rework) revisada en [PUSH_REWORK_REVIEW.md](PUSH_REWORK_REVIEW.md) y reordenada en P0–P6 (ver `ROADMAP.md` §17). P0 hecha en código, **sin desplegar**; el resto ⏳
 
 ---
 
 ## 1. Resumen Ejecutivo de lo Descubierto y Resuelto
 
-### 1.1. ¿Por qué no llegaban las notificaciones al iPhone (PWA en iOS)?
-Durante la auditoría estática y el diagnóstico en vivo contra la base de producción (`dbligiwkenckurmybwyw`) y el iPhone del usuario (`id: 7ca845aa-d56a-4f36-bdf2-e55edc6deee5`, `User-Agent: Version/27.0.1 Mobile/15E148 Safari/604.1`), identificamos y comprobamos empíricamente las causas raíz:
+### 1.1. Lo que cambió y funcionó
+Durante la auditoría y el diagnóstico en vivo contra la base de producción (`dbligiwkenckurmybwyw`) y el iPhone del usuario (`id: 7ca845aa-d56a-4f36-bdf2-e55edc6deee5`, `User-Agent: Version/27.0.1 Mobile/15E148 Safari/604.1`), el iPhone pasó de no recibir a recibir. En ese tiempo cambiaron **varias cosas a la vez**:
 
-1. **Incompatibilidad de `npm:web-push@3.6.7` en Deno (Supabase Edge Functions):**
-   - La versión original de [`supabase/functions/send-push/index.ts`](../supabase/functions/send-push/index.ts) dependía de `npm:web-push@3.6.7`, que utiliza los polyfills de `node:crypto` (`createECDH`) y `Buffer` de Deno para cifrar el payload (`aes128gcm`, RFC 8291).
-   - El gateway HTTP de Apple (`https://web.push.apple.com/...`) solo valida el JWT VAPID en la entrada y devuelve `201 Created` (porque Apple no posee la llave privada del dispositivo para descifrar el payload en el servidor). Sin embargo, al llegar el paquete cifrado al iPhone, el demonio del sistema (`webpushd`) fallaba al descifrar o despertar el worker, descartando silenciosamente el push mientras la base de datos marcaba erróneamente `status = 'sent'`.
-2. **Falta de soporte para Declarative Web Push (`"web_push": 8030`) en iOS moderno (`Safari Version/27.0.1`):**
-   - A partir de iOS 18.4+ / Safari 26+ (`Version/27.0.1`), `webpushd` de Apple implementa el estándar W3C/WebKit **Declarative Web Push** (RFC 8030, clave mágica `"web_push": 8030` + objeto `"notification"` con `"navigate"` absoluto).
-   - Con Declarative Web Push, el demonio nativo `webpushd` de iOS muestra la notificación directamente a nivel de sistema operativo **sin depender de levantar el proceso JavaScript del Service Worker en segundo plano**, mientras que en navegadores clásicos (Windows, Android, versiones anteriores) el Service Worker procesa el mismo JSON de forma retrocompatible.
-3. **Penalización previa del WebClip en iOS y acumulación de endpoints huérfanos:**
-   - Tras múltiples intentos fallidos previos, iOS había dejado el WebClip en estado penalizado y en `public.push_subscriptions` se acumulaban múltiples endpoints Apple antiguos (`QC1hKavVyq7...`, `QOnyfrtUby...`, `QEVBrX5xCoDW_LgT6Iz1W...`) para el mismo dispositivo.
+1. **Cifrado propio con Web Crypto** (RFC 8291 `aes128gcm` + RFC 8188), en lugar de `npm:web-push@3.6.7` sobre los polyfills de `node:crypto` de Deno.
+2. **Bloque declarativo** (`"web_push": 8030` + `"notification"` con `"navigate"` absoluto) junto a los campos planos que lee el service worker. iOS reciente (`Version/27.0.1`) lo muestra desde `webpushd` sin levantar el worker.
+3. **`Urgency` pasó de `normal` a `high`** (con `TTL: 86400`).
+4. **Reinstalación del WebClip** en el iPhone, que tenía endpoints Apple antiguos acumulados (`QC1hKavVyq7...`, `QOnyfrtUby...`, `QEVBrX5xCoDW_LgT6Iz1W...`) y posible penalización previa.
+5. Además, el `sub` de VAPID pasó de `https://udp-map.vercel.app` a `mailto:soporte@udp.cl` (el código sustituía el secreto).
+
+**No se aisló cuál de estos cambios fue el decisivo.** Apple responde `201 Created` aunque el payload no se pueda descifrar, así que ese código no sirve para distinguirlos, y no se afirma que `npm:web-push` corrompiera el cifrado. Por eso `ROADMAP.md` §17 prohíbe tocar cifrado, cabeceras y forma del payload sin probar en un iPhone.
 
 ### 1.2. Lo que YA está desplegado y verificado en producción (`send-push`)
-En [`supabase/functions/send-push/index.ts`](../supabase/functions/send-push/index.ts) (actualmente modificado en el working tree local y **ya desplegado en Supabase producción**):
+En [`supabase/functions/send-push/index.ts`](../supabase/functions/send-push/index.ts) (ya está en el commit `eba61ee` y **desplegado en Supabase producción**):
 - Se eliminó por completo `npm:web-push@3.6.7`.
 - Se implementó desde cero el cifrado **RFC 8291 (`aes128gcm`) + RFC 8188** y la firma **RFC 8292 (VAPID ES256)** usando exclusivamente **Web Crypto API nativa (`crypto.subtle`)**, validado bit a bit contra los vectores oficiales del **Apéndice A del RFC 8291**.
 - Se envía `Urgency: high` y `TTL: 86400`.
@@ -34,6 +33,8 @@ En [`supabase/functions/send-push/index.ts`](../supabase/functions/send-push/ind
 ---
 
 ## 2. Hallazgos de la Auditoría Estática Pendientes de Resolver en la Fase 3
+
+> **Nota (2026-10-21):** el plan de la Fase 3 fue revisado en [PUSH_REWORK_REVIEW.md](PUSH_REWORK_REVIEW.md), que descarta A.2, D.2 tal cual, D.4, E.2 literal y E.3 tal cual, y reordena el trabajo en P0–P6 (`ROADMAP.md` §17). Lo de abajo es el plan original; donde discrepe, manda la revisión.
 
 Aunque el envío y recepción en iOS y Windows ya funcionan con la nueva Edge Function, el resto de la arquitectura tiene **fallos estructurales** que deben corregirse en el rework (Fase 3) para garantizar entrega universal y cero estados fantasma:
 

@@ -880,7 +880,16 @@ Edge Functions en `supabase/functions/`:
 - **`send-push`** — en cada pasada encola los recordatorios de eventos
   (`enqueue_upcoming_event_notifications()`), drena `notification_push_deliveries`
   y envía las notificaciones Web Push. Se invoca con `x-cron-secret` o con sesión
-  de administrador. Se despliega con `npm run deploy:push`.
+  de administrador. Se despliega con `npm run deploy:push`. Cifrado y VAPID
+  viven en `_shared/webpush.ts`. Secretos: `VAPID_PUBLIC_KEY`,
+  `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (un `mailto:` se usa tal cual; cualquier
+  otro valor, o ninguno, firma con el `mailto:` de respaldo, igual que la versión
+  que entrega en iPhone) y `APP_ORIGIN` (opcional; por defecto
+  `https://udp-map.vercel.app`).
+  Clasifica la respuesta del servicio push: 404/410 suscripción expirada,
+  400/413/401/403 fallo terminal sin reintentos, 429/5xx/red reintento
+  (respetando `Retry-After`). Con la configuración VAPID inválida responde 500
+  sin tocar la cola.
 - **`storage-gc`** — drena `storage_cleanup_queue` y borra los archivos.
   `npx supabase functions deploy storage-gc`.
 

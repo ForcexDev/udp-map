@@ -1,194 +1,68 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import {
+  MAX_ATTEMPTS,
+  MAX_PLAINTEXT_BYTES,
+  type PushOutcome,
+  classifyPushResponse,
+  createVapidHeaderCache,
+  encryptPayloadAes128Gcm,
+  payloadByteLength,
+  retryDelayMs,
+  validateVapidKeys,
+  validateVapidSubject,
+} from '../_shared/webpush.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const cronSecret = Deno.env.get('CRON_SECRET')!
-const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')!
-const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')!
-const rawVapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:soporte@udp.cl'
-// Apple Web Push (web.push.apple.com) exige o recomienda un URI mailto: válido en el claim sub.
-const vapidSubject = rawVapidSubject.startsWith('mailto:') ? rawVapidSubject : 'mailto:soporte@udp.cl'
+// Sin estas dos no hay nada que hacer: fallar al cargar el módulo
+// con un mensaje claro, en vez de un `undefined` que explota más adelante.
+function requireEnv(name: string): string {
+  const value = Deno.env.get(name)
+  if (!value) throw new Error(`Falta la variable de entorno ${name}`)
+  return value
+}
+
+const supabaseUrl = requireEnv('SUPABASE_URL')
+const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+// Opcional: isAuthorized ya comprueba que exista antes de compararlo.
+const cronSecret = Deno.env.get('CRON_SECRET')
+const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+// El `sub` del JWT se queda como en eba61ee, que es lo que hoy entrega en
+// iPhone: si VAPID_SUBJECT no es un mailto:, se firma con el de respaldo. RFC
+// 8292 §2.1 y Apple admiten también https:, pero cambiar el `sub` es cambiar lo
+// que viaja, y eso solo se hace probando en un iPhone. El respaldo es el correo
+// de la UDP, con la que el proyecto no está afiliado: el arreglo es poner en el
+// secreto un mailto: propio del proyecto, que se usará tal cual.
+const FALLBACK_VAPID_SUBJECT = 'mailto:soporte@udp.cl'
+const rawVapidSubject = Deno.env.get('VAPID_SUBJECT')
+const vapidSubject = rawVapidSubject?.startsWith('mailto:') ? rawVapidSubject : FALLBACK_VAPID_SUBJECT
+if (vapidSubject !== rawVapidSubject) {
+  console.warn(
+    `[send-push] VAPID_SUBJECT no es un mailto: (${validateVapidSubject(rawVapidSubject) ?? rawVapidSubject}); ` +
+      `se firma con ${FALLBACK_VAPID_SUBJECT}. Pon un mailto: propio del proyecto en el secreto.`,
+  )
+}
+
+// Se valida una sola vez al cargar. Un par VAPID ausente o corrupto no es un
+// fallo de cada entrega: cobrarlo como tal agotaba la cola en un par de horas.
+const configProblem = validateVapidKeys(vapidPublicKey, vapidPrivateKey)
+
+const appOrigin = new URL(Deno.env.get('APP_ORIGIN') || 'https://udp-map.vercel.app').origin
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 })
 
-const encoder = new TextEncoder()
-
-function base64UrlToBytes(b64url: string): Uint8Array {
-  const clean = b64url.trim().replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  const padding = '='.repeat((4 - (clean.length % 4)) % 4)
-  const base64 = (clean + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(base64)
-  const out = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
-  return out
-}
-
-function bytesToBase64Url(bytes: Uint8Array): string {
-  let binary = ''
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-function concatBytes(...arrays: Uint8Array[]): Uint8Array {
-  const total = arrays.reduce((acc, a) => acc + a.length, 0)
-  const out = new Uint8Array(total)
-  let offset = 0
-  for (const a of arrays) {
-    out.set(a, offset)
-    offset += a.length
-  }
-  return out
-}
-
-async function hkdfDeriveBytes(
-  ikm: Uint8Array,
-  salt: Uint8Array,
-  info: Uint8Array,
-  byteLength: number,
-): Promise<Uint8Array> {
-  const keyMaterial = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits'])
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', salt, info },
-    keyMaterial,
-    byteLength * 8,
-  )
-  return new Uint8Array(bits)
-}
-
-/**
- * Cifra el payload Web Push según RFC 8291 (aes128gcm) y RFC 8188 usando Web Crypto API nativa.
- * Evita npm:web-push en Deno, cuyo polyfill de node:crypto corrompe el cifrado ECDH/GCM en iOS.
- */
-async function encryptPayloadAes128Gcm(
-  plaintext: string,
-  p256dhBase64Url: string,
-  authBase64Url: string,
-): Promise<Uint8Array> {
-  const uaPublicBytes = base64UrlToBytes(p256dhBase64Url)
-  const authSecretBytes = base64UrlToBytes(authBase64Url)
-
-  const uaPublicKey = await crypto.subtle.importKey(
-    'raw',
-    uaPublicBytes,
-    { name: 'ECDH', namedCurve: 'P-256' },
-    false,
-    [],
-  )
-
-  const asKeyPair = await crypto.subtle.generateKey(
-    { name: 'ECDH', namedCurve: 'P-256' },
-    true,
-    ['deriveBits'],
-  )
-
-  const asPublicBytes = new Uint8Array(await crypto.subtle.exportKey('raw', asKeyPair.publicKey))
-  const ecdhSecretBytes = new Uint8Array(
-    await crypto.subtle.deriveBits(
-      { name: 'ECDH', public: uaPublicKey },
-      asKeyPair.privateKey,
-      256,
-    ),
-  )
-
-  // RFC 8291 Sección 3.3: IKM = HKDF(salt=auth_secret, ikm=ecdh_secret, info="WebPush: info\0" || ua_public || as_public, L=32)
-  const keyInfo = concatBytes(
-    encoder.encode('WebPush: info\0'),
-    uaPublicBytes,
-    asPublicBytes,
-  )
-  const ikm = await hkdfDeriveBytes(ecdhSecretBytes, authSecretBytes, keyInfo, 32)
-
-  // RFC 8291 Sección 3.4: CEK (16 bytes) y Nonce (12 bytes)
-  const salt = crypto.getRandomValues(new Uint8Array(16))
-  const cekInfo = encoder.encode('Content-Encoding: aes128gcm\0')
-  const nonceInfo = encoder.encode('Content-Encoding: nonce\0')
-
-  const cekBytes = await hkdfDeriveBytes(ikm, salt, cekInfo, 16)
-  const nonceBytes = await hkdfDeriveBytes(ikm, salt, nonceInfo, 12)
-
-  const aesKey = await crypto.subtle.importKey('raw', cekBytes, { name: 'AES-GCM' }, false, ['encrypt'])
-  const plaintextBytes = encoder.encode(plaintext)
-  // Delimitador de registro final RFC 8188: 0x02
-  const recordPlaintext = concatBytes(plaintextBytes, new Uint8Array([2]))
-
-  const ciphertextBytes = new Uint8Array(
-    await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonceBytes, tagLength: 128 },
-      aesKey,
-      recordPlaintext,
-    ),
-  )
-
-  // Cabecera aes128gcm (RFC 8188 Sección 2.1): salt (16B) || rs (4B uint32 BE) || idlen (1B) || keyid (65B)
-  const header = new Uint8Array(21 + asPublicBytes.length)
-  header.set(salt, 0)
-  const view = new DataView(header.buffer)
-  view.setUint32(16, 4096, false)
-  header[20] = asPublicBytes.length
-  header.set(asPublicBytes, 21)
-
-  return concatBytes(header, ciphertextBytes)
-}
-
-/**
- * Genera la cabecera Authorization VAPID (RFC 8292) firmada con ES256 mediante Web Crypto API.
- */
-async function createVapidAuthHeader(
-  endpoint: string,
-  vapidPubB64Url: string,
-  vapidPrivB64Url: string,
-  subject: string,
-): Promise<string> {
-  const pubBytes = base64UrlToBytes(vapidPubB64Url)
-  if (pubBytes.length !== 65 || pubBytes[0] !== 4) {
-    throw new Error('Invalid VAPID public key format (expected 65-byte uncompressed P-256 point)')
-  }
-  const x = bytesToBase64Url(pubBytes.slice(1, 33))
-  const y = bytesToBase64Url(pubBytes.slice(33, 65))
-  const d = bytesToBase64Url(base64UrlToBytes(vapidPrivB64Url))
-
-  const privateKey = await crypto.subtle.importKey(
-    'jwk',
-    { kty: 'EC', crv: 'P-256', x, y, d, key_ops: ['sign'], ext: true },
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,
-    ['sign'],
-  )
-
-  const origin = new URL(endpoint).origin
-  const exp = Math.floor(Date.now() / 1000) + 12 * 60 * 60
-
-  const headerB64 = bytesToBase64Url(encoder.encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })))
-  const payloadB64 = bytesToBase64Url(encoder.encode(JSON.stringify({ aud: origin, exp, sub: subject })))
-  const signingInput = `${headerB64}.${payloadB64}`
-
-  const sigBytes = new Uint8Array(
-    await crypto.subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' },
-      privateKey,
-      encoder.encode(signingInput),
-    ),
-  )
-
-  const jwt = `${signingInput}.${bytesToBase64Url(sigBytes)}`
-  const cleanPub = bytesToBase64Url(pubBytes)
-  return `vapid t=${jwt}, k=${cleanPub}`
-}
+// Una sola instancia: la caché de cabeceras VAPID tiene que sobrevivir entre
+// entregas para que reutilizar el JWT tenga algún efecto.
+const getVapidHeader = configProblem
+  ? null
+  : createVapidHeaderCache(vapidPublicKey!, vapidPrivateKey!, vapidSubject)
 
 async function sendWebPushNotification(
   subscription: { endpoint: string; p256dh: string; auth: string },
-  payloadText: string,
-): Promise<{ status: number; apnsId: string | null; responseBody: string }> {
-  const bodyBytes = await encryptPayloadAes128Gcm(payloadText, subscription.p256dh, subscription.auth)
-  const authorization = await createVapidAuthHeader(
-    subscription.endpoint,
-    vapidPublicKey,
-    vapidPrivateKey,
-    vapidSubject,
-  )
-
+  bodyBytes: Uint8Array,
+  authorization: string,
+): Promise<{ status: number; apnsId: string | null; retryAfter: string | null; errorText: string }> {
   const response = await fetch(subscription.endpoint, {
     method: 'POST',
     headers: {
@@ -200,24 +74,19 @@ async function sendWebPushNotification(
       Urgency: 'high',
     },
     body: bodyBytes,
+    // Un servicio push colgado no puede frenar el lote entero.
+    signal: AbortSignal.timeout(10_000),
   })
 
   const responseBody = await response.text().catch(() => '')
   const apnsId = response.headers.get('apns-id') || response.headers.get('x-apns-id') || null
 
-  if (!response.ok) {
-    const err = new Error(
-      `Push gateway responded ${response.status}: ${responseBody || response.statusText}`,
-    ) as Error & { statusCode?: number; apnsId?: string | null }
-    err.statusCode = response.status
-    err.apnsId = apnsId
-    throw err
-  }
-
   return {
     status: response.status,
     apnsId,
-    responseBody,
+    retryAfter: response.headers.get('retry-after'),
+    // El estado ya no viaja dentro de un Error: lo clasifica quien llama.
+    errorText: response.ok ? '' : responseBody || response.statusText,
   }
 }
 
@@ -245,7 +114,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:4173',
   'http://localhost:3000',
-  'https://udp-map.vercel.app',
+  appOrigin,
 ]
 
 function getCorsHeaders(req: Request): Record<string, string> {
@@ -302,6 +171,18 @@ Deno.serve(async (req) => {
     console.error('Could not enqueue event reminders', reminderError)
   }
 
+  // Después de los recordatorios, que no dependen de VAPID y alimentan la
+  // bandeja; antes de tocar la cola, para no gastar intentos con una
+  // configuración que no puede enviar nada.
+  if (configProblem || !getVapidHeader) {
+    console.error('Configuración VAPID inválida, no se procesa la cola:', configProblem)
+    return json(cors, {
+      error: configProblem,
+      remindersCreated: remindersCreated ?? 0,
+      reminderError: reminderError?.message ?? null,
+    }, 500)
+  }
+
   const { data, error } = await supabase
     .from('notification_push_deliveries')
     .select(`
@@ -319,12 +200,51 @@ Deno.serve(async (req) => {
 
   let sent = 0
   let failed = 0
-  let expired = 0
+  const expiredIds = new Set<string>()
   const diagnostics: Array<Record<string, unknown>> = []
+
+  // Un único sitio para armar el diagnóstico de cada entrega.
+  const addDiagnostic = (
+    delivery: DeliveryRow,
+    outcome: 'sent' | 'expired' | 'failed' | 'retry',
+    extra: { httpStatus?: number; apnsId?: string | null; error?: string; dbError?: string | null } = {},
+  ) => {
+    diagnostics.push({
+      deliveryId: delivery.id,
+      subscriptionId: delivery.subscription.id,
+      endpointPrefix: delivery.subscription.endpoint.slice(0, 48),
+      outcome,
+      ...extra,
+    })
+  }
+
+  // supabase-js devuelve { error } en vez de lanzar: sin esta comprobación un
+  // update fallido se ignoraba y la entrega se reenviaba cada minuto.
+  const dbErrorOf = (deliveryId: string, error: { message: string } | null): string | null => {
+    if (!error) return null
+    console.error('Error de base al actualizar la entrega', deliveryId, error)
+    return error.message
+  }
+
+  // Escribe el estado final de una entrega que no se envió (fallo o reintento).
+  const markUnsent = async (
+    delivery: DeliveryRow,
+    update: Record<string, unknown>,
+  ): Promise<string | null> => {
+    const { error: updateError } = await supabase
+      .from('notification_push_deliveries')
+      .update(update)
+      .eq('id', delivery.id)
+    return dbErrorOf(delivery.id, updateError)
+  }
 
   for (const rawDelivery of data ?? []) {
     const delivery = rawDelivery as unknown as DeliveryRow
-    const appOrigin = 'https://udp-map.vercel.app'
+
+    // Su suscripción ya se borró en esta pasada (el CASCADE se llevó la fila):
+    // enviarle otra vez solo daría otro 410.
+    if (expiredIds.has(delivery.subscription.id)) continue
+
     let navigateUrl = `${appOrigin}/`
     try {
       const resolved = new URL(delivery.notification.url || '/', appOrigin)
@@ -338,10 +258,11 @@ Deno.serve(async (req) => {
       navigateUrl = `${appOrigin}/`
     }
 
-    // Formato híbrido Declarative Web Push (W3C / WebKit RFC 8030, clave mágica web_push: 8030)
-    // + campos planos de respaldo para Service Workers clásicos.
-    // En iOS 18.4+ / iOS 26 (webpushd), `web_push: 8030` hace que el demonio del sistema
-    // muestre la notificación de forma nativa sin depender de despertar el Service Worker.
+    // Payload híbrido: bloque Declarative Web Push (Push API del W3C, web_push: 8030)
+    // + campos planos que lee push-sw.js. Es la forma que hoy entrega en iPhone: no
+    // se toca sin probar allí. Con service worker instalado, quién pinta la
+    // notificación en iOS 18.4+ no está claro (WebKit y el W3C se contradicen; ver
+    // docs/PUSH_REWORK_REVIEW.md), así que el SW sigue necesitando los campos planos.
     const payload = JSON.stringify({
       web_push: 8030,
       notification: {
@@ -368,81 +289,112 @@ Deno.serve(async (req) => {
       payload: delivery.notification.payload,
     })
 
-    try {
-      const result = await sendWebPushNotification(
-        {
-          endpoint: delivery.subscription.endpoint,
-          p256dh: delivery.subscription.p256dh,
-          auth: delivery.subscription.auth,
-        },
-        payload,
-      )
+    const attempts = delivery.attempts + 1
 
-      await supabase
+    if (payloadByteLength(payload) > MAX_PLAINTEXT_BYTES) {
+      const reason = `payload demasiado grande (${payloadByteLength(payload)} B)`
+      const dbError = await markUnsent(delivery, {
+        status: 'failed',
+        attempts,
+        last_error: reason.slice(0, 1000),
+      })
+      failed += 1
+      addDiagnostic(delivery, 'failed', { error: reason, dbError })
+      continue
+    }
+
+    // Cifrado y cabecera aparte del fetch: si lanzan es por datos de la
+    // suscripción (p. ej. DataError con p256dh/auth corruptos) y reintentar
+    // nunca lo arreglaría.
+    let bodyBytes: Uint8Array
+    let authorization: string
+    try {
+      bodyBytes = await encryptPayloadAes128Gcm(payload, delivery.subscription.p256dh, delivery.subscription.auth)
+      authorization = await getVapidHeader(delivery.subscription.endpoint)
+    } catch (cryptoError) {
+      const reason = `claves de la suscripción inválidas: ${
+        cryptoError instanceof Error ? cryptoError.message : String(cryptoError)
+      }`
+      const dbError = await markUnsent(delivery, {
+        status: 'failed',
+        attempts,
+        last_error: reason.slice(0, 1000),
+      })
+      failed += 1
+      addDiagnostic(delivery, 'failed', { error: reason, dbError })
+      continue
+    }
+
+    let outcome: PushOutcome
+    let httpStatus: number | undefined
+    let apnsId: string | null = null
+    let errorText = ''
+    try {
+      const result = await sendWebPushNotification(delivery.subscription, bodyBytes, authorization)
+      httpStatus = result.status
+      apnsId = result.apnsId
+      errorText = result.errorText
+      outcome = classifyPushResponse(result.status, result.retryAfter)
+    } catch (networkError) {
+      // Red caída o timeout: transitorio, se reintenta sin Retry-After.
+      errorText = networkError instanceof Error ? networkError.message : String(networkError)
+      outcome = { kind: 'retry', retryAfterMs: null }
+    }
+
+    if (outcome.kind === 'sent') {
+      const { error: updateError } = await supabase
         .from('notification_push_deliveries')
         .update({
           status: 'sent',
-          attempts: delivery.attempts + 1,
+          attempts,
           sent_at: new Date().toISOString(),
           last_error: null,
         })
         .eq('id', delivery.id)
       sent += 1
-      diagnostics.push({
-        deliveryId: delivery.id,
-        subscriptionId: delivery.subscription.id,
-        endpointPrefix: delivery.subscription.endpoint.slice(0, 48),
-        outcome: 'sent',
-        httpStatus: result.status,
-        apnsId: result.apnsId,
-      })
-    } catch (pushError) {
-      const statusCode = typeof pushError === 'object' && pushError !== null && 'statusCode' in pushError
-        ? Number((pushError as { statusCode?: number }).statusCode)
-        : 0
-      const apnsId = typeof pushError === 'object' && pushError !== null && 'apnsId' in pushError
-        ? (pushError as { apnsId?: string | null }).apnsId ?? null
-        : null
-      const message = pushError instanceof Error ? pushError.message : String(pushError)
-
-      if (statusCode === 404 || statusCode === 410) {
-        await supabase.from('push_subscriptions').delete().eq('id', delivery.subscription.id)
-        expired += 1
-        diagnostics.push({
-          deliveryId: delivery.id,
-          subscriptionId: delivery.subscription.id,
-          endpointPrefix: delivery.subscription.endpoint.slice(0, 48),
-          outcome: 'expired',
-          httpStatus: statusCode,
-          apnsId,
-          error: message,
-        })
-        continue
-      }
-
-      const attempts = delivery.attempts + 1
-      const terminal = attempts >= 5
-      const retryAt = new Date(Date.now() + Math.min(60, 5 * (2 ** attempts)) * 60_000)
-      await supabase
-        .from('notification_push_deliveries')
-        .update({
-          status: terminal ? 'failed' : 'pending',
-          attempts,
-          next_attempt_at: retryAt.toISOString(),
-          last_error: message.slice(0, 1000),
-        })
-        .eq('id', delivery.id)
-      failed += 1
-      diagnostics.push({
-        deliveryId: delivery.id,
-        subscriptionId: delivery.subscription.id,
-        endpointPrefix: delivery.subscription.endpoint.slice(0, 48),
-        outcome: terminal ? 'failed' : 'retry',
-        httpStatus: statusCode,
-        apnsId,
-        error: message,
-      })
+      addDiagnostic(delivery, 'sent', { httpStatus, apnsId, dbError: dbErrorOf(delivery.id, updateError) })
+      continue
     }
+
+    if (outcome.kind === 'expired') {
+      const { error: deleteError } = await supabase
+        .from('push_subscriptions')
+        .delete()
+        .eq('id', delivery.subscription.id)
+      expiredIds.add(delivery.subscription.id)
+      addDiagnostic(delivery, 'expired', {
+        httpStatus,
+        apnsId,
+        error: errorText,
+        dbError: dbErrorOf(delivery.id, deleteError),
+      })
+      continue
+    }
+
+    if (outcome.kind === 'failed') {
+      if (httpStatus === 401 || httpStatus === 403) {
+        console.error('El servicio push rechazó la autenticación VAPID: revisar el par VAPID y VAPID_SUBJECT')
+      }
+      const dbError = await markUnsent(delivery, {
+        status: 'failed',
+        attempts,
+        last_error: `${outcome.reason}: ${errorText}`.slice(0, 1000),
+      })
+      failed += 1
+      addDiagnostic(delivery, 'failed', { httpStatus, apnsId, error: outcome.reason, dbError })
+      continue
+    }
+
+    const terminal = attempts >= MAX_ATTEMPTS
+    const retryAt = new Date(Date.now() + retryDelayMs(attempts, outcome.retryAfterMs))
+    const dbError = await markUnsent(delivery, {
+      status: terminal ? 'failed' : 'pending',
+      attempts,
+      next_attempt_at: retryAt.toISOString(),
+      last_error: (errorText || `respuesta ${httpStatus}`).slice(0, 1000),
+    })
+    failed += 1
+    addDiagnostic(delivery, terminal ? 'failed' : 'retry', { httpStatus, apnsId, error: errorText, dbError })
   }
 
   return json(cors, {
@@ -451,7 +403,7 @@ Deno.serve(async (req) => {
     processed: data?.length ?? 0,
     sent,
     failed,
-    expiredSubscriptions: expired,
+    expiredSubscriptions: expiredIds.size,
     reminderError: reminderError?.message ?? null,
     diagnostics,
   })

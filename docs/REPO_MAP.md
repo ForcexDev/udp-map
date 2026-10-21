@@ -450,6 +450,7 @@ monta `MappingPage` en `/admin/mapeo` desde `App.tsx`, no desde `admin`.
 | `seed/fic_dummy_50_pins.sql` | 56 pines de prueba en la FIC, con un UUID de admin fijo. Solo desarrollo |
 | `config.toml` | `verify_jwt = false` para `send-push` y `storage-gc`: el cron manda `x-cron-secret`, no `Authorization` |
 | `functions/send-push/index.ts` | Cada minuto: encola recordatorios de eventos (`enqueue_upcoming_event_notifications`) y drena hasta 100 entregas de `notification_push_deliveries`. Se autoriza con `x-cron-secret` o sesión de admin |
+| `functions/_shared/webpush.ts` | Cifrado RFC 8291 y VAPID compartidos, sin APIs de Deno. Su `webpush.test.ts` lo corre vitest (vector del RFC, ida y vuelta, firma, clasificación) |
 | `functions/storage-gc/index.ts` | Cada 10 min: vacía `storage_cleanup_queue` borrando los binarios de Storage |
 
 Orden para reconstruir: `baseline.sql` → `badges.sql` → `seed.sql`, y después a
@@ -529,7 +530,7 @@ sigue igual) y la regeneración de los derivados cuando editas `CLAUDE.md`.
 | El editor de mapeo | `mapping/MappingPage.tsx` (mutaciones y atajos), `MappingCanvas.tsx` (dibujo), `editorStore.ts` (estado), `validation.ts` |
 | El formulario de pin | `pins/CreatePinModal.tsx`, `pins/IndoorFields.tsx`, y `pins/api.ts` + `pins/demoStore.ts` para los datos |
 | Un tipo de aviso nuevo | Migración (CHECK de `notifications.type`, función `notify_*`) + `notifications/notificationMeta.ts` + `preferencesApi.ts` si es silenciable + `NOTIFICATIONS_AND_MODERATION.md` |
-| El envío push | `supabase/functions/send-push/index.ts` + `public/push-sw.js` + `notifications/pushStore.ts`. Despliega con `npm run deploy:push` |
+| El envío push | `supabase/functions/send-push/index.ts` + `supabase/functions/_shared/webpush.ts` (y su `webpush.test.ts`) + `public/push-sw.js` + `notifications/pushStore.ts`. Despliega con `npm run deploy:push` |
 | Una sección del panel | `admin/sections.ts` + una `<Route>` en `app/App.tsx` + el panel envuelto en `AdminScreen` |
 | Un permiso de la interfaz | `auth/permissions.ts` (y su test). El permiso real, en la política RLS |
 | Un texto de interfaz | `shared/lib/i18n.ts` en ES y EN, y luego `npm run check:i18n` |
