@@ -4,7 +4,7 @@ Qué hay dentro, por qué está así, y qué hacer para manejarla.
 
 Este documento describe el estado **real** de producción, leído de los catálogos
 de Postgres el 3 de agosto de 2026 (PostgreSQL 17.6 sobre Supabase). Las
-migraciones posteriores, hasta `20260831000200`, se documentaron a medida que se
+migraciones posteriores, hasta `20261021000000`, se documentaron a medida que se
 escribían, no se leyeron de producción. La base manda sobre lo que dicen las
 migraciones: unas cuantas cosas se hicieron a mano en el dashboard y solo
 existen en la base. Para saber qué carpeta toca cada cambio, ver
@@ -499,8 +499,10 @@ algo ocurre → trigger → create_notification() → fila en notifications
                                        una fila por suscripción del usuario
                                                       │
                                     notification_push_deliveries (cola)
+                                    pending → sent | failed | expired
                                                       │
                                   cron cada minuto → Edge Function send-push
+                       claim_push_deliveries → envía → finish_push_deliveries
 ```
 
 `notifications` tiene un `unique (user_id, dedupe_key)` y `create_notification`
@@ -539,6 +541,83 @@ que nadie mira nunca da error. La baja queda registrada como
 La misma migración añade `admin_send_test_push_to_self()`. Existe porque probar
 el push obligaba a usar la difusión, que recorre **todas** las suscripciones:
 comprobar "¿me llega a mí?" le hacía sonar el teléfono a la universidad entera.
+
+### La cola de entregas push
+
+Cada fila de `notification_push_deliveries` es "este aviso, a esta suscripción".
+La crea `queue_notification_push` en `pending` y termina en uno de tres estados
+(migración `20261021000000`):
+
+| Estado | Qué significa |
+|---|---|
+| `sent` | El servicio push la aceptó |
+| `failed` | Fallo terminal: el servicio la rechazó sin remedio (400, 401, 403, 413), las claves de la suscripción no sirven, el payload no cabe, o se agotaron los 5 intentos |
+| `expired` | Ya no hay a quién enviarla: el servicio push contestó 404/410, o la suscripción se borró antes del envío. No es un fallo, y por eso no se mezcla con `failed` |
+
+**Reclamo con lease, no estado `processing`.** Antes send-push leía las `pending`
+con un SELECT y las marcaba al terminar. Entre una cosa y otra nada decía "esta ya
+la tiene alguien": bastaba con que coincidieran el cron y el botón del panel, o
+con que un lote durara más de un minuto, para enviar lo mismo dos veces. Ahora
+`claim_push_deliveries` elige las filas listas con `for update skip locked` y, en
+la misma sentencia, empuja su `next_attempt_at` al futuro (el *lease*, 120 s por
+defecto) y suma uno a `attempts`. Mientras dure el lease nadie más las ve como
+pendientes.
+
+Un estado `processing` habría dado lo mismo a primera vista, pero el CHECK no lo
+admitía y, sin un recuperador que devolviera a `pending` lo que dejó a medias una
+ejecución muerta, esas filas se quedarían atascadas para siempre. El lease se
+recupera solo: al vencer, la fila vuelve a ser reclamable **con el intento ya
+contado**, de modo que una fila que mata la función cada vez agota sus intentos y
+acaba `failed` en vez de dar vueltas.
+
+El lease tiene que ser más largo que el peor lote: 50 filas a 10 envíos a la vez
+son 5 tandas de hasta 10 s de timeout, 50 s, más el cifrado y el cierre. Si
+venciera antes de terminar, otra ejecución reclamaría las mismas filas y
+volveríamos al principio.
+
+**Cierre con fencing.** send-push cierra el lote con una sola llamada a
+`finish_push_deliveries`. Cada resultado lleva el `attempts` que se le dio al
+reclamar, y la escritura solo se aplica si la fila sigue `pending` **y** con ese
+mismo `attempts`. Si el lease venció y otra ejecución la reclamó (ahora con
+`attempts + 1`), o el trigger la pasó a `expired`, el cierre atrasado no hace nada
+y no pisa el resultado bueno. La función devuelve los ids que sí cerró. `attempts`
+no se toca al cerrar: ya se contó al reclamar.
+
+**El rastro de un fallo sobrevive a la suscripción.** `subscription_id` es
+anulable y su clave foránea es `on delete set null`. Con `cascade`, el 410 que
+manda borrar la suscripción se llevaba también las entregas que contaban qué había
+pasado. Pero `set null` por sí solo deja huérfanas las `pending` de la suscripción
+borrada: ni el `push_subscriptions!inner` del send-push anterior ni
+`claim_push_deliveries` (que exige `subscription_id is not null`) las ven, así que
+no se cerrarían nunca. Y el borrado no siempre pasa por el 410: desactivar el
+push, cerrar sesión, `admin_delete_push_subscription`, el cascade desde `profiles`.
+
+Por eso hay un trigger `BEFORE DELETE` sobre `push_subscriptions`,
+`push_subscriptions_expire_deliveries`, que pasa a `expired` sus entregas
+`pending` (con `last_error = 'suscripción borrada antes del envío'`) y cubre todos
+esos caminos a la vez. Tiene que ser `BEFORE`: en `AFTER`, la acción `set null` de
+la clave foránea ya habría vaciado `subscription_id` y el trigger no encontraría
+qué expirar. Y `SECURITY DEFINER`, porque quien borra es `authenticated` y ese rol
+no tiene ningún permiso sobre la cola. El `unique (notification_id,
+subscription_id)` sigue ahí; Postgres trata cada NULL como distinto, así que caben
+varias entregas huérfanas de un mismo aviso.
+
+**`push_host`, no el endpoint.** Cada entrega guarda el host del servicio push
+(`web.push.apple.com`, `fcm.googleapis.com`…), copiado de la suscripción al
+encolarla. No el endpoint completo: es una URL de capacidad que identifica un
+dispositivo concreto y no tiene por qué sobrevivir a su baja. El host basta para la
+pregunta que importa después de un fallo, qué servicio push es el que rechaza:
+
+```sql
+select push_host, status, count(*)
+from public.notification_push_deliveries
+group by 1, 2 order by 1, 2;
+```
+
+Como la migración dejó el índice `notification_deliveries_subscription_idx` sobre
+`subscription_id`, `register_push_subscription` (que borra por esa columna en cada
+vuelta a primer plano), el trigger y la propia acción `set null` encuentran sus
+filas sin recorrer la cola.
 
 ### Qué avisa la aplicación, y qué no avisaba
 
@@ -750,6 +829,21 @@ sección 12 cuenta las dos que no lo hacían y ya se corrigieron.
 | `admin_activity_log(limite)` | admin | El registro de actividad, con el nombre de quien actuó |
 | `prune_activity_log(dias)` | admin | Poda el registro. Mínimo 7 días |
 
+### Las que solo llama el servicio
+
+Solo `service_role` —la Edge Function `send-push`, con la clave de servicio— tiene
+`EXECUTE`. Las dos de la cola de push devuelven o escriben datos de suscripciones
+(`p256dh` y `auth` incluidos), y comprueban dentro `auth.role() is distinct from
+'service_role'`. Es `is distinct from` y no `<>` a propósito: con `<>`, un rol nulo
+daría `null`, el `if` no se cumpliría y la función dejaría pasar a cualquiera.
+(`enqueue_upcoming_event_notifications` también tiene el `EXECUTE` solo para
+`service_role`; sigue listada entre las internas.)
+
+| Función | Qué hace |
+|---|---|
+| `claim_push_deliveries(límite, lease_s, aviso)` | Reclama hasta `límite` entregas listas (1–200, 50 por defecto) y las reserva `lease_s` segundos (30–900, 120 por defecto). Devuelve el aviso y la suscripción con sus claves. `aviso` es opcional y limita el reclamo a los envíos de ese aviso |
+| `finish_push_deliveries(resultados)` | Cierra un lote con una llamada. `resultados` es un array jsonb de `{id, attempts, status, next_attempt_at, last_error}`. Solo cierra lo que sigue `pending` con ese `attempts`, y devuelve los ids que cerró |
+
 ### Las internas
 
 Nadie puede invocarlas desde la API: se les revocó el `EXECUTE`. Solo las llaman
@@ -763,7 +857,7 @@ otros triggers y funciones.
 `authorize_pin_move`, `validate_pin_floor`, `prevent_occupied_pin_location`,
 `validate_rsvp_targets_event`, `enforce_*_photo_limit`,
 `enqueue_*_photo_cleanup`, `queue_notification_push`,
-`set_notification_updated_at` y `trg_log_*`.
+`expire_pending_push_deliveries`, `set_notification_updated_at` y `trg_log_*`.
 
 ---
 
@@ -797,6 +891,14 @@ del comentario padre si es una respuesta anidada. No se avisa a sí mismo.
 próximos 20 días, se crea el recordatorio en el acto.
 
 **Al denunciar contenido:** se notifica a **todos** los administradores.
+
+**Al borrar una suscripción push:** `push_subscriptions_expire_deliveries` pasa a
+`expired` todas sus entregas `pending`, y justo después la clave foránea (`on
+delete set null`) les quita la suscripción. Da igual quién borre: el 410 de
+`send-push`, desactivar el push, cerrar sesión, `admin_delete_push_subscription` o
+el cascade al borrar un perfil. Las entregas ya cerradas (`sent`, `failed`,
+`expired`) se quedan, sin suscripción, como rastro. Sin este trigger, el `set null`
+dejaría `pending` huérfanas para siempre.
 
 **Al subir una foto:** `enforce_pin_photo_limit` y `enforce_place_photo_limit`
 comprueban el tope (5 por pin, 10 por galería). Los dos son triggers `AFTER` y
@@ -879,8 +981,18 @@ Edge Functions en `supabase/functions/`:
 
 - **`send-push`** — en cada pasada encola los recordatorios de eventos
   (`enqueue_upcoming_event_notifications()`), drena `notification_push_deliveries`
-  y envía las notificaciones Web Push. Se invoca con `x-cron-secret` o con sesión
-  de administrador. Se despliega con `npm run deploy:push`. Cifrado y VAPID
+  y envía las notificaciones Web Push. Reclama la cola por RPC
+  (`claim_push_deliveries`) en lotes de 50, envía 10 a la vez y cierra cada lote con
+  una sola llamada a `finish_push_deliveries` (con un reintento, seguro por el
+  fencing); mientras queda presupuesto (unos 40 s y como mucho 6 lotes, 300
+  entregas, por ejecución: el tope de lotes protege el límite de CPU) reclama otro
+  lote. En `last_error` el endpoint se cambia por su host, como en `push_host`. Al
+  cron le responde 202 en seguida y la
+  pasada sigue en segundo plano, porque `pg_net` corta a los 5 s; el panel
+  (sesión de administrador) espera el resultado. Se invoca con `x-cron-secret` o
+  con sesión de administrador. Se despliega con `npm run deploy:push`, **después**
+  de aplicar la migración `20261021000000`: la versión nueva llama a RPC que antes
+  no existían. La anterior sigue funcionando con el esquema nuevo. Cifrado y VAPID
   viven en `_shared/webpush.ts`. Secretos: `VAPID_PUBLIC_KEY`,
   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (un `mailto:` se usa tal cual; cualquier
   otro valor, o ninguno, firma con el `mailto:` de respaldo, igual que la versión
@@ -888,8 +1000,10 @@ Edge Functions en `supabase/functions/`:
   `https://udp-map.vercel.app`).
   Clasifica la respuesta del servicio push: 404/410 suscripción expirada,
   400/413/401/403 fallo terminal sin reintentos, 429/5xx/red reintento
-  (respetando `Retry-After`). Con la configuración VAPID inválida responde 500
-  sin tocar la cola.
+  (respetando `Retry-After`). Un 404/410 cierra la entrega como `expired` y
+  **después** borra la suscripción; el trigger expira las demás entregas pendientes
+  de esa suscripción. Con la configuración VAPID inválida responde 500 sin tocar
+  la cola.
 - **`storage-gc`** — drena `storage_cleanup_queue` y borra los archivos.
   `npx supabase functions deploy storage-gc`.
 
@@ -1021,6 +1135,46 @@ Y después, a mano, porque nada de esto se puede exportar:
 3. **Actualizar `baseline.sql` con el mismo cambio.**
 4. **Actualizar este documento**: qué tabla o función cambió y por qué.
 5. Si toca el catálogo, editar `campusData.ts` y regenerar el seed.
+
+### Probar la cola de push desde el SQL Editor
+
+`claim_push_deliveries` y `finish_push_deliveries` solo contestan a `service_role`,
+y el SQL Editor no entra como tal: `auth.role()` vale `null` y las dos se niegan. Hay
+que fijar el rol, y deshacer todo al final para no gastar un intento ni marcar como
+enviado algo que no salió. El SQL Editor solo enseña el resultado de la última
+sentencia, así que un `begin … rollback` no deja ver nada; este bloque termina con
+una excepción a propósito, que muestra los números en el mensaje de error y deshace
+todo lo que hizo:
+
+```sql
+do $prueba$
+declare
+  v_lote     jsonb;
+  v_cerradas integer;
+begin
+  -- `true`: el rol vale solo hasta el fin de la transacción.
+  perform set_config('request.jwt.claims', '{"role":"service_role"}', true);
+
+  -- Reclama hasta 5 entregas con un lease de 60 s y prepara su cierre como
+  -- enviadas con el attempts que devolvió el reclamo. No leas p256dh ni auth:
+  -- son las claves de los dispositivos.
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', delivery_id, 'attempts', attempts, 'status', 'sent')), '[]'::jsonb)
+    into v_lote
+    from public.claim_push_deliveries(5, 60);
+
+  select count(*) into v_cerradas from public.finish_push_deliveries(v_lote);
+
+  -- Cerrar dos veces el mismo lote no cierra nada la segunda: es el fencing.
+  raise exception 'Prueba deshecha: % reclamadas, % cerradas, % al repetir el cierre',
+    jsonb_array_length(v_lote), v_cerradas,
+    (select count(*) from public.finish_push_deliveries(v_lote));
+end;
+$prueba$;
+```
+
+Lo esperado es `N reclamadas, N cerradas, 0 al repetir el cierre`. Sin el
+`set_config`, las dos fallan con "Solo el servicio puede…".
 
 ### Cosas que no conviene hacer a mano
 

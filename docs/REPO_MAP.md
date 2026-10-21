@@ -441,16 +441,17 @@ monta `MappingPage` en `/admin/mapeo` desde `App.tsx`, no desde `admin`.
 
 | Ruta | Qué es |
 |---|---|
-| `schema/baseline.sql` (3863) | **La fuente de verdad del esquema.** Reconstruye la base desde cero: 32 tablas, todas con RLS, la vista `profiles_public`, unas 67 funciones (todas con `search_path` fijo), los triggers, las políticas, Storage y la publicación realtime. Los cron y los secretos de Vault **no** están aquí |
-| `migrations/` | 30 migraciones incrementales desde el 2026-08-03. Desde la `20260827000000` cada una trae su `.down.sql` (hay 8). Se aplican **a mano** en el SQL Editor |
+| `schema/baseline.sql` (4066) | **La fuente de verdad del esquema.** Reconstruye la base desde cero: 32 tablas, todas con RLS, la vista `profiles_public`, unas 70 funciones (todas con `search_path` fijo), los triggers, las políticas, Storage y la publicación realtime. Los cron y los secretos de Vault **no** están aquí |
+| `migrations/` | 31 migraciones incrementales desde el 2026-08-03. Desde la `20260827000000` cada una trae su `.down.sql` (hay 9). Se aplican **a mano** en el SQL Editor |
 | `migrations/README.md` | La regla de los tres archivos |
 | `_archive/migrations/` | Las 33 migraciones de julio, ya integradas en el baseline. No se ejecutan |
 | `seed/badges.sql` | Las seis insignias, a mano. Sin ellas el quinto pin falla por clave foránea |
 | `seed/seed.sql` | **Generado** por `scripts/gen_seed_full.ts` desde `campusData.ts`: campus, facultades (sin perímetros), 39 carreras, categorías, admins |
 | `seed/fic_dummy_50_pins.sql` | 56 pines de prueba en la FIC, con un UUID de admin fijo. Solo desarrollo |
 | `config.toml` | `verify_jwt = false` para `send-push` y `storage-gc`: el cron manda `x-cron-secret`, no `Authorization` |
-| `functions/send-push/index.ts` | Cada minuto: encola recordatorios de eventos (`enqueue_upcoming_event_notifications`) y drena hasta 100 entregas de `notification_push_deliveries`. Se autoriza con `x-cron-secret` o sesión de admin |
+| `functions/send-push/index.ts` | Cada minuto: encola recordatorios de eventos (`enqueue_upcoming_event_notifications`) y drena `notification_push_deliveries` reclamando por RPC con *lease* (`claim_push_deliveries`): lotes de 50, 10 envíos a la vez, cierre en bloque con *fencing* (`finish_push_deliveries`), hasta 6 lotes o unos 40 s. Al cron le contesta 202 y sigue en segundo plano; el panel espera el resultado. Se autoriza con `x-cron-secret` o sesión de admin |
 | `functions/_shared/webpush.ts` | Cifrado RFC 8291 y VAPID compartidos, sin APIs de Deno. Su `webpush.test.ts` lo corre vitest (vector del RFC, ida y vuelta, firma, clasificación) |
+| `functions/_shared/pushQueue.ts` | Lógica pura de la cola: cómo se cierra cada entrega (reintentos y tope `MAX_ATTEMPTS` con el intento ya contado al reclamar), limpieza de `last_error` y el pool de envíos en paralelo. Su `pushQueue.test.ts` lo corre vitest |
 | `functions/storage-gc/index.ts` | Cada 10 min: vacía `storage_cleanup_queue` borrando los binarios de Storage |
 
 Orden para reconstruir: `baseline.sql` → `badges.sql` → `seed.sql`, y después a
@@ -466,7 +467,7 @@ Migraciones vigentes, por tema:
 | Eventos | `20260803120600` `pin_schedule_items` · `20260826000200` `event_rsvps` privada (conteos y asistentes por RPC) |
 | Mapeo interior y plantas | `20260804100000` `buildings`, `building_floors`, `areas` · `140000` ajustes · `160000` el pin guarda edificio y área · `180000` planta y `room_code` al crear · `200000` editar planta · `20260810000000` el servidor valida la planta |
 | Catálogo | `20260805100000` renombre "Competencia" · `20260808000001` `faculties` como fuente de verdad · `20260826000000` categoría `escalera` |
-| Avisos y push | `20260827000000` difusión y prueba propia · `20260829000000` avisos de pin verificado y comentario, difusión con enlace · `20260829000100` lista de suscriptores · `20260830000000` dar de baja un dispositivo · `20260831000000` preferencias · `20260831000100` evento oficial avisa a su facultad |
+| Avisos y push | `20260827000000` difusión y prueba propia · `20260829000000` avisos de pin verificado y comentario, difusión con enlace · `20260829000100` lista de suscriptores · `20260830000000` dar de baja un dispositivo · `20260831000000` preferencias · `20260831000100` evento oficial avisa a su facultad · `20261021000000` cola de push con *lease*, estado `expired` y rastro que sobrevive a la baja |
 | Administración | `20260828000000` `activity_log` · `20260831000200` `moderator_capabilities` y `has_capability` |
 
 ---
@@ -530,7 +531,7 @@ sigue igual) y la regeneración de los derivados cuando editas `CLAUDE.md`.
 | El editor de mapeo | `mapping/MappingPage.tsx` (mutaciones y atajos), `MappingCanvas.tsx` (dibujo), `editorStore.ts` (estado), `validation.ts` |
 | El formulario de pin | `pins/CreatePinModal.tsx`, `pins/IndoorFields.tsx`, y `pins/api.ts` + `pins/demoStore.ts` para los datos |
 | Un tipo de aviso nuevo | Migración (CHECK de `notifications.type`, función `notify_*`) + `notifications/notificationMeta.ts` + `preferencesApi.ts` si es silenciable + `NOTIFICATIONS_AND_MODERATION.md` |
-| El envío push | `supabase/functions/send-push/index.ts` + `supabase/functions/_shared/webpush.ts` (y su `webpush.test.ts`) + `public/push-sw.js` + `notifications/pushStore.ts`. Despliega con `npm run deploy:push` |
+| El envío push | `supabase/functions/send-push/index.ts` + `supabase/functions/_shared/webpush.ts` y `pushQueue.ts` (y sus tests) + `public/push-sw.js` + `notifications/pushStore.ts`. Despliega con `npm run deploy:push`, siempre después de aplicar las migraciones de las que depende |
 | Una sección del panel | `admin/sections.ts` + una `<Route>` en `app/App.tsx` + el panel envuelto en `AdminScreen` |
 | Un permiso de la interfaz | `auth/permissions.ts` (y su test). El permiso real, en la política RLS |
 | Un texto de interfaz | `shared/lib/i18n.ts` en ES y EN, y luego `npm run check:i18n` |

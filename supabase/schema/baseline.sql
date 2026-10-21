@@ -471,16 +471,36 @@ create table if not exists public.push_subscriptions (
 
 -- Cola de entrega Web Push. La drena la Edge Function send-push, invocada por
 -- un cron cada minuto.
+--
+-- pending → sent | failed | expired. `expired` es "ya no hay a quién enviarla":
+-- el servicio push dijo 404/410 o la suscripción se borró antes del envío.
+--
+-- Reclamar una fila es empujar `next_attempt_at` al futuro (el lease) y contar el
+-- intento: claim_push_deliveries. No hay estado `processing`: sin un recuperador
+-- se quedaría atascado, mientras que el lease vence solo. El cierre
+-- (finish_push_deliveries) solo escribe si `attempts` sigue siendo el reclamado.
+--
+-- subscription_id es anulable y su FK es SET NULL, no CASCADE: con CASCADE,
+-- borrar la suscripción (lo que send-push hace tras un 410) se llevaba también
+-- el rastro del fallo. El trigger push_subscriptions_expire_deliveries pasa a
+-- `expired` las pendientes antes de que la FK les quite la suscripción; sin él
+-- quedarían huérfanas y `pending` para siempre.
+--
+-- push_host es el HOST del servicio push, nunca el endpoint completo: el
+-- endpoint es una URL de capacidad y no tiene por qué sobrevivir a la baja.
 create table if not exists public.notification_push_deliveries (
   id               uuid         primary key default gen_random_uuid(),
   notification_id  uuid         not null references public.notifications(id) on delete cascade,
-  subscription_id  uuid         not null references public.push_subscriptions(id) on delete cascade,
-  status           text         not null default 'pending' check (status in ('pending', 'sent', 'failed')),
+  subscription_id  uuid         references public.push_subscriptions(id) on delete set null,
+  status           text         not null default 'pending' check (status in ('pending', 'sent', 'failed', 'expired')),
   attempts         integer      not null default 0 check (attempts >= 0),
   next_attempt_at  timestamptz  not null default now(),
   last_error       text,
   sent_at          timestamptz,
   created_at       timestamptz  not null default now(),
+  -- Al final, como la deja la migración 20261021000000, para que el orden de
+  -- columnas sea el mismo se reconstruya de una forma o de otra.
+  push_host        text,
   unique (notification_id, subscription_id)
 );
 
@@ -612,6 +632,11 @@ create index if not exists push_subscriptions_user_idx on public.push_subscripti
 
 create index if not exists notification_deliveries_pending_idx
   on public.notification_push_deliveries (next_attempt_at, created_at) where status = 'pending';
+-- Lo usan register_push_subscription (borra por esta columna en cada vuelta a
+-- primer plano), el trigger que expira las pendientes y la acción SET NULL de
+-- la FK al borrar una suscripción.
+create index if not exists notification_deliveries_subscription_idx
+  on public.notification_push_deliveries (subscription_id);
 
 create index if not exists storage_cleanup_pending_idx
   on public.storage_cleanup_queue (created_at)
@@ -2203,12 +2228,37 @@ begin
     return new;
   end if;
 
-  insert into public.notification_push_deliveries (notification_id, subscription_id)
-  select new.id, subscription.id
+  insert into public.notification_push_deliveries (notification_id, subscription_id, push_host)
+  select new.id, subscription.id, split_part(subscription.endpoint, '/', 3)
   from public.push_subscriptions subscription
   where subscription.user_id = new.user_id
   on conflict do nothing;
   return new;
+end;
+$fn$;
+
+-- Al borrar una suscripción (410 de send-push, desactivar, cerrar sesión, baja
+-- por admin, cascade desde profiles), sus entregas pendientes pasan a `expired`.
+-- BEFORE y no AFTER: en AFTER la acción SET NULL de la FK ya habría vaciado
+-- subscription_id y no habría qué expirar. SECURITY DEFINER porque quien borra es
+-- `authenticated`, que no tiene permisos sobre la cola.
+create or replace function public.expire_pending_push_deliveries()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+begin
+  -- `coalesce` porque una fila puede haber entrado sin host (insertada a mano, o
+  -- encolada por la versión anterior de queue_notification_push mientras se
+  -- aplicaba la 20261021000000): es la última oportunidad de apuntarlo, porque en
+  -- cuanto la suscripción se borre ya no hay de dónde sacarlo.
+  update public.notification_push_deliveries
+     set status = 'expired',
+         last_error = 'suscripción borrada antes del envío',
+         push_host = coalesce(push_host, split_part(old.endpoint, '/', 3))
+   where subscription_id = old.id and status = 'pending';
+  return old;
 end;
 $fn$;
 
@@ -2406,6 +2456,146 @@ begin
   end loop;
 
   return v_created;
+end;
+$fn$;
+
+/**
+ * Reclama hasta `p_limit` entregas listas y las reserva `p_lease_seconds`.
+ *
+ * Devuelve lo que hace falta para enviar, incluidas las claves de la suscripción
+ * (`p256dh`, `auth`): por eso solo `service_role` puede llamarla, y por eso la
+ * comprobación de dentro no se fía del GRANT.
+ *
+ * `attempts` es el número de ESTE intento, ya incrementado. Si quien reclama
+ * muere a mitad, la fila vuelve a ser reclamable al vencer el lease con el
+ * intento contado, y el fencing de finish_push_deliveries impide que un cierre
+ * atrasado pise a la ejecución que la reclamó después.
+ *
+ * `p_notification_id` limita el reclamo a los envíos de un aviso concreto.
+ */
+create or replace function public.claim_push_deliveries(
+  p_limit           integer default 50,
+  p_lease_seconds   integer default 120,
+  p_notification_id uuid    default null
+)
+returns table (
+  delivery_id     uuid,
+  attempts        integer,
+  notification_id uuid,
+  title           text,
+  body            text,
+  url             text,
+  type            text,
+  category        text,
+  payload         jsonb,
+  subscription_id uuid,
+  endpoint        text,
+  p256dh          text,
+  auth            text
+)
+language plpgsql
+volatile
+security definer
+set search_path = public, pg_temp
+as $fn$
+#variable_conflict use_column
+begin
+  -- `is distinct from` y no `<>`: con `<>` un auth.role() nulo daría null, el
+  -- `if` no se cumpliría y la función dejaría pasar a cualquiera.
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'Solo el servicio puede reclamar entregas de push.';
+  end if;
+
+  -- Los topes también protegen: un lease de segundos devolvería las filas a la
+  -- cola con el lote a medias, y uno de horas atascaría las de una ejecución
+  -- muerta.
+  if p_limit is null or p_limit < 1 or p_limit > 200 then
+    raise exception 'p_limit tiene que estar entre 1 y 200, y llegó: %', p_limit;
+  end if;
+  if p_lease_seconds is null or p_lease_seconds < 30 or p_lease_seconds > 900 then
+    raise exception 'p_lease_seconds tiene que estar entre 30 y 900, y llegó: %', p_lease_seconds;
+  end if;
+
+  return query
+  with candidatas as (
+    select d.id
+      from public.notification_push_deliveries d
+     where d.status = 'pending'
+       and d.next_attempt_at <= now()
+       and d.subscription_id is not null
+       and (p_notification_id is null or d.notification_id = p_notification_id)
+     order by d.created_at
+     limit p_limit
+       for update skip locked
+  )
+  update public.notification_push_deliveries d
+     set next_attempt_at = now() + make_interval(secs => p_lease_seconds),
+         attempts = d.attempts + 1
+    from candidatas c, public.notifications n, public.push_subscriptions s
+   where d.id = c.id
+     and n.id = d.notification_id
+     and s.id = d.subscription_id
+  returning d.id, d.attempts, n.id, n.title, n.body, n.url, n.type, n.category,
+            n.payload, s.id, s.endpoint, s.p256dh, s.auth;
+end;
+$fn$;
+
+/**
+ * Cierra un lote de una vez.
+ *
+ * `p_results` es un array de { id, attempts, status, next_attempt_at, last_error }
+ * con `status` en sent | failed | expired | pending (pending = reintento, y
+ * entonces `next_attempt_at` es obligatorio).
+ *
+ * Devuelve los ids que SÍ cerró. Los que faltan en la respuesta es que otra
+ * ejecución los reclamó después, o que el trigger los expiró: no hay nada que
+ * hacer con ellos y no es un error.
+ *
+ * `attempts` no se toca: ya se contó al reclamar.
+ */
+create or replace function public.finish_push_deliveries(p_results jsonb)
+returns table (delivery_id uuid)
+language plpgsql
+volatile
+security definer
+set search_path = public, pg_temp
+as $fn$
+#variable_conflict use_column
+begin
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'Solo el servicio puede cerrar entregas de push.';
+  end if;
+
+  if p_results is null or jsonb_typeof(p_results) <> 'array' then
+    raise exception 'p_results tiene que ser un array JSON de resultados.';
+  end if;
+
+  -- Todo o nada: un estado desconocido aborta el lote entero en vez de cerrar la
+  -- mitad. Quien llama es send-push, y un estado así es un error suyo que tiene
+  -- que verse, no una fila que se cierra mal en silencio.
+  if exists (
+    select 1
+      from jsonb_to_recordset(p_results)
+        as r(id uuid, attempts integer, status text, next_attempt_at timestamptz, last_error text)
+     where r.status is null
+        or r.status not in ('sent', 'failed', 'expired', 'pending')
+        or (r.status = 'pending' and r.next_attempt_at is null)
+  ) then
+    raise exception 'Resultado de entrega inválido: estado desconocido, o reintento sin next_attempt_at.';
+  end if;
+
+  return query
+  update public.notification_push_deliveries d
+     set status = r.status,
+         next_attempt_at = case when r.status = 'pending' then r.next_attempt_at else d.next_attempt_at end,
+         last_error = case when r.status = 'sent' then null else left(r.last_error, 1000) end,
+         sent_at = case when r.status = 'sent' then now() else d.sent_at end
+    from jsonb_to_recordset(p_results)
+      as r(id uuid, attempts integer, status text, next_attempt_at timestamptz, last_error text)
+   where d.id = r.id
+     and d.attempts = r.attempts
+     and d.status = 'pending'
+  returning d.id;
 end;
 $fn$;
 
@@ -3030,6 +3220,13 @@ drop trigger if exists push_subscriptions_updated_at on public.push_subscription
 create trigger push_subscriptions_updated_at
   before update on public.push_subscriptions
   for each row execute function public.set_notification_updated_at();
+
+-- BEFORE DELETE: tiene que correr antes de la acción SET NULL de la FK, que es
+-- AFTER y vaciaría subscription_id. Cubre todos los caminos de borrado.
+drop trigger if exists push_subscriptions_expire_deliveries on public.push_subscriptions;
+create trigger push_subscriptions_expire_deliveries
+  before delete on public.push_subscriptions
+  for each row execute function public.expire_pending_push_deliveries();
 
 
 -- =============================================================================
@@ -3762,8 +3959,13 @@ $fn$;
 grant execute on function public.admin_activity_log(integer) to authenticated, service_role;
 
 
--- Solo el servicio (cron y Edge Functions).
+-- Solo el servicio (cron y Edge Functions). Las dos de la cola de push devuelven
+-- p256dh y auth de las suscripciones: nadie más puede llamarlas. El revoke masivo
+-- de 9.7 ya les quitó public, anon y authenticated porque se definen antes que él;
+-- la función de trigger expire_pending_push_deliveries queda sin concesión.
 grant execute on function public.enqueue_upcoming_event_notifications() to service_role;
+grant execute on function public.claim_push_deliveries(integer, integer, uuid) to service_role;
+grant execute on function public.finish_push_deliveries(jsonb) to service_role;
 
 
 -- =============================================================================

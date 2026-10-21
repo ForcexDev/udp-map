@@ -3,7 +3,14 @@
 > **Fecha:** 2026-10-21 · **Sobre:** `main` en `eba61ee` · **Plan revisado:**
 > [PUSH_REWORK_LOGBOOK.md](PUSH_REWORK_LOGBOOK.md) (Hallazgos A–F)
 
-## Estado (2026-10-21): Push 0 y Push 1 hechas en código, sin desplegar
+## Estado (2026-10-21): Push 0, 1 y 2 hechas en código, sin desplegar
+
+**Push 2** resuelve los hallazgos **12, 13 y 14** con la migración
+`20261021000000_push_queue_lease` y el `send-push` que reclama por RPC: lease,
+fencing, trigger `BEFORE DELETE` e índice. El detalle y el orden de despliegue
+están en ROADMAP §17.
+
+**Push 0 y 1:**
 
 Resueltos en `send-push` y `_shared/webpush.ts` los hallazgos P0 **2–8 y 10**,
 y el 1 a medias. Faltan despliegue manual (`npm run deploy:push`) y prueba en
@@ -264,7 +271,7 @@ Se llaman **Push 0…6** para no chocar con las Fases 0–7 del mapeo.
    escritura comprobados. ✅ en código
 1. **`send-push` más robusto, sin migración:** clasificación HTTP, tope de
    payload, timeout, JWT reutilizado, `APP_ORIGIN`. ✅ en código
-2. **Cola sin duplicados ni atascos.** Una sola migración B+C, porque las dos
+2. ✅ en código. **Cola sin duplicados ni atascos.** Una sola migración B+C, porque las dos
    tocan el CHECK de estado: estado `expired`, trigger `BEFORE DELETE`, RPC de
    reclamo con *lease*, `revoke`/`grant` e índice de `subscription_id`, con su
    `.down.sql`, el baseline y DATABASE.md. Después, `send-push` con la RPC, en
