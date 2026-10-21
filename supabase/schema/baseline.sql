@@ -3015,6 +3015,204 @@ end;
 $fn$;
 
 
+-- ── 5.10 Registro de actividad ──────────────────────────────────────────────
+
+-- Va aquí, con el resto de funciones, y no al final del archivo: los triggers
+-- de la sección 6 y los permisos de la 9.7 la nombran, y definida después hacía
+-- fallar la reconstrucción desde cero.
+
+create or replace function public.log_activity(
+  p_action      text,
+  p_summary     text,
+  p_target_type text default null,
+  p_target_id   uuid default null,
+  p_metadata    jsonb default '{}'::jsonb,
+  p_actor_id    uuid default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  insert into public.activity_log (actor_id, action, target_type, target_id, summary, metadata)
+  values (
+    coalesce(p_actor_id, auth.uid()),
+    p_action,
+    p_target_type,
+    p_target_id,
+    left(p_summary, 200),
+    coalesce(p_metadata, '{}'::jsonb)
+  );
+exception when others then
+  -- Un fallo del registro NO puede tumbar la operación que lo generó. Que no
+  -- se apunte que se creó un pin es molesto; que no se pueda crear el pin
+  -- porque el registro falló es inaceptable.
+  raise warning 'activity_log: no se pudo registrar % (%)', p_action, sqlerrm;
+end;
+$fn$;
+
+
+-- Las funciones de los triggers que lo alimentan
+
+create or replace function public.trg_log_pin_activity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if tg_op = 'INSERT' then
+    perform public.log_activity(
+      'pin_created', new.title, 'pin', new.id,
+      jsonb_build_object('type', new.type, 'category', new.category_id),
+      new.creator_id
+    );
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    -- El actor es quien BORRA, que no siempre es quien creó: puede ser un
+    -- moderador resolviendo una denuncia. Por eso el autor va en metadata.
+    perform public.log_activity(
+      'pin_deleted', old.title, 'pin', old.id,
+      jsonb_build_object('type', old.type, 'creator_id', old.creator_id)
+    );
+    return old;
+  end if;
+
+  -- UPDATE: solo interesa el cruce de la verificación.
+  if new.is_permanent and not old.is_permanent then
+    perform public.log_activity(
+      'pin_verified', new.title, 'pin', new.id,
+      jsonb_build_object('creator_id', new.creator_id)
+    );
+  elsif old.is_permanent and not new.is_permanent then
+    perform public.log_activity(
+      'pin_unverified', new.title, 'pin', new.id,
+      jsonb_build_object('creator_id', new.creator_id)
+    );
+  end if;
+  return new;
+end;
+$fn$;
+
+create or replace function public.trg_log_report_activity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_accion text;
+begin
+  if tg_op = 'INSERT' then
+    perform public.log_activity(
+      'report_filed', 'Denuncia por ' || new.reason, 'report', new.id,
+      jsonb_build_object('target_type', new.target_type, 'target_id', new.target_id),
+      new.reporter_id
+    );
+    return new;
+  end if;
+
+  if new.status is not distinct from old.status then return new; end if;
+
+  v_accion := case new.status
+    when 'reviewing' then 'report_claimed'
+    when 'resolved'  then 'report_resolved'
+    when 'dismissed' then 'report_dismissed'
+    else null
+  end;
+  if v_accion is null then return new; end if;
+
+  perform public.log_activity(
+    v_accion, 'Denuncia por ' || new.reason, 'report', new.id,
+    jsonb_build_object('accion', new.resolution_action, 'target_type', new.target_type)
+  );
+  return new;
+end;
+$fn$;
+
+create or replace function public.trg_log_role_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if new.role is not distinct from old.role then return new; end if;
+  perform public.log_activity(
+    'role_changed',
+    coalesce(new.name, 'Sin nombre') || ': ' || old.role || ' → ' || new.role,
+    'profile', new.id,
+    jsonb_build_object('de', old.role, 'a', new.role)
+  );
+  return new;
+end;
+$fn$;
+
+create or replace function public.prune_activity_log(p_days integer default 90)
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_borradas integer;
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden podar el registro.';
+  end if;
+  if p_days < 7 then
+    raise exception 'La ventana mínima del registro es de 7 días.';
+  end if;
+
+  delete from public.activity_log
+   where created_at < now() - make_interval(days => p_days);
+  get diagnostics v_borradas = row_count;
+  return v_borradas;
+end;
+$fn$;
+
+
+-- Lo que se lee desde el panel
+--
+-- Va por función y no por SELECT directo para poder traer el nombre de quien
+-- actuó sin exponer `profiles` entera ni obligar al cliente a un join.
+
+create or replace function public.admin_activity_log(p_limit integer default 100)
+returns table (
+  id          bigint,
+  actor_id    uuid,
+  actor_name  text,
+  action      text,
+  target_type text,
+  target_id   uuid,
+  summary     text,
+  metadata    jsonb,
+  created_at  timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden ver el registro de actividad.';
+  end if;
+
+  return query
+    select l.id, l.actor_id, p.name, l.action, l.target_type, l.target_id,
+           l.summary, l.metadata, l.created_at
+      from public.activity_log l
+      left join public.profiles p on p.id = l.actor_id
+     order by l.id desc
+     limit least(greatest(coalesce(p_limit, 100), 1), 500);
+end;
+$fn$;
+
+
 -- =============================================================================
 -- 6. TRIGGERS
 -- =============================================================================
@@ -3761,202 +3959,6 @@ grant execute on function public.prune_activity_log(integer) to authenticated, s
 revoke all on function public.log_activity(text, text, text, uuid, jsonb, uuid) from anon, authenticated;
 
 
--- ── 5.10 Registro de actividad ──────────────────────────────────────────────
-
-create or replace function public.log_activity(
-  p_action      text,
-  p_summary     text,
-  p_target_type text default null,
-  p_target_id   uuid default null,
-  p_metadata    jsonb default '{}'::jsonb,
-  p_actor_id    uuid default null
-)
-returns void
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $fn$
-begin
-  insert into public.activity_log (actor_id, action, target_type, target_id, summary, metadata)
-  values (
-    coalesce(p_actor_id, auth.uid()),
-    p_action,
-    p_target_type,
-    p_target_id,
-    left(p_summary, 200),
-    coalesce(p_metadata, '{}'::jsonb)
-  );
-exception when others then
-  -- Un fallo del registro NO puede tumbar la operación que lo generó. Que no
-  -- se apunte que se creó un pin es molesto; que no se pueda crear el pin
-  -- porque el registro falló es inaceptable.
-  raise warning 'activity_log: no se pudo registrar % (%)', p_action, sqlerrm;
-end;
-$fn$;
-
-revoke all on function public.log_activity(text, text, text, uuid, jsonb, uuid) from anon, authenticated;
-
--- ── 3. Los triggers que lo alimentan ────────────────────────────────────────
-
-create or replace function public.trg_log_pin_activity()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $fn$
-begin
-  if tg_op = 'INSERT' then
-    perform public.log_activity(
-      'pin_created', new.title, 'pin', new.id,
-      jsonb_build_object('type', new.type, 'category', new.category_id),
-      new.creator_id
-    );
-    return new;
-  end if;
-
-  if tg_op = 'DELETE' then
-    -- El actor es quien BORRA, que no siempre es quien creó: puede ser un
-    -- moderador resolviendo una denuncia. Por eso el autor va en metadata.
-    perform public.log_activity(
-      'pin_deleted', old.title, 'pin', old.id,
-      jsonb_build_object('type', old.type, 'creator_id', old.creator_id)
-    );
-    return old;
-  end if;
-
-  -- UPDATE: solo interesa el cruce de la verificación.
-  if new.is_permanent and not old.is_permanent then
-    perform public.log_activity(
-      'pin_verified', new.title, 'pin', new.id,
-      jsonb_build_object('creator_id', new.creator_id)
-    );
-  elsif old.is_permanent and not new.is_permanent then
-    perform public.log_activity(
-      'pin_unverified', new.title, 'pin', new.id,
-      jsonb_build_object('creator_id', new.creator_id)
-    );
-  end if;
-  return new;
-end;
-$fn$;
-
-create or replace function public.trg_log_report_activity()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $fn$
-declare
-  v_accion text;
-begin
-  if tg_op = 'INSERT' then
-    perform public.log_activity(
-      'report_filed', 'Denuncia por ' || new.reason, 'report', new.id,
-      jsonb_build_object('target_type', new.target_type, 'target_id', new.target_id),
-      new.reporter_id
-    );
-    return new;
-  end if;
-
-  if new.status is not distinct from old.status then return new; end if;
-
-  v_accion := case new.status
-    when 'reviewing' then 'report_claimed'
-    when 'resolved'  then 'report_resolved'
-    when 'dismissed' then 'report_dismissed'
-    else null
-  end;
-  if v_accion is null then return new; end if;
-
-  perform public.log_activity(
-    v_accion, 'Denuncia por ' || new.reason, 'report', new.id,
-    jsonb_build_object('accion', new.resolution_action, 'target_type', new.target_type)
-  );
-  return new;
-end;
-$fn$;
-
-create or replace function public.trg_log_role_change()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $fn$
-begin
-  if new.role is not distinct from old.role then return new; end if;
-  perform public.log_activity(
-    'role_changed',
-    coalesce(new.name, 'Sin nombre') || ': ' || old.role || ' → ' || new.role,
-    'profile', new.id,
-    jsonb_build_object('de', old.role, 'a', new.role)
-  );
-  return new;
-end;
-$fn$;
-
-create or replace function public.prune_activity_log(p_days integer default 90)
-returns integer
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $fn$
-declare
-  v_borradas integer;
-begin
-  if public.user_role() <> 'admin' then
-    raise exception 'Solo los administradores pueden podar el registro.';
-  end if;
-  if p_days < 7 then
-    raise exception 'La ventana mínima del registro es de 7 días.';
-  end if;
-
-  delete from public.activity_log
-   where created_at < now() - make_interval(days => p_days);
-  get diagnostics v_borradas = row_count;
-  return v_borradas;
-end;
-$fn$;
-
-grant execute on function public.prune_activity_log(integer) to authenticated, service_role;
-
--- ── 6. Lo que se lee desde el panel ─────────────────────────────────────────
---
--- Va por función y no por SELECT directo para poder traer el nombre de quien
--- actuó sin exponer `profiles` entera ni obligar al cliente a un join.
-
-create or replace function public.admin_activity_log(p_limit integer default 100)
-returns table (
-  id          bigint,
-  actor_id    uuid,
-  actor_name  text,
-  action      text,
-  target_type text,
-  target_id   uuid,
-  summary     text,
-  metadata    jsonb,
-  created_at  timestamptz
-)
-language plpgsql
-stable
-security definer
-set search_path = public, pg_temp
-as $fn$
-begin
-  if public.user_role() <> 'admin' then
-    raise exception 'Solo los administradores pueden ver el registro de actividad.';
-  end if;
-
-  return query
-    select l.id, l.actor_id, p.name, l.action, l.target_type, l.target_id,
-           l.summary, l.metadata, l.created_at
-      from public.activity_log l
-      left join public.profiles p on p.id = l.actor_id
-     order by l.id desc
-     limit least(greatest(coalesce(p_limit, 100), 1), 500);
-end;
-$fn$;
-
-grant execute on function public.admin_activity_log(integer) to authenticated, service_role;
 
 
 -- Solo el servicio (cron y Edge Functions). Las dos de la cola de push devuelven

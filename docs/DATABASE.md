@@ -1261,3 +1261,4 @@ arregló. Se deja anotado para que nadie vuelva a tropezar buscándolo.
 | La planta de un pin podía ser cualquier número | `20260810000000` — trigger `trg_validate_pin_floor` |
 | Mover un pin solo se comprobaba en la interfaz | `20260826000100` — trigger `trg_authorize_pin_move` |
 | Quién va a qué evento lo podía leer cualquiera (SEC-007) | `20260826000200` — tabla cerrada + `event_rsvp_counts` y `event_attendees` |
+| `baseline.sql` no reconstruía la base desde cero: los triggers y permisos del registro de actividad nombraban funciones definidas al final del archivo | Solo baseline (producción no cambia): las funciones de §5.10 se movieron antes de §6. Comprobado ejecutando el archivo entero en PGlite de una sola pasada |
