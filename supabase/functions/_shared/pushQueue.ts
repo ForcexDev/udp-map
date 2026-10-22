@@ -84,6 +84,32 @@ export function exhaustedReason(attempts: number): string {
   return `intentos agotados: ${attempts} reclamos sin cerrar la entrega`
 }
 
+// uuid en su forma canónica. Postgres admitiría también llaves o guiones de
+// menos, pero aquí el valor viene del panel (que lo recibe de la propia base), y
+// aceptar solo la canónica evita pasarle texto libre al filtro de la consulta.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Lee `notificationId` del cuerpo de send-push. El cuerpo es opcional: el cron
+ * manda `{}`, y un cuerpo vacío o que no es JSON llega aquí como `null`, y todo
+ * eso cuenta como "sin aviso concreto". Lo único que se rechaza es un
+ * `notificationId` presente y mal formado: callarlo dejaría que el panel creyera
+ * que vació el aviso que pidió cuando en realidad vació la cola entera.
+ */
+export function parseNotificationId(
+  body: unknown,
+): { ok: true; notificationId: string | null } | { ok: false; error: string } {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return { ok: true, notificationId: null }
+  }
+  const value = (body as Record<string, unknown>).notificationId
+  if (value === undefined || value === null) return { ok: true, notificationId: null }
+  if (typeof value !== 'string' || !UUID.test(value)) {
+    return { ok: false, error: 'notificationId tiene que ser un uuid.' }
+  }
+  return { ok: true, notificationId: value.toLowerCase() }
+}
+
 /**
  * Convierte el resultado de una entrega en lo que se le manda a
  * `finish_push_deliveries`. `now` entra como argumento para que el reintento sea

@@ -6,8 +6,10 @@ import {
   closeDelivery,
   diagnosticError,
   exhaustedReason,
+  parseNotificationId,
   runWithConcurrency,
 } from '../_shared/pushQueue.ts'
+import { buildDeclarativePayload, parsePayloadFormat } from '../_shared/pushPayload.ts'
 import {
   MAX_ATTEMPTS,
   MAX_PLAINTEXT_BYTES,
@@ -59,6 +61,15 @@ if (vapidSubject !== rawVapidSubject) {
 const configProblem = validateVapidKeys(vapidPublicKey, vapidPrivateKey)
 
 const appOrigin = new URL(Deno.env.get('APP_ORIGIN') || 'https://udp-map.vercel.app').origin
+
+// Qué payload viaja al servicio push. El defecto es el híbrido, que es lo que hoy
+// entrega en iPhone; 'declarative' es el experimento de Push 6 y solo se activa
+// con el secreto. Se lee una vez al cargar: cambiarlo es `supabase secrets set`
+// y una instancia nueva, no algo que cambie entre dos entregas de una pasada.
+const { format: payloadFormat, warning: payloadFormatWarning } = parsePayloadFormat(
+  Deno.env.get('PUSH_PAYLOAD_FORMAT'),
+)
+if (payloadFormatWarning) console.warn(`[send-push] ${payloadFormatWarning}`)
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -307,31 +318,35 @@ async function deliver(
   // se toca sin probar allí. Con service worker instalado, quién pinta la
   // notificación en iOS 18.4+ no está claro (WebKit y el W3C se contradicen; ver
   // docs/PUSH_REWORK_REVIEW.md), así que el SW sigue necesitando los campos planos.
-  const payload = JSON.stringify({
-    web_push: 8030,
-    notification: {
-      title: delivery.notification.title || 'UDP Map',
-      body: delivery.notification.body || 'Tienes una nueva notificación.',
-      navigate: navigateUrl,
-      icon: `${appOrigin}/pwa-192x192.png`,
-      lang: 'es',
-      tag: delivery.notification.id,
-      data: {
-        url: delivery.notification.url || '/',
+  // Con PUSH_PAYLOAD_FORMAT=declarative viaja solo el bloque, sin planos (ver
+  // _shared/pushPayload.ts); sin el secreto, sale lo de siempre.
+  const payload = payloadFormat === 'declarative'
+    ? JSON.stringify(buildDeclarativePayload(delivery.notification, navigateUrl, appOrigin))
+    : JSON.stringify({
+        web_push: 8030,
+        notification: {
+          title: delivery.notification.title || 'UDP Map',
+          body: delivery.notification.body || 'Tienes una nueva notificación.',
+          navigate: navigateUrl,
+          icon: `${appOrigin}/pwa-192x192.png`,
+          lang: 'es',
+          tag: delivery.notification.id,
+          data: {
+            url: delivery.notification.url || '/',
+            notificationId: delivery.notification.id,
+            type: delivery.notification.type,
+            category: delivery.notification.category,
+            payload: delivery.notification.payload,
+          },
+        },
         notificationId: delivery.notification.id,
+        title: delivery.notification.title,
+        body: delivery.notification.body,
+        url: delivery.notification.url,
         type: delivery.notification.type,
         category: delivery.notification.category,
         payload: delivery.notification.payload,
-      },
-    },
-    notificationId: delivery.notification.id,
-    title: delivery.notification.title,
-    body: delivery.notification.body,
-    url: delivery.notification.url,
-    type: delivery.notification.type,
-    category: delivery.notification.category,
-    payload: delivery.notification.payload,
-  })
+      })
 
   if (payloadByteLength(payload) > MAX_PLAINTEXT_BYTES) {
     return settle(claimed, {
@@ -417,7 +432,9 @@ async function finishBatch(closes: DeliveryClose[]) {
   return supabase.rpc('finish_push_deliveries', { p_results: closes })
 }
 
-async function processQueue(vapidHeader: VapidHeader): Promise<QueueSummary> {
+// `notificationId` acota la pasada a las entregas de ese aviso (lo pide el panel
+// para saber qué pasó con SU prueba); null recorre la cola entera, como el cron.
+async function processQueue(vapidHeader: VapidHeader, notificationId: string | null): Promise<QueueSummary> {
   const startedAt = Date.now()
   // Dura toda la ejecución, no un lote: ver `deliver`.
   const expiredIds = new Set<string>()
@@ -440,6 +457,8 @@ async function processQueue(vapidHeader: VapidHeader): Promise<QueueSummary> {
     const { data, error } = await supabase.rpc('claim_push_deliveries', {
       p_limit: BATCH_SIZE,
       p_lease_seconds: LEASE_SECONDS,
+      // Solo viaja si hay aviso: la llamada del cron queda como siempre.
+      ...(notificationId ? { p_notification_id: notificationId } : {}),
     })
     if (error) {
       console.error('No se pudo reclamar un lote de entregas', error)
@@ -537,15 +556,52 @@ async function processQueue(vapidHeader: VapidHeader): Promise<QueueSummary> {
   return summary
 }
 
+const DELIVERY_STATUSES = ['pending', 'sent', 'failed', 'expired'] as const
+type DeliveryCounts = Record<(typeof DELIVERY_STATUSES)[number], number>
+
+// Cómo quedaron las entregas de un aviso, por estado, para que el panel diga la
+// verdad de SU prueba y no la de toda la pasada. Un conteo por estado y no un
+// select de las filas: PostgREST corta en 1000 filas, y una difusión grande daría
+// un total que parece bueno y no lo es. Nunca rechaza ni tumba la respuesta (la
+// pasada ya se hizo y sus números son buenos): un fallo viaja dentro de
+// `notification.error`.
+async function countNotificationDeliveries(
+  notificationId: string,
+): Promise<{ id: string; deliveries: DeliveryCounts } | { id: string; error: string }> {
+  try {
+    const results = await Promise.all(
+      DELIVERY_STATUSES.map((status) =>
+        supabase
+          .from('notification_push_deliveries')
+          .select('id', { count: 'exact', head: true })
+          .eq('notification_id', notificationId)
+          .eq('status', status),
+      ),
+    )
+    const failedQuery = results.find((r) => r.error)
+    if (failedQuery?.error) {
+      console.error('No se pudieron contar las entregas del aviso', notificationId, failedQuery.error)
+      return { id: notificationId, error: failedQuery.error.message }
+    }
+    const deliveries = Object.fromEntries(
+      DELIVERY_STATUSES.map((status, i) => [status, results[i].count ?? 0]),
+    ) as DeliveryCounts
+    return { id: notificationId, deliveries }
+  } catch (unexpected) {
+    console.error('Error inesperado al contar las entregas del aviso', notificationId, unexpected)
+    return { id: notificationId, error: unexpected instanceof Error ? unexpected.message : String(unexpected) }
+  }
+}
+
 // Una pasada entera sobre la cola. Nunca rechaza: la espera el panel o, en
 // segundo plano, nadie, y en los dos casos tiene que terminar en una respuesta
 // o en una línea de log.
 async function drainQueue(
   vapidHeader: VapidHeader,
-  reminders: { remindersCreated: number; reminderError: string | null },
+  notificationId: string | null,
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   try {
-    const summary = await processQueue(vapidHeader)
+    const summary = await processQueue(vapidHeader, notificationId)
     // Si falla el primer reclamo la base no responde y no hay nada que contar;
     // si falla uno posterior, ya hay trabajo hecho y se informa junto a él.
     if (summary.claimError !== null && summary.batches === 0) {
@@ -555,12 +611,11 @@ async function drainQueue(
       status: 200,
       body: {
         engine: 'webcrypto-aes128gcm-v1',
-        remindersCreated: reminders.remindersCreated,
+        payloadFormat,
         processed: summary.processed,
         sent: summary.sent,
         failed: summary.failed,
         expiredSubscriptions: summary.expiredSubscriptions,
-        reminderError: reminders.reminderError,
         diagnostics: summary.diagnostics,
         batches: summary.batches,
         skipped: summary.skipped,
@@ -569,6 +624,9 @@ async function drainQueue(
         claimError: summary.claimError,
         closeErrors: summary.closeErrors,
         deleteErrors: summary.deleteErrors,
+        // Después de la pasada, con el cierre ya hecho: lo que se lee es el estado
+        // final, no el de antes de empezar.
+        ...(notificationId ? { notification: await countNotificationDeliveries(notificationId) } : {}),
       },
     }
   } catch (unexpected) {
@@ -589,29 +647,27 @@ Deno.serve(async (req) => {
   const caller = await isAuthorized(req)
   if (!caller) return json(cors, { error: 'Unauthorized' }, 401)
 
-  const { data: remindersCreated, error: reminderError } = await supabase
-    .rpc('enqueue_upcoming_event_notifications')
-
-  if (reminderError) {
-    console.error('Could not enqueue event reminders', reminderError)
+  // Solo el panel puede pedir un aviso concreto. El cron manda `{}` y, aunque un
+  // día mandara otra cosa, no se lee: su pasada es siempre la cola entera, y un
+  // cuerpo raro no puede hacer que el minuto se pierda con un 400.
+  let notificationId: string | null = null
+  if (caller === 'admin') {
+    // Tolerante: un cuerpo vacío o que no es JSON es "sin aviso", no un error.
+    const body: unknown = await req.json().catch(() => null)
+    const parsed = parseNotificationId(body)
+    if (!parsed.ok) return json(cors, { error: parsed.error }, 400)
+    notificationId = parsed.notificationId
   }
 
-  // Después de los recordatorios, que no dependen de VAPID y alimentan la
-  // bandeja; antes de tocar la cola, para no gastar intentos con una
-  // configuración que no puede enviar nada.
+  // Antes de tocar la cola, para no gastar intentos con una configuración que no
+  // puede enviar nada. Los recordatorios de eventos ya no pasan por aquí: los
+  // encola su propio cron (`udp-map-event-reminders`), que no depende de VAPID.
   if (configProblem || !getVapidHeader) {
     console.error('Configuración VAPID inválida, no se procesa la cola:', configProblem)
-    return json(cors, {
-      error: configProblem,
-      remindersCreated: remindersCreated ?? 0,
-      reminderError: reminderError?.message ?? null,
-    }, 500)
+    return json(cors, { error: configProblem }, 500)
   }
 
-  const pass = drainQueue(getVapidHeader, {
-    remindersCreated: remindersCreated ?? 0,
-    reminderError: reminderError?.message ?? null,
-  })
+  const pass = drainQueue(getVapidHeader, notificationId)
 
   // pg_net corta la petición del cron a los 5 s y una pasada puede durar más de
   // un minuto: se contesta ya y la pasada sigue en segundo plano. El panel sí

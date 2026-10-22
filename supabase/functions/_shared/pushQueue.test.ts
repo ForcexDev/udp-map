@@ -8,6 +8,7 @@ import {
   closeDelivery,
   diagnosticError,
   exhaustedReason,
+  parseNotificationId,
   redactEndpoint,
   runWithConcurrency,
 } from './pushQueue'
@@ -270,5 +271,33 @@ describe('runWithConcurrency', () => {
     expect(await runWithConcurrency([1, 2], 100, async (n) => n * 2)).toEqual([2, 4])
     expect(await runWithConcurrency([1, 2], 0, async (n) => n * 2)).toEqual([2, 4])
     expect(await runWithConcurrency([1, 2], Number.NaN, async (n) => n * 2)).toEqual([2, 4])
+  })
+})
+
+describe('parseNotificationId', () => {
+  it('un cuerpo sin aviso concreto cuenta como "sin notificationId"', () => {
+    // El cron manda `{}`; un cuerpo vacío o que no es JSON llega como null.
+    for (const body of [{}, null, undefined, 'texto', 42, [], [ID], { otra: 'cosa' }]) {
+      expect(parseNotificationId(body)).toEqual({ ok: true, notificationId: null })
+    }
+  })
+
+  it('notificationId nulo es lo mismo que ausente', () => {
+    expect(parseNotificationId({ notificationId: null })).toEqual({ ok: true, notificationId: null })
+    expect(parseNotificationId({ notificationId: undefined })).toEqual({ ok: true, notificationId: null })
+  })
+
+  it('acepta un uuid y lo devuelve en minúsculas', () => {
+    expect(parseNotificationId({ notificationId: ID })).toEqual({ ok: true, notificationId: ID })
+    expect(parseNotificationId({ notificationId: ID.toUpperCase() })).toEqual({ ok: true, notificationId: ID })
+  })
+
+  it('rechaza lo presente pero mal formado, en vez de vaciar la cola entera', () => {
+    for (const notificationId of ['', 'abc', ID.slice(1), `${ID} `, `${ID}; drop`, 7, true, {}, [ID]]) {
+      expect(parseNotificationId({ notificationId })).toEqual({
+        ok: false,
+        error: 'notificationId tiene que ser un uuid.',
+      })
+    }
   })
 })
