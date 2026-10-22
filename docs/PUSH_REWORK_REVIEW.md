@@ -58,6 +58,90 @@ Cifrado, cabeceras y forma del payload no cambian.
 
 ---
 
+## Balance del rework (2026-10-22)
+
+Comparación entre `eba61ee`, lo que está en producción, y `d298270`, el rework
+entero en código. Todo lo de la columna "después" está probado en tests y en
+Postgres real (PGlite), pero **nada se ha probado todavía en un iPhone ni contra
+el Supabase de producción**.
+
+### Qué cambió de verdad, en una frase
+
+Lo que se le manda al servicio push **no cambió**: cifrado, cabeceras, payload y
+`sub` VAPID son byte a byte los de `eba61ee`. Lo comprueba `golden.test.ts`, y se
+verificó descifrando los envíos de las dos versiones en 28 casos. Cambió todo lo
+de alrededor: cómo se reparte la cola, qué queda escrito en la base y cómo el
+cliente cuenta su propio estado.
+
+### Antes y después
+
+| Aspecto | Antes (`eba61ee`) | Después |
+|---|---|---|
+| Dos ejecuciones a la vez (cron + panel, o un lote de más de 60 s) | Envían lo mismo dos veces | Reclamo con *lease* y `skip locked`; un cierre atrasado no pisa nada (*fencing*) |
+| Ritmo | En serie, ~100 por minuto, ~102 llamadas a la base por lote | 10 envíos a la vez, lotes de 50 con un cierre por lote, hasta 300 por pasada |
+| Un servicio push colgado | Frena el lote entero | Timeout de 10 s por envío |
+| Errores 400/401/403/413 | Se reintentan 5 veces | Fallo terminal al momento; un 403 avisa de revisar VAPID |
+| 429 y 5xx | Backoff fijo, sin mirar `Retry-After` | Respetan `Retry-After`, acotado a 1–60 min |
+| Configuración VAPID rota | Cada entrega la cobra como fallo; agota la cola en ~2 h | 500 al cargar, sin tocar la cola |
+| Una ejecución que muere a mitad | Nada la recupera | Sus entregas vuelven solas al vencer el lease, con el intento ya contado |
+| Suscripción caducada (410) | El CASCADE borra el rastro de sus fallos | Quedan como `expired`, con el host del servicio que las rechazó |
+| Baja de suscripción por otros caminos (signOut, admin, borrar cuenta) | Borra el rastro igual | El trigger las pasa a `expired`; ninguna se queda `pending` para siempre |
+| Errores de escritura en la base | Se ignoran | Se comprueban y van al diagnóstico |
+| JWT VAPID | Uno por envío | Reutilizado por origen 11 h |
+| Payload | Sin control de tamaño | Más de 3993 B es fallo terminal; el formato declarativo (37 % menos) está listo tras un secreto, apagado |
+| Recordatorio de evento | Vuelve a sonar al minuto si el usuario borra el aviso | `reminded_at`: no se repite |
+| Recordatorios | Se recalculan dentro de `send-push` cada minuto | Cron propio en SQL, que solo mira los RSVP sin recordatorio |
+| Cron de `send-push` | Solo en el runbook; pg_net corta a los 5 s | Versionado en migración, con timeout de 10 s; al cron se le contesta 202 y la pasada sigue en segundo plano |
+| Historial | No se borra nada nunca | Purga diaria: entregas a los 30 y 90 días, avisos a los 180 y 365 |
+| iPhone que rota su endpoint | La fila vieja se queda colgando | `p_old_endpoint` la reemplaza y le pasa las entregas pendientes |
+| Preferencias de avisos | Cualquier usuario con sesión podía leer las de otro | Cerradas a la API |
+| Difusión | Cuenta mal, choca si hay dos en el mismo segundo, sin límite de longitud | Cuenta solo lo creado, `dedupe_key` por uuid, 60 y 180 caracteres |
+| Autotest del panel | Vacía los 100 avisos más antiguos de todos | Sigue solo su aviso y dice cuántas entregas salieron, quedaron pendientes o fallaron |
+| Saber qué servicio falla | Imposible desde el panel | Tarjeta de entregas por servicio, con el último error |
+| «Activadas» | Aunque el servidor no sepa nada del dispositivo | Lo dice aparte (`serverSync`) y deja reintentar |
+| Cerrar sesión | Borra la fila antes de desuscribir; si falla, sigue llegando lo de la cuenta anterior | Desuscribe primero el navegador; la sesión que caduca sola también da de baja |
+| Pista «añadir a pantalla de inicio» en Safari de iOS | No aparece nunca | Aparece |
+| Un push que no se puede pintar | No se muestra nada, y Safari puede revocar el permiso | Se muestra un aviso mínimo |
+| Tests de push | Ninguno de la criptografía ni del ciclo de vida | Vector del RFC 8291, cola, payload, regla de oro, ciclo de vida, service worker, panel |
+| Reconstruir la base desde el baseline | Falla a mitad | Corre de una pasada |
+
+### Cuánto cuesta
+
+- **Código.** De `eba61ee` a `d298270` cambian 41 archivos:
+  - ~1.840 líneas netas de código de la app y de la Edge Function;
+  - ~1.800 de SQL, entre migraciones y baseline;
+  - ~2.780 de tests;
+  - ~950 de documentación.
+  - `send-push/index.ts` pasa de 458 a 687 líneas, `pushStore.ts` de 307 a 587 y `push-sw.js` de 99 a 138. Los tests van de 290 a 475.
+- **Piezas que mantener.** Tres migraciones que se aplican a mano y en orden, dos cron nuevos, dos RPC de cola con su contrato, un secreto opcional y más estados en el cliente (`serverSync`, la operación en curso, el endpoint confirmado).
+- **Orden de despliegue estricto.**
+  - El `send-push` nuevo exige las tres migraciones. Sin la `000200` deja de encolar recordatorios sin avisar a nadie.
+  - Deshacer la `000200` exige volver antes a un `send-push` que todavía los encole.
+- **Comportamientos que cambian a propósito:**
+  - La purga borra avisos leídos de más de 180 días.
+  - Un push de texto plano, que hoy solo manda el botón de DevTools, ya no enseña ese texto: sale el aviso mínimo.
+- **Riesgos pequeños que quedan:**
+  - Con 10 envíos a la vez, una suscripción caducada puede recibir hasta 10 envíos inútiles antes del primer 410. El usuario no ve duplicados.
+  - Una entrega movida por `p_old_endpoint` justo cuando se estaba enviando puede acabar `expired`.
+  - El límite de CPU de 2 s de la Edge Function no está medido con una difusión real.
+
+### Veredicto
+
+**Bueno, con una condición.** El rework arregla lo que fallaría en cuanto hubiera
+concurrencia, errores o más volumen: duplicados, colas atascadas, reintentos
+inútiles, rastro perdido y estados falsos en el cliente. Además lo deja medido y
+con tests donde antes no había ninguno. El código crece, pero casi la mitad de lo
+nuevo son tests, y lo que se añade a la app es lógica que antes faltaba, no
+relleno.
+
+La condición es que nada de esto ha pasado todavía por un iPhone. Lo que hoy
+entrega no se tocó, y eso baja el riesgo, pero el service worker y el cliente sí
+cambiaron. Por eso el orden de despliegue de ROADMAP §17 pide probar en el
+dispositivo después de cada paso, y deja la vuelta atrás a un redespliegue de
+`4eae308`.
+
+---
+
 Revisión del envío de push tal como está desplegado y del plan de la siguiente
 fase. Responde tres preguntas: si funciona, si es correcto y óptimo, y qué
 cambiaría del plan.
