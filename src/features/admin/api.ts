@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
+import { isMissingFunction } from '@/shared/utils/rpcErrors'
 import type { Profile, Pin, Role, ModeratorCapability } from '@/shared/types/database'
 import type { DashboardStats, ActivityEntry, ActivityFeed, AdminUserFilter, AdminPinFilter } from './types'
 import { demoDb } from '@/features/pins/demoStore'
@@ -361,21 +362,31 @@ async function fetchLegacyActivity(): Promise<ActivityEntry[]> {
   return entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 }
 
-/**
- * "La función no existe" llega por dos caminos y hay que mirar los dos: `42883`
- * es el código de Postgres, pero una RPC desconocida ni llega a Postgres —
- * PostgREST la corta antes con un 404 y `PGRST202`.
- */
-function isMissingFunction(error: { code?: string; message?: string }): boolean {
-  return error.code === '42883'
-    || error.code === 'PGRST202'
-    || /could not find the function|does not exist/i.test(error.message ?? '')
+/** Entregas de un aviso contadas por estado, tal como las lee send-push. */
+export interface PushDeliveryCounts {
+  pending: number
+  sent: number
+  failed: number
+  expired: number
 }
 
-interface PushRunResult {
+export interface PushRunResult {
   processed: number
   sent: number
   failed: number
+  /** 'hybrid' o 'declarative'. Solo lo manda el send-push nuevo. */
+  payloadFormat?: string
+  /**
+   * Solo si se llamó con `notificationId` y el send-push es el nuevo. El viejo
+   * ignora el cuerpo y no lo manda: por eso es opcional, y por eso el mensaje
+   * de la prueba tiene un camino que no lo necesita.
+   */
+  notification?: {
+    id: string
+    deliveries: PushDeliveryCounts
+    /** send-push no pudo leer las entregas: los conteos no son fiables. */
+    error?: string
+  }
 }
 
 /**
@@ -386,8 +397,12 @@ interface PushRunResult {
  * `queue_notification_push` escribe en `notification_push_deliveries` y sin esta
  * llamada la cola espera al cron, que corre cada minuto. Esperar un minuto para
  * saber si el push funciona hace que nadie llegue a comprobarlo.
+ *
+ * `notificationId` acota la pasada a UN aviso y pide a send-push que cuente sus
+ * entregas. Sin él la petición va exactamente como siempre, sin cuerpo: la
+ * difusión crea un aviso por destinatario y no hay un id que dar.
  */
-async function drainPushQueue(accessToken: string): Promise<PushRunResult> {
+async function drainPushQueue(accessToken: string, notificationId?: string): Promise<PushRunResult> {
   const baseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
   const res = await fetch(`${baseUrl}/functions/v1/send-push`, {
     method: 'POST',
@@ -395,6 +410,7 @@ async function drainPushQueue(accessToken: string): Promise<PushRunResult> {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
+    ...(notificationId ? { body: JSON.stringify({ notificationId }) } : {}),
   })
 
   if (!res.ok) {
@@ -405,6 +421,15 @@ async function drainPushQueue(accessToken: string): Promise<PushRunResult> {
   return (await res.json()) as PushRunResult
 }
 
+export interface SelfPushTestResult extends PushRunResult {
+  /**
+   * `false` si la base no creó el aviso: `create_notification` devuelve null
+   * cuando las preferencias de la cuenta silencian los avisos del sistema. En
+   * ese caso no hay nada que enviar y send-push ni se llama.
+   */
+  notificationCreated: boolean
+}
+
 /**
  * Una push de prueba a MI dispositivo y a ninguno más.
  *
@@ -412,14 +437,27 @@ async function drainPushQueue(accessToken: string): Promise<PushRunResult> {
  * suscripciones: comprobar "¿me llega a mí?" le hacía sonar el teléfono a la
  * universidad entera, así que en la práctica no se probaba nunca y los fallos
  * se descubrían por el reporte de un compañero.
+ *
+ * La RPC devuelve el id del aviso, y ese id se le pasa a send-push: así la
+ * pasada es solo de esta prueba (no manda de paso lo que otros tuvieran en
+ * cola) y la respuesta cuenta qué pasó con SUS entregas, que es lo único que
+ * responde "¿por qué no me llegó?".
  */
-export async function sendSelfPushTest(): Promise<PushRunResult> {
-  if (!supabase) return { processed: 1, sent: 1, failed: 0 }
+export async function sendSelfPushTest(): Promise<SelfPushTestResult> {
+  if (!supabase) {
+    return {
+      processed: 1,
+      sent: 1,
+      failed: 0,
+      notificationCreated: true,
+      notification: { id: 'demo', deliveries: { pending: 0, sent: 1, failed: 0, expired: 0 } },
+    }
+  }
 
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('No hay sesión activa de administrador.')
 
-  const { error } = await supabase.rpc('admin_send_test_push_to_self')
+  const { data, error } = await supabase.rpc('admin_send_test_push_to_self')
   if (error) {
     // "La función no existe" llega por dos caminos distintos y hay que mirar
     // los dos: `42883` es el código de Postgres, pero una RPC desconocida ni
@@ -433,7 +471,229 @@ export async function sendSelfPushTest(): Promise<PushRunResult> {
     throw new Error(error.message || 'No se pudo encolar la prueba.')
   }
 
-  return drainPushQueue(session.access_token)
+  const notificationId = typeof data === 'string' && data ? data : null
+  if (!notificationId) {
+    return { processed: 0, sent: 0, failed: 0, notificationCreated: false }
+  }
+
+  const run = await drainPushQueue(session.access_token, notificationId)
+  return { ...run, notificationCreated: true }
+}
+
+/**
+ * Un trozo del mensaje de la prueba: clave de i18n, texto en español de
+ * respaldo y, si el trozo es de plural, el número.
+ *
+ * Se devuelven trozos y no una cadena porque la traducción es cosa de la
+ * pantalla (`t`), y porque así lo que se decide —qué decir para cada resultado—
+ * se puede probar sin montar React ni i18n.
+ */
+export interface PushMessagePart {
+  key: string
+  fallback: string
+  count?: number
+}
+
+const countOf = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
+
+/**
+ * Qué decirle a quien pulsó "Enviar prueba".
+ *
+ * Con send-push nuevo el mensaje sale de las entregas del aviso, que distinguen
+ * cuatro situaciones que "sent > 0" mezclaba: sin dispositivos a los que
+ * entregar, entregas aún pendientes, fallidas y caducadas. Sin ese conteo
+ * (send-push viejo, que ignora el cuerpo, o uno que no pudo leerlo) queda el
+ * mensaje de siempre, basado en lo que envió la pasada.
+ */
+export function describeSelfPushTest(result: SelfPushTestResult): PushMessagePart[] {
+  if (!result.notificationCreated) {
+    return [{
+      key: 'admin.push.test.notCreated',
+      fallback: 'No se creó el aviso de prueba: tus preferencias de notificación silencian los avisos del sistema.',
+    }]
+  }
+
+  const info = result.notification
+  if (!info || info.error || !info.deliveries) {
+    return result.sent > 0
+      ? [{
+          key: 'admin.push.test.legacySent',
+          fallback: 'Prueba enviada. Debería aparecer en tu pantalla en unos segundos.',
+        }]
+      : [{
+          key: 'admin.push.test.legacyNone',
+          fallback: 'La prueba se encoló pero no salió a ningún dispositivo.',
+        }]
+  }
+
+  const sent = countOf(info.deliveries.sent)
+  const pending = countOf(info.deliveries.pending)
+  const failed = countOf(info.deliveries.failed)
+  const expired = countOf(info.deliveries.expired)
+
+  if (sent + pending + failed + expired === 0) {
+    return [{
+      key: 'admin.push.test.noDeliveries',
+      fallback: 'El aviso se creó, pero no generó ninguna entrega: tu cuenta no tiene dispositivos con push, o tus preferencias de push silencian los avisos del sistema.',
+    }]
+  }
+
+  const parts: PushMessagePart[] = []
+  if (sent > 0) {
+    parts.push({
+      key: 'admin.push.test.sent',
+      count: sent,
+      fallback: sent === 1 ? 'Enviada a 1 dispositivo.' : `Enviada a ${sent} dispositivos.`,
+    })
+  }
+  if (pending > 0) {
+    parts.push({
+      key: 'admin.push.test.pending',
+      count: pending,
+      fallback: pending === 1
+        ? '1 entrega pendiente: el envío automático ya la está procesando.'
+        : `${pending} entregas pendientes: el envío automático ya las está procesando.`,
+    })
+  }
+  if (failed > 0) {
+    parts.push({
+      key: 'admin.push.test.failed',
+      count: failed,
+      fallback: failed === 1 ? '1 entrega fallida.' : `${failed} entregas fallidas.`,
+    })
+  }
+  if (expired > 0) {
+    parts.push({
+      key: 'admin.push.test.expired',
+      count: expired,
+      fallback: expired === 1
+        ? '1 entrega caducada: la suscripción de ese dispositivo ya no existe.'
+        : `${expired} entregas caducadas: esas suscripciones ya no existen.`,
+    })
+  }
+
+  if (failed > 0) {
+    parts.push({
+      key: 'admin.push.test.seeStats',
+      fallback: 'El último error está más abajo, en las entregas por servicio.',
+    })
+  } else if (sent > 0 && pending === 0 && expired === 0) {
+    parts.push({
+      key: 'admin.push.test.sentHint',
+      fallback: 'Debería aparecer en tu pantalla en unos segundos.',
+    })
+  }
+
+  return parts
+}
+
+// ── Entregas por servicio ───────────────────────────────────────────────────
+//
+// Cada suscripción apunta a un servicio push distinto (Apple, Google, Mozilla,
+// Microsoft) y fallan por razones distintas: un 403 masivo en uno solo es una
+// clave VAPID rechazada por ese servicio, no un problema de la cola. Sumar todo
+// en un número lo esconde.
+
+/** Los días que abarca la vista. La RPC los acota a 1..90. */
+export const PUSH_STATS_DAYS = 7
+
+export interface PushServiceStat {
+  /** El host del endpoint, o "(sin host)" para entregas anteriores a `push_host`. */
+  host: string
+  sent: number
+  failed: number
+  expired: number
+  pending: number
+  /** La entrega más reciente, del estado que sea. */
+  lastAt: string | null
+  /** El error más reciente de ese servicio, venga del estado que venga. */
+  lastError: string | null
+}
+
+/** Una fila de `admin_push_delivery_stats`: un (host, estado). */
+export interface PushDeliveryStatsRow {
+  push_host: string | null
+  status: string
+  /** `bigint`: PostgREST lo manda como número, pero no se da por hecho. */
+  total: number | string
+  last_at: string | null
+  last_error: string | null
+}
+
+const timeOf = (iso: string | null): number => {
+  const ms = iso ? Date.parse(iso) : NaN
+  return Number.isNaN(ms) ? -Infinity : ms
+}
+
+/**
+ * La RPC devuelve una fila por (host, estado); la pantalla quiere una por host.
+ * Los servicios con fallos van primero: es a lo que se viene a mirar.
+ */
+export function groupDeliveryStats(rows: PushDeliveryStatsRow[]): PushServiceStat[] {
+  const byHost = new Map<string, PushServiceStat>()
+  const hostOf = (row: PushDeliveryStatsRow) => row.push_host || '(sin host)'
+
+  for (const row of rows) {
+    const host = hostOf(row)
+    let stat = byHost.get(host)
+    if (!stat) {
+      stat = { host, sent: 0, failed: 0, expired: 0, pending: 0, lastAt: null, lastError: null }
+      byHost.set(host, stat)
+    }
+
+    // Un estado que esta versión no conoce se ignora en vez de inventarle
+    // columna: sumarlo a otra diría algo falso.
+    if (row.status === 'sent' || row.status === 'failed' || row.status === 'expired' || row.status === 'pending') {
+      stat[row.status] += Number(row.total) || 0
+    }
+
+    if (timeOf(row.last_at) > timeOf(stat.lastAt)) stat.lastAt = row.last_at
+  }
+
+  // El último error se elige aparte, entre las filas que sí traen uno: la fila
+  // más reciente del servicio puede ser un envío correcto, sin error que enseñar.
+  for (const stat of byHost.values()) {
+    let best: PushDeliveryStatsRow | null = null
+    for (const row of rows) {
+      if (hostOf(row) !== stat.host || !row.last_error) continue
+      if (!best || timeOf(row.last_at) > timeOf(best.last_at)) best = row
+    }
+    stat.lastError = best?.last_error ?? null
+  }
+
+  const total = (s: PushServiceStat) => s.sent + s.failed + s.expired + s.pending
+  return [...byHost.values()].sort(
+    (a, b) => b.failed - a.failed || total(b) - total(a) || a.host.localeCompare(b.host),
+  )
+}
+
+/**
+ * Las entregas de los últimos días, por servicio push.
+ *
+ * `null` mientras la migración 20261021000100 no esté aplicada: la tarjeta lo
+ * dice en vez de enseñar una lista vacía que parecería "no hay entregas".
+ */
+export async function fetchPushDeliveryStats(days = PUSH_STATS_DAYS): Promise<PushServiceStat[] | null> {
+  if (!supabase) {
+    const ago = (minutes: number) => new Date(Date.now() - minutes * 60000).toISOString()
+    return groupDeliveryStats([
+      { push_host: 'web.push.apple.com', status: 'sent', total: 412, last_at: ago(2), last_error: null },
+      { push_host: 'web.push.apple.com', status: 'pending', total: 2, last_at: ago(1), last_error: null },
+      { push_host: 'web.push.apple.com', status: 'failed', total: 3, last_at: ago(95), last_error: 'HTTP 403: BadJwtToken' },
+      { push_host: 'fcm.googleapis.com', status: 'sent', total: 880, last_at: ago(4), last_error: null },
+      { push_host: 'fcm.googleapis.com', status: 'expired', total: 12, last_at: ago(300), last_error: 'HTTP 410: la suscripción ya no existe' },
+      { push_host: 'updates.push.services.mozilla.com', status: 'sent', total: 37, last_at: ago(60), last_error: null },
+    ])
+  }
+
+  const { data, error } = await supabase.rpc('admin_push_delivery_stats', { p_days: days })
+  if (error) {
+    if (isMissingFunction(error)) return null
+    throw error
+  }
+
+  return groupDeliveryStats((data ?? []) as PushDeliveryStatsRow[])
 }
 
 /**

@@ -33,15 +33,18 @@ import { AdminScreen } from './AdminScreen'
 // este navegador.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PUSH_STATE_LABEL: Record<string, string> = {
-  unknown: 'Comprobando este dispositivo…',
-  subscribed: 'Este dispositivo recibe avisos',
-  idle: 'Este dispositivo no está suscrito',
-  denied: 'Bloqueadas en este navegador',
-  unsupported: 'Este navegador no las soporta',
-  'ios-not-installed': 'En iPhone hay que instalar la app primero',
-  loading: 'Activando…',
-  error: 'No se pudo comprobar',
+// Clave de i18n y respaldo en español por estado. Un estado que esta tabla no
+// conozca se pinta tal cual en vez de quedarse en blanco: `PushState` crece
+// por otro lado y esta pantalla no debería romperse cuando lo haga.
+const PUSH_STATE_LABEL: Record<string, { key: string; fallback: string }> = {
+  unknown: { key: 'admin.push.state.unknown', fallback: 'Comprobando este dispositivo…' },
+  subscribed: { key: 'admin.push.state.subscribed', fallback: 'Este dispositivo recibe avisos' },
+  idle: { key: 'admin.push.state.idle', fallback: 'Este dispositivo no está suscrito' },
+  denied: { key: 'admin.push.state.denied', fallback: 'Bloqueadas en este navegador' },
+  unsupported: { key: 'admin.push.state.unsupported', fallback: 'Este navegador no las soporta' },
+  'ios-not-installed': { key: 'admin.push.state.iosNotInstalled', fallback: 'En iPhone hay que instalar la app primero' },
+  loading: { key: 'admin.push.state.loading', fallback: 'Activando…' },
+  error: { key: 'admin.push.state.error', fallback: 'No se pudo comprobar' },
 }
 
 export function BroadcastPanel() {
@@ -82,6 +85,7 @@ export function BroadcastPanel() {
   })
 
   const recipients = stats?.pushSubscribers ?? 0
+  const stateLabel = PUSH_STATE_LABEL[pushState]
   const ready = title.trim().length > 0 && body.trim().length > 0
 
   const removeDevice = async (sub: PushSubscriber) => {
@@ -108,15 +112,25 @@ export function BroadcastPanel() {
       )
       showToast(
         res.failed > 0
-          ? `Enviado a ${res.sent} de ${res.processed}. ${res.failed} no llegaron.`
-          : `Enviado a ${res.sent} ${res.sent === 1 ? 'dispositivo' : 'dispositivos'}.`,
+          ? t('admin.push.broadcast.partial', {
+              sent: res.sent,
+              processed: res.processed,
+              failed: res.failed,
+              defaultValue: `Enviado a ${res.sent} de ${res.processed}. ${res.failed} no llegaron.`,
+            })
+          : t('admin.push.broadcast.sent', {
+              count: res.sent,
+              defaultValue: res.sent === 1 ? 'Enviado a 1 dispositivo.' : `Enviado a ${res.sent} dispositivos.`,
+            }),
       )
       setTitle('')
       setBody('')
       setLinkedPin(null)
       setPinSearch('')
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'No se pudo enviar el aviso.')
+      // El mensaje de la base llega tal cual: si rechaza un título o un cuerpo
+      // largos, lo dice en español y con el límite, y repetirlo aquí sobraría.
+      showToast(err instanceof Error ? err.message : t('admin.push.broadcast.failed', 'No se pudo enviar el aviso.'))
     } finally {
       setSending(false)
       setConfirming(false)
@@ -388,7 +402,7 @@ export function BroadcastPanel() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold text-neutral-900 dark:text-white">
-              {PUSH_STATE_LABEL[pushState] ?? pushState}
+              {stateLabel ? t(stateLabel.key, stateLabel.fallback) : pushState}
             </span>
             <span className="block text-[11px] font-medium text-neutral-400">
               Pruébalo en tu dispositivo antes de enviar a todos.
