@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { deletePushSubscription, registerPushSubscription } from './api'
+import i18n from '@/shared/lib/i18n'
+import { deletePushSubscription, getPushSessionUserId, registerPushSubscription } from './api'
 import { isIOSDevice, isStandaloneDisplay } from '@/shared/utils/pwa'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,6 +26,13 @@ import { isIOSDevice, isStandaloneDisplay } from '@/shared/utils/pwa'
 //     con el servidor va después y en segundo plano. Antes el estado esperaba a
 //     que la RPC volviera: si Supabase tardaba, el usuario veía "Activar" con
 //     las notificaciones ya activadas.
+//
+// Y una cuarta, que sale de la tercera: lo que SABE EL SERVIDOR es un campo
+// aparte (`serverSync`), nunca parte de `state`. Si volviera a mandar sobre
+// «Activadas» reintroduciría el parpadeo; si no existiera, «Activadas» sería
+// mentira cuando la RPC falla (el navegador está suscrito y el servidor no lo
+// sabe, o sea que no llega nada). La tarjeta cruza los dos: activadas Y
+// servidor sin enterarse → aviso y botón para reintentar.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type PushState =
@@ -38,7 +46,34 @@ export type PushState =
   | 'loading'
   | 'error'
 
+/**
+ * Lo que sabe el servidor de ESTE dispositivo, según el último intento de
+ * registrarlo. Va aparte de `PushState` a propósito (ver arriba).
+ *
+ * - `unknown`: todavía no se ha intentado, o no hay nada que registrar.
+ * - `ok`: el servidor confirmó el endpoint actual.
+ * - `failed`: el intento falló (red, base, función).
+ * - `no-session`: no hay sesión, así que el servidor no puede asociar el
+ *   dispositivo a nadie. Se arregla iniciando sesión, no reintentando.
+ */
+export type PushServerSync = 'unknown' | 'ok' | 'failed' | 'no-session'
+
+/** Qué se estaba haciendo (o qué falló): decide a qué vuelve «Reintentar». */
+export type PushOperation = 'subscribe' | 'unsubscribe'
+
 const LAST_KNOWN_KEY = 'udpmap.push.subscribed'
+
+/**
+ * El último endpoint que el SERVIDOR confirmó para este navegador. No es lo
+ * mismo que el endpoint que tiene el navegador hoy: cuando difieren, es que
+ * rotó, y esa diferencia es lo que le permite a la base mover las entregas
+ * pendientes a la suscripción nueva (`p_old_endpoint`) en vez de dejarlas
+ * colgando de una que ya no existe.
+ */
+const CONFIRMED_ENDPOINT_KEY = 'udpmap.push.endpoint'
+
+/** Cuánto vale un registro ya hecho antes de repetirlo: una RPC por hora y página. */
+const REGISTRATION_TTL_MS = 60 * 60 * 1000
 
 function readLastKnown(): boolean {
   try {
@@ -56,6 +91,30 @@ function writeLastKnown(subscribed: boolean): void {
   }
 }
 
+function readConfirmedEndpoint(): string | null {
+  try {
+    return localStorage.getItem(CONFIRMED_ENDPOINT_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeConfirmedEndpoint(endpoint: string): void {
+  try {
+    localStorage.setItem(CONFIRMED_ENDPOINT_KEY, endpoint)
+  } catch {
+    // Sin esto solo se pierde la limpieza de la suscripción vieja si rota.
+  }
+}
+
+function clearConfirmedEndpoint(): void {
+  try {
+    localStorage.removeItem(CONFIRMED_ENDPOINT_KEY)
+  } catch {
+    // Ídem.
+  }
+}
+
 export function pushApiSupported(): boolean {
   return typeof window !== 'undefined'
     && 'serviceWorker' in navigator
@@ -68,46 +127,99 @@ export function pushApiSupported(): boolean {
  * inicio. Desde una pestaña de Safari, `subscribe()` puede "funcionar" y las
  * notificaciones no llegar nunca con el navegador cerrado — que es justo el
  * caso que la gente reporta como "a mí no me llega".
+ *
+ * NO comprueba `pushApiSupported()`, y no es un descuido: en una pestaña de
+ * Safari de iOS las API de push ni siquiera existen, así que exigirlas hacía
+ * que esta pista —la única que le dice a la persona QUÉ hacer— no apareciera
+ * jamás justo donde más falta hace. Quien la use tiene que preguntarla ANTES
+ * que `pushApiSupported()`.
  */
 export function iosNeedsInstall(): boolean {
-  return pushApiSupported() && isIOSDevice() && !isStandaloneDisplay()
+  return isIOSDevice() && !isStandaloneDisplay()
+}
+
+/**
+ * Hacia dónde queda el estado cuando este dispositivo no está suscrito. Se
+ * calcula con el mismo orden que el arranque —la pista de iOS primero— y NUNCA
+ * devuelve `subscribed`.
+ */
+function restingState(): PushState {
+  if (iosNeedsInstall()) return 'ios-not-installed'
+  if (!pushApiSupported()) return 'unsupported'
+  if (Notification.permission === 'denied') return 'denied'
+  return 'idle'
 }
 
 /** El estado con el que arranca el store, sin tocar la red ni el service worker. */
 function seedState(): PushState {
-  if (!pushApiSupported()) return 'unsupported'
-  if (iosNeedsInstall()) return 'ios-not-installed'
-  if (Notification.permission === 'denied') return 'denied'
+  const resting = restingState()
+  if (resting !== 'idle') return resting
   if (Notification.permission === 'default') return 'idle'
   // Permiso concedido: lo más probable es que siga suscrito. Si resulta que no,
   // `resolvePushState()` lo corrige en cuanto el service worker responde.
   return readLastKnown() ? 'subscribed' : 'unknown'
 }
 
-export function pushErrorMessage(cause: unknown): string {
+// pushStore no es React: el idioma se lee de la instancia de i18next, no de un
+// hook. Los respaldos van en español, como en el resto de la interfaz.
+const tr = (key: string, fallback: string) => i18n.t(key, fallback)
+
+export function pushErrorMessage(cause: unknown, operation: PushOperation = 'subscribe'): string {
   const technicalMessage = cause instanceof Error ? cause.message : String(cause)
   const errorName = cause instanceof DOMException ? cause.name : ''
 
-  if (Notification.permission === 'denied' || errorName === 'NotAllowedError') {
-    return 'Las notificaciones están bloqueadas para este sitio. Permítelas desde el candado de la barra de direcciones y vuelve a intentar.'
+  // Al DESACTIVAR, «bloqueadas» o «no se pudo activar» no vienen a cuento: el
+  // permiso no interviene, y el mensaje de activar diría justo lo contrario de
+  // lo que se intentó.
+  if (operation === 'unsubscribe') {
+    if (/service worker/i.test(technicalMessage)) {
+      return tr(
+        'notifications.push.errors.serviceWorker',
+        'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.',
+      )
+    }
+    return tr(
+      'notifications.push.errors.disable',
+      'No pudimos desactivar las notificaciones en este dispositivo. Vuelve a intentar.',
+    )
+  }
+
+  const denied = typeof Notification !== 'undefined' && Notification.permission === 'denied'
+  if (denied || errorName === 'NotAllowedError') {
+    return tr(
+      'notifications.push.errors.blocked',
+      'Las notificaciones están bloqueadas para este sitio. Permítelas desde el candado de la barra de direcciones y vuelve a intentar.',
+    )
   }
 
   if (
     errorName === 'AbortError'
     || /registration failed|push service error|push service|service unavailable/i.test(technicalMessage)
   ) {
-    return 'El navegador no pudo conectarse a su servicio de notificaciones. Revisa los permisos del sistema y del sitio, y prueba sin VPN, bloqueadores ni modo privado.'
+    return tr(
+      'notifications.push.errors.unreachable',
+      'El navegador no pudo conectarse a su servicio de notificaciones. Revisa los permisos del sistema y del sitio, y prueba sin VPN, bloqueadores ni modo privado.',
+    )
   }
 
   if (/applicationserverkey|vapid|invalid.*key/i.test(technicalMessage)) {
-    return 'La configuración de Web Push de la aplicación no es válida. Contacta al administrador.'
+    return tr(
+      'notifications.push.errors.vapid',
+      'La configuración de Web Push de la aplicación no es válida. Contacta al administrador.',
+    )
   }
 
   if (/service worker/i.test(technicalMessage)) {
-    return 'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.'
+    return tr(
+      'notifications.push.errors.serviceWorker',
+      'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.',
+    )
   }
 
-  return 'No pudimos activar las notificaciones en este dispositivo. Revisa los permisos del navegador y vuelve a intentar.'
+  return tr(
+    'notifications.push.errors.generic',
+    'No pudimos activar las notificaciones en este dispositivo. Revisa los permisos del navegador y vuelve a intentar.',
+  )
 }
 
 interface PushStore {
@@ -115,20 +227,40 @@ interface PushStore {
   error: string | null
   /** El endpoint del navegador, para el diagnóstico del panel. */
   endpoint: string | null
+  /** Lo que sabe el servidor de este dispositivo. Aparte de `state` a propósito. */
+  serverSync: PushServerSync
+  /**
+   * La operación en curso o, si `state` es `error`, la que falló. Se limpia al
+   * llegar a cualquier otro estado. Sin esto «Reintentar» no sabe a qué volver:
+   * tras fallar al desactivar, activaba.
+   */
+  operation: PushOperation | null
   setState: (state: PushState, error?: string | null) => void
   setEndpoint: (endpoint: string | null) => void
+  setServerSync: (serverSync: PushServerSync) => void
 }
 
 export const usePushStore = create<PushStore>((set) => ({
   state: typeof window === 'undefined' ? 'unknown' : seedState(),
   error: null,
   endpoint: null,
+  serverSync: 'unknown',
+  operation: null,
   setState: (state, error = null) => {
     if (state === 'subscribed' || state === 'idle') writeLastKnown(state === 'subscribed')
-    set({ state, error })
+    set(state === 'loading' || state === 'error'
+      ? { state, error }
+      : { state, error, operation: null })
   },
   setEndpoint: (endpoint) => set({ endpoint }),
+  setServerSync: (serverSync) => set({ serverSync }),
 }))
+
+/** Marca el inicio de una operación del usuario: de aquí sale «Activando…» o «Desactivando…». */
+function beginOperation(operation: PushOperation): void {
+  usePushStore.setState({ operation })
+  usePushStore.getState().setState('loading')
+}
 
 /** Lo que tarda el service worker en estar listo antes de darlo por perdido. */
 const SERVICE_WORKER_TIMEOUT_MS = 10_000
@@ -172,6 +304,77 @@ function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
   return output
 }
 
+// El último registro que el servidor confirmó EN ESTA PÁGINA. Solo en memoria, a
+// propósito: si se guardara en disco, recargar no volvería a avisar nunca al
+// servidor, y recargar es justo lo que hace la gente cuando algo no le llega.
+let lastRegistration: { userId: string; endpoint: string; at: number } | null = null
+
+function registeredRecently(userId: string, endpoint: string): boolean {
+  return lastRegistration !== null
+    && lastRegistration.userId === userId
+    && lastRegistration.endpoint === endpoint
+    && Date.now() - lastRegistration.at < REGISTRATION_TTL_MS
+}
+
+/**
+ * Registra en el servidor la suscripción que tiene HOY el navegador y deja
+ * `serverSync` diciendo cómo fue. Lanza si el servidor falla.
+ *
+ * `force` salta el registro reciente: lo usan el clic de «Activar» y el botón de
+ * reintentar, donde la persona espera ver que se vuelve a intentar de verdad.
+ */
+async function registerOnServer(subscription: PushSubscription, force: boolean): Promise<void> {
+  const { setServerSync } = usePushStore.getState()
+  try {
+    const userId = await getPushSessionUserId()
+    if (!userId) return setServerSync('no-session')
+
+    if (!force && registeredRecently(userId, subscription.endpoint)) return setServerSync('ok')
+
+    const confirmed = readConfirmedEndpoint()
+    await registerPushSubscription(
+      subscription,
+      confirmed && confirmed !== subscription.endpoint ? confirmed : null,
+    )
+    writeConfirmedEndpoint(subscription.endpoint)
+    lastRegistration = { userId, endpoint: subscription.endpoint, at: Date.now() }
+    setServerSync('ok')
+  } catch (cause) {
+    setServerSync('failed')
+    throw cause
+  }
+}
+
+async function syncNow(force: boolean): Promise<void> {
+  if (!pushApiSupported()) return
+  if (Notification.permission !== 'granted') return
+
+  let subscription: PushSubscription | null
+  try {
+    const registration = await readyRegistration()
+    subscription = await registration.pushManager.getSubscription()
+  } catch (cause) {
+    // No saber qué tiene el navegador no es un fallo del SERVIDOR: `serverSync`
+    // se queda como estaba en vez de acusar a la base de algo que no hizo.
+    console.error('[web-push] No se pudo consultar la suscripción para resincronizarla:', cause)
+    return
+  }
+  if (!subscription) return
+
+  usePushStore.getState().setEndpoint(subscription.endpoint)
+  try {
+    await registerOnServer(subscription, force)
+  } catch (cause) {
+    console.error('[web-push] No se pudo resincronizar la suscripción:', cause)
+  }
+}
+
+// Las resincronizaciones van de una en una. Al arrancar coinciden la de
+// `resolvePushState` y la de «llegó la sesión»; en paralelo las dos pasarían el
+// control de «registrado hace poco» antes de que ninguna terminara y harían la
+// misma RPC dos veces. En fila, la segunda ve lo que dejó la primera.
+let syncQueue: Promise<void> = Promise.resolve()
+
 /**
  * Le cuenta al servidor el endpoint que tiene HOY este navegador.
  *
@@ -181,20 +384,13 @@ function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
  * sigue enviando a una suscripción muerta. Es la causa de "me llegaban y de
  * repente dejaron de llegar" sin que nadie tocara nada.
  *
- * No pide permisos ni crea suscripciones: si no hay una, no hace nada.
+ * No pide permisos ni crea suscripciones: si no hay una, no hace nada. No lanza:
+ * el resultado queda en `serverSync`.
  */
-export async function syncPushSubscription(): Promise<void> {
-  if (!pushApiSupported()) return
-  if (Notification.permission !== 'granted') return
-  try {
-    const registration = await readyRegistration()
-    const subscription = await registration.pushManager.getSubscription()
-    if (!subscription) return
-    usePushStore.getState().setEndpoint(subscription.endpoint)
-    await registerPushSubscription(subscription)
-  } catch (cause) {
-    console.error('[web-push] No se pudo resincronizar la suscripción:', cause)
-  }
+export function syncPushSubscription({ force = false }: { force?: boolean } = {}): Promise<void> {
+  const run = syncQueue.then(() => syncNow(force))
+  syncQueue = run.catch(() => undefined)
+  return run
 }
 
 // Una sola resolución por carga de página, compartida por todos los que la
@@ -209,15 +405,22 @@ let resolving: Promise<void> | null = null
  * porque si no un único tropiezo al arrancar congelaba la tarjeta en «Activar»
  * durante toda la vida de la página: `resolving` quedaba resuelta y ni volver a
  * la pestaña ni remontar el panel volvían a mirar. Solo se arreglaba recargando.
+ *
+ * `force` descarta la memoización a propósito: cuando llega una sesión que no
+ * estaba, lo resuelto antes se resolvió SIN ella, y hay que volver a mirar y a
+ * contarle al servidor lo que ahora sí puede asociar a alguien.
  */
-export function resolvePushState(): Promise<void> {
+export function resolvePushState({ force = false }: { force?: boolean } = {}): Promise<void> {
+  if (force) resolving = null
   if (resolving) return resolving
 
   let concluyente = true
-  resolving = (async () => {
+  const current: Promise<void> = (async () => {
     const store = usePushStore.getState()
-    if (!pushApiSupported()) return store.setState('unsupported')
+    // Primero la pista de iOS: en una pestaña de Safari no hay API de push, y
+    // comprobar el soporte antes la escondía.
     if (iosNeedsInstall()) return store.setState('ios-not-installed')
+    if (!pushApiSupported()) return store.setState('unsupported')
     if (Notification.permission === 'denied') return store.setState('denied')
 
     try {
@@ -228,6 +431,7 @@ export function resolvePushState(): Promise<void> {
       store.setState(subscription ? 'subscribed' : 'idle')
       // Y la puesta al día del servidor va detrás, sin bloquear la interfaz.
       if (subscription) void syncPushSubscription()
+      else store.setServerSync('unknown')
     } catch (cause) {
       console.error('[web-push] No se pudo consultar la suscripción del dispositivo:', cause)
       concluyente = false
@@ -238,23 +442,36 @@ export function resolvePushState(): Promise<void> {
       store.setState('idle')
     }
   })().finally(() => {
-    if (!concluyente) resolving = null
+    // Con `force` puede haber una resolución más nueva ocupando `resolving`: la
+    // vieja no la tira.
+    if (!concluyente && resolving === current) resolving = null
   })
 
-  return resolving
+  resolving = current
+  return current
 }
 
 export async function subscribeToPush(): Promise<void> {
   const store = usePushStore.getState()
   const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
 
-  if (!pushApiSupported()) return store.setState('unsupported')
+  // Todo lo de aquí hasta `requestPermission()` es síncrono, y tiene que
+  // seguir siéndolo: en Safari el permiso y la suscripción solo se conceden
+  // dentro de la activación del gesto del clic, y un `await` de más por delante
+  // la puede agotar. Por eso tampoco se pregunta aquí por la sesión: eso va
+  // después de suscribir.
   if (iosNeedsInstall()) return store.setState('ios-not-installed')
+  if (!pushApiSupported()) return store.setState('unsupported')
   if (!publicKey) {
-    return store.setState('error', 'Falta configurar VITE_VAPID_PUBLIC_KEY en el servidor de la aplicación.')
+    // Con la operación puesta, «Reintentar» vuelve a activar y no a otra cosa.
+    usePushStore.setState({ operation: 'subscribe' })
+    return store.setState(
+      'error',
+      tr('notifications.push.errors.missingKey', 'Falta configurar VITE_VAPID_PUBLIC_KEY en el servidor de la aplicación.'),
+    )
   }
 
-  store.setState('loading')
+  beginOperation('subscribe')
   try {
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') {
@@ -274,7 +491,9 @@ export async function subscribeToPush(): Promise<void> {
     // Aquí sí se espera al servidor: si el registro falla, el dispositivo está
     // suscrito en el navegador pero el servidor no lo sabe, y decir "activadas"
     // sería mentira — es exactamente el caso de "la activé y no me llega nada".
-    await registerPushSubscription(subscription)
+    // (Sin sesión no es un fallo: queda suscrito, y `serverSync: 'no-session'`
+    // hace que la tarjeta pida iniciar sesión.)
+    await registerOnServer(subscription, true)
     store.setEndpoint(subscription.endpoint)
     store.setState('subscribed')
   } catch (cause) {
@@ -286,22 +505,83 @@ export async function subscribeToPush(): Promise<void> {
   }
 }
 
+/**
+ * La ÚNICA baja de este dispositivo. La usan el botón «Desactivar» y el cierre
+ * de sesión; antes eran dos funciones distintas (`api.ts` y esta) y cada una
+ * dejaba el store en un estado diferente — de ahí que cerrar sesión no lo
+ * reiniciara.
+ *
+ * El orden importa. Primero se desuscribe el NAVEGADOR y solo después se borra
+ * la fila del servidor, como mejor esfuerzo: al revés, un borrado fallido
+ * abortaba la desuscripción y el navegador seguía recibiendo los avisos de la
+ * cuenta que acababa de salir. Si es el navegador quien falla, el borrado en el
+ * servidor se intenta igual —es lo que corta la entrega a este aparato— y el
+ * error se relanza al final.
+ *
+ * `server: false` es la baja SOLO local, para cuando la sesión ya terminó por su
+ * cuenta: no hay quién autorice el borrado, y la fila caduca sola con el primer
+ * 404/410.
+ */
+export async function disablePushOnThisDevice({ server = true }: { server?: boolean } = {}): Promise<void> {
+  // Los endpoints a dar de baja en el servidor: el del navegador y también el
+  // último que el servidor confirmó, por si rotó y la fila vieja sigue allí.
+  const endpoints = new Set<string>()
+  const confirmed = readConfirmedEndpoint()
+  if (confirmed) endpoints.add(confirmed)
+
+  let browserError: unknown = null
+  try {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      // `getRegistration()` y no `ready`: si no hay service worker, `ready` se
+      // queda colgada, y cerrar sesión no puede esperar 10 s por una
+      // suscripción que no existe.
+      const registration = await navigator.serviceWorker.getRegistration()
+      const subscription = await registration?.pushManager.getSubscription()
+      if (subscription) {
+        // Se guarda antes de desuscribir: después ya no hay a quién preguntarle.
+        endpoints.add(subscription.endpoint)
+        await subscription.unsubscribe()
+      }
+    }
+  } catch (cause) {
+    browserError = cause
+  }
+
+  if (server) {
+    for (const endpoint of endpoints) {
+      try {
+        await deletePushSubscription(endpoint)
+      } catch (cause) {
+        // Mejor esfuerzo: el navegador ya dejó de recibir, y el servidor
+        // descarta la fila solo con el primer 404/410.
+        console.error('[web-push] No se pudo borrar la suscripción del servidor:', cause)
+      }
+    }
+  }
+
+  // Antes del `throw`: si el navegador sigue suscrito pero la fila ya se borró,
+  // la siguiente sincronización tiene que volver a registrarlo, y con el
+  // registro reciente en memoria se lo saltaría durante una hora.
+  lastRegistration = null
+  if (browserError) {
+    usePushStore.setState({ serverSync: 'unknown' })
+    throw browserError
+  }
+
+  clearConfirmedEndpoint()
+  usePushStore.setState({ endpoint: null, serverSync: 'unknown' })
+  usePushStore.getState().setState(restingState())
+}
+
 export async function unsubscribeFromPush(): Promise<void> {
   const store = usePushStore.getState()
   if (!pushApiSupported()) return
 
-  store.setState('loading')
+  beginOperation('unsubscribe')
   try {
-    const registration = await readyRegistration()
-    const subscription = await registration.pushManager.getSubscription()
-    if (subscription) {
-      await deletePushSubscription(subscription.endpoint)
-      await subscription.unsubscribe()
-    }
-    store.setEndpoint(null)
-    store.setState('idle')
+    await disablePushOnThisDevice()
   } catch (cause) {
     console.error('[web-push] No se pudo desactivar el dispositivo:', cause)
-    store.setState('error', pushErrorMessage(cause))
+    store.setState('error', pushErrorMessage(cause, 'unsubscribe'))
   }
 }

@@ -64,10 +64,24 @@ Configuración requerida:
 ### Definition of Done
 
 - [ ] **Activar** pide permiso y crea una suscripción asociada al usuario actual.
-- [ ] Recargar mantiene el estado activado; **Desactivar** borra la fila y desuscribe el navegador.
-- [ ] Cerrar sesión elimina la suscripción antes de cerrar la sesión.
+- [ ] Recargar mantiene el estado activado; **Desactivar** desuscribe el navegador y, después, borra la fila
+  (si el servidor falla, el dispositivo queda dado de baja igual). Si falla el navegador, **Reintentar** vuelve
+  a desactivar, no a activar.
+- [ ] Cerrar sesión usa esa misma baja —navegador primero, fila después— antes de cerrar la sesión, y deja el
+  estado de push reiniciado.
+- [ ] Si la sesión termina sin pasar por **Cerrar sesión** (otra pestaña, token caducado), el navegador se
+  desuscribe solo en local; al iniciar sesión de nuevo se vuelve a resolver y sincronizar. El arranque nunca da
+  de baja nada.
+- [ ] «Activadas» sale del navegador. Si el servidor no pudo registrar el dispositivo (error o sin sesión), la
+  tarjeta lo avisa y ofrece reintentar la sincronización; no se queda en «Activadas» sin más.
 - [ ] Otro usuario en el mismo navegador reasigna el endpoint mediante RPC, sin romper RLS.
-- [ ] Un navegador sin Push API o con permiso denegado sigue usando la app sin errores.
+- [ ] Si el navegador rota el endpoint, el cliente manda el último que el servidor confirmó
+  (`p_old_endpoint`, guardado en `localStorage` como `udpmap.push.endpoint`) para que la base mueva las
+  entregas pendientes. Con la migración `20261021000100` sin aplicar se reintenta sin él.
+- [ ] La página no repite el registro del mismo usuario y endpoint hace menos de una hora.
+- [ ] En iPhone fuera de la pantalla de inicio sale la pista de instalación aunque Safari no exponga la Push API.
+- [ ] Un navegador sin Push API o con permiso denegado sigue usando la app sin errores. En modo demo (sin
+  Supabase) la tarjeta de push no se muestra.
 
 ## Etapa 4 — Envío y service worker
 
@@ -87,6 +101,11 @@ Despliegue requerido:
 - [ ] Errores transitorios usan backoff y terminan tras cinco intentos.
 - [ ] Respuestas 404/410 eliminan el endpoint vencido.
 - [ ] Pulsar el push abre/enfoca la PWA, navega al destino y marca leído el aviso.
+- [ ] `push-sw.js` lee cada campo del bloque declarativo y, si falta, del campo plano; con el payload
+  actual pinta lo mismo que antes. Si no puede leer el payload o `showNotification` falla, muestra una
+  notificación mínima (Safari revoca el permiso si un push no muestra nada). `pushsubscriptionchange` usa la
+  clave de la suscripción perdida y cae a la constante; iOS no dispara ese evento. Lo prueba
+  `pushServiceWorker.test.ts`.
 - [ ] El payload no contiene correos, secretos ni notas internas.
 
 ## Etapa 5 — Sidebar de Notificaciones

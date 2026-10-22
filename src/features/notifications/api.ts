@@ -1,4 +1,5 @@
 import { supabase } from '@/shared/lib/supabase'
+import { isMissingFunction } from '@/shared/utils/rpcErrors'
 import type { AppNotification, NotificationCategory, Role } from '@/shared/types/database'
 
 const demoRead = new Set<string>()
@@ -175,19 +176,56 @@ export async function markCategoryRead(userId: string, category: NotificationCat
   if (error) throw error
 }
 
-export async function registerPushSubscription(subscription: PushSubscription): Promise<void> {
+/**
+ * El usuario con sesión, o `null` si no la hay (o si no hay Supabase: el modo
+ * demo no tiene servidor al que registrarse).
+ *
+ * `getSession()` espera a que supabase-js termine de leer la sesión guardada,
+ * así que al arrancar no devuelve «sin sesión» solo porque todavía no cargó.
+ */
+export async function getPushSessionUserId(): Promise<string | null> {
+  if (!supabase) return null
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.user.id ?? null
+}
+
+/**
+ * Le cuenta al servidor la suscripción de este navegador.
+ *
+ * `oldEndpoint` es el último endpoint que el servidor confirmó para este
+ * navegador, si es distinto del actual: así la base le pasa las entregas
+ * pendientes a la suscripción nueva y borra la vieja en vez de dejarla huérfana
+ * (en iOS el endpoint rota solo). Solo viaja cuando hay algo que mover.
+ *
+ * Si la base aún no tiene la versión de cinco argumentos, se reintenta sin él:
+ * el frontend puede salir antes que la migración, y no puede dejar de registrar
+ * dispositivos por eso.
+ */
+export async function registerPushSubscription(
+  subscription: PushSubscription,
+  oldEndpoint: string | null = null,
+): Promise<void> {
   if (!supabase) throw new Error('Web Push requiere una conexión a Supabase.')
   const serialized = subscription.toJSON()
   if (!serialized.endpoint || !serialized.keys?.p256dh || !serialized.keys.auth) {
     throw new Error('El navegador entregó una suscripción incompleta.')
   }
 
-  const { error } = await supabase.rpc('register_push_subscription', {
+  const params = {
     p_endpoint: serialized.endpoint,
     p_p256dh: serialized.keys.p256dh,
     p_auth: serialized.keys.auth,
     p_user_agent: navigator.userAgent,
-  })
+  }
+  const moved = oldEndpoint && oldEndpoint !== serialized.endpoint ? oldEndpoint : null
+
+  let { error } = await supabase.rpc(
+    'register_push_subscription',
+    moved ? { ...params, p_old_endpoint: moved } : params,
+  )
+  if (error && moved && isMissingFunction(error)) {
+    ;({ error } = await supabase.rpc('register_push_subscription', params))
+  }
   if (error) throw error
 }
 
@@ -195,15 +233,6 @@ export async function deletePushSubscription(endpoint: string): Promise<void> {
   if (!supabase) return
   const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint)
   if (error) throw error
-}
-
-export async function removeCurrentBrowserPushSubscription(): Promise<void> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-  const registration = await navigator.serviceWorker.getRegistration()
-  const subscription = await registration?.pushManager.getSubscription()
-  if (!subscription) return
-  await deletePushSubscription(subscription.endpoint)
-  await subscription.unsubscribe()
 }
 
 export async function markNotificationFromUrl(): Promise<void> {

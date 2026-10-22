@@ -19,6 +19,7 @@ import { LegacyModerationRedirect } from '@/features/admin/LegacyModerationRedir
 import { UpdatePrompt } from '@/shared/ui/UpdatePrompt'
 import { useFacultiesSync } from '@/shared/data/useFaculties'
 import { usePushForegroundSync } from '@/features/notifications/usePushSubscription'
+import { useAuthStore } from '@/features/auth/authStore'
 
 export function App() {
   // El catálogo de facultades se rehidrata desde la base una sola vez, aquí
@@ -30,8 +31,12 @@ export function App() {
   // no en el Sidebar porque el Sidebar se desmonta al cerrarse (if (!isOpen)
   // return null), y en iOS el endpoint rota en silencio: si nadie avisa del
   // nuevo, el servidor sigue mandando a una suscripción muerta. No pide
-  // permisos ni crea suscripciones; solo reporta la que ya exista.
-  usePushForegroundSync()
+  // permisos ni crea suscripciones; solo reporta la que ya exista. Recibe el id
+  // desde aquí y no lee el store de auth por su cuenta: notifications no puede
+  // depender de auth. Con él, además, da de baja el dispositivo si la sesión
+  // termina sin pasar por «Cerrar sesión».
+  const userId = useAuthStore((s) => s.user?.id ?? null)
+  usePushForegroundSync(userId)
 
   return (
     <>

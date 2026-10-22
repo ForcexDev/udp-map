@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import {
+  disablePushOnThisDevice,
   resolvePushState,
   subscribeToPush,
   syncPushSubscription,
@@ -27,6 +28,8 @@ export type { PushState }
 export function usePushSubscription() {
   const state = usePushStore((s) => s.state)
   const error = usePushStore((s) => s.error)
+  const serverSync = usePushStore((s) => s.serverSync)
+  const operation = usePushStore((s) => s.operation)
 
   useEffect(() => {
     void resolvePushState()
@@ -35,34 +38,78 @@ export function usePushSubscription() {
   return {
     state,
     error,
+    serverSync,
+    operation,
     subscribe: subscribeToPush,
     unsubscribe: unsubscribeFromPush,
+    // «Reintentar» repite lo que falló. Antes volvía siempre a activar, y quien
+    // había fallado al DESACTIVAR acababa activando.
+    retry: operation === 'unsubscribe' ? unsubscribeFromPush : subscribeToPush,
+    // Reintentar solo el aviso al servidor, sin tocar la suscripción del navegador.
+    retrySync: () => syncPushSubscription({ force: true }),
   }
 }
 
 /**
- * Resincroniza el endpoint de este navegador cada vez que la app vuelve a
- * primer plano. Se monta UNA vez, en `App`.
+ * Mantiene al día lo que el servidor sabe de este dispositivo. Se monta UNA vez,
+ * en `App`, que le pasa el id del usuario con sesión (o `null`).
  *
  * Vive separado del hook de arriba a propósito: `App` está siempre montado y
  * los paneles no. Cuando esto colgaba del Sidebar —que hace `if (!isOpen)
  * return null`— la resincronización solo corría con el panel abierto, y en iOS,
  * donde el endpoint rota solo, eso significaba que el servidor seguía enviando
  * a una suscripción muerta hasta que alguien abría el panel por casualidad.
+ *
+ * Hace tres cosas:
+ *  - al montarse, resuelve el estado del dispositivo (y de paso lo registra);
+ *  - al volver a primer plano, resincroniza. No lo hace también al montarse: ya
+ *    lo hace la resolución, y eran dos RPC por arranque. `syncPushSubscription`
+ *    además se salta el registro si el mismo usuario y endpoint ya se
+ *    registraron hace menos de una hora;
+ *  - cuando cambia el usuario, que es lo que cubre las sesiones que terminan
+ *    SIN pasar por `signOut` (caducó el token, cerró otra pestaña).
+ *
+ * No pide permisos ni crea suscripciones; solo reporta la que ya exista.
  */
-export function usePushForegroundSync() {
-  useEffect(() => {
-    if (!pushApiSupported()) return
+export function usePushForegroundSync(userId: string | null) {
+  // Con el id de la primera pintura de inicial, el arranque nunca cuenta como un
+  // cambio: sin esto, `undefined → id` se leería como «hay sesión nueva».
+  const previousUserId = useRef(userId)
 
+  useEffect(() => {
     void resolvePushState()
+    if (!pushApiSupported()) return
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
       void syncPushSubscription()
     }
 
-    onVisible()
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
+
+  useEffect(() => {
+    const before = previousUserId.current
+    previousUserId.current = userId
+    if (before === userId) return
+
+    if (!userId) {
+      // De un id a nada: la sesión terminó sin que nadie pulsara «Cerrar
+      // sesión». Si el navegador siguiera suscrito, recibiría los avisos de la
+      // cuenta que se fue, y el siguiente que entre heredaría un estado que no
+      // es suyo. La baja es SOLO local: ya no hay sesión con la que borrar en
+      // el servidor, y la fila caduca sola con el primer 404/410.
+      void disablePushOnThisDevice({ server: false }).catch((cause: unknown) => {
+        console.error('[web-push] No se pudo dar de baja el dispositivo al terminar la sesión:', cause)
+      })
+      return
+    }
+
+    // De nada a un id (también el arranque, cuando la sesión guardada llega
+    // después del primer render): lo resuelto hasta ahora se resolvió SIN ella.
+    // Esto nunca da de baja nada: el arranque no puede cerrar la suscripción de
+    // nadie.
+    void resolvePushState({ force: true })
+  }, [userId])
 }

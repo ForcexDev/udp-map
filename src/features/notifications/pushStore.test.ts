@@ -11,7 +11,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 //
 // Por eso lo que se prueba aquí es CON QUÉ ESTADO NACE el store, que es lo que
 // se pinta en el primer frame, y no solo dónde acaba.
+//
+// El ciclo de vida completo (activar, desactivar, sincronizar, sesión) está en
+// `pushLifecycle.test.ts`.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// El store no habla con Supabase en estas pruebas: sin esto, `resolvePushState`
+// dispara una resincronización contra el cliente real (si `.env` lo configura).
+vi.mock('./api', () => ({
+  registerPushSubscription: vi.fn().mockResolvedValue(undefined),
+  deletePushSubscription: vi.fn().mockResolvedValue(undefined),
+  getPushSessionUserId: vi.fn().mockResolvedValue('user-1'),
+}))
 
 interface StubOptions {
   permission?: NotificationPermission

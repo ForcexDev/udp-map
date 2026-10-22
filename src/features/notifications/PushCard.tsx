@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BellOff, BellRing, Loader2, TriangleAlert } from 'lucide-react'
+import { isSupabaseConfigured } from '@/shared/lib/supabase'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { usePushSubscription } from './usePushSubscription'
 
@@ -15,12 +17,31 @@ import { usePushSubscription } from './usePushSubscription'
 // avisos era justo eso —un botón "Activar" mostrado durante el medio segundo
 // que tardaba en saberse que ya estaba activado—. El porqué está en
 // `pushStore.ts`.
+//
+// «Activadas» sale del NAVEGADOR, no del servidor (si no, volvería el
+// parpadeo). Lo que sabe el servidor se pinta aparte, como un aviso debajo: con
+// las notificaciones activadas pero el servidor sin enterarse, la tarjeta
+// cuenta lo que pasa en vez de afirmar algo que no llega.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function PushCard() {
   const { t } = useTranslation()
-  const { state, error, subscribe, unsubscribe } = usePushSubscription()
+  const { state, error, serverSync, operation, subscribe, unsubscribe, retry, retrySync } = usePushSubscription()
   const openTutorial = useUIStore((s) => s.openTutorial)
+  const [retryingSync, setRetryingSync] = useState(false)
+
+  const onRetrySync = async () => {
+    setRetryingSync(true)
+    try {
+      await retrySync()
+    } finally {
+      setRetryingSync(false)
+    }
+  }
+
+  // Sin Supabase (modo demo) no hay servidor al que registrar nada: el botón
+  // dejaría una suscripción en el navegador que nadie va a usar jamás.
+  if (!isSupabaseConfigured) return null
 
   if (state === 'unknown') {
     return (
@@ -42,6 +63,8 @@ export function PushCard() {
   const blocked = state === 'denied'
   const iosPending = state === 'ios-not-installed'
   const busy = state === 'loading'
+  // Activadas en el navegador, pero el servidor no las conoce: no llegará nada.
+  const serverUnaware = on && (serverSync === 'failed' || serverSync === 'no-session')
 
   const subtitle = on
     ? t('notifications.push.on', 'Activadas en este dispositivo')
@@ -121,12 +144,14 @@ export function PushCard() {
           ) : (
             <button
               type="button"
-              onClick={() => void subscribe()}
+              onClick={() => void (state === 'error' ? retry() : subscribe())}
               disabled={busy}
               className="h-10 shrink-0 rounded-2xl bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] dark:hover:bg-[#c22b38] px-4 text-xs font-semibold text-white transition-colors active:scale-95 disabled:opacity-40"
             >
               {busy
-                ? t('notifications.push.enabling', 'Activando…')
+                ? operation === 'unsubscribe'
+                  ? t('notifications.push.disabling', 'Desactivando…')
+                  : t('notifications.push.enabling', 'Activando…')
                 : state === 'error'
                   ? t('notifications.push.retry', 'Reintentar')
                   : t('notifications.push.enable', 'Activar')}
@@ -134,6 +159,24 @@ export function PushCard() {
           )
         )}
       </div>
+
+      {serverUnaware && (
+        <div className="mt-3 flex items-center gap-3 rounded-xl bg-amber-50/80 px-3 py-2 dark:bg-amber-950/30">
+          <p className="min-w-0 flex-1 text-xs font-medium leading-snug text-amber-700 dark:text-amber-400">
+            {serverSync === 'no-session'
+              ? t('notifications.push.syncNoSession', 'Inicia sesión para que el servidor conozca este dispositivo.')
+              : t('notifications.push.syncFailed', 'Activadas aquí, pero no pudimos avisar al servidor. Puede que no te lleguen.')}
+          </p>
+          <button
+            type="button"
+            onClick={() => void onRetrySync()}
+            disabled={retryingSync}
+            className="h-8 shrink-0 rounded-xl border border-amber-300/70 bg-white px-3 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-50 active:scale-95 disabled:opacity-40 dark:border-amber-900/60 dark:bg-transparent dark:text-amber-300 dark:hover:bg-amber-950/40"
+          >
+            {t('notifications.push.syncRetry', 'Reintentar')}
+          </button>
+        </div>
+      )}
 
       {error && (
         <p className="mt-3 rounded-xl bg-red-50/80 px-3 py-2 text-xs font-medium leading-snug text-red-600 dark:bg-red-950/40 dark:text-red-400">

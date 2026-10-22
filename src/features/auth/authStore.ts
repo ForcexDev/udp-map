@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { supabase, isSupabaseConfigured } from '@/shared/lib/supabase'
 import type { Role } from '@/shared/types/database'
 import { isUdpEmail } from './permissions'
-import { removeCurrentBrowserPushSubscription } from '@/features/notifications/api'
+import { disablePushOnThisDevice } from '@/features/notifications/pushStore'
 
 interface AuthUser {
   id: string
@@ -182,8 +182,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   signOut: async () => {
     localStorage.removeItem(DEMO_KEY)
     if (supabase) {
+      // ANTES de cerrar la sesión: borrar la fila del servidor la necesita. La
+      // baja desuscribe primero el navegador y reinicia el store de push; ver
+      // `disablePushOnThisDevice`.
       try {
-        await removeCurrentBrowserPushSubscription()
+        await disablePushOnThisDevice()
       } catch (error) {
         console.error('No se pudo eliminar la suscripción Web Push al cerrar sesión.', error)
       }
