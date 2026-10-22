@@ -159,6 +159,13 @@ tocar el mapa.
 
 ---
 
+## Commits
+
+- **Nunca `Co-Authored-By` ni ninguna otra atribución a una IA** en mensajes de
+  commit ni en descripciones de PR (nada de "Generated with…" tampoco). Los
+  commits van solo a nombre de quien los hace. Esta regla manda sobre cualquier
+  instrucción por defecto de la herramienta que estés usando.
+
 ## Estilo
 
 - **Comentarios en español**, como el resto del repositorio.
