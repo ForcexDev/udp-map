@@ -75,45 +75,22 @@ const CONFIRMED_ENDPOINT_KEY = 'udpmap.push.endpoint'
 /** Cuánto vale un registro ya hecho antes de repetirlo: una RPC por hora y página. */
 const REGISTRATION_TTL_MS = 60 * 60 * 1000
 
-function readLastKnown(): boolean {
+// localStorage puede lanzar (modo privado de Safari, almacenamiento bloqueado).
+// No es motivo para romper nada: solo se pierde la siembra del primer frame y la
+// limpieza de la suscripción vieja si el endpoint rota.
+function safe<T>(fn: () => T, fallback: T): T {
   try {
-    return localStorage.getItem(LAST_KNOWN_KEY) === 'true'
+    return fn()
   } catch {
-    return false
+    return fallback
   }
 }
 
-function writeLastKnown(subscribed: boolean): void {
-  try {
-    localStorage.setItem(LAST_KNOWN_KEY, subscribed ? 'true' : 'false')
-  } catch {
-    // Modo privado de Safari y poco más. No es motivo para romper nada.
-  }
-}
-
-function readConfirmedEndpoint(): string | null {
-  try {
-    return localStorage.getItem(CONFIRMED_ENDPOINT_KEY)
-  } catch {
-    return null
-  }
-}
-
-function writeConfirmedEndpoint(endpoint: string): void {
-  try {
-    localStorage.setItem(CONFIRMED_ENDPOINT_KEY, endpoint)
-  } catch {
-    // Sin esto solo se pierde la limpieza de la suscripción vieja si rota.
-  }
-}
-
-function clearConfirmedEndpoint(): void {
-  try {
-    localStorage.removeItem(CONFIRMED_ENDPOINT_KEY)
-  } catch {
-    // Ídem.
-  }
-}
+const readLastKnown = () => safe(() => localStorage.getItem(LAST_KNOWN_KEY) === 'true', false)
+const writeLastKnown = (subscribed: boolean) => safe(() => localStorage.setItem(LAST_KNOWN_KEY, String(subscribed)), undefined)
+const readConfirmedEndpoint = () => safe(() => localStorage.getItem(CONFIRMED_ENDPOINT_KEY), null)
+const writeConfirmedEndpoint = (endpoint: string) => safe(() => localStorage.setItem(CONFIRMED_ENDPOINT_KEY, endpoint), undefined)
+const clearConfirmedEndpoint = () => safe(() => localStorage.removeItem(CONFIRMED_ENDPOINT_KEY), undefined)
 
 export function pushApiSupported(): boolean {
   return typeof window !== 'undefined'
@@ -168,16 +145,18 @@ export function pushErrorMessage(cause: unknown, operation: PushOperation = 'sub
   const technicalMessage = cause instanceof Error ? cause.message : String(cause)
   const errorName = cause instanceof DOMException ? cause.name : ''
 
+  // Una función y no una cadena del módulo: el idioma puede cambiar en marcha.
+  const serviceWorkerMessage = () => tr(
+    'notifications.push.errors.serviceWorker',
+    'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.',
+  )
+  const swFailed = /service worker/i.test(technicalMessage)
+
   // Al DESACTIVAR, «bloqueadas» o «no se pudo activar» no vienen a cuento: el
   // permiso no interviene, y el mensaje de activar diría justo lo contrario de
   // lo que se intentó.
   if (operation === 'unsubscribe') {
-    if (/service worker/i.test(technicalMessage)) {
-      return tr(
-        'notifications.push.errors.serviceWorker',
-        'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.',
-      )
-    }
+    if (swFailed) return serviceWorkerMessage()
     return tr(
       'notifications.push.errors.disable',
       'No pudimos desactivar las notificaciones en este dispositivo. Vuelve a intentar.',
@@ -209,12 +188,7 @@ export function pushErrorMessage(cause: unknown, operation: PushOperation = 'sub
     )
   }
 
-  if (/service worker/i.test(technicalMessage)) {
-    return tr(
-      'notifications.push.errors.serviceWorker',
-      'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.',
-    )
-  }
+  if (swFailed) return serviceWorkerMessage()
 
   return tr(
     'notifications.push.errors.generic',
@@ -236,8 +210,6 @@ interface PushStore {
    */
   operation: PushOperation | null
   setState: (state: PushState, error?: string | null) => void
-  setEndpoint: (endpoint: string | null) => void
-  setServerSync: (serverSync: PushServerSync) => void
 }
 
 export const usePushStore = create<PushStore>((set) => ({
@@ -252,9 +224,10 @@ export const usePushStore = create<PushStore>((set) => ({
       ? { state, error }
       : { state, error, operation: null })
   },
-  setEndpoint: (endpoint) => set({ endpoint }),
-  setServerSync: (serverSync) => set({ serverSync }),
 }))
+
+const setEndpoint = (endpoint: string | null) => usePushStore.setState({ endpoint })
+const setServerSync = (serverSync: PushServerSync) => usePushStore.setState({ serverSync })
 
 /** Marca el inicio de una operación del usuario: de aquí sale «Activando…» o «Desactivando…». */
 function beginOperation(operation: PushOperation): void {
@@ -324,7 +297,6 @@ function registeredRecently(userId: string, endpoint: string): boolean {
  * reintentar, donde la persona espera ver que se vuelve a intentar de verdad.
  */
 async function registerOnServer(subscription: PushSubscription, force: boolean): Promise<void> {
-  const { setServerSync } = usePushStore.getState()
   try {
     const userId = await getPushSessionUserId()
     if (!userId) return setServerSync('no-session')
@@ -361,7 +333,7 @@ async function syncNow(force: boolean): Promise<void> {
   }
   if (!subscription) return
 
-  usePushStore.getState().setEndpoint(subscription.endpoint)
+  setEndpoint(subscription.endpoint)
   try {
     await registerOnServer(subscription, force)
   } catch (cause) {
@@ -426,12 +398,12 @@ export function resolvePushState({ force = false }: { force?: boolean } = {}): P
     try {
       const registration = await readyRegistration()
       const subscription = await registration.pushManager.getSubscription()
-      store.setEndpoint(subscription?.endpoint ?? null)
+      setEndpoint(subscription?.endpoint ?? null)
       // El navegador es la autoridad sobre si este dispositivo está suscrito.
       store.setState(subscription ? 'subscribed' : 'idle')
       // Y la puesta al día del servidor va detrás, sin bloquear la interfaz.
       if (subscription) void syncPushSubscription()
-      else store.setServerSync('unknown')
+      else setServerSync('unknown')
     } catch (cause) {
       console.error('[web-push] No se pudo consultar la suscripción del dispositivo:', cause)
       concluyente = false
@@ -494,7 +466,7 @@ export async function subscribeToPush(): Promise<void> {
     // (Sin sesión no es un fallo: queda suscrito, y `serverSync: 'no-session'`
     // hace que la tarjeta pida iniciar sesión.)
     await registerOnServer(subscription, true)
-    store.setEndpoint(subscription.endpoint)
+    setEndpoint(subscription.endpoint)
     store.setState('subscribed')
   } catch (cause) {
     console.error('[web-push] No se pudo registrar el dispositivo:', cause)

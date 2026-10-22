@@ -36,12 +36,7 @@ export async function fetchNotificationPreferences(userId: string): Promise<Noti
     .from('notification_preferences')
     .select('category, in_app, push')
     .eq('user_id', userId)
-  // La tabla puede no existir todavía: sin la migración, todo sigue llegando y
-  // la pantalla lo dice. No es motivo para romper el centro de avisos.
-  if (error) {
-    if (error.code === '42P01' || /does not exist/i.test(error.message ?? '')) return []
-    throw error
-  }
+  if (error) throw error
   return (data ?? []) as NotificationPreference[]
 }
 

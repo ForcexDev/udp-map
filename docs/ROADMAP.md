@@ -1994,20 +1994,22 @@ El detalle está en "Orden propuesto" de la revisión.
   - **Entregas por servicio:** tarjeta nueva en `/admin/ajustes` con `admin_push_delivery_stats`: una fila por host con enviadas, fallidas, caducadas y pendientes, y el último error. Sin la migración `20261021000100` dice cuál falta; en demo muestra datos de ejemplo.
   - **`BroadcastPanel`:** las etiquetas de estado y los avisos de envío pasan a i18n (claves `admin.push.*`). Los avisos de baja de un dispositivo siguen con texto fijo.
   - **`isMissingFunction`** pasa a `shared/utils/rpcErrors.ts`, compartida por admin y notifications, y ya no acepta cualquier «does not exist»: una columna que falta no se lee como «falta la migración de esta función».
-- **Push 6 — Adelgazar el payload.** ✅ Hecha en código el 2026-10-22 tras el secreto `PUSH_PAYLOAD_FORMAT`, **apagada por defecto**. Activar solo con el service worker nuevo adoptado y probado en iPhone.
-  - **`hybrid`** (el defecto, y también cualquier valor desconocido, con un `console.warn`): lo que se envía hoy, con las mismas claves, orden y valores.
-  - **`declarative`:** envía solo `{ web_push: 8030, notification: { title, body, navigate, icon, lang, tag, data: { url, notificationId, type, category } } }`, con los mismos valores y respaldos que el bloque del híbrido, sin campos planos ni `payload`. Lo construye `_shared/pushPayload.ts`, con tests; el híbrido sigue en `index.ts` sin moverse.
-  - El secreto se lee una vez al cargar la función: cambiarlo exige `supabase secrets set PUSH_PAYLOAD_FORMAT=declarative` (o `secrets unset` para volver) y una instancia nueva. La respuesta al panel dice `payloadFormat`.
-  - **Por qué espera al service worker nuevo:** el `push-sw.js` anterior solo leía los campos planos, así que con `declarative` un teléfono que aún lo tenga en caché mostraría los textos genéricos. Y si en iOS 18.4+ pinta la notificación el bloque declarativo o el service worker, no se sabe sin un dispositivo.
-  - Cifrado, `TTL`, `Urgency` y VAPID no cambian con el formato.
+- **Push 6 — Adelgazar el payload.** ❌ Retirada el 2026-10-23 sin llegar a activarse. Era un formato declarativo puro tras el secreto `PUSH_PAYLOAD_FORMAT`, apagado por defecto (`fc32c71`, por si hace falta recuperarlo). Con los topes de título y cuerpo de cada aviso, el híbrido cabe de sobra en los 3993 B, así que el 37 % de ahorro no compraba nada, y mantener dos formatos para siempre costaba más que el experimento.
+- **Recorte del sistema de avisos (2026-10-23).** Auditoría de sobreingeniería contrastada con la bitácora y la revisión:
+  - `admin_push_delivery_stats` agrupa en SQL, una fila por host (la `000100` se editó antes de aplicarla); fuera `groupDeliveryStats`.
+  - `admin_send_test_push_to_self` con `dedupe_key` por uuid: dos pruebas en el mismo segundo chocaban.
+  - `_shared/auth.ts` para `send-push` y `storage-gc`, con `supabase-js` fijo en `2.110.1` (hallazgos 31 y 32); fuera `engine` de la respuesta.
+  - Fuera los respaldos de las migraciones de agosto, comprobadas en producción (`pg_proc`) el 2026-10-23. Se **quedan** los de las tres de octubre: los necesita la vuelta atrás de abajo.
+  - Cliente: `useInboxMutation` para las mutaciones optimistas, `setNotificationRead` en lugar de marcar y alternar, `useUnreadCount`, `shared/ui/Switch` (y fuera `@radix-ui/react-switch`, que nadie usaba), `pushStore.test.ts` fundido en `pushLifecycle.test.ts`, y `includeAssets` fuera de `vite.config.ts` (duplicaba 2 entradas del precache).
+  - **Se queda `diagnostics`** en la respuesta de `send-push`: es el único sitio donde aparece `apnsId`, y es la herramienta de la prueba en iPhone del paso 5.
 
-**Para desplegar el rework** (Push 0–6), en este orden:
+**Para desplegar el rework** (Push 0–5), en este orden:
 1. Desplegar `4eae308` (Push 0 y 1) desde ese commit, no desde `main`, que ya trae la cola con *lease* y necesita la migración: `npm run deploy:push` a mano. Probar en un iPhone. Si algo falla, redesplegar `eba61ee`.
 2. Aplicar a mano en el SQL Editor `20261021000000_push_queue_lease.sql`, `20261021000100_push_subscriptions_reminders.sql` y `20261021000200_push_cron_jobs.sql`, en ese orden. La `000200` necesita `pg_cron` y `pg_net` activas y los secretos de Vault del runbook.
 3. `npm run deploy:push` desde `main`, **después** de la `000200`: el `send-push` nuevo ya no encola recordatorios, los encola el cron que crea esa migración.
 4. Push de `main` a GitHub: Vercel publica el frontend. Tolera la base sin la `000100` y un `send-push` anterior, pero este es el orden previsto.
 5. Probar en un iPhone: activar, recibir, desactivar, y el autotest de `/admin/ajustes`. Mirar `cron.job` y `net._http_response` en Supabase: PGlite no tiene el `pg_cron` real.
-6. Opcional, solo con el paso 5 hecho y el service worker nuevo ya en el teléfono: `supabase secrets set PUSH_PAYLOAD_FORMAT=declarative` y probar otra vez en el iPhone. Para volver, `supabase secrets unset PUSH_PAYLOAD_FORMAT`.
+   Incluir tocar una notificación: `push-sw.js` cambió en Push 4, y en iOS 18.4+ no se sabe qué camino atiende el toque.
 
 **Vuelta atrás.** Si falla la función, redesplegar `4eae308`: funciona con las migraciones aplicadas, que son compatibles con él. Los `.down.sql`, en orden inverso (`000200`, `000100`, `000000`), solo hacen falta para deshacer también el esquema. Antes de deshacer la `000200` hay que dejar desplegado un `send-push` que todavía encole recordatorios (`4eae308` o `20eee7e`); con el nuevo nadie recibiría aviso de ningún evento.
 
@@ -2015,6 +2017,7 @@ El detalle está en "Orden propuesto" de la revisión.
 - El `sub` VAPID (hallazgo 1): sigue firmándose como en `eba61ee`. Para quitar el correo de la UDP, un `mailto:` propio en `VAPID_SUBJECT` y probar en iPhone.
 - TTL por tipo de aviso y `Topic` (hallazgo 9). `Urgency` no se baja.
 - Recordar en el servidor los endpoints caducados y decírselo al cliente (hallazgo 30).
-- `_shared/auth.ts` para `isAuthorized` y el cliente, que hoy están copiados entre `send-push` y `storage-gc`, y fijar la versión de `supabase-js` (hallazgos 31 y 32).
+- Después del paso 5: pasar la clave VAPID como cadena a `applicationServerKey` y quitar los dos `urlBase64ToUint8Array` (WebKit la acepta desde Safari 16.4; antes, comprobar que `VITE_VAPID_PUBLIC_KEY` es base64url sin relleno), y valorar quitar `diagnostics`.
+- Cuando la vuelta atrás deje de ser opción: quitar el reintento sin `p_old_endpoint`, los mensajes `legacySent`/`legacyNone` y la tarjeta de «falta la migración» de las entregas por servicio.
 
 Detalle: [bitácora](PUSH_REWORK_LOGBOOK.md) · [revisión](PUSH_REWORK_REVIEW.md).

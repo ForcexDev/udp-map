@@ -1,30 +1,27 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import type { AppNotification } from '@/shared/types/database'
-import { useMarkNotificationRead, useNotificationRealtime } from './useNotifications'
+import { useSetNotificationRead, useNotificationRealtime } from './useNotifications'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { notificationLook } from './notificationMeta'
 
 export function NotificationBanner() {
   const { t } = useTranslation()
   const [activeBanner, setActiveBanner] = useState<AppNotification | null>(null)
-  const markRead = useMarkNotificationRead()
+  const setRead = useSetNotificationRead()
   const navigate = useNavigate()
   const openNotificationsSidebar = useSidebarStore((s) => s.openNotifications)
 
-  const handleNewNotification = useCallback((notification: AppNotification) => {
-    setActiveBanner(notification)
-  }, [])
-
-  useNotificationRealtime(handleNewNotification)
+  // El setter de useState es estable: el canal de Realtime no se rehace.
+  useNotificationRealtime(setActiveBanner)
 
   if (!activeBanner) return null
 
   const handleView = () => {
     if (!activeBanner.read_at) {
-      markRead.mutate(activeBanner.id)
+      setRead.mutate({ id: activeBanner.id, read: true })
     }
     // '/' no es un destino: es lo que llevan los avisos de difusión, que no
     // apuntan a ninguna pantalla concreta. Navegar ahí deja al usuario en el

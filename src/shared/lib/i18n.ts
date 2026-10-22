@@ -8,14 +8,8 @@ const es = {
       // Push en el panel: estado del dispositivo, difusión, autotest y entregas por servicio.
       push: {
         state: {
-          unknown: 'Comprobando este dispositivo…',
           subscribed: 'Este dispositivo recibe avisos',
-          idle: 'Este dispositivo no está suscrito',
-          denied: 'Bloqueadas en este navegador',
-          unsupported: 'Este navegador no las soporta',
-          iosNotInstalled: 'En iPhone hay que instalar la app primero',
-          loading: 'Activando…',
-          error: 'No se pudo comprobar',
+          idle: 'Este dispositivo no recibe avisos',
         },
         broadcast: {
           sent_one: 'Enviado a {{count}} dispositivo.',
@@ -122,7 +116,6 @@ const es = {
       confirmBroadcast: 'Enviar el aviso',
       confirmBroadcastBody: 'Llegará al instante a {{count}} dispositivos. Una notificación entregada no se puede retirar.',
       testBefore: 'Pruébalo en tu dispositivo antes de envíar a todos.',
-      seeWhoHint: 'Para ver quiénes son, aplica la migración {{migration}} en Supabase.',
       noName: 'Sin nombre',
       searchUsers: 'Buscar por nombre o correo…',
       allRoles: 'Todos',
@@ -617,14 +610,8 @@ const en = {
       // Push en el panel: estado del dispositivo, difusión, autotest y entregas por servicio.
       push: {
         state: {
-          unknown: 'Checking this device…',
           subscribed: 'This device receives alerts',
-          idle: 'This device is not subscribed',
-          denied: 'Blocked in this browser',
-          unsupported: 'This browser does not support them',
-          iosNotInstalled: 'On iPhone you need to install the app first',
-          loading: 'Turning on…',
-          error: 'Could not check',
+          idle: 'This device does not receive alerts',
         },
         broadcast: {
           sent_one: 'Sent to {{count}} device.',
@@ -731,7 +718,6 @@ const en = {
       confirmBroadcast: 'Send the notice',
       confirmBroadcastBody: 'It will reach {{count}} devices instantly. A delivered notification cannot be recalled.',
       testBefore: 'Try it on your device before sending to everyone.',
-      seeWhoHint: 'To see who they are, apply migration {{migration}} in Supabase.',
       noName: 'No name',
       searchUsers: 'Search by name or email…',
       allRoles: 'All',

@@ -18,6 +18,7 @@ import { EventScheduleEditor } from './EventScheduleEditor'
 import { IndoorFields } from './IndoorFields'
 import { draftsFromRows, rowsFromItems, validateRows, type ScheduleRow } from './eventScheduleRows'
 import { CustomDateTimePicker } from '@/shared/ui/CustomDateTimePicker'
+import { Switch } from '@/shared/ui/Switch'
 import { validatePhoto, MAX_PHOTOS_PER_PIN } from './photos'
 import { nextDailyPinReset } from '@/shared/utils/rateLimit'
 import { dbErrorMessage, isUserFacingDbError } from '@/shared/utils/dbError'
@@ -783,7 +784,7 @@ export function CreatePinModal() {
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <BadgeCheck size={18} className="text-sky-600 dark:text-sky-400 shrink-0" strokeWidth={2.2} />
-                      <label className="text-xs font-semibold text-sky-700 dark:text-sky-300 cursor-pointer">
+                      <label htmlFor="pin-official" className="text-xs font-semibold text-sky-700 dark:text-sky-300 cursor-pointer">
                         {t('pin.officialToggle', 'Publicar como Oficial')}
                       </label>
                     </div>
@@ -795,21 +796,7 @@ export function CreatePinModal() {
                     name="isOfficial"
                     control={form.control}
                     render={({ field }) => (
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={field.value}
-                        onClick={() => field.onChange(!field.value)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          field.value ? 'bg-sky-600' : 'bg-stone-300 dark:bg-stone-600'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                            field.value ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
+                      <Switch id="pin-official" checked={field.value ?? false} onChange={field.onChange} tone="sky" />
                     )}
                   />
                 </div>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { SelfPushTestResult, PushDeliveryStatsRow } from './api'
+import type { SelfPushTestResult } from './api'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lo que decide el panel de push: qué se le dice a quien pulsa "Enviar prueba",
@@ -211,86 +211,16 @@ describe('describeSelfPushTest', () => {
   })
 })
 
-// ── groupDeliveryStats ──────────────────────────────────────────────────────
-
-const row = (partial: Partial<PushDeliveryStatsRow>): PushDeliveryStatsRow => ({
-  push_host: 'web.push.apple.com',
-  status: 'sent',
-  total: 1,
-  last_at: '2026-10-21T12:00:00Z',
-  last_error: null,
-  ...partial,
-})
-
-describe('groupDeliveryStats', () => {
-  it('junta las filas (host, estado) en una por host', async () => {
-    const { groupDeliveryStats } = await loadApi()
-    const stats = groupDeliveryStats([
-      row({ push_host: 'web.push.apple.com', status: 'sent', total: 10 }),
-      row({ push_host: 'web.push.apple.com', status: 'failed', total: 2 }),
-      row({ push_host: 'fcm.googleapis.com', status: 'sent', total: 30 }),
-      row({ push_host: 'fcm.googleapis.com', status: 'expired', total: 4 }),
-      row({ push_host: 'fcm.googleapis.com', status: 'pending', total: 1 }),
-    ])
-
-    const apple = stats.find((s) => s.host === 'web.push.apple.com')
-    const google = stats.find((s) => s.host === 'fcm.googleapis.com')
-    expect(apple).toMatchObject({ sent: 10, failed: 2, expired: 0, pending: 0 })
-    expect(google).toMatchObject({ sent: 30, failed: 0, expired: 4, pending: 1 })
-  })
-
-  it('pone primero el servicio con fallos, aunque tenga menos entregas', async () => {
-    const { groupDeliveryStats } = await loadApi()
-    const stats = groupDeliveryStats([
-      row({ push_host: 'fcm.googleapis.com', status: 'sent', total: 500 }),
-      row({ push_host: 'web.push.apple.com', status: 'failed', total: 1 }),
-    ])
-    expect(stats.map((s) => s.host)).toEqual(['web.push.apple.com', 'fcm.googleapis.com'])
-  })
-
-  it('las entregas sin host (anteriores a push_host) van juntas bajo "(sin host)"', async () => {
-    const { groupDeliveryStats } = await loadApi()
-    const stats = groupDeliveryStats([
-      row({ push_host: null, status: 'sent', total: 2 }),
-      row({ push_host: '(sin host)', status: 'failed', total: 1 }),
-    ])
-    expect(stats).toHaveLength(1)
-    expect(stats[0]).toMatchObject({ host: '(sin host)', sent: 2, failed: 1 })
-  })
-
-  it('el último error es el más reciente de cualquier estado, no el de la fila más reciente', async () => {
-    const { groupDeliveryStats } = await loadApi()
-    const stats = groupDeliveryStats([
-      row({ status: 'sent', total: 9, last_at: '2026-10-21T12:00:00Z', last_error: null }),
-      row({ status: 'failed', total: 1, last_at: '2026-10-21T08:00:00Z', last_error: 'HTTP 403' }),
-      row({ status: 'expired', total: 1, last_at: '2026-10-20T08:00:00Z', last_error: 'HTTP 410' }),
-    ])
-    expect(stats[0].lastError).toBe('HTTP 403')
-    expect(stats[0].lastAt).toBe('2026-10-21T12:00:00Z')
-  })
-
-  it('sin errores en ninguna fila, no inventa uno', async () => {
-    const { groupDeliveryStats } = await loadApi()
-    expect(groupDeliveryStats([row({})])[0].lastError).toBeNull()
-  })
-
-  it('acepta el total como texto (bigint) e ignora estados que no conoce', async () => {
-    const { groupDeliveryStats } = await loadApi()
-    const stats = groupDeliveryStats([
-      row({ status: 'sent', total: '7' }),
-      row({ status: 'processing', total: 99 }),
-    ])
-    expect(stats[0]).toMatchObject({ sent: 7, failed: 0, expired: 0, pending: 0 })
-  })
-})
-
 // ── fetchPushDeliveryStats ──────────────────────────────────────────────────
 
 describe('fetchPushDeliveryStats', () => {
-  it('pide p_days a la RPC y devuelve una fila por servicio', async () => {
+  it('pide p_days a la RPC y pasa sus filas a camelCase, en el orden que llegan', async () => {
     const { fetchPushDeliveryStats } = await loadApi()
     rpc.mockResolvedValue({
-      data: [row({ push_host: 'fcm.googleapis.com', status: 'sent', total: 3 })],
+      data: [
+        { host: 'web.push.apple.com', sent: 1, failed: 2, expired: 0, pending: 0, last_at: '2026-10-21T12:00:00Z', last_error: 'HTTP 403' },
+        { host: 'fcm.googleapis.com', sent: 3, failed: 0, expired: 0, pending: 0, last_at: null, last_error: null },
+      ],
       error: null,
     })
 
@@ -298,7 +228,8 @@ describe('fetchPushDeliveryStats', () => {
 
     expect(rpc).toHaveBeenCalledWith('admin_push_delivery_stats', { p_days: 7 })
     expect(stats).toEqual([
-      expect.objectContaining({ host: 'fcm.googleapis.com', sent: 3 }),
+      { host: 'web.push.apple.com', sent: 1, failed: 2, expired: 0, pending: 0, lastAt: '2026-10-21T12:00:00Z', lastError: 'HTTP 403' },
+      { host: 'fcm.googleapis.com', sent: 3, failed: 0, expired: 0, pending: 0, lastAt: null, lastError: null },
     ])
   })
 

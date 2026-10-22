@@ -168,10 +168,22 @@ export async function adminDeletePin(pinId: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * A cuántos dispositivos llega una difusión. Es la misma RPC que usa el
+ * dashboard, pero sin sus otras tres consultas, y no sale de la lista de
+ * `fetchPushSubscribers` porque PostgREST corta esa lista en 1000 filas.
+ */
+export async function fetchPushSubscriberCount(): Promise<number> {
+  if (!supabase) return 3
+  const { data, error } = await supabase.rpc('admin_count_push_subscribers')
+  if (error) throw error
+  return data ?? 0
+}
+
 export interface PushSubscriber {
   userId: string
   /** El identificador del dispositivo. Es lo que se da de baja. */
-  endpoint: string | null
+  endpoint: string
   name: string | null
   role: string | null
   /** El `user_agent` crudo. Resumirlo es cosa de la interfaz. */
@@ -181,11 +193,8 @@ export interface PushSubscriber {
 
 /**
  * Quiénes reciben los avisos push.
- *
- * `null` mientras la migración 20260829000100 no esté aplicada: la pantalla
- * enseña entonces solo el número, como hasta ahora, y lo dice.
  */
-export async function fetchPushSubscribers(): Promise<PushSubscriber[] | null> {
+export async function fetchPushSubscribers(): Promise<PushSubscriber[]> {
   if (!supabase) {
     return [
       { userId: 'demo-admin', endpoint: 'https://push.example/demo-1', name: 'Admin Demo', role: 'admin', userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/141', createdAt: new Date(Date.now() - 4 * 86400000).toISOString() },
@@ -195,17 +204,12 @@ export async function fetchPushSubscribers(): Promise<PushSubscriber[] | null> {
   }
 
   const { data, error } = await supabase.rpc('admin_push_subscribers')
-  if (error) {
-    if (isMissingFunction(error)) return null
-    throw error
-  }
+  if (error) throw error
 
-  return ((data ?? []) as Array<{ user_id: string; endpoint?: string | null; name: string | null; role: string | null; user_agent: string | null; created_at: string }>)
+  return ((data ?? []) as Array<{ user_id: string; endpoint: string; name: string | null; role: string | null; user_agent: string | null; created_at: string }>)
     .map((row) => ({
       userId: row.user_id,
-      // `endpoint` solo llega con la migración 20260830000000. Sin él la fila se
-      // pinta igual, pero sin botón de baja: no hay a qué apuntar.
-      endpoint: row.endpoint ?? null,
+      endpoint: row.endpoint,
       name: row.name,
       role: row.role,
       userAgent: row.user_agent,
@@ -224,12 +228,7 @@ export async function deletePushSubscriberDevice(endpoint: string): Promise<void
   if (!supabase) return
 
   const { error } = await supabase.rpc('admin_delete_push_subscription', { p_endpoint: endpoint })
-  if (error) {
-    if (isMissingFunction(error)) {
-      throw new Error('Dar de baja un dispositivo necesita la migración 20260830000000 aplicada en Supabase.')
-    }
-    throw new Error(error.message || 'No se pudo dar de baja el dispositivo.')
-  }
+  if (error) throw new Error(error.message || 'No se pudo dar de baja el dispositivo.')
 }
 
 // ── Permisos por moderador ──────────────────────────────────────────────────
@@ -374,8 +373,6 @@ export interface PushRunResult {
   processed: number
   sent: number
   failed: number
-  /** 'hybrid' o 'declarative'. Solo lo manda el send-push nuevo. */
-  payloadFormat?: string
   /**
    * Solo si se llamó con `notificationId` y el send-push es el nuevo. El viejo
    * ignora el cuerpo y no lo manda: por eso es opcional, y por eso el mensaje
@@ -458,18 +455,7 @@ export async function sendSelfPushTest(): Promise<SelfPushTestResult> {
   if (!session) throw new Error('No hay sesión activa de administrador.')
 
   const { data, error } = await supabase.rpc('admin_send_test_push_to_self')
-  if (error) {
-    // "La función no existe" llega por dos caminos distintos y hay que mirar
-    // los dos: `42883` es el código de Postgres, pero una RPC desconocida ni
-    // siquiera llega a Postgres — PostgREST la corta antes con un 404 y
-    // `PGRST202`. Comprobar solo el primero, que fue el primer intento, dejaba
-    // salir el texto crudo en inglés ("Could not find the function … in the
-    // schema cache"), que no le dice a nadie qué tiene que hacer.
-    if (isMissingFunction(error)) {
-      throw new Error('Falta aplicar la migración 20260827000000 en Supabase (SQL Editor).')
-    }
-    throw new Error(error.message || 'No se pudo encolar la prueba.')
-  }
+  if (error) throw new Error(error.message || 'No se pudo encolar la prueba.')
 
   const notificationId = typeof data === 'string' && data ? data : null
   if (!notificationId) {
@@ -611,80 +597,22 @@ export interface PushServiceStat {
   lastError: string | null
 }
 
-/** Una fila de `admin_push_delivery_stats`: un (host, estado). */
-export interface PushDeliveryStatsRow {
-  push_host: string | null
-  status: string
-  /** `bigint`: PostgREST lo manda como número, pero no se da por hecho. */
-  total: number | string
-  last_at: string | null
-  last_error: string | null
-}
-
-const timeOf = (iso: string | null): number => {
-  const ms = iso ? Date.parse(iso) : NaN
-  return Number.isNaN(ms) ? -Infinity : ms
-}
-
 /**
- * La RPC devuelve una fila por (host, estado); la pantalla quiere una por host.
- * Los servicios con fallos van primero: es a lo que se viene a mirar.
- */
-export function groupDeliveryStats(rows: PushDeliveryStatsRow[]): PushServiceStat[] {
-  const byHost = new Map<string, PushServiceStat>()
-  const hostOf = (row: PushDeliveryStatsRow) => row.push_host || '(sin host)'
-
-  for (const row of rows) {
-    const host = hostOf(row)
-    let stat = byHost.get(host)
-    if (!stat) {
-      stat = { host, sent: 0, failed: 0, expired: 0, pending: 0, lastAt: null, lastError: null }
-      byHost.set(host, stat)
-    }
-
-    // Un estado que esta versión no conoce se ignora en vez de inventarle
-    // columna: sumarlo a otra diría algo falso.
-    if (row.status === 'sent' || row.status === 'failed' || row.status === 'expired' || row.status === 'pending') {
-      stat[row.status] += Number(row.total) || 0
-    }
-
-    if (timeOf(row.last_at) > timeOf(stat.lastAt)) stat.lastAt = row.last_at
-  }
-
-  // El último error se elige aparte, entre las filas que sí traen uno: la fila
-  // más reciente del servicio puede ser un envío correcto, sin error que enseñar.
-  for (const stat of byHost.values()) {
-    let best: PushDeliveryStatsRow | null = null
-    for (const row of rows) {
-      if (hostOf(row) !== stat.host || !row.last_error) continue
-      if (!best || timeOf(row.last_at) > timeOf(best.last_at)) best = row
-    }
-    stat.lastError = best?.last_error ?? null
-  }
-
-  const total = (s: PushServiceStat) => s.sent + s.failed + s.expired + s.pending
-  return [...byHost.values()].sort(
-    (a, b) => b.failed - a.failed || total(b) - total(a) || a.host.localeCompare(b.host),
-  )
-}
-
-/**
- * Las entregas de los últimos días, por servicio push.
+ * Las entregas de los últimos días, una fila por servicio push y los que más
+ * fallan primero. La RPC ya agrupa y ordena; aquí solo cambian los nombres.
  *
- * `null` mientras la migración 20261021000100 no esté aplicada: la tarjeta lo
- * dice en vez de enseñar una lista vacía que parecería "no hay entregas".
+ * `null` mientras la migración 20261021000100 no esté aplicada (o si se
+ * deshace): la tarjeta lo dice en vez de enseñar una lista vacía que parecería
+ * "no hay entregas".
  */
 export async function fetchPushDeliveryStats(days = PUSH_STATS_DAYS): Promise<PushServiceStat[] | null> {
   if (!supabase) {
     const ago = (minutes: number) => new Date(Date.now() - minutes * 60000).toISOString()
-    return groupDeliveryStats([
-      { push_host: 'web.push.apple.com', status: 'sent', total: 412, last_at: ago(2), last_error: null },
-      { push_host: 'web.push.apple.com', status: 'pending', total: 2, last_at: ago(1), last_error: null },
-      { push_host: 'web.push.apple.com', status: 'failed', total: 3, last_at: ago(95), last_error: 'HTTP 403: BadJwtToken' },
-      { push_host: 'fcm.googleapis.com', status: 'sent', total: 880, last_at: ago(4), last_error: null },
-      { push_host: 'fcm.googleapis.com', status: 'expired', total: 12, last_at: ago(300), last_error: 'HTTP 410: la suscripción ya no existe' },
-      { push_host: 'updates.push.services.mozilla.com', status: 'sent', total: 37, last_at: ago(60), last_error: null },
-    ])
+    return [
+      { host: 'web.push.apple.com', sent: 412, failed: 3, expired: 0, pending: 2, lastAt: ago(1), lastError: 'HTTP 403: BadJwtToken' },
+      { host: 'fcm.googleapis.com', sent: 880, failed: 0, expired: 12, pending: 0, lastAt: ago(4), lastError: 'HTTP 410: la suscripción ya no existe' },
+      { host: 'updates.push.services.mozilla.com', sent: 37, failed: 0, expired: 0, pending: 0, lastAt: ago(60), lastError: null },
+    ]
   }
 
   const { data, error } = await supabase.rpc('admin_push_delivery_stats', { p_days: days })
@@ -693,7 +621,8 @@ export async function fetchPushDeliveryStats(days = PUSH_STATS_DAYS): Promise<Pu
     throw error
   }
 
-  return groupDeliveryStats((data ?? []) as PushDeliveryStatsRow[])
+  return ((data ?? []) as Array<Omit<PushServiceStat, 'lastAt' | 'lastError'> & { last_at: string | null; last_error: string | null }>)
+    .map(({ last_at, last_error, ...counts }) => ({ ...counts, lastAt: last_at, lastError: last_error }))
 }
 
 /**
@@ -718,24 +647,11 @@ export async function triggerServerPushTest(
   const finalBody = body || 'Mensaje de prueba enviado desde el panel de administración.'
 
   // 1. Encolar el aviso y sus entregas para cada suscriptor.
-  let { error: rpcError } = await supabase.rpc('admin_broadcast_push_notification', {
+  const { error: rpcError } = await supabase.rpc('admin_broadcast_push_notification', {
     p_title: finalTitle,
     p_body: finalBody,
     p_url: url,
   })
-
-  if (rpcError && isMissingFunction(rpcError)) {
-    // La firma de tres argumentos todavía no existe. Sin destino elegido se
-    // puede seguir con la vieja; con destino elegido, callarse y mandarlo a la
-    // nada sería peor que no mandarlo.
-    if (url !== '/') {
-      throw new Error('Vincular un pin necesita la migración 20260829000000 aplicada en Supabase.')
-    }
-    ;({ error: rpcError } = await supabase.rpc('admin_broadcast_push_notification', {
-      p_title: finalTitle,
-      p_body: finalBody,
-    }))
-  }
 
   if (rpcError) {
     throw new Error(rpcError.message || rpcError.details || 'Error al ejecutar broadcast de notificaciones')

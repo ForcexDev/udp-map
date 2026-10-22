@@ -451,10 +451,12 @@ $fn$;
 -- ── 5. Estado de las entregas, por servicio push ────────────────────────────
 
 /**
- * Cuántas entregas de los últimos `p_days` días hay en cada estado, por host del
- * servicio push. Para ver de un vistazo qué servicio es el que rechaza.
+ * Cuántas entregas de los últimos `p_days` días hay en cada estado, una fila por
+ * host del servicio push y los que más fallan primero. Para ver de un vistazo qué
+ * servicio es el que rechaza. Se agrupa aquí y no en el cliente: así la pantalla
+ * pinta las filas tal cual llegan.
  *
- * `last_at` es la creación de la entrega más reciente del grupo, y `last_error`
+ * `last_at` es la creación de la entrega más reciente del host, y `last_error`
  * el último error no nulo. El error se devuelve con cualquier URL recortada a su
  * host: las entregas anteriores a 4eae308 podían guardar el endpoint entero, que
  * es una URL de capacidad que identifica un dispositivo.
@@ -472,9 +474,11 @@ $fn$;
  */
 create or replace function public.admin_push_delivery_stats(p_days integer default 7)
 returns table (
-  push_host  text,
-  status     text,
-  total      bigint,
+  host       text,
+  sent       integer,
+  failed     integer,
+  expired    integer,
+  pending    integer,
   last_at    timestamptz,
   last_error text
 )
@@ -495,8 +499,10 @@ begin
 
   return query
     select coalesce(d.push_host, '(sin host)'),
-           d.status,
-           count(*),
+           (count(*) filter (where d.status = 'sent'))::integer,
+           (count(*) filter (where d.status = 'failed'))::integer,
+           (count(*) filter (where d.status = 'expired'))::integer,
+           (count(*) filter (where d.status = 'pending'))::integer,
            max(d.created_at),
            regexp_replace(
              (array_agg(d.last_error order by d.created_at desc)
@@ -504,13 +510,46 @@ begin
              '(https?://[^/[:space:]]+)/[^[:space:]]*', '\1/…', 'g')
       from public.notification_push_deliveries d
      where d.created_at >= now() - make_interval(days => v_days)
-     group by coalesce(d.push_host, '(sin host)'), d.status
-     order by 1, 2;
+     group by 1
+     order by 3 desc, count(*) desc, 1;
 end;
 $fn$;
 
 revoke execute on function public.admin_push_delivery_stats(integer) from public, anon;
 grant execute on function public.admin_push_delivery_stats(integer) to authenticated, service_role;
+
+-- ── 6. Autotest: clave propia por envío ─────────────────────────────────────
+
+-- La clave llevaba el segundo de la época: dos pruebas en el mismo segundo (dos
+-- pestañas, dos dispositivos) compartían clave, la segunda no se creaba y el
+-- panel le echaba la culpa a las preferencias. Es el mismo choque que la
+-- difusión ya resolvió con un uuid.
+create or replace function public.admin_send_test_push_to_self()
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_id uuid;
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden lanzar una prueba de push.';
+  end if;
+
+  select public.create_notification(
+    auth.uid(),
+    'announcement',
+    'system',
+    'Prueba de notificación',
+    'Si ves esto en tu pantalla de bloqueo, el push funciona en este dispositivo.',
+    '/',
+    'self_push_test_' || gen_random_uuid()::text
+  ) into v_id;
+
+  return v_id;
+end;
+$fn$;
 
 -- ── Guarda: una sola firma de cada una ──────────────────────────────────────
 

@@ -11,15 +11,7 @@
 // send-push, de modo que reutiliza los secretos de Vault que ya existen.
 // =============================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const cronSecret = Deno.env.get('CRON_SECRET')!
-
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
-})
+import { isAuthorized, supabase } from '../_shared/auth.ts'
 
 // Cuántos archivos se procesan por ejecución. Con el cron cada 10 minutos da
 // margen de sobra para el ritmo real de borrados.
@@ -34,25 +26,6 @@ interface QueueRow {
   bucket_id: string
   path: string
   attempts: number
-}
-
-async function isAuthorized(req: Request): Promise<boolean> {
-  const providedSecret = req.headers.get('x-cron-secret')
-  if (cronSecret && providedSecret === cronSecret) return true
-
-  const authorization = req.headers.get('authorization')
-  if (!authorization?.startsWith('Bearer ')) return false
-
-  const token = authorization.slice('Bearer '.length)
-  const { data: { user } } = await supabase.auth.getUser(token)
-  if (!user) return false
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-  return profile?.role === 'admin'
 }
 
 function json(body: unknown, status = 200) {

@@ -17,6 +17,34 @@
 -- que se quería era cerrarla, hay que volver a aplicar la migración.
 -- ============================================================================
 
+-- ── 6. Autotest: vuelve la clave por segundo de 20260827000000 ──────────────
+create or replace function public.admin_send_test_push_to_self()
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_id uuid;
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden lanzar una prueba de push.';
+  end if;
+
+  select public.create_notification(
+    auth.uid(),
+    'announcement',
+    'system',
+    'Prueba de notificación',
+    'Si ves esto en tu pantalla de bloqueo, el push funciona en este dispositivo.',
+    '/',
+    'self_push_test_' || extract(epoch from now())::bigint::text
+  ) into v_id;
+
+  return v_id;
+end;
+$fn$;
+
 -- ── 5. Estado de las entregas ───────────────────────────────────────────────
 drop function if exists public.admin_push_delivery_stats(integer);
 

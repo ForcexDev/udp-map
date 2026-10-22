@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Bell, BellOff, BellRing, ChevronDown, ChevronRight, Loader2, MapPin, Search, Send, TriangleAlert, X } from 'lucide-react'
 import { usePushSubscription } from '@/features/notifications/usePushSubscription'
-import { triggerServerPushTest, fetchDashboardStats, fetchAdminPins, fetchPushSubscribers, deletePushSubscriberDevice } from './api'
+import { triggerServerPushTest, fetchPushSubscriberCount, fetchAdminPins, fetchPushSubscribers, deletePushSubscriberDevice } from './api'
 import { deviceName } from './deviceName'
 import type { PushSubscriber } from './api'
 import { pinContext } from './pinContext'
@@ -33,20 +33,6 @@ import { AdminScreen } from './AdminScreen'
 // este navegador.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Clave de i18n y respaldo en español por estado. Un estado que esta tabla no
-// conozca se pinta tal cual en vez de quedarse en blanco: `PushState` crece
-// por otro lado y esta pantalla no debería romperse cuando lo haga.
-const PUSH_STATE_LABEL: Record<string, { key: string; fallback: string }> = {
-  unknown: { key: 'admin.push.state.unknown', fallback: 'Comprobando este dispositivo…' },
-  subscribed: { key: 'admin.push.state.subscribed', fallback: 'Este dispositivo recibe avisos' },
-  idle: { key: 'admin.push.state.idle', fallback: 'Este dispositivo no está suscrito' },
-  denied: { key: 'admin.push.state.denied', fallback: 'Bloqueadas en este navegador' },
-  unsupported: { key: 'admin.push.state.unsupported', fallback: 'Este navegador no las soporta' },
-  'ios-not-installed': { key: 'admin.push.state.iosNotInstalled', fallback: 'En iPhone hay que instalar la app primero' },
-  loading: { key: 'admin.push.state.loading', fallback: 'Activando…' },
-  error: { key: 'admin.push.state.error', fallback: 'No se pudo comprobar' },
-}
-
 export function BroadcastPanel() {
   const { t } = useTranslation()
   const { state: pushState } = usePushSubscription()
@@ -67,9 +53,9 @@ export function BroadcastPanel() {
   const [unsubscribing, setUnsubscribing] = useState<PushSubscriber | null>(null)
   const queryClient = useQueryClient()
 
-  const { data: stats } = useQuery({
-    queryKey: ['admin', 'stats'],
-    queryFn: fetchDashboardStats,
+  const { data: recipients = 0 } = useQuery({
+    queryKey: ['admin', 'push-subscriber-count'],
+    queryFn: fetchPushSubscriberCount,
   })
 
   const { data: subscribers } = useQuery({
@@ -84,16 +70,18 @@ export function BroadcastPanel() {
     enabled: pinSearch.trim().length >= 2 && !linkedPin,
   })
 
-  const recipients = stats?.pushSubscribers ?? 0
-  const stateLabel = PUSH_STATE_LABEL[pushState]
+  // El enlace de abajo solo dice si este dispositivo recibe o no: el detalle
+  // (bloqueadas, iPhone sin instalar…) lo enseña la tarjeta de Ajustes, a la que
+  // lleva.
+  const subscribed = pushState === 'subscribed'
   const ready = title.trim().length > 0 && body.trim().length > 0
 
   const removeDevice = async (sub: PushSubscriber) => {
-    if (!sub.endpoint) return
     try {
       await deletePushSubscriberDevice(sub.endpoint)
       showToast(`${sub.name ?? 'El dispositivo'} ya no recibirá avisos en ese aparato.`)
       await queryClient.invalidateQueries({ queryKey: ['admin', 'push-subscribers'] })
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'push-subscriber-count'] })
       await queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'No se pudo dar de baja el dispositivo.')
@@ -176,7 +164,7 @@ export function BroadcastPanel() {
           {showSubscribers && subscribers && (
             <ul className="m-0 list-none divide-y divide-neutral-100 border-t border-neutral-100 p-0 dark:divide-neutral-800 dark:border-neutral-800">
               {subscribers.map((sub) => (
-                <li key={sub.endpoint ?? `${sub.userId}-${sub.createdAt}`} className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5">
+                <li key={sub.endpoint}className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
                       {sub.name ?? 'Sin nombre'}
@@ -190,26 +178,18 @@ export function BroadcastPanel() {
                   <span className="hidden shrink-0 text-[11px] font-medium text-neutral-400 sm:block">
                     {deviceName(sub.userAgent)}
                   </span>
-                  {sub.endpoint && (
-                    <button
-                      type="button"
-                      onClick={() => setUnsubscribing(sub)}
-                      title={t('admin.unsubscribeDevice')}
-                      aria-label={`Dar de baja el dispositivo de ${sub.name ?? 'esta persona'}`}
-                      className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-xl text-neutral-400 transition-colors hover:bg-red-50 hover:text-[#D41F2D] dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                    >
-                      <BellOff size={15} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setUnsubscribing(sub)}
+                    title={t('admin.unsubscribeDevice')}
+                    aria-label={`Dar de baja el dispositivo de ${sub.name ?? 'esta persona'}`}
+                    className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-xl text-neutral-400 transition-colors hover:bg-red-50 hover:text-[#D41F2D] dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                  >
+                    <BellOff size={15} />
+                  </button>
                 </li>
               ))}
             </ul>
-          )}
-
-          {subscribers === null && (
-            <p className="border-t border-neutral-100 px-4 py-2.5 text-[11px] font-medium leading-snug text-neutral-400 dark:border-neutral-800">
-              {t('admin.seeWhoHint', { migration: '20260829000100' })}
-            </p>
           )}
         </div>
 
@@ -393,8 +373,8 @@ export function BroadcastPanel() {
         >
           <span
             className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${
-              pushState === 'subscribed'
-                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
+              subscribed
+                ?'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
                 : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'
             }`}
           >
@@ -402,7 +382,9 @@ export function BroadcastPanel() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold text-neutral-900 dark:text-white">
-              {stateLabel ? t(stateLabel.key, stateLabel.fallback) : pushState}
+              {subscribed
+                ? t('admin.push.state.subscribed', 'Este dispositivo recibe avisos')
+                : t('admin.push.state.idle', 'Este dispositivo no recibe avisos')}
             </span>
             <span className="block text-[11px] font-medium text-neutral-400">
               Pruébalo en tu dispositivo antes de enviar a todos.

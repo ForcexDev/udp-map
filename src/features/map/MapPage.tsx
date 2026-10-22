@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, Menu, MapPin, Search, Loader2, ChevronDown, Bell, Building2, DoorOpen } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
-import { useNotifications } from '@/features/notifications/useNotifications'
+import { useUnreadCount } from '@/features/notifications/useNotifications'
 import { AnimatePresence } from 'framer-motion'
 import { usePins } from '@/features/pins/usePins'
 import { searchRooms } from '@/shared/utils/roomSearch'
@@ -237,13 +237,7 @@ export function MapPage() {
   const setViewMode = useUIStore((s) => s.setViewMode)
   const openSidebar = useSidebarStore((s) => s.open)
   const openNotifications = useSidebarStore((s) => s.openNotifications)
-  const { data: notifications = [] } = useNotifications()
-  // Solo los personales. La campana abre la pestaña de avisos, y desde que los
-  // de `audience: 'admin'` se mudaron al panel, contarlos aquí prometía en la
-  // campana cosas que esa pestaña ya no enseña.
-  const unreadNotificationsCount = notifications.filter(
-    (n) => n.audience === 'personal' && !n.read_at,
-  ).length
+  const unreadNotificationsCount = useUnreadCount()
   const queryClient = useQueryClient()
 
   const handleSelectCampus = (id: string) => {

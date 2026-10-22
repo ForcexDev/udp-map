@@ -2,6 +2,7 @@ import { localizedName } from '@/shared/utils/localized'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog } from '@/shared/ui/Dialog'
+import { Switch } from '@/shared/ui/Switch'
 import { FACULTIES } from '@/shared/data/campusData'
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
@@ -176,18 +177,7 @@ export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }
                 })}
               </p>
             </div>
-            <button
-              id="forum-official"
-              type="button"
-              role="switch"
-              aria-checked={isOfficial}
-              onClick={() => setIsOfficial((value) => !value)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                isOfficial ? 'bg-blue-600' : 'bg-stone-300 dark:bg-stone-600'
-              }`}
-            >
-              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isOfficial ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
+            <Switch id="forum-official" checked={isOfficial} onChange={setIsOfficial} tone="blue" />
           </div>
         )}
 

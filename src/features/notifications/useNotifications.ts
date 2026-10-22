@@ -6,14 +6,13 @@ import type { AppNotification, NotificationCategory } from '@/shared/types/datab
 import {
   fetchNotifications,
   markCategoryRead,
-  markNotificationRead,
+  setNotificationRead,
   markAllNotificationsRead,
-  toggleNotificationRead,
   deleteNotification,
   deleteAllNotifications,
 } from './api'
 
-export function useNotifications() {
+function useNotificationsQuery<T = AppNotification[]>(select?: (list: AppNotification[]) => T) {
   const userId = useAuthStore((state) => state.user?.id)
   const role = useAuthStore((state) => state.role)
   return useQuery({
@@ -21,10 +20,25 @@ export function useNotifications() {
     queryFn: () => userId ? fetchNotifications(userId, role) : [],
     enabled: Boolean(userId),
     staleTime: 30_000,
+    select,
   })
 }
 
-export function useNotificationRealtime(onNewNotification?: (notification: AppNotification) => void) {
+export function useNotifications() {
+  return useNotificationsQuery()
+}
+
+// Los avisos de `audience: 'admin'` no cuentan: son trabajo del equipo y viven en
+// /admin/moderacion, no en la bandeja personal que anuncia este número.
+const countUnreadPersonal = (list: AppNotification[]) =>
+  list.filter((n) => n.audience === 'personal' && !n.read_at).length
+
+/** El número de la campana: comparte caché con `useNotifications`. */
+export function useUnreadCount(): number {
+  return useNotificationsQuery(countUnreadPersonal).data ?? 0
+}
+
+export function useNotificationRealtime(onNewNotification: (notification: AppNotification) => void) {
   const userId = useAuthStore((state) => state.user?.id)
   const queryClient = useQueryClient()
   useEffect(() => {
@@ -37,7 +51,7 @@ export function useNotificationRealtime(onNewNotification?: (notification: AppNo
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         (payload) => {
           void queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
-          if (payload.eventType === 'INSERT' && payload.new && onNewNotification) {
+          if (payload.eventType === 'INSERT' && payload.new) {
             onNewNotification(payload.new as AppNotification)
           }
         },
@@ -75,91 +89,71 @@ async function patchCache(
   return snapshot as Snapshot
 }
 
-function restore(queryClient: QueryClient, snapshot: Snapshot | undefined) {
-  if (!snapshot) return
-  for (const [key, value] of snapshot) queryClient.setQueryData(key, value)
-}
-
-export function useMarkNotificationRead() {
+/**
+ * Una mutación de la bandeja con su parche optimista. Con `enabled` en falso no
+ * hace nada, ni en el servidor ni en la caché: sin usuario, pintar la bandeja
+ * vacía o leída sería enseñar un cambio que no ocurrió y que solo se deshace
+ * cuando el refetch lo devuelve.
+ */
+function useInboxMutation<V>(
+  run: (vars: V) => Promise<void>,
+  patch: (list: AppNotification[], vars: V) => AppNotification[],
+  enabled = true,
+) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: markNotificationRead,
-    onMutate: (id: string) => patchCache(queryClient, (list) =>
-      list.map((n) => (n.id === id ? { ...n, read_at: n.read_at ?? new Date().toISOString() } : n)),
-    ),
-    onError: (_error, _id, snapshot) => restore(queryClient, snapshot),
+    mutationFn: (vars: V) => (enabled ? run(vars) : Promise.resolve()),
+    onMutate: (vars: V) => (enabled ? patchCache(queryClient, (list) => patch(list, vars)) : Promise.resolve(undefined)),
+    onError: (_error, _vars, snapshot) => {
+      for (const [key, value] of snapshot ?? []) queryClient.setQueryData(key, value)
+    },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   })
 }
 
-export function useToggleNotificationRead() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, readAt }: { id: string; readAt: string | null }) => toggleNotificationRead(id, readAt),
-    onMutate: ({ id, readAt }) => patchCache(queryClient, (list) =>
-      list.map((n) => (n.id === id ? { ...n, read_at: readAt ? null : new Date().toISOString() } : n)),
-    ),
-    onError: (_error, _vars, snapshot) => restore(queryClient, snapshot),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
-  })
+export function useSetNotificationRead() {
+  return useInboxMutation(
+    ({ id, read }: { id: string; read: boolean }) => setNotificationRead(id, read),
+    (list, { id, read }) => list.map((n) => (n.id === id
+      ? { ...n, read_at: read ? n.read_at ?? new Date().toISOString() : null }
+      : n)),
+  )
 }
 
 export function useMarkAllNotificationsRead() {
   const userId = useAuthStore((state) => state.user?.id)
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => userId ? markAllNotificationsRead(userId) : Promise.resolve(),
-    onMutate: () => userId
-      ? patchCache(queryClient, (list) => {
-          const now = new Date().toISOString()
-          return list.map((n) => (n.read_at ? n : { ...n, read_at: now }))
-        })
-      : Promise.resolve(undefined),
-    onError: (_error, _vars, snapshot) => restore(queryClient, snapshot),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
-  })
+  return useInboxMutation<void>(
+    () => markAllNotificationsRead(userId!),
+    (list) => {
+      const now = new Date().toISOString()
+      return list.map((n) => (n.read_at ? n : { ...n, read_at: now }))
+    },
+    Boolean(userId),
+  )
 }
 
 export function useDeleteNotification() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: deleteNotification,
-    onMutate: (id: string) => patchCache(queryClient, (list) => list.filter((n) => n.id !== id)),
-    onError: (_error, _id, snapshot) => restore(queryClient, snapshot),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
-  })
+  return useInboxMutation(deleteNotification, (list, id: string) => list.filter((n) => n.id !== id))
 }
 
 export function useDeleteAllNotifications() {
   const userId = useAuthStore((state) => state.user?.id)
   const role = useAuthStore((state) => state.role)
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => userId ? deleteAllNotifications(userId, role) : Promise.resolve(),
-    // Sin `userId` la mutación no borra nada, así que tampoco puede pintar la
-    // bandeja vacía: sería enseñar una pérdida que no ocurrió y que solo se
-    // deshace cuando el refetch la devuelve.
-    onMutate: () => userId
-      ? patchCache(queryClient, (list) => list.filter((n) => n.audience !== 'personal'))
-      : Promise.resolve(undefined),
-    onError: (_error, _vars, snapshot) => restore(queryClient, snapshot),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
-  })
+  return useInboxMutation<void>(
+    () => deleteAllNotifications(userId!, role),
+    (list) => list.filter((n) => n.audience !== 'personal'),
+    Boolean(userId),
+  )
 }
 
 export function useMarkCategoryRead() {
   const userId = useAuthStore((state) => state.user?.id)
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (category: NotificationCategory) =>
-      userId ? markCategoryRead(userId, category) : Promise.resolve(),
-    onMutate: (category: NotificationCategory) => userId
-      ? patchCache(queryClient, (list) => {
-          const now = new Date().toISOString()
-          return list.map((n) => (n.category === category && !n.read_at ? { ...n, read_at: now } : n))
-        })
-      : Promise.resolve(undefined),
-    onError: (_error, _vars, snapshot) => restore(queryClient, snapshot),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
-  })
+  return useInboxMutation(
+    (category: NotificationCategory) => markCategoryRead(userId!, category),
+    (list, category) => {
+      const now = new Date().toISOString()
+      return list.map((n) => (n.category === category && !n.read_at ? { ...n, read_at: now } : n))
+    },
+    Boolean(userId),
+  )
 }

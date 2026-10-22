@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Smartphone } from 'lucide-react'
-import type { NotificationCategory, NotificationPreference } from '@/shared/types/database'
+import type { NotificationPreference } from '@/shared/types/database'
 import { useAuthStore } from '@/features/auth/authStore'
+import { Switch } from '@/shared/ui/Switch'
 import { notificationLook } from './notificationMeta'
 import {
   TUNABLE_CATEGORIES,
@@ -107,13 +108,13 @@ export function NotificationPreferences() {
                     {LABELS[category] ?? category}
                   </span>
 
-                  <Toggle
-                    on={preference.in_app}
+                  <Switch
+                    checked={preference.in_app}
                     label={t('notifications.channelAppFor', { category: LABELS[category], defaultValue: `${LABELS[category]} en la app` })}
                     onChange={(on) => save.mutate({ ...preference, in_app: on })}
                   />
-                  <Toggle
-                    on={preference.push}
+                  <Switch
+                    checked={preference.push}
                     // Sin el aviso en la app no hay nada que mandar al teléfono.
                     // Se deshabilita en vez de dejar pulsar algo que la base va
                     // a rechazar.
@@ -137,37 +138,3 @@ export function NotificationPreferences() {
     </div>
   )
 }
-
-function Toggle({
-  on,
-  onChange,
-  label,
-  disabled,
-}: {
-  on: boolean
-  onChange: (on: boolean) => void
-  label: string
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      disabled={disabled}
-      onClick={() => onChange(!on)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
-        on ? 'bg-[#C22B38] dark:bg-[#D93846]' : 'bg-stone-300 dark:bg-stone-600'
-      } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-    >
-      <span
-        className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform ${
-          on ? 'translate-x-5' : 'translate-x-0'
-        }`}
-      />
-    </button>
-  )
-}
-
-export type { NotificationCategory }

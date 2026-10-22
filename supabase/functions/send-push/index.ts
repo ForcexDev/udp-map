@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { isAuthorized, supabase } from '../_shared/auth.ts'
 import {
   type ClaimedDelivery,
   type DeliveryClose,
@@ -9,7 +9,6 @@ import {
   parseNotificationId,
   runWithConcurrency,
 } from '../_shared/pushQueue.ts'
-import { buildDeclarativePayload, parsePayloadFormat } from '../_shared/pushPayload.ts'
 import {
   MAX_ATTEMPTS,
   MAX_PLAINTEXT_BYTES,
@@ -26,18 +25,6 @@ import {
 // ni en los tests, de ahí el `| undefined` y el typeof antes de usarlo.
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void } | undefined
 
-// Sin estas dos no hay nada que hacer: fallar al cargar el módulo
-// con un mensaje claro, en vez de un `undefined` que explota más adelante.
-function requireEnv(name: string): string {
-  const value = Deno.env.get(name)
-  if (!value) throw new Error(`Falta la variable de entorno ${name}`)
-  return value
-}
-
-const supabaseUrl = requireEnv('SUPABASE_URL')
-const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
-// Opcional: isAuthorized ya comprueba que exista antes de compararlo.
-const cronSecret = Deno.env.get('CRON_SECRET')
 const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
 const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
 // El `sub` del JWT se queda como en eba61ee, que es lo que hoy entrega en
@@ -61,19 +48,6 @@ if (vapidSubject !== rawVapidSubject) {
 const configProblem = validateVapidKeys(vapidPublicKey, vapidPrivateKey)
 
 const appOrigin = new URL(Deno.env.get('APP_ORIGIN') || 'https://udp-map.vercel.app').origin
-
-// Qué payload viaja al servicio push. El defecto es el híbrido, que es lo que hoy
-// entrega en iPhone; 'declarative' es el experimento de Push 6 y solo se activa
-// con el secreto. Se lee una vez al cargar: cambiarlo es `supabase secrets set`
-// y una instancia nueva, no algo que cambie entre dos entregas de una pasada.
-const { format: payloadFormat, warning: payloadFormatWarning } = parsePayloadFormat(
-  Deno.env.get('PUSH_PAYLOAD_FORMAT'),
-)
-if (payloadFormatWarning) console.warn(`[send-push] ${payloadFormatWarning}`)
-
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
-})
 
 // Una sola instancia: la caché de cabeceras VAPID tiene que sobrevivir entre
 // entregas para que reutilizar el JWT tenga algún efecto.
@@ -113,26 +87,6 @@ async function sendWebPushNotification(
   }
 }
 
-interface DeliveryRow {
-  id: string
-  attempts: number
-  notification: {
-    id: string
-    title: string
-    body: string
-    url: string
-    type: string
-    category: string
-    payload: Record<string, unknown>
-  }
-  subscription: {
-    id: string
-    endpoint: string
-    p256dh: string
-    auth: string
-  }
-}
-
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:4173',
@@ -158,28 +112,6 @@ function json(cors: Record<string, string>, body: unknown, status = 200) {
     status,
     headers: { ...cors, 'content-type': 'application/json; charset=utf-8' },
   })
-}
-
-// Quién llama. Se comprueba igual que siempre; solo cambia que ahora se devuelve
-// quién es, porque al cron hay que contestarle antes de los 5 s de pg_net y al
-// panel hay que esperarle el resultado.
-async function isAuthorized(req: Request): Promise<'cron' | 'admin' | null> {
-  const providedSecret = req.headers.get('x-cron-secret')
-  if (cronSecret && providedSecret === cronSecret) return 'cron'
-
-  const authorization = req.headers.get('authorization')
-  if (!authorization?.startsWith('Bearer ')) return null
-
-  const token = authorization.slice('Bearer '.length)
-  const { data: { user } } = await supabase.auth.getUser(token)
-  if (!user) return null
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-  return profile?.role === 'admin' ? 'admin' : null
 }
 
 // Cuántas entregas se reclaman de una vez, y cuántos envíos viajan a la vez.
@@ -239,30 +171,6 @@ interface QueueSummary {
   diagnosticsOmitted: number
 }
 
-// El reclamo devuelve columnas planas; el resto del archivo (URL de navegación,
-// payload) sigue leyendo la forma anidada de siempre.
-function toDeliveryRow(claimed: ClaimedDelivery): DeliveryRow {
-  return {
-    id: claimed.delivery_id,
-    attempts: claimed.attempts,
-    notification: {
-      id: claimed.notification_id,
-      title: claimed.title,
-      body: claimed.body,
-      url: claimed.url,
-      type: claimed.type,
-      category: claimed.category,
-      payload: claimed.payload,
-    },
-    subscription: {
-      id: claimed.subscription_id,
-      endpoint: claimed.endpoint,
-      p256dh: claimed.p256dh,
-      auth: claimed.auth,
-    },
-  }
-}
-
 // Un único sitio para dejar lista una entrega: el cierre sale del mismo
 // `attempts` que se reclamó, que es lo que hace de fencing en la base.
 function settle(
@@ -298,7 +206,22 @@ async function deliver(
     return settle(claimed, { type: 'terminal', reason: exhaustedReason(claimed.attempts) })
   }
 
-  const delivery = toDeliveryRow(claimed)
+  // El reclamo devuelve columnas planas. Esta forma anidada es la que leen la URL
+  // de navegación y el payload, cuyo texto fija golden.test.ts: no se reescriben.
+  // Las columnas siguen planas en SQL porque un send-push anterior (20eee7e, la
+  // vuelta atrás de ROADMAP §17) las lee así.
+  const delivery = {
+    notification: {
+      id: claimed.notification_id,
+      title: claimed.title,
+      body: claimed.body,
+      url: claimed.url,
+      type: claimed.type,
+      category: claimed.category,
+      payload: claimed.payload,
+    },
+    subscription: { endpoint: claimed.endpoint, p256dh: claimed.p256dh, auth: claimed.auth },
+  }
 
   let navigateUrl = `${appOrigin}/`
   try {
@@ -318,11 +241,7 @@ async function deliver(
   // se toca sin probar allí. Con service worker instalado, quién pinta la
   // notificación en iOS 18.4+ no está claro (WebKit y el W3C se contradicen; ver
   // docs/PUSH_REWORK_REVIEW.md), así que el SW sigue necesitando los campos planos.
-  // Con PUSH_PAYLOAD_FORMAT=declarative viaja solo el bloque, sin planos (ver
-  // _shared/pushPayload.ts); sin el secreto, sale lo de siempre.
-  const payload = payloadFormat === 'declarative'
-    ? JSON.stringify(buildDeclarativePayload(delivery.notification, navigateUrl, appOrigin))
-    : JSON.stringify({
+  const payload = JSON.stringify({
         web_push: 8030,
         notification: {
           title: delivery.notification.title || 'UDP Map',
@@ -610,8 +529,6 @@ async function drainQueue(
     return {
       status: 200,
       body: {
-        engine: 'webcrypto-aes128gcm-v1',
-        payloadFormat,
         processed: summary.processed,
         sent: summary.sent,
         failed: summary.failed,

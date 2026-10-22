@@ -544,6 +544,8 @@ que nadie mira nunca da error. La baja queda registrada como
 La misma migración añade `admin_send_test_push_to_self()`. Existe porque probar
 el push obligaba a usar la difusión, que recorre **todas** las suscripciones:
 comprobar "¿me llega a mí?" le hacía sonar el teléfono a la universidad entera.
+Su `dedupe_key` lleva un uuid desde `20261021000100`: con el segundo de la época,
+dos pruebas en el mismo segundo chocaban y la segunda no se creaba.
 
 ### La cola de entregas push
 
@@ -681,9 +683,12 @@ Desde el SQL Editor funciona: el SQL Editor corre como `postgres` y sin JWT.
 ### Ver qué servicio push rechaza
 
 `admin_push_delivery_stats(días)` (migración `20261021000100`), solo admin:
-agrupa las entregas creadas en los últimos `días` (por defecto 7, acotado a 1–90) por
-`push_host` y `status`, con `total`, la fecha de la más reciente (`last_at`) y el
-último error no nulo (`last_error`). Una entrega sin host sale como `(sin host)`.
+agrupa las entregas creadas en los últimos `días` (por defecto 7, acotado a 1–90)
+en una fila por host (`host`), con lo que hay en cada estado (`sent`, `failed`,
+`expired`, `pending`), la fecha de la más reciente (`last_at`) y el último error no
+nulo (`last_error`). Los que más fallan van primero. Una entrega sin host sale como
+`(sin host)`. Se agrupa en SQL y no en el cliente para que la pantalla pinte las
+filas tal cual.
 
 `last_error` sale con cualquier URL recortada a su host: las entregas anteriores a
 `4eae308` podían guardar el endpoint entero, que es una URL de capacidad.
@@ -969,7 +974,7 @@ sección 12 cuenta las dos que no lo hacían y ya se corrigieron.
 | `admin_broadcast_push_notification(t, c, url)` | admin | Difunde un aviso a todo el que tenga push activado; `url` debe ser una ruta interna, el título tiene tope de 60 caracteres y el cuerpo de 180. Devuelve a cuántas personas les creó el aviso |
 | `admin_send_test_push_to_self()` | admin | La misma tubería, pero solo a quien la llama |
 | `admin_push_subscribers()` | admin | Quién recibe los avisos push, y desde qué dispositivo |
-| `admin_push_delivery_stats(días)` | admin | Entregas de los últimos `días` (1–90, 7 por defecto) por host del servicio push y estado, con el último error. Con más de 30 días solo los `failed` están completos: la purga borra antes los `sent` y `expired` |
+| `admin_push_delivery_stats(días)` | admin | Entregas de los últimos `días` (1–90, 7 por defecto), una fila por host del servicio push con cuántas hay en cada estado y el último error. Con más de 30 días solo los `failed` están completos: la purga borra antes los `sent` y `expired` |
 | `admin_delete_push_subscription(endpoint)` | admin | Da de baja un dispositivo concreto |
 | `admin_set_capability(usuario, pieza, sí/no)` | admin | Concede o quita una pieza de moderación |
 | `admin_user_capabilities(usuario)` | admin | Qué piezas tiene concedidas alguien |
@@ -1172,9 +1177,7 @@ Edge Functions en `supabase/functions/`:
   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (un `mailto:` se usa tal cual; cualquier
   otro valor, o ninguno, firma con el `mailto:` de respaldo, igual que la versión
   que entrega en iPhone), `APP_ORIGIN` (opcional; por defecto
-  `https://udp-map.vercel.app`) y `PUSH_PAYLOAD_FORMAT` (opcional: `hybrid`, el
-  por defecto, que es el formato que entrega en iPhone, o `declarative`; ver
-  «El contrato de `send-push`» más abajo).
+  `https://udp-map.vercel.app`).
   Acepta un cuerpo JSON opcional `{ "notificationId": "<uuid>" }`, que solo cuenta si
   llama un administrador (el cron lo ignora): reclama únicamente las entregas de ese
   aviso, y la respuesta añade `notification.deliveries` con el conteo por estado. El
@@ -1198,8 +1201,7 @@ el token y exige rol admin.
 
 ### El contrato de `send-push`
 
-Sale de `send-push/index.ts` y `_shared/pushPayload.ts`; si cambia alguno de los dos,
-cambia esto.
+Sale de `send-push/index.ts`; si cambia, cambia esto.
 
 **Códigos de respuesta**, en el orden en que se comprueban:
 
@@ -1224,9 +1226,6 @@ cuando en realidad vació la cola entera.
 
 **La respuesta 200**, JSON:
 
-- `engine` (`webcrypto-aes128gcm-v1`) y **`payloadFormat`** (`hybrid` o
-  `declarative`): el formato con el que viajó la pasada, para saber qué valor del
-  secreto está vivo sin ir a mirarlo.
 - `processed`, `sent`, `failed`, `expiredSubscriptions`, `batches`, `skipped` y
   `fenced`: los contadores de la pasada.
 - `diagnostics` (una entrada por entrega procesada, hasta 200; `diagnosticsOmitted`
@@ -1238,62 +1237,18 @@ cuando en realidad vació la cola entera.
   tumbarla. Quien lee tiene que mirar `notification.error` antes de fiarse de
   `deliveries`.
 
-**El payload.** Los dos formatos pasan por el mismo cifrado, el mismo tope
-(`MAX_PLAINTEXT_BYTES`, 3993 B; si se pasa, la entrega se cierra `failed` con
-«payload demasiado grande»), el mismo `TTL`, `Urgency` y VAPID. Cambia solo lo que va
-dentro:
+**El payload** es el híbrido, el que entrega en iPhone: el bloque `web_push: 8030` /
+`notification` más los campos planos de la raíz (`notificationId`, `title`, `body`,
+`url`, `type`, `category`, `payload`) y `payload` también dentro de
+`notification.data`. Va literal en `index.ts`, bajo el cerrojo de `golden.test.ts`.
+Si pasa de `MAX_PLAINTEXT_BYTES` (3993 B), la entrega se cierra `failed` con
+«payload demasiado grande»; con los topes de título y cuerpo de cada aviso no se
+acerca.
 
-- **`hybrid`**, el de siempre y el que entrega en iPhone: el bloque `web_push: 8030` /
-  `notification` más los campos planos de la raíz (`notificationId`, `title`, `body`,
-  `url`, `type`, `category`, `payload`) y `payload` también dentro de
-  `notification.data`. Sigue en `index.ts`, literal.
-- **`declarative`**: solo el bloque, sin campos planos y sin `payload` en ningún
-  sitio. Lo construye `pushPayload.ts`, con los mismos valores y respaldos que el
-  bloque `notification` del híbrido:
-
-  ```json
-  {
-    "web_push": 8030,
-    "notification": {
-      "title": "<título; «UDP Map» si viene vacío>",
-      "body": "<cuerpo; «Tienes una nueva notificación.» si viene vacío>",
-      "navigate": "<URL absoluta de la app con ?notification=<id>; «<APP_ORIGIN>/» si el destino es de otro origen>",
-      "icon": "<APP_ORIGIN>/pwa-192x192.png",
-      "lang": "es",
-      "tag": "<id del aviso>",
-      "data": {
-        "url": "<destino tal cual; «/» si viene vacío>",
-        "notificationId": "<id del aviso>",
-        "type": "<tipo>",
-        "category": "<categoría>"
-      }
-    }
-  }
-  ```
-
-  Le falta, respecto al bloque híbrido, solo `data.payload`: el navegador no lo usa y
-  en un payload sin campos planos cada byte cuenta contra el tope.
-
-**Elegir el formato: `PUSH_PAYLOAD_FORMAT`.**
-
-- Ausente, vacío o `hybrid` (sin distinguir mayúsculas ni espacios sobrantes): híbrido.
-- `declarative`: declarativo.
-- **Cualquier otro valor cae en `hybrid`**, con un `console.warn` en el log de la
-  función (`PUSH_PAYLOAD_FORMAT="…" no es 'hybrid' ni 'declarative'; se envía el
-  payload híbrido.`). A propósito: un secreto mal escrito no puede cambiar lo que
-  viaja a los teléfonos, pero tampoco puede pasar callado, porque quien lo puso
-  creerá que está probando `declarative`. `payloadFormat` en la respuesta lo
-  deja a la vista.
-- Se lee **una vez, al cargar la función**. Cambiarlo exige
-  `npx supabase secrets set PUSH_PAYLOAD_FORMAT=declarative` (o
-  `npx supabase secrets unset PUSH_PAYLOAD_FORMAT` para volver al híbrido) y una
-  instancia nueva de la función; no cambia entre dos entregas de una pasada.
-- **Está apagado por defecto y solo se activa con el service worker nuevo adoptado y
-  probado en un iPhone.** El `push-sw.js` anterior leía solo los campos planos, que el
-  declarativo no trae: un teléfono que aún lo tenga en caché mostraría los textos
-  genéricos. Y si en iOS 18.4+ pinta la notificación el bloque declarativo o el
-  service worker, no se sabe sin un dispositivo. El orden del despliegue está en
-  `docs/ROADMAP.md` (Push 6).
+Hubo un formato declarativo puro tras el secreto `PUSH_PAYLOAD_FORMAT` (Push 6,
+`fc32c71`), apagado por defecto. Se quitó sin llegar a activarse: el 37 % que
+ahorraba no compraba nada con estos topes, y mantener dos formatos para siempre
+era peor que recuperarlo de ese commit si algún día hace falta.
 
 ---
 
@@ -1490,11 +1445,15 @@ exige un administrador con sesión. La consulta equivalente se escribe a mano:
 -- Qué trabajos hay programados, y con qué comando
 select jobname, schedule, active, left(command, 80) from cron.job order by jobname;
 
--- Entregas de la última semana por servicio push y estado
-select coalesce(push_host, '(sin host)') as push_host, status, count(*)
+-- Entregas de la última semana por servicio push, una fila por host
+select coalesce(push_host, '(sin host)') as host,
+       count(*) filter (where status = 'sent')    as sent,
+       count(*) filter (where status = 'failed')  as failed,
+       count(*) filter (where status = 'expired') as expired,
+       count(*) filter (where status = 'pending') as pending
 from public.notification_push_deliveries
 where created_at >= now() - interval '7 days'
-group by 1, 2 order by 1, 2;
+group by 1 order by 3 desc, 1;
 
 -- Lo que el cron haría ahora mismo (cuenta lo que borró / lo que creó)
 select public.prune_push_history();

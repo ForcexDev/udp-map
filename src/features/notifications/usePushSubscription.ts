@@ -7,10 +7,7 @@ import {
   unsubscribeFromPush,
   usePushStore,
   pushApiSupported,
-  type PushState,
 } from './pushStore'
-
-export type { PushState }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El hook ya no GUARDA nada: solo lee el store y dispara la comprobación.

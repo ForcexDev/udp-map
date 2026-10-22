@@ -103,12 +103,8 @@ self.addEventListener('notificationclick', (event) => {
   // El destino se resuelve SIEMPRE contra nuestro origen. Si el payload trae
   // una URL absoluta a otro sitio, `new URL(url, origin)` la respetaría y el
   // toque en la notificación abriría una web ajena.
-  const requested = event.notification.data?.url || '/'
-  const parsed = new URL(requested, self.location.origin)
-  const target = new URL(
-    parsed.origin === self.location.origin ? parsed.href : '/',
-    self.location.origin,
-  )
+  let target = new URL(event.notification.data?.url || '/', self.location.origin)
+  if (target.origin !== self.location.origin) target = new URL('/', self.location.origin)
   const notificationId = event.notification.data?.notificationId
   if (notificationId) target.searchParams.set('notification', notificationId)
 

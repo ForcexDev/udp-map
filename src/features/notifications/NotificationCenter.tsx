@@ -8,8 +8,7 @@ import { useAuthStore } from '@/features/auth/authStore'
 import { relativeTime, relativeTimeKey } from '@/shared/utils/datetime'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import {
-  useMarkNotificationRead,
-  useToggleNotificationRead,
+  useSetNotificationRead,
   useMarkAllNotificationsRead,
   useDeleteNotification,
   useDeleteAllNotifications,
@@ -136,8 +135,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
   const user = useAuthStore((state) => state.user)
   const { data: notifications = [], isLoading, isError, refetch } = useNotifications()
 
-  const markRead = useMarkNotificationRead()
-  const toggleRead = useToggleNotificationRead()
+  const setRead = useSetNotificationRead()
   const markAll = useMarkAllNotificationsRead()
   const deleteSingle = useDeleteNotification()
   const deleteAll = useDeleteAllNotifications()
@@ -189,7 +187,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
   }
 
   const openNotification = (notification: AppNotification) => {
-    if (!notification.read_at) markRead.mutate(notification.id)
+    if (!notification.read_at) setRead.mutate({ id: notification.id, read: true })
     if (notification.url && notification.url !== '/') navigate(notification.url)
     onNavigate()
   }
@@ -296,7 +294,7 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
                         key={notification.id}
                         notification={notification}
                         onOpen={openNotification}
-                        onToggleRead={(id, readAt) => toggleRead.mutate({ id, readAt })}
+                        onToggleRead={(id, readAt) => setRead.mutate({ id, read: !readAt })}
                         onDelete={(id) => deleteSingle.mutate(id)}
                       />
                     ))}

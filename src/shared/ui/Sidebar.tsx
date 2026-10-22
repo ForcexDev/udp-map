@@ -15,7 +15,7 @@ import { CAMPUSES } from '@/shared/data/campusData'
 import { useFaculties } from '@/shared/data/facultyStore'
 import { ThemeSwitcher } from '@/shared/ui/ThemeSwitcher'
 import { NotificationCenter } from '@/features/notifications/NotificationCenter'
-import { useNotifications } from '@/features/notifications/useNotifications'
+import { useUnreadCount } from '@/features/notifications/useNotifications'
 
 export function Sidebar() {
   const { t, i18n } = useTranslation()
@@ -34,13 +34,7 @@ export function Sidebar() {
   const signOut = useAuthStore((s) => s.signOut)
 
   const [searchQuery, setSearchQuery] = useState('')
-  const { data: notifications = [] } = useNotifications()
-  // Solo los personales: los de `audience: 'admin'` se cuentan en el panel, y
-  // marcar la pestaña de avisos por trabajo de moderación mandaba a buscar en
-  // una lista donde ya no aparecen.
-  const unreadNotifications = notifications.filter(
-    (notification) => notification.audience === 'personal' && !notification.read_at,
-  ).length
+  const unreadNotifications = useUnreadCount()
   const langActiveIndex = i18n.language.startsWith('en') ? 1 : 0
 
   // Group faculties by campus, filtered by search

@@ -100,7 +100,6 @@ export default defineConfig({
     updateInfoPlugin(APP_VERSION),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.svg', 'push-sw.js'],
       manifest: {
         name: 'UDP Map',
         short_name: 'UDP Map',

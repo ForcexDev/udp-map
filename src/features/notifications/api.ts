@@ -74,31 +74,15 @@ export async function fetchNotifications(userId: string, role: Role): Promise<Ap
   return (data ?? []) as AppNotification[]
 }
 
-export async function markNotificationRead(notificationId: string): Promise<void> {
+export async function setNotificationRead(notificationId: string, read: boolean): Promise<void> {
   if (!supabase) {
-    demoRead.add(notificationId)
+    if (read) demoRead.add(notificationId)
+    else demoRead.delete(notificationId)
     return
   }
   const { error } = await supabase
     .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .eq('id', notificationId)
-  if (error) throw error
-}
-
-export async function toggleNotificationRead(notificationId: string, currentReadAt: string | null): Promise<void> {
-  if (!supabase) {
-    if (currentReadAt) {
-      demoRead.delete(notificationId)
-    } else {
-      demoRead.add(notificationId)
-    }
-    return
-  }
-  const nextReadAt = currentReadAt ? null : new Date().toISOString()
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read_at: nextReadAt })
+    .update({ read_at: read ? new Date().toISOString() : null })
     .eq('id', notificationId)
   if (error) throw error
 }
@@ -240,7 +224,7 @@ export async function markNotificationFromUrl(): Promise<void> {
   const notificationId = url.searchParams.get('notification')
   if (!notificationId) return
 
-  await markNotificationRead(notificationId)
+  await setNotificationRead(notificationId, true)
   url.searchParams.delete('notification')
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
 }
