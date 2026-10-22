@@ -3,7 +3,8 @@
 Referencia para orientarse en el código: qué hay en cada carpeta, qué hace cada
 archivo y dónde tocar para cada tipo de cambio. Lo escribieron agentes que
 leyeron el repositorio completo el **2026-10-21** (versión 0.8.0) y se comprobó
-contra el código ese mismo día.
+contra el código ese mismo día. El 2026-10-22 se puso al día con el trabajo de
+Push 3–6 (migraciones `000100` y `000200`, cliente, panel y `pushPayload`).
 
 > **Este mapa no reemplaza a nadie.** Las reglas están en [`CLAUDE.md`](../CLAUDE.md),
 > el plan en [ROADMAP.md](ROADMAP.md), el esquema en [DATABASE.md](DATABASE.md) y el
@@ -98,7 +99,7 @@ navegador ──► src/app/main.tsx ── providers (Google OAuth, react-query
 | `build` | `tsc --noEmit && vite build` |
 | `preview` | Sirve `dist` en el 4173 |
 | `typecheck` | `tsc --noEmit` |
-| `test` / `test:watch` | Vitest (jsdom). 40 archivos de test, unos 290 casos |
+| `test` / `test:watch` | Vitest (jsdom). 50 archivos de test, unos 460 casos, contando los de `supabase/functions/_shared` |
 | `lint` | `eslint .` (CI usa este; `CLAUDE.md` pide `npx eslint src`, que es un subconjunto) |
 | `check:i18n` | Compara claves y variables ES/EN de `i18n.ts`. **No corre en CI** |
 | `gen:agents` | Regenera los derivados de `CLAUDE.md`; `-- --check` comprueba sin escribir. **No corre en CI** |
@@ -217,6 +218,7 @@ esquema, cámbialos a la par.
 | | `eventState.ts` | Fase de un evento (`upcoming`, `live`, `ended`…) | events, map, pins, profile |
 | | `datetime.ts` | Fechas relativas como clave i18n + valor | 8 componentes |
 | Datos | `dbError.ts` | Separa los errores de base escritos para el usuario (SQLSTATE `P0001`) de los técnicos | events, map, mapping, pins |
+| | `rpcErrors.ts` | `isMissingFunction`: ¿la RPC falló porque falta aplicar una migración? Mira `42883`, `PGRST202` y el texto de una **función** que no existe; una columna o tabla que falta no cuenta | admin, notifications |
 | | `localized.ts` | `localizedName` según idioma | por todas partes |
 | | `vote.ts` | Transición de voto idempotente | forum, pins |
 | | `rateLimit.ts` | Reflejo en cliente del límite de 10 pines por día UTC | pins |
@@ -356,7 +358,7 @@ respuestas a un nivel y antepone `@autor`), `ForumPage.tsx` (502),
 
 | Archivo | Qué hace |
 |---|---|
-| `auth/authStore.ts` | Sesión: Google por ID token (`@react-oauth/google`) o por OAuth, más la sesión demo en `localStorage`. Cierra la sesión a correos que no sean `@mail.udp.cl`. `loading` sigue en `true` hasta conocer el rol, para que `AdminLayout` no rebote antes de tiempo. `signOut` borra la suscripción push |
+| `auth/authStore.ts` | Sesión: Google por ID token (`@react-oauth/google`) o por OAuth, más la sesión demo en `localStorage`. Cierra la sesión a correos que no sean `@mail.udp.cl`. `loading` sigue en `true` hasta conocer el rol, para que `AdminLayout` no rebote antes de tiempo. `signOut` da de baja el push del dispositivo con `disablePushOnThisDevice` y cierra sesión aunque eso falle |
 | `auth/permissions.ts` | `can(action)`: matriz de rol mínimo (`guest < student < moderator < admin`) e `isUdpEmail`. Solo decide qué dibujar; no conoce las capacidades por persona |
 | `auth/useGuard.ts` | `guard(action)`: si no hay permiso, abre el `LoginModal` |
 | `auth/LoginModal.tsx` | Botón de Google; en demo ofrece entrar como estudiante o admin |
@@ -367,29 +369,30 @@ respuestas a un nivel y antepone `@autor`), `ForumPage.tsx` (502),
 | `profile/components/*` | 12 piezas de la vista de perfil (`ProfileView`, `BadgesGrid`, `LeaderboardTable`, `MyEventsList`, `ReportCard`…) |
 | `about/AboutModal.tsx` | El modal "Sobre nosotros" con el equipo |
 
-### 6.6 `notifications` y `moderation` (19 archivos)
+### 6.6 `notifications` y `moderation` (23 archivos)
 
 | Archivo | Qué hace |
 |---|---|
-| `notifications/api.ts` | Leer, marcar, borrar avisos; registrar o borrar la suscripción push (RPC `register_push_subscription`); `markNotificationFromUrl` |
-| `notifications/pushStore.ts` | El estado del push fuera de React, una sola instancia. `unknown` pinta un esqueleto, **nunca** "Activar" |
-| `notifications/usePushSubscription.ts` | Hook fino sobre el store y `usePushForegroundSync` |
+| `notifications/api.ts` | Leer, marcar, borrar avisos; registrar o borrar la suscripción push (RPC `register_push_subscription`, con `p_old_endpoint` y respaldo sin él si la base aún no tiene la migración); `getPushSessionUserId`; `markNotificationFromUrl` |
+| `notifications/pushStore.ts` | El estado del push fuera de React, una sola instancia. `unknown` pinta un esqueleto, **nunca** "Activar". «Activadas» sale del navegador; lo que sabe el servidor es un campo aparte, `serverSync`. Tiene la **única baja** (`disablePushOnThisDevice`: navegador primero, servidor después) y guarda en `localStorage` (`udpmap.push.endpoint`) el último endpoint que el servidor confirmó |
+| `notifications/usePushSubscription.ts` | Hook fino sobre el store y `usePushForegroundSync(userId)`, que `App` monta con el id de usuario: resincroniza al volver a primer plano y, si la sesión termina sin `signOut`, da de baja el dispositivo en local |
 | `notifications/useNotifications.ts` | react-query + realtime sobre `notifications` |
 | `notifications/notificationMeta.ts` | Iconos por categoría y agrupación por fecha. Una categoría nueva se toca aquí y en el `CHECK` de la tabla |
 | `notifications/preferencesApi.ts` | Preferencias por categoría × canal. `moderation` no se puede silenciar |
 | `notifications/NotificationCenter.tsx` | La pestaña de avisos del `Sidebar`. No enseña los avisos de audiencia `admin` |
-| `notifications/NotificationBanner.tsx`, `NotificationPreferences.tsx`, `PushCard.tsx`, `NotificationUrlHandler.tsx` | Banner en primer plano, interruptores, tarjeta de activar push y el cierre del circuito del toque |
+| `notifications/NotificationBanner.tsx`, `NotificationPreferences.tsx`, `PushCard.tsx`, `NotificationUrlHandler.tsx` | Banner en primer plano, interruptores, tarjeta de activar push y el cierre del circuito del toque. `PushCard` no se pinta en modo demo, y con el servidor sin enterarse enseña un aviso con «Reintentar» |
+| `notifications/pushLifecycle.test.ts`, `signOut.test.ts`, `registerPushApi.test.ts`, `pushServiceWorker.test.ts` | Ciclo de vida del push (activar, desactivar, sincronizar, sesión, pista de iOS); `signOut` con el `authStore` real; `p_old_endpoint` y su respaldo; y `public/push-sw.js` cargado con un `self` falso. Aparte, `pushStore.test.ts` prueba con qué estado **nace** el store (el parpadeo) |
 | `moderation/api.ts`, `useModeration.ts`, `demoStore.ts`, `labels.ts` | Denunciar (`create_content_report`), listar, tomar y resolver. La **cola** se pinta en `admin/ReportsPanel` |
 | `moderation/ReportContentDialog.tsx` | Diálogo de denuncia; lo importan pins y forum |
 
-### 6.7 `admin` — el panel (21 archivos)
+### 6.7 `admin` — el panel (23 archivos)
 
 `AdminLayout.tsx` (el guard y la navegación), `AdminScreen.tsx` (anatomía común
 de cada pantalla y estados vacío/cargando/error; el scroll lo tiene la página y
 no el layout, porque el editor de mapeo necesita pantalla completa),
 `sections.ts` (las nueve secciones; si añades una, toca también `App.tsx`) y
-`api.ts` (486: estadísticas, usuarios, pines, suscriptores push, capacidades,
-registro de actividad, difusión y prueba push).
+`api.ts` (746: estadísticas, usuarios, pines, suscriptores push, capacidades,
+registro de actividad, difusión, prueba push y entregas por servicio).
 
 | Panel | Ruta | Usa |
 |---|---|---|
@@ -400,10 +403,17 @@ registro de actividad, difusión y prueba push).
 | `FacultiesPanel` | `/admin/facultades` | `shared/data/facultiesApi`. Reenvía `polygon`, `lat` y `lng` intactos: mandar `polygon` null borra un perímetro |
 | `BroadcastPanel` | `/admin/difusion` | `admin_broadcast_push_notification(título, cuerpo, url)`. **Manda push reales a toda la universidad** |
 | `ActivityLogPanel` | `/admin/actividad` | `admin_activity_log` |
-| `SettingsPanel` | `/admin/ajustes` | `PushCard`, `admin_send_test_push_to_self` |
+| `SettingsPanel` | `/admin/ajustes` | `PushCard`; `admin_send_test_push_to_self` (devuelve el id del aviso, que se pasa a `send-push` como `{ notificationId }` para contar sus entregas); `admin_push_delivery_stats` (tarjeta de entregas de los últimos 7 días por servicio) |
 
 Cada función de `api.ts` degrada con un mensaje que nombra la migración que falta
-(`isMissingFunction` mira `42883` y `PGRST202`). Mantén ese patrón.
+(`isMissingFunction`, de `shared/utils/rpcErrors.ts`, mira `42883`, `PGRST202` y el
+texto de una función que no existe). Mantén ese patrón.
+
+Tests del push en este feature: `selfPushTest.test.ts` (la migración que falta se
+dice con esas palabras al pulsar «Enviar prueba»), `pushAdmin.test.ts` (qué
+mensaje sale de cada resultado de la prueba, cómo se agrupan las entregas por
+servicio y el respaldo por función inexistente) y `SettingsPanel.test.tsx` (la
+pantalla montada, con cada estado de la tarjeta de entregas).
 
 ---
 
@@ -441,17 +451,20 @@ monta `MappingPage` en `/admin/mapeo` desde `App.tsx`, no desde `admin`.
 
 | Ruta | Qué es |
 |---|---|
-| `schema/baseline.sql` (4066) | **La fuente de verdad del esquema.** Reconstruye la base desde cero: 32 tablas, todas con RLS, la vista `profiles_public`, unas 70 funciones (todas con `search_path` fijo), los triggers, las políticas, Storage y la publicación realtime. Los cron y los secretos de Vault **no** están aquí |
-| `migrations/` | 31 migraciones incrementales desde el 2026-08-03. Desde la `20260827000000` cada una trae su `.down.sql` (hay 9). Se aplican **a mano** en el SQL Editor |
+| `schema/baseline.sql` (4284) | **La fuente de verdad del esquema.** Reconstruye la base desde cero: 32 tablas, todas con RLS, la vista `profiles_public`, 72 funciones (todas con `search_path` fijo), los triggers, las políticas, Storage y la publicación realtime. Los cron y los secretos de Vault **no** están aquí |
+| `migrations/` | 33 migraciones incrementales desde el 2026-08-03. Desde la `20260827000000` cada una trae su `.down.sql` (hay 11). Se aplican **a mano** en el SQL Editor |
 | `migrations/README.md` | La regla de los tres archivos |
 | `_archive/migrations/` | Las 33 migraciones de julio, ya integradas en el baseline. No se ejecutan |
 | `seed/badges.sql` | Las seis insignias, a mano. Sin ellas el quinto pin falla por clave foránea |
 | `seed/seed.sql` | **Generado** por `scripts/gen_seed_full.ts` desde `campusData.ts`: campus, facultades (sin perímetros), 39 carreras, categorías, admins |
 | `seed/fic_dummy_50_pins.sql` | 56 pines de prueba en la FIC, con un UUID de admin fijo. Solo desarrollo |
 | `config.toml` | `verify_jwt = false` para `send-push` y `storage-gc`: el cron manda `x-cron-secret`, no `Authorization` |
-| `functions/send-push/index.ts` | Cada minuto: encola recordatorios de eventos (`enqueue_upcoming_event_notifications`) y drena `notification_push_deliveries` reclamando por RPC con *lease* (`claim_push_deliveries`): lotes de 50, 10 envíos a la vez, cierre en bloque con *fencing* (`finish_push_deliveries`), hasta 6 lotes o unos 40 s. Al cron le contesta 202 y sigue en segundo plano; el panel espera el resultado. Se autoriza con `x-cron-secret` o sesión de admin |
+| `functions/send-push/index.ts` | Cada minuto drena `notification_push_deliveries` reclamando por RPC con *lease* (`claim_push_deliveries`): lotes de 50, 10 envíos a la vez, cierre en bloque con *fencing* (`finish_push_deliveries`), hasta 6 lotes o unos 40 s. **Ya no encola recordatorios de eventos**: los encola el cron `udp-map-event-reminders`. Al cron le contesta 202 y sigue en segundo plano; el panel espera el resultado. Se autoriza con `x-cron-secret` o sesión de admin. Cuerpo opcional `{ notificationId }`, que solo cuenta si llama un admin: acota la pasada a ese aviso y la respuesta añade el conteo de sus entregas por estado. Secreto opcional `PUSH_PAYLOAD_FORMAT` (`hybrid`, el defecto, o `declarative`) |
+| `functions/send-push/golden.test.ts` | El cerrojo de la regla de oro del push: lee `index.ts` como texto y lo compara, normalizado, con copias literales tomadas de `4eae308` (`sendWebPushNotification`, `navigateUrl`, el objeto del payload híbrido, el bloque de `VAPID_SUBJECT`, el tope de tamaño y la llamada que cifra) y con el hash de `_shared/webpush.ts`. Si falla, cambió algo que viaja al servicio push: se prueba en un iPhone y, si es a propósito, se actualiza la copia en el mismo commit. Lo corre vitest |
 | `functions/_shared/webpush.ts` | Cifrado RFC 8291 y VAPID compartidos, sin APIs de Deno. Su `webpush.test.ts` lo corre vitest (vector del RFC, ida y vuelta, firma, clasificación) |
-| `functions/_shared/pushQueue.ts` | Lógica pura de la cola: cómo se cierra cada entrega (reintentos y tope `MAX_ATTEMPTS` con el intento ya contado al reclamar), limpieza de `last_error` y el pool de envíos en paralelo. Su `pushQueue.test.ts` lo corre vitest |
+| `functions/_shared/pushQueue.ts` | Lógica pura de la cola: cómo se cierra cada entrega (reintentos y tope `MAX_ATTEMPTS` con el intento ya contado al reclamar), limpieza de `last_error`, el pool de envíos en paralelo y la lectura del `notificationId` del cuerpo (`parseNotificationId`). Su `pushQueue.test.ts` lo corre vitest |
+| `functions/_shared/pushPayload.ts` | El payload **declarativo** puro (solo `web_push: 8030` y `notification`, sin campos planos) y la lectura de `PUSH_PAYLOAD_FORMAT`. El payload híbrido, el que se envía por defecto, **no** vive aquí: sigue en `send-push/index.ts`. Su `pushPayload.test.ts` lo corre vitest e incluye una comprobación contra el código fuente de `index.ts` para que los respaldos no se separen |
+| Cron (`pg_cron`) | Cinco trabajos, que **no** están en el baseline: `expire-pins`, `udp-map-storage-gc`, `udp-map-send-push-every-minute`, `udp-map-event-reminders` y `udp-map-prune-push-history`. Los tres de push los versiona la migración `20261021000200`, que reemplaza el de `send-push` del runbook (mismo nombre) con timeout de 10 s; el de `storage-gc`, la `20260803120500`. Tabla en [DATABASE.md §8](DATABASE.md) |
 | `functions/storage-gc/index.ts` | Cada 10 min: vacía `storage_cleanup_queue` borrando los binarios de Storage |
 
 Orden para reconstruir: `baseline.sql` → `badges.sql` → `seed.sql`, y después a
@@ -467,7 +480,7 @@ Migraciones vigentes, por tema:
 | Eventos | `20260803120600` `pin_schedule_items` · `20260826000200` `event_rsvps` privada (conteos y asistentes por RPC) |
 | Mapeo interior y plantas | `20260804100000` `buildings`, `building_floors`, `areas` · `140000` ajustes · `160000` el pin guarda edificio y área · `180000` planta y `room_code` al crear · `200000` editar planta · `20260810000000` el servidor valida la planta |
 | Catálogo | `20260805100000` renombre "Competencia" · `20260808000001` `faculties` como fuente de verdad · `20260826000000` categoría `escalera` |
-| Avisos y push | `20260827000000` difusión y prueba propia · `20260829000000` avisos de pin verificado y comentario, difusión con enlace · `20260829000100` lista de suscriptores · `20260830000000` dar de baja un dispositivo · `20260831000000` preferencias · `20260831000100` evento oficial avisa a su facultad · `20261021000000` cola de push con *lease*, estado `expired` y rastro que sobrevive a la baja |
+| Avisos y push | `20260827000000` difusión y prueba propia · `20260829000000` avisos de pin verificado y comentario, difusión con enlace · `20260829000100` lista de suscriptores · `20260830000000` dar de baja un dispositivo · `20260831000000` preferencias · `20260831000100` evento oficial avisa a su facultad · `20261021000000` cola de push con *lease*, estado `expired` y rastro que sobrevive a la baja · `20261021000100` `register_push_subscription` con `p_old_endpoint`, `event_rsvps.reminded_at`, difusión que cuenta bien, `wants_notification` solo para el servicio y `admin_push_delivery_stats` · `20261021000200` `prune_push_history` y los trabajos de cron de recordatorios, purga y `send-push` |
 | Administración | `20260828000000` `activity_log` · `20260831000200` `moderator_capabilities` y `has_capability` |
 
 ---
@@ -479,8 +492,9 @@ Migraciones vigentes, por tema:
 `notification-badge.png` (silueta alfa: Android pinta de blanco los iconos
 opacos), `fic.png` (5,4 MB, fuera del precache a propósito) y **`push-sw.js`**,
 el service worker de push que el worker generado importa por `importScripts`.
-Lleva la clave VAPID pública clavada: si rotas el par, cámbiala aquí y en
-`VITE_VAPID_PUBLIC_KEY`.
+Lleva la clave VAPID pública clavada, ya solo como respaldo de
+`pushsubscriptionchange` (que Safari de iOS no dispara): si rotas el par, cámbiala
+aquí y en `VITE_VAPID_PUBLIC_KEY`.
 
 **`scripts/`**
 
@@ -531,7 +545,7 @@ sigue igual) y la regeneración de los derivados cuando editas `CLAUDE.md`.
 | El editor de mapeo | `mapping/MappingPage.tsx` (mutaciones y atajos), `MappingCanvas.tsx` (dibujo), `editorStore.ts` (estado), `validation.ts` |
 | El formulario de pin | `pins/CreatePinModal.tsx`, `pins/IndoorFields.tsx`, y `pins/api.ts` + `pins/demoStore.ts` para los datos |
 | Un tipo de aviso nuevo | Migración (CHECK de `notifications.type`, función `notify_*`) + `notifications/notificationMeta.ts` + `preferencesApi.ts` si es silenciable + `NOTIFICATIONS_AND_MODERATION.md` |
-| El envío push | `supabase/functions/send-push/index.ts` + `supabase/functions/_shared/webpush.ts` y `pushQueue.ts` (y sus tests) + `public/push-sw.js` + `notifications/pushStore.ts`. Despliega con `npm run deploy:push`, siempre después de aplicar las migraciones de las que depende |
+| El envío push | `supabase/functions/send-push/index.ts` + `supabase/functions/_shared/webpush.ts`, `pushQueue.ts` y `pushPayload.ts` (y sus tests) + `public/push-sw.js` (y `pushServiceWorker.test.ts`) + `notifications/pushStore.ts`. Despliega con `npm run deploy:push`, siempre después de aplicar las migraciones de las que depende (ROADMAP §17 tiene el orden). Cifrado, cabeceras y la forma del payload híbrido son lo que hoy entrega en iPhone: no se tocan sin probar en un iPhone |
 | Una sección del panel | `admin/sections.ts` + una `<Route>` en `app/App.tsx` + el panel envuelto en `AdminScreen` |
 | Un permiso de la interfaz | `auth/permissions.ts` (y su test). El permiso real, en la política RLS |
 | Un texto de interfaz | `shared/lib/i18n.ts` en ES y EN, y luego `npm run check:i18n` |

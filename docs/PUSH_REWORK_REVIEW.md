@@ -3,7 +3,30 @@
 > **Fecha:** 2026-10-21 · **Sobre:** `main` en `eba61ee` · **Plan revisado:**
 > [PUSH_REWORK_LOGBOOK.md](PUSH_REWORK_LOGBOOK.md) (Hallazgos A–F)
 
-## Estado (2026-10-21): Push 0, 1 y 2 hechas en código, sin desplegar
+## Estado (2026-10-22): Push 0–6 hechas en código, sin desplegar
+
+Nada de lo de abajo está aplicado en la base, desplegado ni probado en un iPhone.
+El detalle de cada fase y el orden de despliegue están en ROADMAP §17.
+
+- **Push 3** resuelve los hallazgos **11, 15–19** y el tope de la difusión que
+  quedaba del **5**: `reminded_at` (11), purga y vista de fallos por servicio
+  (15), `wants_notification` cerrada (16), recordatorios en su propio cron (17),
+  cron de `send-push` versionado con timeout (18) y difusión que cuenta bien y
+  con límites (19). Migraciones `20261021000100` y `20261021000200`, y `send-push`
+  sin recordatorios.
+- **Push 4** resuelve **20–29 y 33**: `serverSync`, baja única, sesión que termina
+  sin `signOut`, pista de iOS, «Reintentar», menos RPC, service worker con
+  respaldo, tests, demo e i18n (en el 29 siguen con texto fijo los avisos de baja
+  de dispositivo de `BroadcastPanel`).
+- **Push 5** resuelve **F**: el autotest del panel pasa `notificationId` a
+  `send-push` y lee sus entregas por estado, y una tarjeta cuenta las entregas por
+  servicio.
+- **Push 6** resuelve el **37 %** del payload duplicado, **tras el secreto**
+  `PUSH_PAYLOAD_FORMAT`: apagada por defecto, y solo se activa con el service
+  worker nuevo adoptado y probado en un iPhone.
+- **Quedan fuera:** el `sub` VAPID (1, a medias), TTL por tipo y `Topic` (9),
+  recordar los endpoints caducados (30) y `_shared/auth.ts` con la versión fija
+  de `supabase-js` (31 y 32).
 
 **Push 2** resuelve los hallazgos **12, 13 y 14** con la migración
 `20261021000000_push_queue_lease` y el `send-push` que reclama por RPC: lease,
@@ -24,7 +47,7 @@ un iPhone.
 - **2** Cifrado y VAPID en `_shared/webpush.ts` con tests (vector RFC 8291, ida y vuelta, firma VAPID, clasificación).
 - **3** Los errores de escritura en la base se comprueban y se registran.
 - **4** Respuestas clasificadas; 429/5xx respetan `Retry-After`; 403 avisa de revisar VAPID.
-- **5** Tope de 3993 B como fallo terminal. Queda para una migración la cota de longitud en la RPC de difusión.
+- **5** Tope de 3993 B como fallo terminal. La cota de longitud de la RPC de difusión (60 y 180 caracteres) llegó con Push 3, y quitar el `payload` duplicado, con Push 6 y su secreto.
 - **6** Timeout de 10 s por envío.
 - **7** Secretos VAPID validados al cargar; si están mal, 500 sin tocar la cola.
 - **8** JWT VAPID reutilizado por origen 11 h.
@@ -281,11 +304,13 @@ Se llaman **Push 0…6** para no chocar con las Fases 0–7 del mapeo.
    argumentos y crear la nueva con `p_old_endpoint default null`), `reminded_at`
    para el recordatorio que reaparece, recordatorios en su propio cron, purga,
    cron de `send-push` versionado, `wants_notification` cerrada y conteo de la
-   difusión.
-4. **Cliente:** D (versión corregida) y E (versión corregida), con tests.
-5. **F:** filtrar por `notificationId`.
+   difusión. ✅ en código
+4. **Cliente:** D (versión corregida) y E (versión corregida), con tests. ✅ en
+   código
+5. **F:** filtrar por `notificationId`. ✅ en código
 6. **Opcional:** adelgazar el payload, solo con el service worker nuevo
-   adoptado y probado en iPhone.
+   adoptado y probado en iPhone. ✅ en código, apagada por defecto tras el secreto
+   `PUSH_PAYLOAD_FORMAT`
 
 ---
 

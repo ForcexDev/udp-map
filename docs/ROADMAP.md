@@ -1,7 +1,7 @@
 # Hoja de ruta — UDP Map
 
 > **Documento vivo.** Es el plan del repositorio: qué está hecho y qué falta. Se
-> actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-10-21.
+> actualiza al cerrar algo, no al final del sprint. Última revisión: 2026-10-22.
 >
 > Nació como el plan de mapeo interior y onboarding, y absorbió el backlog que
 > antes vivía repartido entre `PLAN.md` y `SPRINTS_STATUS.md`. Los dos se
@@ -1932,7 +1932,7 @@ Rediseño de toda la capa visual y espacial en la rama `rediseño-interfaz`:
 
 ---
 
-## 17. Rework de notificaciones push ⏳ EN CURSO (Push 0, 1 y 2 hechas en código, sin desplegar)
+## 17. Rework de notificaciones push ⏳ EN CURSO (Push 0–6 hechas en código, sin desplegar)
 
 **Lo que ya está en producción (`eba61ee`).** `send-push` dejó `npm:web-push` y
 cifra con Web Crypto (RFC 8291 + VAPID), envía el payload híbrido (bloque
@@ -1961,22 +1961,60 @@ El detalle está en "Orden propuesto" de la revisión.
     - migración + down = baseline anterior;
     - reclamo, lease, fencing, trigger, cascada, baja con RLS y permisos.
   - **Formato de envío idéntico.**
-  - **Pendiente:** el diagnóstico del panel puede salir vacío si el cron reclamó antes las entregas (lo resuelve Push 5).
+  - **Quedaba pendiente:** el diagnóstico del panel podía salir vacío si el cron reclamaba antes las entregas (lo resuelve Push 5).
   - **Desplegar:** primero la migración, después `npm run deploy:push`. La versión anterior de `send-push` funciona con el esquema nuevo.
-- **Push 3 — ⏳ Suscripciones y avisos.** `register_push_subscription` con `p_old_endpoint`, `reminded_at` para el recordatorio que reaparece, recordatorios en su propio cron, purga, cron de `send-push` versionado, `wants_notification` cerrada, conteo de la difusión.
-- **Push 4 — ⏳ Cliente.** Estado `serverSync`, baja unificada, resincronizar por `user?.id` y service worker con `catch` que muestra algo; con tests.
-- **Push 5 — ⏳ F.** Diagnóstico en el panel: pasar `notificationId` a `send-push` y filtrar por él.
-- **Push 6 — ⏳ Opcional.** Adelgazar el payload, solo con el service worker nuevo adoptado y probado en iPhone.
+- **Push 3 — Suscripciones y avisos.** ✅ Hecha en código el 2026-10-22, sin aplicar ni desplegar.
+  - **Migración `20261021000100_push_subscriptions_reminders`** (con su `.down.sql`):
+    - `register_push_subscription` con `p_old_endpoint`: borra antes la firma de cuatro argumentos (si no, PostgREST ve dos candidatas), solo busca entre las suscripciones de quien llama y pasa a la nueva las entregas `pending` de la vieja;
+    - `event_rsvps.reminded_at`: el recordatorio sale una vez por asistencia aunque se borre el aviso, con un backfill que solo marca a quien el barrido ya atendió; `INSERT` y `UPDATE` de `event_rsvps` pasan a columnas (`pin_id`, `user_id`, `status`) para que nadie escriba la marca;
+    - `wants_notification` solo para `service_role`;
+    - difusión: cuenta únicamente los avisos que se crearon, clave `announcement_` + uuid y topes de 60 caracteres en el título y 180 en el cuerpo;
+    - `admin_push_delivery_stats(p_days)`, solo admin: entregas por host del servicio y estado;
+    - una guarda que para la migración si queda más de una firma de `register_push_subscription` o de `admin_broadcast_push_notification`.
+  - **Migración `20261021000200_push_cron_jobs`** (con su `.down.sql`):
+    - `prune_push_history()`: borra entregas `sent`/`expired` a los 30 días y `failed` a los 90, avisos leídos a los 180 y no leídos a los 365; solo la ejecuta `service_role` o `pg_cron`;
+    - tres trabajos de `pg_cron`: `udp-map-event-reminders` (cada minuto), `udp-map-prune-push-history` (04:17 UTC) y `udp-map-send-push-every-minute`, que reemplaza al del runbook por llevar el mismo nombre y fija `timeout_milliseconds` en 10 s.
+  - **`send-push`:** ya no encola recordatorios, los encola el cron. La respuesta pierde `remindersCreated` y `reminderError`.
+  - **Probado en PGlite** (Postgres real), con arnés fuera del repo: baseline anterior + las dos migraciones = baseline nuevo; aplicarlas dos veces = una; los dos `.down.sql` devuelven el baseline anterior; 140 comprobaciones de comportamiento (`p_old_endpoint`, `reminded_at`, permisos, difusión, estadísticas, purga, cron). PGlite no trae PostgREST ni el `pg_cron` real: los dos van simulados.
+  - **Antes de desplegar `send-push`, aplicar la `000200`:** el `send-push` nuevo no encola recordatorios, y sin ese cron nadie recibe aviso de ningún evento.
+- **Push 4 — Cliente.** ✅ Hecha en código el 2026-10-22, sin desplegar.
+  - **`serverSync`** (`unknown`, `ok`, `failed`, `no-session`): campo aparte en `pushStore`. «Activadas» sigue saliendo del navegador, para no deshacer el arreglo del parpadeo; con el servidor sin enterarse, `PushCard` enseña un aviso y un botón para reintentar solo la sincronización.
+  - **Una sola baja,** `disablePushOnThisDevice`: desuscribe primero el navegador y borra después la fila del servidor como mejor esfuerzo; reinicia el store. La usan «Desactivar» y `signOut`; `removeCurrentBrowserPushSubscription` desaparece.
+  - **Sesión que termina sin `signOut`:** `usePushForegroundSync(userId)` recibe el id desde `App` (no importa `auth`, para no abrir otro ciclo). De un id a nada, baja solo local; de nada a un id, vuelve a resolver y sincronizar. El arranque no da de baja nada.
+  - **Pista de iOS** decidida antes de comprobar si el navegador tiene la API de push, sin ningún `await` nuevo antes de `requestPermission()` ni de `subscribe()`. Efecto secundario: sale en todo iOS que no esté instalado, también donde instalar la app no habilitaría push (un iOS viejo, un navegador de iOS que no sea Safari). Si una pestaña de Safari de iOS expone `PushManager` sigue sin confirmarse sin un dispositivo.
+  - **`p_old_endpoint`:** el cliente guarda en `udpmap.push.endpoint` el último endpoint que el servidor confirmó y se lo manda al registrar si cambió. Si la base aún no tiene la migración, reintenta sin él.
+  - **Menos RPC:** sin el `onVisible()` inicial, y sin repetir el registro del mismo usuario y endpoint en menos de una hora (en memoria, por página).
+  - **«Reintentar»** repite la operación que falló, y mientras se desactiva el botón dice «Desactivando…».
+  - **Demo:** `PushCard` no se pinta sin Supabase. `pushErrorMessage` pasa a i18n.
+  - **Service worker (`push-sw.js`):** el handler entero va en `try/catch` y, si no se puede leer o pintar el aviso, muestra uno mínimo, porque Safari revoca el permiso a quien recibe pushes sin notificación visible (un JSON roto ya no usa el texto como cuerpo). Lee campo a campo con precedencia bloque declarativo > campos planos, que con el payload híbrido de hoy da los mismos valores que antes. `pushsubscriptionchange` usa la clave de la suscripción perdida y cae a la constante; Safari de iOS no dispara ese evento.
+  - **Tests nuevos:** `pushLifecycle`, `signOut`, `registerPushApi` y `pushServiceWorker`; el último carga `push-sw.js` con un `self` falso.
+- **Push 5 — F: diagnóstico por aviso.** ✅ Hecha en código el 2026-10-22, sin desplegar.
+  - **`send-push`:** acepta un cuerpo opcional `{ "notificationId": "<uuid>" }`. Solo se lee si llama un admin, el cron lo ignora, y un id que no es uuid da 400. Con él, la pasada reclama solo las entregas de ese aviso (`p_notification_id`) y la respuesta añade `notification: { id, deliveries: { pending, sent, failed, expired } }`, contadas por estado en `notification_push_deliveries`; si el conteo falla, trae `notification.error`.
+  - **Autotest del panel:** `sendSelfPushTest` toma el uuid que devuelve `admin_send_test_push_to_self` y se lo pasa a `send-push`; con uuid nulo (el aviso no se creó, por ejemplo porque las preferencias silencian los avisos del sistema) lo dice sin llamar. El mensaje sale de las entregas: enviada a N, sin entregas, pendientes, fallidas o caducadas. Contra un `send-push` anterior, que ignora el cuerpo, cae al mensaje de siempre.
+  - **Entregas por servicio:** tarjeta nueva en `/admin/ajustes` con `admin_push_delivery_stats`: una fila por host con enviadas, fallidas, caducadas y pendientes, y el último error. Sin la migración `20261021000100` dice cuál falta; en demo muestra datos de ejemplo.
+  - **`BroadcastPanel`:** las etiquetas de estado y los avisos de envío pasan a i18n (claves `admin.push.*`). Los avisos de baja de un dispositivo siguen con texto fijo.
+  - **`isMissingFunction`** pasa a `shared/utils/rpcErrors.ts`, compartida por admin y notifications, y ya no acepta cualquier «does not exist»: una columna que falta no se lee como «falta la migración de esta función».
+- **Push 6 — Adelgazar el payload.** ✅ Hecha en código el 2026-10-22 tras el secreto `PUSH_PAYLOAD_FORMAT`, **apagada por defecto**. Activar solo con el service worker nuevo adoptado y probado en iPhone.
+  - **`hybrid`** (el defecto, y también cualquier valor desconocido, con un `console.warn`): lo que se envía hoy, con las mismas claves, orden y valores.
+  - **`declarative`:** envía solo `{ web_push: 8030, notification: { title, body, navigate, icon, lang, tag, data: { url, notificationId, type, category } } }`, con los mismos valores y respaldos que el bloque del híbrido, sin campos planos ni `payload`. Lo construye `_shared/pushPayload.ts`, con tests; el híbrido sigue en `index.ts` sin moverse.
+  - El secreto se lee una vez al cargar la función: cambiarlo exige `supabase secrets set PUSH_PAYLOAD_FORMAT=declarative` (o `secrets unset` para volver) y una instancia nueva. La respuesta al panel dice `payloadFormat`.
+  - **Por qué espera al service worker nuevo:** el `push-sw.js` anterior solo leía los campos planos, así que con `declarative` un teléfono que aún lo tenga en caché mostraría los textos genéricos. Y si en iOS 18.4+ pinta la notificación el bloque declarativo o el service worker, no se sabe sin un dispositivo.
+  - Cifrado, `TTL`, `Urgency` y VAPID no cambian con el formato.
 
-**Para desplegar Push 0 y 1:** `npm run deploy:push` a mano y probar en un
-iPhone después. Si algo falla, redesplegar `eba61ee`.
+**Para desplegar el rework** (Push 0–6), en este orden:
+1. Desplegar `4eae308` (Push 0 y 1) desde ese commit, no desde `main`, que ya trae la cola con *lease* y necesita la migración: `npm run deploy:push` a mano. Probar en un iPhone. Si algo falla, redesplegar `eba61ee`.
+2. Aplicar a mano en el SQL Editor `20261021000000_push_queue_lease.sql`, `20261021000100_push_subscriptions_reminders.sql` y `20261021000200_push_cron_jobs.sql`, en ese orden. La `000200` necesita `pg_cron` y `pg_net` activas y los secretos de Vault del runbook.
+3. `npm run deploy:push` desde `main`, **después** de la `000200`: el `send-push` nuevo ya no encola recordatorios, los encola el cron que crea esa migración.
+4. Push de `main` a GitHub: Vercel publica el frontend. Tolera la base sin la `000100` y un `send-push` anterior, pero este es el orden previsto.
+5. Probar en un iPhone: activar, recibir, desactivar, y el autotest de `/admin/ajustes`. Mirar `cron.job` y `net._http_response` en Supabase: PGlite no tiene el `pg_cron` real.
+6. Opcional, solo con el paso 5 hecho y el service worker nuevo ya en el teléfono: `supabase secrets set PUSH_PAYLOAD_FORMAT=declarative` y probar otra vez en el iPhone. Para volver, `supabase secrets unset PUSH_PAYLOAD_FORMAT`.
 
-**Para desplegar Push 2**, después de lo anterior:
-1. Aplicar `20261021000000_push_queue_lease.sql` en el SQL Editor.
-2. `npm run deploy:push`.
-3. Probar en un iPhone.
+**Vuelta atrás.** Si falla la función, redesplegar `4eae308`: funciona con las migraciones aplicadas, que son compatibles con él. Los `.down.sql`, en orden inverso (`000200`, `000100`, `000000`), solo hacen falta para deshacer también el esquema. Antes de deshacer la `000200` hay que dejar desplegado un `send-push` que todavía encole recordatorios (`4eae308` o `20eee7e`); con el nuevo nadie recibiría aviso de ningún evento.
 
-Si falla la función, redesplegar `4eae308`, que funciona con el esquema nuevo. El
-`.down.sql` solo hace falta para deshacer también el esquema.
+**Pendiente, fuera de este rework:**
+- El `sub` VAPID (hallazgo 1): sigue firmándose como en `eba61ee`. Para quitar el correo de la UDP, un `mailto:` propio en `VAPID_SUBJECT` y probar en iPhone.
+- TTL por tipo de aviso y `Topic` (hallazgo 9). `Urgency` no se baja.
+- Recordar en el servidor los endpoints caducados y decírselo al cliente (hallazgo 30).
+- `_shared/auth.ts` para `isAuthorized` y el cliente, que hoy están copiados entre `send-push` y `storage-gc`, y fijar la versión de `supabase-js` (hallazgos 31 y 32).
 
 Detalle: [bitácora](PUSH_REWORK_LOGBOOK.md) · [revisión](PUSH_REWORK_REVIEW.md).
