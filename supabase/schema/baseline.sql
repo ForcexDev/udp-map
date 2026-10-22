@@ -351,6 +351,12 @@ create table if not exists public.event_rsvps (
   pin_id   uuid  not null references public.pins(id) on delete cascade,
   user_id  uuid  not null references public.profiles(id) on delete cascade,
   status   text  not null check (status in ('going', 'interested')),
+  -- Cuándo se creó el recordatorio de este evento para esta persona. Es lo que
+  -- impide repetirlo: la fila de `notifications` no sirve de barrera porque su
+  -- dueño puede borrarla. La escribe solo la base (enqueue_event_reminder);
+  -- authenticated tiene INSERT y UPDATE por columnas, sin esta (ver 9.1).
+  -- Al final, como la deja la migración 20261021000100.
+  reminded_at  timestamptz,
   primary key (pin_id, user_id)
 );
 
@@ -2378,7 +2384,9 @@ begin
 end;
 $fn$;
 
--- Solo avisa si el evento cae dentro de los próximos 20 días.
+-- Solo avisa si el evento cae dentro de los próximos 20 días, y una vez por
+-- asistencia: la marca es `event_rsvps.reminded_at`, no la fila de
+-- `notifications`, que su dueño puede borrar.
 create or replace function public.enqueue_event_reminder(p_user_id uuid, p_pin_id uuid)
 returns boolean
 language plpgsql
@@ -2388,7 +2396,16 @@ as $fn$
 declare
   v_event           public.pins%rowtype;
   v_notification_id uuid;
+  v_dedupe          text;
 begin
+  -- Ya se avisó de esta asistencia, aunque la persona haya borrado el aviso.
+  if exists (
+    select 1 from public.event_rsvps
+     where user_id = p_user_id and pin_id = p_pin_id and reminded_at is not null
+  ) then
+    return false;
+  end if;
+
   select * into v_event
   from public.pins
   where id = p_pin_id
@@ -2398,6 +2415,8 @@ begin
 
   if not found then return false; end if;
 
+  v_dedupe := 'event_reminder:' || v_event.id::text;
+
   v_notification_id := public.create_notification(
     p_user_id,
     'event_reminder',
@@ -2406,12 +2425,25 @@ begin
     '“' || left(v_event.title, 100) || '” comienza el ' ||
       to_char(v_event.starts_at at time zone 'America/Santiago', 'DD/MM a las HH24:MI'),
     '/eventos?event=' || v_event.id::text,
-    'event_reminder:' || v_event.id::text,
+    v_dedupe,
     jsonb_build_object('pinId', v_event.id, 'startsAt', v_event.starts_at),
     v_event.creator_id,
     'personal'
   );
 
+  -- create_notification devuelve null tanto si el aviso ya existía (dedupe) como
+  -- si las preferencias lo silencian. Solo el primer caso cuenta como avisado.
+  if v_notification_id is not null
+     or exists (
+       select 1 from public.notifications
+        where user_id = p_user_id and dedupe_key = v_dedupe
+     ) then
+    update public.event_rsvps
+       set reminded_at = now()
+     where user_id = p_user_id and pin_id = p_pin_id and reminded_at is null;
+  end if;
+
+  -- Sigue contando solo los avisos RECIÉN creados, como antes.
   return v_notification_id is not null;
 end;
 $fn$;
@@ -2428,6 +2460,10 @@ begin
 end;
 $fn$;
 
+-- La llama el cron `udp-map-event-reminders` cada minuto. La comprobación de rol
+-- usa `<>` a propósito y NO debe pasar a `is distinct from`: pg_cron corre sin
+-- JWT, auth.role() es null, la condición da null (no true) y el cron pasa. Un
+-- estudiante ('authenticated') o un visitante ('anon') sí caen en la excepción.
 create or replace function public.enqueue_upcoming_event_notifications()
 returns integer
 language plpgsql
@@ -2449,6 +2485,7 @@ begin
     where event.type = 'event'
       and event.starts_at > now()
       and event.starts_at <= now() + interval '20 days'
+      and rsvp.reminded_at is null
   loop
     if public.enqueue_event_reminder(v_row.user_id, v_row.pin_id) then
       v_created := v_created + 1;
@@ -2599,11 +2636,18 @@ begin
 end;
 $fn$;
 
+-- `p_old_endpoint` es el último endpoint que el servidor le confirmó a este
+-- navegador. Si cambió (reinstalar la PWA, borrar datos del sitio), se retira la
+-- suscripción vieja y se mueve a la nueva lo que tuviera pendiente. Solo se busca
+-- entre las suscripciones DE QUIEN LLAMA: es un dato que manda el cliente, y sin
+-- ese filtro cualquiera podría retirar el dispositivo de otra persona. La firma de
+-- cuatro argumentos no existe: dos candidatas confundirían a PostgREST.
 create or replace function public.register_push_subscription(
-  p_endpoint   text,
-  p_p256dh     text,
-  p_auth       text,
-  p_user_agent text default null
+  p_endpoint     text,
+  p_p256dh       text,
+  p_auth         text,
+  p_user_agent   text default null,
+  p_old_endpoint text default null
 )
 returns uuid
 language plpgsql
@@ -2611,7 +2655,8 @@ security definer
 set search_path = public
 as $fn$
 declare
-  v_id uuid;
+  v_id     uuid;
+  v_old_id uuid;
 begin
   if auth.uid() is null or public.user_role() = 'guest' then
     raise exception 'Debes iniciar sesión para activar notificaciones';
@@ -2640,7 +2685,81 @@ begin
     and notification.id = delivery.notification_id
     and notification.user_id <> auth.uid();
 
+  -- El navegador entregó un endpoint nuevo y el cliente recuerda el anterior: la
+  -- suscripción vieja ya no sirve, pero lo que le quedaba por enviar sí. Solo la
+  -- de quien llama: el endpoint viejo lo manda el cliente.
+  if nullif(trim(p_old_endpoint), '') is not null and p_old_endpoint <> p_endpoint then
+    select id into v_old_id
+      from public.push_subscriptions
+     where endpoint = p_old_endpoint
+       and user_id = auth.uid();
+
+    if v_old_id is not null then
+      update public.notification_push_deliveries delivery
+         set subscription_id = v_id,
+             push_host = split_part(p_endpoint, '/', 3)
+       where delivery.subscription_id = v_old_id
+         and delivery.status = 'pending'
+         and exists (
+           select 1 from public.notifications notification
+            where notification.id = delivery.notification_id
+              and notification.user_id = auth.uid()
+         )
+         and not exists (
+           select 1 from public.notification_push_deliveries ya
+            where ya.notification_id = delivery.notification_id
+              and ya.subscription_id = v_id
+         );
+
+      -- El trigger BEFORE DELETE expira las pendientes que no se pudieron mover.
+      delete from public.push_subscriptions where id = v_old_id;
+    end if;
+  end if;
+
   return v_id;
+end;
+$fn$;
+
+/**
+ * Borra por edad lo que ya no sirve de la cola de push y de los avisos.
+ * Devuelve cuántas filas se llevó cada cosa: { "deliveries": n, "notifications": m }.
+ *
+ * `sent` y `expired` a los 30 días, `failed` a los 90; avisos leídos a los 180 y
+ * no leídos a 365, por `created_at`. Las entregas que se van por cascada con su
+ * aviso no entran en `deliveries`. Es segura porque la idempotencia del
+ * recordatorio de eventos vive en `event_rsvps.reminded_at`, no en el aviso.
+ *
+ * La llama el cron `udp-map-prune-push-history` (sin JWT: auth.role() es null) y
+ * service_role. Todo lo demás se niega por dentro, no solo por el GRANT.
+ */
+create or replace function public.prune_push_history()
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_deliveries    integer;
+  v_notifications integer;
+begin
+  -- pg_cron corre sin JWT: auth.role() es null. Cualquier otro rol que no sea el
+  -- del servicio se niega.
+  if auth.role() is not null and auth.role() <> 'service_role' then
+    raise exception 'Solo el servicio puede purgar el historial de push.';
+  end if;
+
+  delete from public.notification_push_deliveries
+   where (status in ('sent', 'expired') and created_at < now() - interval '30 days')
+      or (status = 'failed' and created_at < now() - interval '90 days');
+  get diagnostics v_deliveries = row_count;
+
+  delete from public.notifications
+   where (read_at is not null and created_at < now() - interval '180 days')
+      or (read_at is null and created_at < now() - interval '365 days');
+  get diagnostics v_notifications = row_count;
+
+  return jsonb_build_object('deliveries', v_deliveries, 'notifications', v_notifications);
 end;
 $fn$;
 
@@ -2777,6 +2896,7 @@ declare
   v_count integer := 0;
   v_key   text;
   v_url   text;
+  v_id    uuid;
 begin
   if public.user_role() <> 'admin' then
     raise exception 'Solo los administradores pueden enviar avisos de difusión.';
@@ -2790,6 +2910,17 @@ begin
     raise exception 'El aviso necesita un mensaje.';
   end if;
 
+  -- Los mismos topes que el panel (maxLength 60 y 180). El payload cifrado no
+  -- puede pasar de 3993 B y el híbrido repite el texto; un RPC directo no pasa
+  -- por el panel.
+  if char_length(p_title) > 60 then
+    raise exception 'El título del aviso no puede pasar de 60 caracteres, y llegó con %.', char_length(p_title);
+  end if;
+
+  if char_length(p_body) > 180 then
+    raise exception 'El mensaje del aviso no puede pasar de 180 caracteres, y llegó con %.', char_length(p_body);
+  end if;
+
   -- El destino tiene que ser una ruta DE ESTA aplicación. Sin esto, un aviso
   -- podría mandar a toda la universidad a una web ajena con un toque, que es
   -- exactamente la forma de un ataque de phishing servido por nosotros mismos.
@@ -2798,14 +2929,21 @@ begin
     raise exception 'El destino del aviso tiene que ser una ruta interna, y llegó: %', v_url;
   end if;
 
-  v_key := 'announcement_' || extract(epoch from now())::bigint::text;
+  -- Una clave por difusión. Con el segundo de la época, dos difusiones en el
+  -- mismo segundo compartían clave y la segunda no llegaba a nadie. El unique es
+  -- (user_id, dedupe_key), así que la misma clave para todos los destinatarios
+  -- de ESTA difusión no choca entre sí.
+  v_key := 'announcement_' || gen_random_uuid()::text;
 
   for v_sub in select distinct user_id from public.push_subscriptions loop
-    perform public.create_notification(
+    v_id := public.create_notification(
       v_sub.user_id, 'announcement', 'system',
       p_title, p_body, v_url, v_key
     );
-    v_count := v_count + 1;
+    -- null = no se creó (la persona silenció los avisos del sistema): no cuenta.
+    if v_id is not null then
+      v_count := v_count + 1;
+    end if;
   end loop;
 
   -- `broadcast_sent` estaba declarado en el CHECK de activity_log desde la
@@ -2851,6 +2989,65 @@ begin
   ) into v_id;
 
   return v_id;
+end;
+$fn$;
+
+/**
+ * Cuántas entregas de los últimos `p_days` días hay en cada estado, por host del
+ * servicio push. Para ver de un vistazo qué servicio es el que rechaza.
+ *
+ * `last_at` es la creación de la entrega más reciente del grupo, y `last_error`
+ * el último error no nulo. El error se devuelve con cualquier URL recortada a su
+ * host: las entregas anteriores a 4eae308 podían guardar el endpoint entero, que
+ * es una URL de capacidad que identifica un dispositivo.
+ *
+ * LA VENTANA NO ES SIMÉTRICA CON LA PURGA. `p_days` admite hasta 90, pero
+ * prune_push_history (20261021000200) borra las entregas `sent` y `expired` a
+ * los 30 días y las `failed` a los 90. Con `p_days` mayor que 30 la consulta
+ * todavía ve todos los fallos y ya no ve los envíos ni las caducidades de más de
+ * 30 días, así que las proporciones entre estados se inclinan hacia `failed`.
+ * Para comparar estados, 30 días o menos; de 31 a 90 solo sirve para rastrear
+ * fallos. Las `pending` no se purgan por edad. No se acota `p_days` a 30
+ * porque los `failed` se guardan 90 días justamente para poder mirarlos.
+ *
+ * Solo admin, comprobado dentro: el GRANT no es control de acceso.
+ */
+create or replace function public.admin_push_delivery_stats(p_days integer default 7)
+returns table (
+  push_host  text,
+  status     text,
+  total      bigint,
+  last_at    timestamptz,
+  last_error text
+)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $fn$
+#variable_conflict use_column
+declare
+  v_days integer;
+begin
+  if public.user_role() <> 'admin' then
+    raise exception 'Solo los administradores pueden ver el estado de las entregas push.';
+  end if;
+
+  v_days := least(greatest(coalesce(p_days, 7), 1), 90);
+
+  return query
+    select coalesce(d.push_host, '(sin host)'),
+           d.status,
+           count(*),
+           max(d.created_at),
+           regexp_replace(
+             (array_agg(d.last_error order by d.created_at desc)
+                filter (where d.last_error is not null))[1],
+             '(https?://[^/[:space:]]+)/[^[:space:]]*', '\1/…', 'g')
+      from public.notification_push_deliveries d
+     where d.created_at >= now() - make_interval(days => v_days)
+     group by coalesce(d.push_host, '(sin host)'), d.status
+     order by 1, 2;
 end;
 $fn$;
 
@@ -3865,6 +4062,14 @@ grant all on public.forum_comments to anon, authenticated;
 grant all on public.user_badges   to anon, authenticated;
 grant all on public.profiles_public to anon, authenticated;
 
+-- `event_rsvps` es la excepción de este bloque: INSERT y UPDATE van por columnas
+-- para que nadie pueda escribir `reminded_at`, que es solo de la base. Poner la
+-- propia marca apagaría el recordatorio; borrarla lo reabriría. Son las tres
+-- columnas que escribe el upsert del cliente. Migración 20261021000100.
+revoke insert, update on public.event_rsvps from anon, authenticated;
+grant insert (pin_id, user_id, status), update (pin_id, user_id, status)
+  on public.event_rsvps to anon, authenticated;
+
 -- 9.2 Votos.
 -- ATENCIÓN: la migración 20260721000003 revocó INSERT/UPDATE/DELETE a anon y
 -- authenticated sobre estas dos tablas, para que votar pasara solo por las RPC
@@ -3936,7 +4141,7 @@ grant execute on function public.vote_thread(uuid, integer)                  to 
 grant execute on function public.extend_pin_ttl(uuid, integer)               to authenticated, service_role;
 grant execute on function public.verify_and_make_permanent(uuid, text)       to authenticated, service_role;
 grant execute on function public.unverify_pin(uuid, integer)                 to authenticated, service_role;
-grant execute on function public.register_push_subscription(text, text, text, text) to authenticated, service_role;
+grant execute on function public.register_push_subscription(text, text, text, text, text) to authenticated, service_role;
 grant execute on function public.create_content_report(text, uuid, text, text)      to authenticated, service_role;
 grant execute on function public.claim_moderation_report(uuid)               to authenticated, service_role;
 grant execute on function public.resolve_moderation_report(uuid, text, text) to authenticated, service_role;
@@ -3944,11 +4149,16 @@ grant execute on function public.admin_set_user_role(uuid, text)             to 
 grant execute on function public.admin_count_push_subscribers()              to authenticated, service_role;
 grant execute on function public.admin_broadcast_push_notification(text, text, text) to authenticated, service_role;
 grant execute on function public.admin_send_test_push_to_self() to authenticated, service_role;
+grant execute on function public.admin_push_delivery_stats(integer) to authenticated, service_role;
 grant execute on function public.admin_push_subscribers() to authenticated, service_role;
 grant execute on function public.has_capability(text) to anon, authenticated, service_role;
 grant execute on function public.admin_set_capability(uuid, text, boolean) to authenticated, service_role;
 grant execute on function public.admin_user_capabilities(uuid) to authenticated, service_role;
-grant execute on function public.wants_notification(uuid, text, text) to authenticated, service_role;
+-- Solo el servicio: es SECURITY DEFINER y no mira auth.uid(), de modo que con
+-- EXECUTE para authenticated dejaba leer las preferencias de cualquiera. La usan
+-- create_notification y queue_notification_push, que son definer y no la
+-- necesitan concedida a quien las dispara. Migración 20261021000100.
+grant execute on function public.wants_notification(uuid, text, text) to service_role;
 revoke all on public.notification_preferences from anon, authenticated;
 grant select, insert, update, delete on public.notification_preferences to authenticated;
 revoke all on public.moderator_capabilities from anon, authenticated;
@@ -3968,6 +4178,9 @@ revoke all on function public.log_activity(text, text, text, uuid, jsonb, uuid) 
 grant execute on function public.enqueue_upcoming_event_notifications() to service_role;
 grant execute on function public.claim_push_deliveries(integer, integer, uuid) to service_role;
 grant execute on function public.finish_push_deliveries(jsonb) to service_role;
+-- La purga corre desde pg_cron (sin JWT, como dueño de la función) y desde el
+-- servicio. Se niega por dentro a cualquier otro rol.
+grant execute on function public.prune_push_history() to service_role;
 
 
 -- =============================================================================
@@ -4047,21 +4260,34 @@ alter publication supabase_realtime add table public.content_reports;
 -- =============================================================================
 -- 12. TAREAS PROGRAMADAS (no se crean aquí)
 -- =============================================================================
--- Los dos cron jobs no van en este archivo porque uno depende de secretos de
--- Vault, que están cifrados y no se pueden exportar. Se crean a mano después
--- de un reset; el procedimiento completo está en docs/DATABASE.md.
+-- Los cron jobs no van en este archivo porque dos (el #2, send-push, y el #3,
+-- storage-gc) dependen de secretos de Vault, que están cifrados y no se pueden
+-- exportar. Se crean a mano después de un reset; el procedimiento completo
+-- está en docs/DATABASE.md.
 --
 --   #1  expire-pins                    cada 30 min
 --       delete from pins where is_permanent = false and expires_at < now()
 --
 --   #2  udp-map-send-push-every-minute cada minuto
 --       net.http_post a la Edge Function send-push, leyendo de Vault los
---       secretos udp_map_project_url y udp_map_send_push_cron_secret
+--       secretos udp_map_project_url y udp_map_send_push_cron_secret, con
+--       timeout_milliseconds := 10000 (el de pg_net por defecto es 5000).
+--       Su SQL está en supabase/migrations/20261021000200_push_cron_jobs.sql
 --
 --   #3  udp-map-storage-gc             cada 10 min
 --       net.http_post a la Edge Function storage-gc, que vacía
 --       storage_cleanup_queue. Reutiliza los mismos dos secretos.
 --       Su SQL está en supabase/migrations/20260803120500_schedule_storage_gc.sql
+--
+--   #4  udp-map-event-reminders        cada minuto
+--       select public.enqueue_upcoming_event_notifications()
+--       Antes lo hacía send-push en cada pasada. Es SQL puro, sin Vault.
+--
+--   #5  udp-map-prune-push-history     diario, 04:17 UTC
+--       select public.prune_push_history()
+--       Borra por edad entregas (sent/expired 30 días, failed 90) y avisos
+--       (leídos 180 días, no leídos 365). Sin Vault.
+--       Los #4 y #5 están en supabase/migrations/20261021000200_push_cron_jobs.sql
 --
 -- =============================================================================
 -- FIN DEL BASELINE

@@ -4,7 +4,7 @@ Qué hay dentro, por qué está así, y qué hacer para manejarla.
 
 Este documento describe el estado **real** de producción, leído de los catálogos
 de Postgres el 3 de agosto de 2026 (PostgreSQL 17.6 sobre Supabase). Las
-migraciones posteriores, hasta `20261021000000`, se documentaron a medida que se
+migraciones posteriores, hasta `20261021000200`, se documentaron a medida que se
 escribían, no se leyeron de producción. La base manda sobre lo que dicen las
 migraciones: unas cuantas cosas se hicieron a mano en el dashboard y solo
 existen en la base. Para saber qué carpeta toca cada cambio, ver
@@ -403,7 +403,7 @@ nombre del autor de un pin o de un hilo.
 | `pin_schedule_items` | Programa opcional de un evento: bloques horarios. Sin política de `update`, la interfaz reemplaza el set completo |
 | `pin_votes` | Un voto por persona y pin, `+1` o `-1` |
 | `favorites` | Marcadores personales |
-| `event_rsvps` | Asistencia a eventos. Un trigger comprueba que el pin sea de tipo `event`. **No se lee directamente**: ver más abajo |
+| `event_rsvps` | Asistencia a eventos. Un trigger comprueba que el pin sea de tipo `event`. **No se lee directamente**: ver más abajo. `reminded_at` guarda cuándo se creó su recordatorio y **solo lo escribe la base**: ver "El recordatorio de un evento se manda una vez" |
 | `pin_creation_events` | Bitácora del límite diario. Interna, sin políticas |
 | `storage_cleanup_queue` | Archivos pendientes de borrar del bucket. Interna, sin políticas |
 
@@ -503,6 +503,9 @@ algo ocurre → trigger → create_notification() → fila en notifications
                                                       │
                                   cron cada minuto → Edge Function send-push
                        claim_push_deliveries → envía → finish_push_deliveries
+
+recordatorio de evento:  cron cada minuto → enqueue_upcoming_event_notifications()
+                         → create_notification() (una vez por asistencia: reminded_at)
 ```
 
 `notifications` tiene un `unique (user_id, dedupe_key)` y `create_notification`
@@ -619,6 +622,125 @@ Como la migración dejó el índice `notification_deliveries_subscription_idx` s
 vuelta a primer plano), el trigger y la propia acción `set null` encuentran sus
 filas sin recorrer la cola.
 
+### Una suscripción que cambia de endpoint
+
+Migración `20261021000100`. Cuando el navegador entrega un endpoint nuevo
+(reinstalar la PWA en el iPhone, borrar los datos del sitio),
+`register_push_subscription` creaba una fila y dejaba la anterior: inflaba el
+"llegará a N dispositivos" de Difusión y arrastraba entregas pendientes hacia un
+endpoint que ya no existe. Ahora el cliente le dice cuál fue el último endpoint que
+el servidor confirmó (`p_old_endpoint`, opcional) y la base, en el mismo acto, mueve
+a la suscripción nueva las entregas `pending` de la vieja y la borra.
+
+- **La firma de cuatro argumentos se borró** antes de crear la de cinco. Con las dos
+  conviviendo, PostgREST responde "could not choose the best candidate function".
+  El frontend de antes sigue funcionando sin cambios: `p_old_endpoint` tiene valor
+  por defecto, así que su llamada con cuatro argumentos con nombre resuelve a la
+  nueva.
+- **Solo se busca entre las suscripciones de quien llama.** El endpoint viejo lo
+  manda el cliente; sin ese filtro, cualquiera podría retirar el dispositivo de
+  otra persona con solo conocer su endpoint. Y solo se mueven las entregas cuyo
+  aviso es de quien llama.
+- **Se mueve con el `attempts` y el lease intactos.** El fencing de
+  `finish_push_deliveries` se apoya en esos campos: una ejecución de `send-push`
+  que ya tuviera la entrega reclamada tiene que poder cerrarla. Si la suscripción
+  nueva ya tenía una entrega del mismo aviso, la de la vieja no se mueve (el
+  `unique` no lo permite) y el trigger `BEFORE DELETE` la expira al borrar la
+  suscripción. Lo ya cerrado (`sent`, `failed`, `expired`) no se mueve: se queda
+  como rastro, sin suscripción y con su `push_host`.
+- Un `p_old_endpoint` igual al nuevo, en blanco, inexistente o de otra persona no
+  hace nada y no es un error.
+
+### La cola no crece sin límite
+
+Migración `20261021000200`. Ni las entregas ni los avisos se borraron nunca, y la
+cola es la tabla que más crece del esquema: una fila por aviso y por dispositivo.
+`prune_push_history()` los borra por edad, una vez al día (cron
+`udp-map-prune-push-history`, 04:17 UTC), y devuelve cuántos se llevó:
+`{"deliveries": n, "notifications": m}`.
+
+| Qué | A partir de |
+|---|---|
+| Entregas `sent` y `expired` | 30 días |
+| Entregas `failed` | 90 días: es lo único que alguien va a querer mirar con calma |
+| Avisos leídos | 180 días |
+| Avisos sin leer | 365 días |
+
+La edad es siempre `created_at`. Una entrega `pending` nunca se borra por edad. Las
+entregas de un aviso que se borra se van con él por la cascada y no entran en la
+cuenta de `deliveries`.
+
+**Es segura gracias a `reminded_at`.** Sin ella, borrar el aviso de un evento
+todavía próximo lo habría hecho reaparecer en el siguiente barrido.
+
+Se niega por dentro a cualquier rol que no sea el del servicio, no solo por el
+`GRANT` (`EXECUTE` solo para `service_role`): `auth.role()` nulo —pg_cron corre sin
+JWT— o `service_role` pasan, y todo lo demás, un administrador incluido, se niega.
+Desde el SQL Editor funciona: el SQL Editor corre como `postgres` y sin JWT.
+
+### Ver qué servicio push rechaza
+
+`admin_push_delivery_stats(días)` (migración `20261021000100`), solo admin:
+agrupa las entregas creadas en los últimos `días` (por defecto 7, acotado a 1–90) por
+`push_host` y `status`, con `total`, la fecha de la más reciente (`last_at`) y el
+último error no nulo (`last_error`). Una entrega sin host sale como `(sin host)`.
+
+`last_error` sale con cualquier URL recortada a su host: las entregas anteriores a
+`4eae308` podían guardar el endpoint entero, que es una URL de capacidad.
+
+**La ventana de 90 días no es simétrica con la purga.** `días` admite hasta 90,
+pero `prune_push_history` borra las entregas `sent` y `expired` a los 30 días y las
+`failed` a los 90. Con más de 30 días la consulta todavía ve todos los fallos y ya
+no ve los envíos ni las caducidades de más de 30 días: las proporciones entre
+estados se inclinan hacia `failed`. Para comparar estados, 30 días o menos; de 31 a
+90 solo sirve para rastrear fallos. No se acota a 30 a propósito, porque los
+`failed` se guardan 90 días justamente para poder mirarlos. Las `pending` no se
+purgan por edad. El código no cambia; el comentario de la función dice lo mismo.
+
+Existe porque los `failed` se quedaban en la cola sin que nadie los mirara. Si el
+panel pregunta por qué no llegan los avisos a los iPhone, la respuesta está en la
+fila `web.push.apple.com` / `failed`. Como `service_role` no es admin
+(`user_role()` da `guest`), tampoco puede llamarla: el SQL Editor no sirve, y para
+mirar desde ahí está la consulta de arriba.
+
+### El recordatorio de un evento se manda una vez
+
+Migración `20261021000100`. La única barrera contra repetir el recordatorio era la
+fila de `notifications` (el `unique (user_id, dedupe_key)`), y esa fila la puede
+borrar su dueño (`notifications_delete_own`): el siguiente barrido de
+`enqueue_upcoming_event_notifications`, que corre cada minuto, la recreaba y el push
+volvía a sonar en menos de un minuto. La idempotencia no puede vivir en algo que el
+usuario puede vaciar, así que pasó a la asistencia: **`event_rsvps.reminded_at`**.
+
+- `enqueue_event_reminder` no hace nada si `reminded_at` ya está. Lo marca cuando el
+  recordatorio **existe**: recién creado, o ya estaba (`create_notification`
+  devuelve null en los dos casos, así que lo distingue mirando `notifications`).
+- **Si las preferencias lo silencian, no marca.** El barrido sigue intentándolo cada
+  minuto mientras el evento esté en los 20 días, y si la persona reactiva los avisos
+  de eventos recibe el recordatorio que se le debía.
+- `enqueue_upcoming_event_notifications` filtra `reminded_at is null`. Misma firma y
+  mismo retorno que antes.
+- **Cancelar la asistencia y volver a apuntarse es una asistencia nueva**: fila nueva,
+  sin marca. Si el aviso sigue ahí no se duplica, pero se marca.
+- **El backfill** marcó, al aplicar la migración, a quien el barrido ya había
+  atendido: quien tiene el aviso (aunque lo haya borrado) o no tiene silenciados los
+  avisos de eventos. A quien los tenía apagados y no tenía el aviso lo dejó sin
+  marcar, para no quitarle el recordatorio para siempre.
+- **`authenticated` no puede escribir `reminded_at`.** `event_rsvps` tenía `grant all`,
+  y con un `UPDATE` de tabla entera cada quien podía ponerse o borrarse su propia
+  marca (borrarla reabría el recordatorio; ponerla lo apagaba). `INSERT` y `UPDATE`
+  pasaron a columnas (`pin_id`, `user_id`, `status`): son las tres que escribe el
+  `upsert` del cliente. Las políticas RLS no cambiaron.
+- **La comprobación de rol de `enqueue_upcoming_event_notifications` usa `<>` a
+  propósito y no debe pasar a `is distinct from`.** pg_cron corre sin JWT,
+  `auth.role()` es null, la condición da null (no true) y el `if` no se cumple, así
+  que el cron pasa. Con `is distinct from`, como en `claim_push_deliveries`, lo
+  dejaría fuera. Un estudiante (`authenticated`) y un visitante (`anon`) sí caen en
+  la excepción.
+
+El barrido ya no vive dentro de `send-push`: tiene su propio trabajo de pg_cron,
+`udp-map-event-reminders`, cada minuto. Ver la sección 8.
+
 ### Qué avisa la aplicación, y qué no avisaba
 
 Nueve tipos. `pin_verified` y `pin_comment` son de la migración
@@ -661,6 +783,23 @@ destino sin que nadie se enterara. El destino se valida contra
 que puede mandar a toda la universidad a una web ajena con un toque es phishing
 servido por la propia aplicación.
 
+Tres cosas más de la difusión (migración `20261021000100`, misma firma y mismo
+retorno):
+
+- **Cuenta solo lo que creó.** El contador subía por cada suscriptor aunque
+  `create_notification` devolviera null (la persona silenció los avisos del
+  sistema, o el dedupe), así que Difusión prometía más gente de la real. Ahora solo
+  cuentan los ids no nulos, y `broadcast_sent` anota esos destinatarios.
+- **Una clave de dedupe por difusión**: `'announcement_' || gen_random_uuid()`. Antes
+  era el segundo de la época, y la segunda difusión del mismo segundo caía en el
+  `on conflict do nothing` de todos y no llegaba a nadie. La misma clave para todos
+  los destinatarios de una difusión no choca entre sí: el `unique` es
+  `(user_id, dedupe_key)`.
+- **Topes de 60 caracteres el título y 180 el cuerpo**, los `maxLength` del panel.
+  Un RPC directo no pasa por el panel, y el payload cifrado tiene un tope de 3993 B
+  que el formato híbrido, al repetir el texto, alcanza antes. Se cuentan caracteres,
+  no bytes.
+
 ### Cada quien elige qué avisos quiere
 
 `notification_preferences` (migración `20260831000000`), con **dos ejes**: la
@@ -675,6 +814,15 @@ que la tabla pesa lo que pesan las excepciones. La regla entera vive en
 `wants_notification(usuario, categoría, canal)`, y va como función —y no como
 subconsulta suelta— para que `create_notification` y `queue_notification_push`
 no puedan discrepar.
+
+**Solo `service_role` puede llamarla** (migración `20261021000100`). Es `SECURITY
+DEFINER` y no mira `auth.uid()`, así que con `EXECUTE` para `authenticated` cualquier
+sesión podía preguntar si un tercero silenció los avisos de foro. Nadie la llama
+desde fuera: ni una política RLS, ni el cliente, ni `send-push`. Las dos funciones
+que la usan son `SECURITY DEFINER`, y una función definer comprueba `EXECUTE` contra
+su dueño, no contra quien dispara el trigger. El `revoke` incluye `public`: la
+migración que la creó solo le quitó `anon`, y una función nace con `EXECUTE` para
+`PUBLIC`, que incluye a `authenticated`.
 
 Se aplica en dos sitios: `create_notification` no crea la fila si el canal
 `in_app` está apagado, y `queue_notification_push` no encola la entrega si lo
@@ -808,7 +956,7 @@ sección 12 cuenta las dos que no lo hacían y ya se corrigieron.
 | `vote_pin(pin, valor)` | estudiante+ | Vota; votar lo mismo dos veces retira el voto |
 | `vote_thread(hilo, valor)` | estudiante+ | Igual, en el foro |
 | `create_content_report(...)` | estudiante+ | Denuncia contenido |
-| `register_push_subscription(...)` | estudiante+ | Registra el navegador para notificaciones |
+| `register_push_subscription(endpoint, p256dh, auth, user_agent, endpoint_viejo)` | estudiante+ | Registra el navegador para notificaciones. `endpoint_viejo` es opcional: si viene y es una suscripción de quien llama, se retira y sus entregas pendientes pasan a la nueva |
 | `event_rsvp_counts(pines[])` | cualquiera | Cuánta gente va a cada evento. Solo el número |
 | `event_attendees(pin)` | quien organiza / admin | Quién va, con nombre. La tabla ya no se lee directamente |
 | `extend_pin_ttl(pin, horas)` | moderador+ | Alarga el plazo de un pin no permanente |
@@ -818,14 +966,14 @@ sección 12 cuenta las dos que no lo hacían y ya se corrigieron.
 | `resolve_moderation_report(id, acción, nota)` | admin | La resuelve, borrando el contenido o descartándola |
 | `admin_set_user_role(usuario, rol)` | admin | Cambia el rol de otro. No puede cambiar el propio |
 | `admin_count_push_subscribers()` | admin | Cuántos navegadores suscritos |
-| `admin_broadcast_push_notification(t, c, url)` | admin | Difunde un aviso a todo el que tenga push activado; `url` debe ser una ruta interna |
+| `admin_broadcast_push_notification(t, c, url)` | admin | Difunde un aviso a todo el que tenga push activado; `url` debe ser una ruta interna, el título tiene tope de 60 caracteres y el cuerpo de 180. Devuelve a cuántas personas les creó el aviso |
 | `admin_send_test_push_to_self()` | admin | La misma tubería, pero solo a quien la llama |
 | `admin_push_subscribers()` | admin | Quién recibe los avisos push, y desde qué dispositivo |
+| `admin_push_delivery_stats(días)` | admin | Entregas de los últimos `días` (1–90, 7 por defecto) por host del servicio push y estado, con el último error. Con más de 30 días solo los `failed` están completos: la purga borra antes los `sent` y `expired` |
 | `admin_delete_push_subscription(endpoint)` | admin | Da de baja un dispositivo concreto |
 | `admin_set_capability(usuario, pieza, sí/no)` | admin | Concede o quita una pieza de moderación |
 | `admin_user_capabilities(usuario)` | admin | Qué piezas tiene concedidas alguien |
 | `has_capability(pieza)` | cualquiera | Si quien pregunta puede hacer eso. Lo usan las políticas |
-| `wants_notification(usuario, categoría, canal)` | cualquiera | Si esa persona quiere ese aviso |
 | `admin_activity_log(limite)` | admin | El registro de actividad, con el nombre de quien actuó |
 | `prune_activity_log(dias)` | admin | Poda el registro. Mínimo 7 días |
 
@@ -836,13 +984,20 @@ Solo `service_role` —la Edge Function `send-push`, con la clave de servicio—
 (`p256dh` y `auth` incluidos), y comprueban dentro `auth.role() is distinct from
 'service_role'`. Es `is distinct from` y no `<>` a propósito: con `<>`, un rol nulo
 daría `null`, el `if` no se cumpliría y la función dejaría pasar a cualquiera.
-(`enqueue_upcoming_event_notifications` también tiene el `EXECUTE` solo para
-`service_role`; sigue listada entre las internas.)
+
+`enqueue_upcoming_event_notifications` y `prune_push_history` las llama pg_cron, que
+corre sin JWT (`auth.role()` nulo). `prune_push_history` lo permite expresamente (`auth.role() is
+not null and auth.role() <> 'service_role'`). `enqueue_upcoming_event_notifications`
+usa `<>`, y por eso el cron pasa sin más; ver "El recordatorio de un evento se manda
+una vez" en la sección 4 antes de tocarla.
 
 | Función | Qué hace |
 |---|---|
 | `claim_push_deliveries(límite, lease_s, aviso)` | Reclama hasta `límite` entregas listas (1–200, 50 por defecto) y las reserva `lease_s` segundos (30–900, 120 por defecto). Devuelve el aviso y la suscripción con sus claves. `aviso` es opcional y limita el reclamo a los envíos de ese aviso |
 | `finish_push_deliveries(resultados)` | Cierra un lote con una llamada. `resultados` es un array jsonb de `{id, attempts, status, next_attempt_at, last_error}`. Solo cierra lo que sigue `pending` con ese `attempts`, y devuelve los ids que cerró |
+| `enqueue_upcoming_event_notifications()` | Crea el recordatorio de los eventos de los próximos 20 días a quien se apuntó y aún no lo tiene (`reminded_at is null`). Devuelve cuántos creó. La llama el cron `udp-map-event-reminders` cada minuto; el `send-push` anterior (`20eee7e` o antes) también la llama en cada pasada, y no duplica nada |
+| `prune_push_history()` | Borra por edad entregas (`sent`/`expired` 30 días, `failed` 90) y avisos (leídos 180, sin leer 365). Devuelve `{"deliveries": n, "notifications": m}`. La llama el cron `udp-map-prune-push-history` |
+| `wants_notification(usuario, categoría, canal)` | Si esa persona quiere ese aviso. Antes la podía llamar cualquier sesión; ver "Cada quien elige qué avisos quiere" |
 
 ### Las internas
 
@@ -850,7 +1005,7 @@ Nadie puede invocarlas desde la API: se les revocó el `EXECUTE`. Solo las llama
 otros triggers y funciones.
 
 `adjust_karma` · `create_notification` · `log_activity` · `enqueue_event_reminder` ·
-`enqueue_upcoming_event_notifications` · `check_explorer_badge` ·
+`check_explorer_badge` ·
 `check_guardian_badge` · `check_host_badge` · `check_photographer_badge` ·
 `check_pioneer_badge` · `handle_new_user` · y todos los `notify_*`, `on_*` y
 `protect_*`. También las de trigger que no encajan en esos patrones:
@@ -888,7 +1043,10 @@ a su vez encola una entrega push por cada navegador registrado del usuario.
 del comentario padre si es una respuesta anidada. No se avisa a sí mismo.
 
 **Al confirmar asistencia a un evento:** si el evento empieza dentro de los
-próximos 20 días, se crea el recordatorio en el acto.
+próximos 20 días, se crea el recordatorio en el acto y la asistencia queda marcada
+(`reminded_at`). Si el evento todavía está más lejos, lo crea el cron
+`udp-map-event-reminders` cuando entre en la ventana. Una asistencia ya marcada no
+vuelve a avisar, aunque la persona borre el aviso.
 
 **Al denunciar contenido:** se notifica a **todos** los administradores.
 
@@ -964,24 +1122,35 @@ cierra con su error a la vista para no bloquear el resto.
 
 ## 8. Tareas programadas, secretos y Edge Functions
 
-Tres trabajos de `pg_cron`:
+Cinco trabajos de `pg_cron`:
 
 | # | Nombre | Frecuencia | Qué hace |
 |---|---|---|---|
 | 1 | `expire-pins` | cada 30 min | `delete from pins where is_permanent = false and expires_at < now()` |
-| 2 | `udp-map-send-push-every-minute` | cada minuto | Llama a la Edge Function `send-push` |
+| 2 | `udp-map-send-push-every-minute` | cada minuto | Llama a la Edge Function `send-push`, con `timeout_milliseconds := 10000` |
 | 3 | `udp-map-storage-gc` | cada 10 min | Llama a la Edge Function `storage-gc` |
+| 4 | `udp-map-event-reminders` | cada minuto | `select public.enqueue_upcoming_event_notifications()`: crea los recordatorios de eventos. SQL puro, sin Vault |
+| 5 | `udp-map-prune-push-history` | diario, 04:17 UTC | `select public.prune_push_history()`: borra por edad entregas y avisos. SQL puro, sin Vault |
 
-Los dos últimos leen los mismos dos secretos de **Vault**:
+Los #2, #4 y #5 están versionados en la migración `20261021000200`. El #2 usa el
+**mismo nombre** que el del runbook, a propósito: `cron.schedule` con un nombre que
+ya existe lo reemplaza, así que el trabajo creado a mano queda sustituido por el
+de la migración, con el timeout y sin desprogramar nada antes. El de `pg_net` por
+defecto es de 5 s: `send-push` contesta 202 en seguida, pero un arranque en frío
+o un servicio lento a la hora punta lo pasa, y `net._http_response` se llena de
+timeouts que no son un fallo real.
+
+Los #2 y #3 leen los mismos dos secretos de **Vault**:
 `udp_map_project_url` y `udp_map_send_push_cron_secret`. Están cifrados, no se
 pueden exportar y **no están en ningún archivo del repositorio**. Hay que volver
-a crearlos a mano después de un reset.
+a crearlos a mano después de un reset. Los #4 y #5 no los necesitan y corren sin
+JWT, como `postgres`.
 
 Edge Functions en `supabase/functions/`:
 
-- **`send-push`** — en cada pasada encola los recordatorios de eventos
-  (`enqueue_upcoming_event_notifications()`), drena `notification_push_deliveries`
-  y envía las notificaciones Web Push. Reclama la cola por RPC
+- **`send-push`** — drena `notification_push_deliveries` y envía las
+  notificaciones Web Push. **Ya no encola los recordatorios de eventos**: desde la
+  migración `20261021000200` los crea el trabajo #4. Reclama la cola por RPC
   (`claim_push_deliveries`) en lotes de 50, envía 10 a la vez y cierra cada lote con
   una sola llamada a `finish_push_deliveries` (con un reintento, seguro por el
   fencing); mientras queda presupuesto (unos 40 s y como mucho 6 lotes, 300
@@ -991,13 +1160,26 @@ Edge Functions en `supabase/functions/`:
   pasada sigue en segundo plano, porque `pg_net` corta a los 5 s; el panel
   (sesión de administrador) espera el resultado. Se invoca con `x-cron-secret` o
   con sesión de administrador. Se despliega con `npm run deploy:push`, **después**
-  de aplicar la migración `20261021000000`: la versión nueva llama a RPC que antes
-  no existían. La anterior sigue funcionando con el esquema nuevo. Cifrado y VAPID
-  viven en `_shared/webpush.ts`. Secretos: `VAPID_PUBLIC_KEY`,
+  de aplicar las migraciones `20261021000000`, `20261021000100` y `20261021000200`:
+  la versión nueva llama a RPC que antes no existían, y sin la última nadie crea los
+  recordatorios. La `000100` comprueba al principio que existe `push_host` (de la
+  `000000`) y para con un mensaje si no: plpgsql no valida las columnas al crear una
+  función, así que sin esa guarda pasaría entera y fallarían después
+  `register_push_subscription` y `admin_push_delivery_stats`. La anterior (`20eee7e` o
+  antes) sigue funcionando con el esquema nuevo, también con el cron de
+  recordatorios corriendo a la vez, porque `reminded_at` impide duplicar. Cifrado y
+  VAPID viven en `_shared/webpush.ts`. Secretos: `VAPID_PUBLIC_KEY`,
   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (un `mailto:` se usa tal cual; cualquier
   otro valor, o ninguno, firma con el `mailto:` de respaldo, igual que la versión
-  que entrega en iPhone) y `APP_ORIGIN` (opcional; por defecto
-  `https://udp-map.vercel.app`).
+  que entrega en iPhone), `APP_ORIGIN` (opcional; por defecto
+  `https://udp-map.vercel.app`) y `PUSH_PAYLOAD_FORMAT` (opcional: `hybrid`, el
+  por defecto, que es el formato que entrega en iPhone, o `declarative`; ver
+  «El contrato de `send-push`» más abajo).
+  Acepta un cuerpo JSON opcional `{ "notificationId": "<uuid>" }`, que solo cuenta si
+  llama un administrador (el cron lo ignora): reclama únicamente las entregas de ese
+  aviso, y la respuesta añade `notification.deliveries` con el conteo por estado. El
+  detalle del cuerpo, de la respuesta y del payload está en «El contrato de
+  `send-push`», al final de esta sección.
   Clasifica la respuesta del servicio push: 404/410 suscripción expirada,
   400/413/401/403 fallo terminal sin reintentos, 429/5xx/red reintento
   (respetando `Retry-After`). Un 404/410 cierra la entrega como `expired` y
@@ -1013,6 +1195,105 @@ imprescindible: el cron las llama con una cabecera `x-cron-secret` y sin
 Supabase responde 401 antes de que la función llegue a ejecutarse. El control de
 acceso lo hace cada función por su cuenta — compara el secreto de cron, o valida
 el token y exige rol admin.
+
+### El contrato de `send-push`
+
+Sale de `send-push/index.ts` y `_shared/pushPayload.ts`; si cambia alguno de los dos,
+cambia esto.
+
+**Códigos de respuesta**, en el orden en que se comprueban:
+
+| Código | Cuándo |
+|---|---|
+| 405 | El método no es `POST` (el `OPTIONS` del preflight contesta `ok`) |
+| 401 | Ni `x-cron-secret` válido ni sesión de administrador |
+| 400 | Solo con sesión de administrador: `notificationId` presente y que no es un uuid. `{"error": "notificationId tiene que ser un uuid."}`, antes de tocar la cola |
+| 500 | La configuración VAPID es inválida (`{"error": …}`, sin tocar la cola); o, para el panel, falla el primer reclamo de la cola o salta una excepción inesperada |
+| 202 | Al cron, pasadas las comprobaciones de arriba: `{"accepted": true}`. La pasada sigue en segundo plano y su resumen solo queda en el log. Sin `EdgeRuntime` no hay segundo plano y se espera en línea |
+| 200 | La pasada terminó; el panel recibe el resumen de abajo |
+
+**El cuerpo.** Opcional, y solo se lee si llama un administrador: al cron se le
+ignora aunque mande otra cosa, porque su pasada es siempre la cola entera y un
+cuerpo raro no puede costarle el minuto con un 400. Para un administrador, un
+cuerpo vacío, que no es JSON, que no es un objeto, o sin `notificationId` (o con
+`null`), es «sin aviso» y recorre la cola entera. Un `notificationId` que es un
+uuid (se pasa a minúsculas) acota la pasada a ese aviso. Cualquier otra cosa en
+`notificationId` —un número, una cadena que no es uuid— da 400. Es un error y no un
+«sin aviso» a propósito: callarlo haría creer al panel que vació el aviso que pidió
+cuando en realidad vació la cola entera.
+
+**La respuesta 200**, JSON:
+
+- `engine` (`webcrypto-aes128gcm-v1`) y **`payloadFormat`** (`hybrid` o
+  `declarative`): el formato con el que viajó la pasada, para saber qué valor del
+  secreto está vivo sin ir a mirarlo.
+- `processed`, `sent`, `failed`, `expiredSubscriptions`, `batches`, `skipped` y
+  `fenced`: los contadores de la pasada.
+- `diagnostics` (una entrada por entrega procesada, hasta 200; `diagnosticsOmitted`
+  cuenta el resto), `claimError`, `closeErrors` y `deleteErrors`.
+- Con `notificationId`, `notification`: `{ "id", "deliveries": { "pending", "sent",
+  "failed", "expired" } }`, contadas por estado **después** del cierre. Si el conteo
+  falla, en su lugar va `{ "id", "error": "<mensaje>" }` y la respuesta sigue siendo
+  **200**: la pasada ya se hizo y sus números son buenos, y un conteo caído no debe
+  tumbarla. Quien lee tiene que mirar `notification.error` antes de fiarse de
+  `deliveries`.
+
+**El payload.** Los dos formatos pasan por el mismo cifrado, el mismo tope
+(`MAX_PLAINTEXT_BYTES`, 3993 B; si se pasa, la entrega se cierra `failed` con
+«payload demasiado grande»), el mismo `TTL`, `Urgency` y VAPID. Cambia solo lo que va
+dentro:
+
+- **`hybrid`**, el de siempre y el que entrega en iPhone: el bloque `web_push: 8030` /
+  `notification` más los campos planos de la raíz (`notificationId`, `title`, `body`,
+  `url`, `type`, `category`, `payload`) y `payload` también dentro de
+  `notification.data`. Sigue en `index.ts`, literal.
+- **`declarative`**: solo el bloque, sin campos planos y sin `payload` en ningún
+  sitio. Lo construye `pushPayload.ts`, con los mismos valores y respaldos que el
+  bloque `notification` del híbrido:
+
+  ```json
+  {
+    "web_push": 8030,
+    "notification": {
+      "title": "<título; «UDP Map» si viene vacío>",
+      "body": "<cuerpo; «Tienes una nueva notificación.» si viene vacío>",
+      "navigate": "<URL absoluta de la app con ?notification=<id>; «<APP_ORIGIN>/» si el destino es de otro origen>",
+      "icon": "<APP_ORIGIN>/pwa-192x192.png",
+      "lang": "es",
+      "tag": "<id del aviso>",
+      "data": {
+        "url": "<destino tal cual; «/» si viene vacío>",
+        "notificationId": "<id del aviso>",
+        "type": "<tipo>",
+        "category": "<categoría>"
+      }
+    }
+  }
+  ```
+
+  Le falta, respecto al bloque híbrido, solo `data.payload`: el navegador no lo usa y
+  en un payload sin campos planos cada byte cuenta contra el tope.
+
+**Elegir el formato: `PUSH_PAYLOAD_FORMAT`.**
+
+- Ausente, vacío o `hybrid` (sin distinguir mayúsculas ni espacios sobrantes): híbrido.
+- `declarative`: declarativo.
+- **Cualquier otro valor cae en `hybrid`**, con un `console.warn` en el log de la
+  función (`PUSH_PAYLOAD_FORMAT="…" no es 'hybrid' ni 'declarative'; se envía el
+  payload híbrido.`). A propósito: un secreto mal escrito no puede cambiar lo que
+  viaja a los teléfonos, pero tampoco puede pasar callado, porque quien lo puso
+  creerá que está probando `declarative`. `payloadFormat` en la respuesta lo
+  deja a la vista.
+- Se lee **una vez, al cargar la función**. Cambiarlo exige
+  `npx supabase secrets set PUSH_PAYLOAD_FORMAT=declarative` (o
+  `npx supabase secrets unset PUSH_PAYLOAD_FORMAT` para volver al híbrido) y una
+  instancia nueva de la función; no cambia entre dos entregas de una pasada.
+- **Está apagado por defecto y solo se activa con el service worker nuevo adoptado y
+  probado en un iPhone.** El `push-sw.js` anterior leía solo los campos planos, que el
+  declarativo no trae: un teléfono que aún lo tenga en caché mostraría los textos
+  genéricos. Y si en iOS 18.4+ pinta la notificación el bloque declarativo o el
+  service worker, no se sabe sin un dispositivo. El orden del despliegue está en
+  `docs/ROADMAP.md` (Push 6).
 
 ---
 
@@ -1056,7 +1337,9 @@ Y después, a mano, porque nada de esto se puede exportar:
    401 y no funcionará: revisar que estén declaradas en `supabase/config.toml`
    y volver a desplegar.
 
-7. **Cron** — los tres trabajos, ya con las funciones desplegadas:
+7. **Cron** — los cinco trabajos, ya con las funciones desplegadas. Los #2, #4 y #5
+   son lo que hace la migración `20261021000200` (idempotente, y reemplaza por
+   nombre al #2): se puede ejecutar ese archivo en vez de pegar sus bloques.
 
    ```sql
    -- #1 Borrar los pines cuyo plazo venció
@@ -1066,7 +1349,8 @@ Y después, a mano, porque nada de esto se puede exportar:
      $$ delete from pins where is_permanent = false and expires_at < now() $$
    );
 
-   -- #2 Enviar las notificaciones push encoladas
+   -- #2 Enviar las notificaciones push encoladas. El timeout de 10 s es explícito:
+   -- el de pg_net por defecto es 5 s.
    select cron.schedule(
      'udp-map-send-push-every-minute',
      '* * * * *',
@@ -1078,7 +1362,8 @@ Y después, a mano, porque nada de esto se puede exportar:
          'Content-Type', 'application/json',
          'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'udp_map_send_push_cron_secret')
        ),
-       body := '{}'::jsonb
+       body := '{}'::jsonb,
+       timeout_milliseconds := 10000
      ) as request_id;
      $$
    );
@@ -1098,6 +1383,24 @@ Y después, a mano, porque nada de esto se puede exportar:
        body := '{}'::jsonb
      ) as request_id;
      $$
+   );
+
+   -- #4 Crear los recordatorios de eventos (antes lo hacía send-push). En una
+   -- base ya existente necesita la migración 20261021000100; el baseline ya la
+   -- incluye. No usa Vault.
+   select cron.schedule(
+     'udp-map-event-reminders',
+     '* * * * *',
+     'select public.enqueue_upcoming_event_notifications()'
+   );
+
+   -- #5 Purgar entregas y avisos viejos. En una base ya existente necesita la
+   -- migración 20261021000200 (que crea prune_push_history); el baseline ya la
+   -- incluye. No usa Vault.
+   select cron.schedule(
+     'udp-map-prune-push-history',
+     '17 4 * * *',
+     'select public.prune_push_history()'
    );
    ```
 
@@ -1175,6 +1478,31 @@ $prueba$;
 
 Lo esperado es `N reclamadas, N cerradas, 0 al repetir el cierre`. Sin el
 `set_config`, las dos fallan con "Solo el servicio puede…".
+
+### Mirar los cron y la cola desde el SQL Editor
+
+El SQL Editor corre como `postgres` y sin JWT (`auth.role()` nulo): las dos
+funciones del servicio que aceptan un cron (`enqueue_upcoming_event_notifications`
+y `prune_push_history`) contestan, pero `admin_push_delivery_stats` se niega, porque
+exige un administrador con sesión. La consulta equivalente se escribe a mano:
+
+```sql
+-- Qué trabajos hay programados, y con qué comando
+select jobname, schedule, active, left(command, 80) from cron.job order by jobname;
+
+-- Entregas de la última semana por servicio push y estado
+select coalesce(push_host, '(sin host)') as push_host, status, count(*)
+from public.notification_push_deliveries
+where created_at >= now() - interval '7 days'
+group by 1, 2 order by 1, 2;
+
+-- Lo que el cron haría ahora mismo (cuenta lo que borró / lo que creó)
+select public.prune_push_history();
+select public.enqueue_upcoming_event_notifications();
+```
+
+Los dos últimos hacen efecto de verdad: borran y crean avisos. Una purga a deshora
+es inofensiva; un barrido a deshora también, porque `reminded_at` impide repetir.
 
 ### Cosas que no conviene hacer a mano
 
@@ -1257,6 +1585,10 @@ arregló. Se deja anotado para que nadie vuelva a tropezar buscándolo.
 | `set_pin_permanent`, código muerto | `20260803120400` — eliminada |
 | Un reintento al subir fotos las duplicaba | Subida atómica en `src/features/pins/api.ts` |
 | La regla de extender o verificar vivía en un componente | Se eliminó: es una decisión por pin, no por categoría |
+| Borrar el aviso de un recordatorio de evento lo hacía sonar de nuevo en menos de un minuto | `20261021000100` — `event_rsvps.reminded_at`; el barrido de `enqueue_upcoming_event_notifications` ya no depende de la fila de `notifications` |
+| `wants_notification` dejaba leer las preferencias de cualquier persona | `20261021000100` — `EXECUTE` solo para `service_role` |
+| Difusión contaba destinatarios sin aviso, y dos en el mismo segundo chocaban | `20261021000100` — cuenta los ids no nulos, clave con `gen_random_uuid()` y topes de 60 y 180 caracteres |
+| Ni las entregas ni los avisos se purgaban, y el cron de `send-push` solo vivía en el runbook | `20261021000200` — `prune_push_history` y los tres trabajos versionados, el de `send-push` con timeout de 10 s |
 | La Edge Function `expire-pins`, código muerto | Borrada del repositorio; nunca llegó a estar desplegada |
 | La planta de un pin podía ser cualquier número | `20260810000000` — trigger `trg_validate_pin_floor` |
 | Mover un pin solo se comprobaba en la interfaz | `20260826000100` — trigger `trg_authorize_pin_move` |
