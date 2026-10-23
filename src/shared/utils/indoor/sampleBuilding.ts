@@ -1,3 +1,5 @@
+import type { Polygon } from 'geojson'
+import type { Area, AreaKind, Building, BuildingFloor, NavEdgeRow, NavNodeRow } from '@/shared/types/database'
 import type { IndoorArea, NavEdge, NavEdgeKind, NavNode, NavNodeKind, Vec2 } from './types'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -281,3 +283,79 @@ export function buildSampleBuilding(): SampleBuilding {
 
 /** Los orígenes que ofrece el demo cuando no hay ubicación. */
 export const SAMPLE_ORIGINS = ['out:paradero', 'out:vergara432', 'out:patio', '1:lobby:a']
+
+// ── Como filas de la base, para el modo demo ────────────────────────────────
+
+export interface SampleRows {
+  building: Building
+  floors: BuildingFloor[]
+  areas: Area[]
+  nodes: NavNodeRow[]
+  edges: NavEdgeRow[]
+}
+
+/** Prefijo de los ids del demo: no son uuid, y así se distinguen de lo dibujado. */
+export const sampleRowId = (localId: string) => `demo-v432-${localId}`
+
+function ringToPolygon(ring: Vec2[]): Polygon {
+  const coordinates = ring.map(sampleToLngLat)
+  return { type: 'Polygon', coordinates: [[...coordinates, coordinates[0]]] }
+}
+
+/** El edificio del prototipo como lo devolvería la base, en lng/lat. */
+export function sampleRows(facultyId: string): SampleRows {
+  const { nodes, edges, areas } = buildSampleBuilding()
+  return {
+    building: {
+      id: SAMPLE_BUILDING_ID,
+      faculty_id: facultyId,
+      name: SAMPLE_BUILDING_NAME,
+      short_name: SAMPLE_BUILDING_ID,
+      aliases: [],
+      footprint: ringToPolygon(SAMPLE_FOOTPRINT),
+      default_floor: 1,
+      height_m: null,
+      color: null,
+      sort_order: 0,
+    },
+    floors: SAMPLE_FLOORS.map((level) => ({ building_id: SAMPLE_BUILDING_ID, level, label: null })),
+    areas: areas.map((a, i) => ({
+      id: sampleRowId(a.id),
+      faculty_id: facultyId,
+      building_id: a.buildingId,
+      floor: a.floor,
+      kind: a.kind as AreaKind,
+      custom_kind: a.kind === 'other' ? (a.name.startsWith('Sala') ? 'Sala de clases' : a.name) : null,
+      name: a.name,
+      polygon: ringToPolygon(a.ring),
+      color: null,
+      sort_order: i,
+    })),
+    nodes: nodes.map((n) => {
+      const [lng, lat] = sampleToLngLat(n.p)
+      return {
+        id: sampleRowId(n.id),
+        faculty_id: facultyId,
+        building_id: n.buildingId,
+        floor: n.floor,
+        kind: n.kind,
+        lng,
+        lat,
+        landmark: n.landmark,
+        via: n.via,
+        area_id: n.areaId ? sampleRowId(n.areaId) : null,
+        room_code: n.roomCode,
+        shaft: n.shaft,
+        width_m: n.widthM,
+      }
+    }),
+    edges: edges.map((e) => ({
+      id: sampleRowId(e.id),
+      faculty_id: facultyId,
+      a: sampleRowId(e.a),
+      b: sampleRowId(e.b),
+      kind: e.kind,
+      step_free: e.stepFree,
+    })),
+  }
+}

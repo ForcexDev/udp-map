@@ -25,6 +25,7 @@ No reapliques las migraciones archivadas para reconstruir: usa el baseline.
 | Catálogo | `campuses`, `faculties`, `careers`, `categories` y `badges` |
 | Identidad | `profiles`, vista `profiles_public` y `admin_emails` |
 | Interior | `buildings` → `building_floors` → `areas`; `floor_plans` es una estructura anterior sin consumo activo del mapa actual |
+| Navegación | `nav_nodes` y `nav_edges`: grafo por facultad para «cómo llegar» hasta la puerta de una sala |
 | Publicación | `pins` con fotos, comentarios y `pin_schedule_items` |
 | Lugares | `place_photos` con un único destino facultad, edificio o área |
 | Interacción | `pin_votes`, `favorites`, `event_rsvps` y `user_badges` |
@@ -168,6 +169,50 @@ inválida la planta anterior; no descartes ese error.
 El régimen sin JWT que autoriza mover no implica que todos los triggers
 eximan al mantenimiento: `protect_pin_sensitive_fields` todavía puede conservar
 campos según `user_role()`. Inspecciona el resultado completo en operaciones manuales.
+
+<a id="navegacion-interior"></a>
+## Navegación interior
+
+Migración `20261023000000_indoor_navigation`. `nav_nodes` son puntos donde la
+persona puede estar o decidir; `nav_edges`, tramos recorribles. El grafo es
+explícito: deducir pasillos de los polígonos de `areas` es frágil, y unas
+decenas de nodos por planta se rutean y prueban sin esfuerzo. Quien mapea
+dibuja el eje del pasillo y marca puertas; el editor genera el resto.
+
+| Columna | Contrato |
+|---|---|
+| `kind` | `walk`, `door`, `room` (destino), `stairs`, `elevator`, `entrance` (empalme con la calle) u `outdoor` |
+| `building_id`, `floor` | Juntos o ambos NULL (exterior), como en `areas`; la FK compuesta exige la planta y borra en cascada |
+| `lng`, `lat` | Coordenadas reales. El cliente proyecta a metros al cargar: la base no conoce planos locales |
+| `landmark` | Lo que se ve, con su artículo («los torniquetes»). Alimenta las instrucciones; ≤ 80 |
+| `via` | Solo exterior: por dónde se camina hasta el nodo («la vereda de Vergara») |
+| `area_id` | Sala de un nodo `room` o `door`; `SET NULL` al borrar el área |
+| `room_code` | Llave con `pins.room_code`. Se guarda como se escribió y se compara normalizado (índice en `upper`) |
+| `shaft` | Obligatorio en `stairs` y `elevator`: agrupa un núcleo entre plantas |
+| `width_m` | Ancho del vano (0–10 m): dibuja la puerta y corta el muro en 3D |
+
+Las aristas no tienen sentido: `nav_edges_pair_uniq` impide repetir `(a, b)`
+como `(b, a)`, y `a <> b`. `step_free = false` marca escalones o un torniquete
+sin pase ancho; una arista `stairs` nunca es apta, lo impone un CHECK. Las
+aristas verticales unen nodos del mismo `shaft` en plantas consecutivas y las
+genera el editor; no se dibujan a mano.
+
+`faculty_id` va en las dos tablas porque el grafo se carga por facultad, que es
+la unidad del mapa, y una ruta puede cruzar edificios por nodos `outdoor`.
+No hay trigger que compruebe que un nodo con edificio pertenezca a la facultad
+de ese edificio, ni que una arista una nodos de su facultad: `areas` tampoco lo
+tiene. Ver [observaciones](#discrepancias-y-observaciones-abiertas).
+
+Lectura pública, como el resto del mapeo: sin ella un invitado no puede pedir
+una ruta. Escritura con `has_capability('mapping')`; ocultar la herramienta del
+editor no protege las tablas. `nav_nodes.updated_at` usa el mismo trigger que
+`buildings` y `areas`.
+
+El cliente rutea por tiempo (escalera 16 s por piso al subir y 11 al bajar,
+ascensor 40 s de espera una sola vez más 4 s por piso, 1,3 m/s a pie). Esas
+constantes viven en `shared/utils/indoor/graph.ts`, no en la base. La ruta de
+calle hasta la entrada no se guarda: se pide a ORS/OSRM solo para la entrada
+elegida. Sin grafo, «Cómo llegar» vuelve a la guía de tres pasos.
 
 ## Interacción, foro y perfiles
 
@@ -402,6 +447,10 @@ reorganización. Lo externo requiere comprobación separada.
 - **Procedencia manual.** `profiles_admin_update` fue registrado como política
   creada fuera de migraciones; el baseline la incluye. Los IDs seriales de
   carreras cambian al reconstruir y no son claves públicas estables.
+- **Coherencia de facultad del grafo.** `nav_nodes` y `nav_edges` no comprueban
+  que el edificio del nodo ni los extremos de una arista sean de su
+  `faculty_id`, igual que `areas`. El editor los escribe coherentes; una carga
+  manual inconsistente partiría el grafo entre facultades sin error SQL.
 - **Reconstrucción y entorno.** Git registra una prueba PGlite tras ordenar las
   funciones del log antes de triggers/permisos. No se reproduce aquí ni demuestra
   pg_cron, Vault, PostgREST o producción. El baseline no provisiona esos entornos.

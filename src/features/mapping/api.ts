@@ -1,6 +1,6 @@
 import type { Polygon } from 'geojson'
 import { supabase } from '@/shared/lib/supabase'
-import type { Area, AreaKind, Building, BuildingFloor } from '@/shared/types/database'
+import type { Area, AreaKind, Building, BuildingFloor, NavEdgeRow, NavNodeRow } from '@/shared/types/database'
 import { mappingDemoDb } from './demoStore'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -199,5 +199,80 @@ export async function deleteArea(id: string): Promise<void> {
   if (!supabase) return mappingDemoDb.deleteArea(id)
 
   const { error } = await supabase.from('areas').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── Navegación interior ─────────────────────────────────────────────────────
+//
+// El grafo vive aquí y no en `wayfinding`: lo escribe el editor de este mismo
+// dominio, y el demo tiene que reproducir las cascadas de plantas y edificios
+// que ya reproduce para las áreas. `wayfinding` solo lo lee.
+
+export interface NavGraphRows {
+  nodes: NavNodeRow[]
+  edges: NavEdgeRow[]
+}
+
+/** El id se puede fijar en el cliente: el editor crea nodos y aristas de una pasada. */
+export type NavNodeInput = Omit<NavNodeRow, 'id'> & { id?: string }
+export type NavEdgeInput = Omit<NavEdgeRow, 'id'> & { id?: string }
+
+export async function fetchNavGraph(facultyId: string): Promise<NavGraphRows> {
+  if (!supabase) return mappingDemoDb.navSnapshot(facultyId)
+
+  const [nodesRes, edgesRes] = await Promise.all([
+    supabase.from('nav_nodes').select('*').eq('faculty_id', facultyId),
+    supabase.from('nav_edges').select('*').eq('faculty_id', facultyId),
+  ])
+  if (nodesRes.error) throw nodesRes.error
+  if (edgesRes.error) throw edgesRes.error
+  return { nodes: (nodesRes.data ?? []) as NavNodeRow[], edges: (edgesRes.data ?? []) as NavEdgeRow[] }
+}
+
+export async function createNavNodes(inputs: NavNodeInput[]): Promise<NavNodeRow[]> {
+  if (inputs.length === 0) return []
+  if (!supabase) return inputs.map((input) => mappingDemoDb.createNavNode(input))
+
+  const { data, error } = await supabase.from('nav_nodes').insert(inputs).select()
+  if (error) throw error
+  return (data ?? []) as NavNodeRow[]
+}
+
+export async function updateNavNode(id: string, patch: Partial<NavNodeInput>): Promise<NavNodeRow> {
+  if (!supabase) return mappingDemoDb.updateNavNode(id, patch)
+
+  const { data, error } = await supabase.from('nav_nodes').update(patch).eq('id', id).select().single()
+  if (error) throw error
+  return data as NavNodeRow
+}
+
+/** Se lleva por delante sus aristas (cascada de la clave foránea). */
+export async function deleteNavNodes(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  if (!supabase) return mappingDemoDb.deleteNavNodes(ids)
+
+  const { error } = await supabase.from('nav_nodes').delete().in('id', ids)
+  if (error) throw error
+}
+
+/**
+ * Una arista repetida en cualquier sentido choca con `nav_edges_pair_uniq`, que
+ * es un índice sobre expresiones y no admite `on conflict`. Quien llama filtra
+ * las que ya existen.
+ */
+export async function createNavEdges(inputs: NavEdgeInput[]): Promise<NavEdgeRow[]> {
+  if (inputs.length === 0) return []
+  if (!supabase) return inputs.map((input) => mappingDemoDb.createNavEdge(input))
+
+  const { data, error } = await supabase.from('nav_edges').insert(inputs).select()
+  if (error) throw error
+  return (data ?? []) as NavEdgeRow[]
+}
+
+export async function deleteNavEdges(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  if (!supabase) return mappingDemoDb.deleteNavEdges(ids)
+
+  const { error } = await supabase.from('nav_edges').delete().in('id', ids)
   if (error) throw error
 }

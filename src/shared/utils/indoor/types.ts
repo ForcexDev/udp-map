@@ -8,13 +8,14 @@
 // está explicada en `projection.ts`; cambiarla invierte izquierda y derecha.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { NavEdgeKind, NavNodeKind } from '@/shared/types/database'
+
+export type { NavEdgeKind, NavNodeKind }
+
 export interface Vec2 {
   x: number
   y: number
 }
-
-export type NavNodeKind = 'walk' | 'door' | 'room' | 'stairs' | 'elevator' | 'entrance' | 'outdoor'
-export type NavEdgeKind = 'walk' | 'stairs' | 'elevator'
 
 /** Un punto donde la persona puede estar o decidir, ya proyectado a metros. */
 export interface NavNode {

@@ -206,6 +206,42 @@ export interface Area {
   sort_order: number
 }
 
+// ── Navegación interior ─────────────────────────────────────────────────────
+// Grafo por facultad (migración 20261023000000). Coordenadas reales: el
+// cliente las proyecta a metros en `shared/utils/indoor/projection.ts`.
+
+export type NavNodeKind = 'walk' | 'door' | 'room' | 'stairs' | 'elevator' | 'entrance' | 'outdoor'
+export type NavEdgeKind = 'walk' | 'stairs' | 'elevator'
+
+export interface NavNodeRow {
+  id: string
+  faculty_id: string
+  /** null ⇔ `floor` null: es un punto exterior. */
+  building_id: string | null
+  floor: number | null
+  kind: NavNodeKind
+  lng: number
+  lat: number
+  landmark: string | null
+  via: string | null
+  area_id: string | null
+  /** Llave con `pins.room_code`; se compara normalizada. */
+  room_code: string | null
+  /** Obligatorio en `stairs` y `elevator`: agrupa el núcleo entre plantas. */
+  shaft: string | null
+  width_m: number | null
+}
+
+export interface NavEdgeRow {
+  id: string
+  faculty_id: string
+  a: string
+  b: string
+  kind: NavEdgeKind
+  /** Una escalera nunca es apta sin escalones; lo impone un CHECK. */
+  step_free: boolean
+}
+
 export interface EventRsvp {
   pin_id: string
   user_id: string

@@ -1,5 +1,6 @@
 import type { Pin, PinComment, PinPhoto, PinScheduleDraft, PinScheduleItem, PinType } from '@/shared/types/database'
 import { FACULTIES } from '@/shared/data/campusData'
+import { sampleRows } from '@/shared/utils/indoor/sampleBuilding'
 
 // ─────────────────────────────────────────────────────────────────
 // MODO DEMO: base de datos en memoria para desarrollar/mostrar la UI
@@ -121,6 +122,23 @@ const demoIndoorPin = (
   pin_photos: [],
 })
 
+const navSample = sampleRows('ingenieria')
+
+/**
+ * Sala del edificio del prototipo (`sampleBuilding.ts`), colocada en su nodo de
+ * sala y con el mismo edificio, planta y área que el mapeo demo. Permanente:
+ * una sala no vence.
+ */
+function demoNavRoom(id: string, title: string, roomCode: string): Pin {
+  const node = navSample.nodes.find((n) => n.room_code === roomCode)
+  if (!node) throw new Error(`Sala demo sin nodo: ${roomCode}`)
+  return {
+    ...demoIndoorPin(id, title, 'sala', node.lat, node.lng, node.floor, 0, { room_code: roomCode, permanent: true }),
+    building_id: node.building_id,
+    area_id: node.area_id,
+  }
+}
+
 // ── Coordenadas base de la Fac. de Ingeniería ──────────────────────────────
 // lat: -33.45276, lng: -70.66105. Los offsets son de ~5-20 m para que algunos
 // queden prácticamente encima de otros y se pueda probar el tamaño de pines.
@@ -197,6 +215,12 @@ export const demoDb = {
     demoIndoorPin('fic-lab-quimica-s1', 'Laboratorio Química Sub -1', 'computacion', FIC_LAT + 0.00016, FIC_LNG + 0.00023, -1, 720, { room_code: 'S104', description: 'Ingreso con bata.' }),
     demoIndoorPin('fic-bano-s1', 'Baño Inclusivo Sub -1', 'bano', FIC_LAT - 0.00034, FIC_LNG - 0.00013, -1, 24, { description: 'Barras de apoyo y alarma.' }),
     demoIndoorPin('fic-rampa-s1', 'Rampa Subterráneo -1', 'rampa', FIC_LAT - 0.00004, FIC_LNG + 0.00033, -1, 720, { description: 'Acceso directo patio.' }),
+
+    // 📍 VERGARA 432 del prototipo de navegación: salas con nodo en el grafo
+    // demo, para probar "Cómo llegar" giro a giro sin base.
+    demoNavRoom('v432-s413', 'Sala 413', 'V432.4.S413'),
+    demoNavRoom('v432-au', 'Auditorio V432', 'V432.3.AU'),
+    demoNavRoom('v432-s515', 'Sala 515', 'V432.5.S515'),
 
     // 📍 SUBTERRÁNEO -2 (6 pines - Deporte y Bicicleteros)
     demoIndoorPin('fic-bici-n-s2', 'Bicicletero Sector Norte', 'bicicletero', FIC_LAT - 0.00026, FIC_LNG - 0.00020, -2, 24, { description: 'U-Lock recomendado.' }),

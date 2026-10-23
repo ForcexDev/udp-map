@@ -169,7 +169,17 @@ automáticamente un contorno de habitación.
 
 `PinFloorPanel` asigna planta a pines en lote; no es movimiento geométrico masivo.
 `RoomImportPanel` usa el catálogo EIT como apoyo a colocación manual. El modo demo
-arranca sin edificios/plantas/áreas y reproduce sus cascadas en memoria.
+reproduce sus cascadas en memoria y arranca con un solo edificio: Vergara 432
+del prototipo de navegación (`shared/utils/indoor/sampleBuilding.ts`), con
+plantas 1–5, áreas y grafo. Es un edificio supuesto en la georreferencia del
+prototipo, con ids `demo-v432-*`; sin él «Cómo llegar» no se puede probar sin
+base. Nada más del mapeo demo se inventa.
+
+`mapping/api.ts` también lee y escribe `nav_nodes` y `nav_edges`. Vive aquí y
+no en `wayfinding` porque lo escribe el editor de este dominio y el demo tiene
+que borrar nodos al borrar plantas o edificios; `wayfinding` solo lee. Una
+arista repetida en cualquier sentido choca con un índice sobre expresiones que
+no admite `on conflict`: quien crea aristas filtra las existentes.
 
 ### Validación geométrica y recuperación
 
