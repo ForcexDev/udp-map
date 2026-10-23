@@ -1,30 +1,20 @@
-# Migraciones
+# Migraciones incrementales
 
-Aquí van los cambios nuevos del esquema, uno por archivo, con nombre
-`<timestamp>_descripcion.sql`.
+Aquí van cambios nuevos `<timestamp>_descripcion.sql`. No se aplican en CI:
+el flujo del proyecto usa SQL Editor manualmente.
 
-Las 33 migraciones anteriores están en
-[`../_archive/migrations/`](../_archive/migrations/): ya se aplicaron en
-producción y no deben ejecutarse.
+Cada cambio de esquema mantiene juntos migración, baseline y
+[referencia de base de datos](../../docs/referencia/base-de-datos.md).
+No cambies el cuerpo de una migración ya aplicada para modificar el esquema;
+crea una posterior. Las migraciones que incorporan rollback llevan su
+`.down.sql` con condiciones y pérdidas explícitas.
 
-## La regla
+Consulta [despliegue](../../docs/guias/despliegue.md) para reconstrucción,
+dependencias, cron y vuelta atrás. El baseline ya contiene resultados de
+migraciones: no ejecutes toda esta carpeta sobre una base recién reconstruida
+sin distinguir los pasos operativos que faltan.
 
-Cada cambio en la base son **tres cosas en el mismo commit**:
-
-1. la migración nueva en esta carpeta, que es lo que se ejecuta contra la base;
-2. la actualización de [`../schema/baseline.sql`](../schema/baseline.sql), que
-   es lo que reconstruye la base desde cero;
-3. la actualización de [`../../docs/DATABASE.md`](../../docs/DATABASE.md), que
-   explica por qué el esquema es así.
-
-Si se separan, el baseline deja de describir la realidad y volvemos al
-desorden que motivó todo esto.
-
-Desde `20260827` cada migración trae además un `<timestamp>_descripcion.down.sql`
-que la deshace. Se aplica a mano, igual que la migración.
-
-En este proyecto las migraciones se aplican **a mano** desde el SQL Editor: no
-hay `db push` ni en CI ni en los scripts de npm.
-
-El detalle de qué hace cada pieza del esquema está en
-[`docs/DATABASE.md`](../../docs/DATABASE.md).
+Las migraciones anteriores a la consolidación están en
+[`_archive/migrations`](../_archive/migrations/README.md). Se conservan como
+historia, no como receta paralela de instalación. Un archivo archivado o una
+nota de despliegue no acreditan el estado actual del servicio.

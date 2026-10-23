@@ -8,7 +8,7 @@
 --
 -- La purga se pierde con la función: lo ya borrado por edad no vuelve.
 --
--- El trabajo de send-push vuelve a ser el del runbook de docs/DATABASE.md §10,
+-- El trabajo de send-push vuelve a ser el del runbook de docs/guias/despliegue.md,
 -- con el timeout por defecto de pg_net (5 s).
 -- ============================================================================
 

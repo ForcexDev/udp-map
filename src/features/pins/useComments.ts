@@ -37,7 +37,7 @@ export function useComments(pinId: string) {
       if (!user) throw new Error('not signed in')
       return addComment(pinId, body, user.id, user.name, user.avatarUrl)
     },
-    // UI optimista con rollback (rescatado de v1, plan §0)
+    // UI optimista con rollback (antecedente v1; docs/referencia/repositorio.md, pines)
     onMutate: async (body) => {
       await queryClient.cancelQueries({ queryKey: ['comments', pinId] })
       const previous = queryClient.getQueryData<PinComment[]>(['comments', pinId])

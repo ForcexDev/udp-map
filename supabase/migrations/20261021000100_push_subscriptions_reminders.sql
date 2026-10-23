@@ -2,7 +2,7 @@
 -- Suscripciones que se mudan, recordatorios que no vuelven y avisos que se
 -- cuentan bien.
 --
--- Cinco problemas vistos al revisar send-push (docs/PUSH_REWORK_REVIEW.md,
+-- Cinco problemas vistos al revisar send-push (docs/historico/2026-10/auditoria-push.md,
 -- hallazgos A.1, 11, 15, 16 y 19):
 --
 -- 1. UNA SUSCRIPCIÓN QUE CAMBIA DE ENDPOINT DEJA LA ANTERIOR VIVA. Cuando el

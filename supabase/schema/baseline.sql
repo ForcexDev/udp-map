@@ -1,29 +1,20 @@
 -- =============================================================================
 -- UDP Map — BASELINE DEL ESQUEMA
 -- =============================================================================
--- Retrato fiel del estado de producción leído el 2026-08-03 desde los catálogos
--- de Postgres (PostgreSQL 17.6). Reconstruye la base completa sobre un proyecto
--- Supabase vacío: extensiones, tipos, tablas, constraints, índices, funciones,
--- triggers, vista, RLS, políticas, permisos, Storage y Realtime.
+-- Fuente de reconstrucción del esquema versionado en un proyecto Supabase vacío.
+-- Parte de la lectura de producción registrada el 2026-08-03 y agrega cambios
+-- posteriores; no acredita el estado actual de un servicio remoto.
 --
--- ESTE ARCHIVO ES LA FUENTE DE VERDAD DEL ESQUEMA.
--- Las migraciones de supabase/_archive/migrations/ son historia: ya están
--- aplicadas en producción y no deben ejecutarse.
+-- Las migraciones archivadas conservan historia y no se reaplican con este archivo.
+-- Cada cambio de esquema mantiene migración nueva, baseline y referencia:
+-- docs/referencia/base-de-datos.md. Operación: docs/guias/despliegue.md.
 --
--- Cada cambio futuro = una migración nueva en supabase/migrations/ MÁS la
--- actualización de este archivo. Si los dos se separan, este archivo miente.
---
--- La explicación de por qué cada cosa es como es está en docs/DATABASE.md.
--- Los datos de catálogo (campus, facultades, carreras, categorías, insignias)
--- están en supabase/seed/seed.sql y se cargan después de este archivo.
---
--- Orden de ejecución sobre un proyecto nuevo:
---   1. supabase/schema/baseline.sql   (este archivo)
---   2. supabase/seed/seed.sql
---   3. los pasos manuales del runbook en docs/DATABASE.md
---      (secretos de Vault, cron jobs, proveedor de Google, admin_emails)
--- =============================================================================
-
+-- Orden sobre un proyecto nuevo:
+--   1. supabase/schema/baseline.sql
+--   2. supabase/seed/badges.sql
+--   3. supabase/seed/seed.sql
+--   4. Pasos manuales de docs/guias/despliegue.md: Auth, secretos, funciones,
+--      cron y administradores. El esquema no provisiona esa configuración.
 
 -- =============================================================================
 -- 1. EXTENSIONES
@@ -4270,7 +4261,7 @@ alter publication supabase_realtime add table public.content_reports;
 -- Los cron jobs no van en este archivo porque dos (el #2, send-push, y el #3,
 -- storage-gc) dependen de secretos de Vault, que están cifrados y no se pueden
 -- exportar. Se crean a mano después de un reset; el procedimiento completo
--- está en docs/DATABASE.md.
+-- está en docs/referencia/base-de-datos.md.
 --
 --   #1  expire-pins                    cada 30 min
 --       delete from pins where is_permanent = false and expires_at < now()

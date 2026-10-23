@@ -8,7 +8,7 @@ const seedPath = path.join(__dirname, '../supabase/seed/seed.sql')
 
 let sql = `-- ═══════════════════════════════════════════════════════════════\n`
 sql += `-- Seed: campus, facultades (→ place pins), carreras, categorías,\n`
-sql += `-- plano indoor demo y lista de admins.\n`
+sql += `-- sin geometrías ni correos de administradores.\n`
 sql += `-- ⚠️ Sincronizado automáticamente desde campusData.ts\n`
 sql += `-- ═══════════════════════════════════════════════════════════════\n\n`
 
@@ -46,7 +46,7 @@ sql += `);\n\n`
 // a mano desde /admin/mapeo y se exporta desde ahí.
 
 // Los correos de admin no se generan: son datos personales y el seed vive en el
-// repositorio. Se insertan a mano tras un reset (ver docs/DATABASE.md, §10).
+// repositorio. Se insertan a mano tras un reset (ver docs/guias/despliegue.md).
 sql += `-- ── Admins iniciales ──\n`
 sql += `-- No van aquí: son correos de personas reales y este archivo está en el\n`
 sql += `-- repositorio. Se insertan a mano tras un reset, y ANTES de que esas personas\n`
@@ -54,7 +54,7 @@ sql += `-- se registren, porque el rol admin se asigna en el alta y no después:
 sql += `--\n`
 sql += `--   insert into admin_emails (email) values ('alguien@mail.udp.cl');\n`
 sql += `--\n`
-sql += `-- Ver el runbook en docs/DATABASE.md, sección 10.\n`
+sql += `-- Ver el procedimiento en docs/guias/despliegue.md.\n`
 
 fs.writeFileSync(seedPath, sql)
 console.log('✅ seed.sql REGENERADO COMPLETAMENTE con toda la data de campusData.ts.')

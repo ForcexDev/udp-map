@@ -20,7 +20,7 @@
 // finales de línea aunque el contenido coincida.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -45,7 +45,16 @@ function render(target) {
   const aviso = target.markdown
     ? `<!--\n  ${AVISO.join('\n  ')}\n-->\n\n`
     : `${AVISO.map((line) => `# ${line}`).join('\n')}\n\n`
-  return aviso + source
+  // Copilot vive en .github: las mismas reglas necesitan enlaces relativos
+  // a esa carpeta, no a la raíz. Se adapta al generar, nunca a mano.
+  const prefix = relative(dirname(join(root, target.file)), root).replace(/\\/g, '/')
+  const contents = prefix
+    ? source.replace(
+        /(\[[^\]]+\]\()(?![a-z][a-z0-9+.-]*:|#|\/)([^)]+)(\))/gi,
+        (_match, before, link, after) => before + prefix + '/' + link + after,
+      )
+    : source
+  return aviso + contents
 }
 
 const check = process.argv.includes('--check')

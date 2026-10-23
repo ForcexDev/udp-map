@@ -1,8 +1,8 @@
 -- =============================================================================
 -- Mover un pin de sitio se comprueba en el servidor
 -- =============================================================================
--- Era el ÚNICO permiso del proyecto que vivía solo en la interfaz (§2 de
--- docs/DATABASE.md, fila "Mover un pin de sitio"). `can(role,
+-- El movimiento de pines se autorizaba solo en la interfaz (contrato actual:
+-- docs/referencia/base-de-datos.md, ubicación y plantas). `can(role,
 -- 'pin.update.location')` pide moderador y `PinDetail` esconde el botón, pero
 -- esconder un botón no impide llamar a la API: la clave anon viaja en el
 -- bundle.
@@ -18,7 +18,7 @@
 -- No llega a "reubicar pines ajenos" —para eso haría falta saltarse la política
 -- de dueño, y esa sí cierra—, pero sí rompe la regla escrita, y el flujo de
 -- salas la vuelve central: ahí mover el pin al sitio correcto es el gesto de
--- curaduría del moderador (docs/SALAS.md §12.5).
+-- curaduría del moderador (docs/referencia/salas.md, representación e interacción).
 --
 -- POR QUÉ UN TRIGGER APARTE Y NO UNA LÍNEA MÁS EN protect_pin_sensitive_fields
 --

@@ -1,7 +1,7 @@
 import type { Polygon } from 'geojson'
 
 // Tipos espejo del esquema Postgres. La fuente de verdad es
-// supabase/schema/baseline.sql; docs/DATABASE.md explica qué hace cada tabla.
+// supabase/schema/baseline.sql; docs/referencia/base-de-datos.md explica qué hace cada tabla.
 // Regenerar con `supabase gen types typescript` cuando el proyecto esté linkeado.
 //
 // Aquí solo están las tablas que consulta el cliente. Las internas
@@ -152,7 +152,7 @@ export interface Favorite {
 // ── Mapeo interior ──────────────────────────────────────────────────────────
 // Facultad → Edificio → Planta → Área. La tabla `floor_plans` sigue existiendo
 // en la base, reservada para un plano de piso como imagen superpuesta
-// (docs/ROADMAP.md §14); no se declara su tipo mientras nada la
+// (docs/ROADMAP.md, interior como imagen); no se declara su tipo mientras nada la
 // consuma.
 
 export type AreaKind =

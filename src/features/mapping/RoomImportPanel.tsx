@@ -16,12 +16,12 @@ import type { FacultyMapping } from './api'
 // El importador de salas.
 //
 // El problema que resuelve: el horario de la FIC conoce 82 salas repartidas en
-// once edificios (`docs/SALAS.md` §5), y crearlas a mano una por una —abriendo
+// varios edificios (`docs/referencia/salas.md`), y crearlas a mano una por una —abriendo
 // el formulario, escribiendo el código, eligiendo la planta— son 82 formularios.
 //
 // Lo que NO hace, y es deliberado: crearlas todas de golpe. Un alta masiva las
 // pondría a todas en el centroide del edificio, que es exactamente el resultado
-// inútil contra el que avisa el ROADMAP; y ni siquiera funcionaría, porque
+// inútil descrito en docs/referencia/salas.md; y ni siquiera funcionaría, porque
 // `prevent_occupied_pin_location` rechaza dos pines vivos en el mismo punto y
 // la misma planta. La coordenada es el dato que la fuente NO tiene y que solo
 // puede poner una persona mirando el plano.
@@ -42,7 +42,7 @@ export function RoomImportPanel({ mapping, pins, building }: RoomImportPanelProp
   const setPendingRoom = useMappingEditor((s) => s.setPendingRoom)
 
   // Qué prefijo del catálogo le corresponde a este edificio. Sale de su nombre
-  // corto o de sus alias, porque el prefijo ES la dirección postal (§3).
+  // corto o de sus alias, según la convención documentada en docs/referencia/salas.md.
   const buildingCode = useMemo(() => {
     if (!building) return null
     const codes = [building.short_name, ...(building.aliases ?? [])]

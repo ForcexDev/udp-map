@@ -10,7 +10,7 @@ import {
 const NOW = Date.parse('2026-07-08T12:00:00Z')
 const iso = (offsetMs: number) => new Date(NOW + offsetMs).toISOString()
 
-describe('expiryState — ciclo de vida efímero (plan §2)', () => {
+describe('expiryState — ciclo de vida efímero (docs/referencia/base-de-datos.md, ciclo de vida)', () => {
   it('permanente: nunca expira ni se desvanece', () => {
     expect(expiryState(null, true, NOW).status).toBe('permanent')
     // is_permanent manda incluso si quedó un expires_at antiguo

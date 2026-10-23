@@ -3,7 +3,7 @@ import { parseRoomCode } from './roomCode'
 // ─────────────────────────────────────────────────────────────────────────────
 // El catálogo de salas, derivado del horario de la FIC.
 //
-// La fuente es `salas.docencia-eit.cl/data.json` (ver `docs/SALAS.md` §1): una
+// La fuente es `salas.docencia-eit.cl/data.json` (ver `docs/referencia/salas.md`): una
 // fila por BLOQUE DE HORARIO, no por sala. Una sala con doce clases a la semana
 // aparece doce veces. Aquí se pasa de esa lista a un catálogo de salas.
 //
@@ -15,7 +15,7 @@ import { parseRoomCode } from './roomCode'
 export interface CatalogRoom {
   /** El código completo tal como venía: `E441.1.S101`. */
   code: string
-  /** Prefijo del edificio: `E441`, `E278A`. Es su dirección postal (§3). */
+  /** Prefijo del edificio: `E441`, `E278A`. Convención postal descrita en docs/referencia/salas.md. */
   buildingCode: string
   floor: number
   /** El identificador dentro del edificio: `S101`, `L.D`, `LAB INF`. */
@@ -117,7 +117,7 @@ export function normalizeRoomCode(code: string): string {
  * Si un edificio del mapeo corresponde a un prefijo del catálogo.
  *
  * El prefijo del catálogo (`E441`) **es la dirección postal** del edificio
- * (`docs/SALAS.md` §3), y en el mapeo eso vive en `short_name` o entre los
+ * (`docs/referencia/salas.md`), y en el mapeo eso vive en `short_name` o entre los
  * `aliases`. Se comparan los dos porque ninguno es obligatorio: un edificio
  * puede tener su código en el nombre corto, en un alias, o en ninguno — y en
  * ese último caso el importador simplemente no tiene salas que ofrecerle.

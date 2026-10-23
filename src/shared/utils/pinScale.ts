@@ -1,5 +1,5 @@
 /**
- * Cuánto crece el marcador con el zoom (ROADMAP §9.3).
+ * Cuánto crece el marcador con el zoom (docs/decisiones/arquitectura.md, mapa y marcadores).
  *
  * Se devuelve como factor y no como píxeles porque el tamaño se aplica con
  * `width`/`height` sobre una base que depende del tipo de pin, y porque

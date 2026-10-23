@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Galería de fotos por entidad: facultades y edificios
 -- =============================================================================
--- Documentada en docs/DATABASE.md, sección "Galerías de lugares".
+-- Documentada en docs/referencia/base-de-datos.md, sección "Fotos, galerías y Storage".
 --
 -- Hasta ahora una facultad tenía UNA foto (`faculties.image`) y un edificio
 -- ninguna. La ficha del mapa enseña esa única imagen de portada y no se puede

@@ -12,7 +12,7 @@ import { AdminScreen } from './AdminScreen'
 // ─────────────────────────────────────────────────────────────────────────────
 // Ajustes del panel.
 //
-// Existe por la regla de §13.2 del ROADMAP: si es una herramienta de
+// Existe por la decisión de administración en docs/decisiones/arquitectura.md: si es una herramienta de
 // administración, vive en /admin y en ningún otro sitio. "Desbloquear mapa"
 // estaba en los Ajustes del sidebar, o sea en la misma pantalla donde un
 // estudiante elige idioma y tema, escondido tras un `role === 'admin'`. Ahí no

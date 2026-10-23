@@ -3,10 +3,9 @@ import type { FacultyMapping } from './api'
 // ─────────────────────────────────────────────────────────────────────────────
 // Exportar el mapeo a archivos TypeScript.
 //
-// Se dibuja en la app y se guarda en Supabase, pero eso deja el trabajo en un
-// solo sitio. Exportar lo baja a `src/shared/data/` para que quede versionado
-// en git y para que el MODO DEMO tenga datos: es el mismo papel que cumple hoy
-// `faculties.polygon`, que es donde viven los perímetros.
+// La descarga permite conservar una representación tipada fuera del navegador.
+// No escribe en src/shared/data ni alimenta automáticamente el modo demo.
+// El procedimiento y sus límites están en docs/referencia/repositorio.md.
 //
 // Sale como TypeScript y no como JSON a propósito: así el compilador avisa si
 // un día cambia la forma de `Building` o de `Area` y estos archivos se quedan

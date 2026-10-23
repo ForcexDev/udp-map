@@ -12,8 +12,8 @@ export interface WalkingRoute {
 const ORS_BASE = 'https://api.openrouteservice.org/v2/directions'
 
 /**
- * Ruteo peatonal con OpenRouteService (2.000 req/día free tier, plan §4) y
- * fallback a línea recta si no hay API key o el servicio falla (plan §13).
+ * Ruteo exterior: ORS, respaldo OSRM y por último línea recta.
+ * Contrato y límites en docs/referencia/repositorio.md, rutas y orientación.
  * `accessible` usa el perfil wheelchair (rutas accesibles).
  */
 export async function getWalkingRoute(

@@ -497,7 +497,7 @@ sql += `--   insert into admin_emails (email) values ('alguien@mail.udp.cl');
 `;
 sql += `--
 `;
-sql += `-- Ver el runbook en docs/DATABASE.md, secci\xF3n 10.
+sql += `-- Ver el procedimiento en docs/guias/despliegue.md.
 `;
 fs.writeFileSync(seedPath, sql);
 console.log("\u2705 seed.sql REGENERADO COMPLETAMENTE con toda la data de campusData.ts.");

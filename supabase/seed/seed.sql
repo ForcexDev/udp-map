@@ -118,4 +118,4 @@ where not exists (
 --
 --   insert into admin_emails (email) values ('alguien@mail.udp.cl');
 --
--- Ver el runbook en docs/DATABASE.md, sección 10.
+-- Ver el procedimiento en docs/guias/despliegue.md.

@@ -4,7 +4,7 @@
 // El aviso y el arreglo eran dos mecanismos que no se hablaban. El aviso sale
 // en cuanto `/update-info.json` —una petición de 200 bytes— dice que hay versión
 // nueva. Activar la versión nueva, en cambio, exige que el navegador se haya
-// descargado e instalado el service worker, y **el precache son 9 MB**: en un
+// descargado e instalado el service worker, y el precache de aquel diagnóstico era grande: en un
 // teléfono con datos eso tarda bastante más que el aviso en aparecer.
 //
 // Así que al pulsar "Actualizar" muchas veces no había NADA en `waiting` al que
@@ -18,7 +18,7 @@
 // que tardar.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** 9 MB de precache con datos móviles no se descargan en dos segundos. */
+/** Una instalación con datos móviles puede tardar más que el aviso de versión. */
 const WAIT_FOR_WORKER_MS = 30_000
 const CONTROLLER_CHANGE_MS = 10_000
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_PHOTO_BYTES, photoStoragePath, validatePhoto } from './photos'
 
-describe('validatePhoto — tipo y peso (plan §7)', () => {
+describe('validatePhoto — tipo y peso (docs/referencia/base-de-datos.md, fotos)', () => {
   it('acepta JPG/PNG/WebP bajo 5MB', () => {
     expect(validatePhoto({ type: 'image/jpeg', size: 1024 })).toBeNull()
     expect(validatePhoto({ type: 'image/png', size: MAX_PHOTO_BYTES })).toBeNull()

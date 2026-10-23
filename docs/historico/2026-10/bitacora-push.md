@@ -1,3 +1,17 @@
+# Bitácora de push
+
+Registro histórico. **No es un plan ni un procedimiento vigente.** Conservar el texto no equivale a comprobar hoy sus afirmaciones sobre servicios o dispositivos.
+
+Procedencia: `docs/PUSH_REWORK_LOGBOOK.md`, blob `a6537f14ef8587380745f332a739b63f1a9f61b8`, commit `b16bb4b59207550952e4e177c1de999413c9123e`. Captura: 2026-10-23.
+
+Destino vigente: [decisiones de push](../../decisiones/notificaciones-push.md) y [referencia](../../referencia/notificaciones.md). Recuperación desde Git: `git show b16bb4b59207550952e4e177c1de999413c9123e:docs/PUSH_REWORK_LOGBOOK.md`.
+
+Los sucesores explican el estado actual y sus correcciones. La fecha declarada del 23 de octubre en textos incorporados por un commit del 22 se conserva con ambas procedencias. El experimento Push 6 retirado no retiró el payload híbrido.
+
+<details>
+<summary>Texto original íntegro de docs/PUSH_REWORK_LOGBOOK.md</summary>
+
+~~~~markdown
 # Bitácora y Contexto Técnico: Auditoría y Rework de Web Push (iOS / Multi-plataforma)
 
 > **Fecha:** 2026-10-20
@@ -102,3 +116,7 @@ Cualquier agente o subagente que toque este repositorio **DEBE** cumplir sin exc
    ```
    *(En PowerShell de Windows, si `npx.ps1` está bloqueado por ExecutionPolicy, usar `npx.cmd` o `node`).*
 5. **Seguridad:** Nunca guardar tokens (`sbp_...`) ni `service_role` dentro del repositorio.
+
+~~~~
+
+</details>

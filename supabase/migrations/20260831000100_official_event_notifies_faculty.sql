@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Avisar a la facultad cuando se publica un evento oficial.
 --
--- ROADMAP §13.1: "el evento de campus no falla porque se te olvide, falla
+-- docs/referencia/notificaciones.md, eventos oficiales: "el evento de campus no falla porque se te olvide, falla
 -- porque nunca te enteraste". El recordatorio ya existe para quien marcó — pero
 -- marcar exige haberse enterado, que es justo el eslabón que faltaba.
 --

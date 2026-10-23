@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Las tareas programadas del push, versionadas.
 --
--- Tres cosas de la revisión de send-push (docs/PUSH_REWORK_REVIEW.md, hallazgos
+-- Tres cosas de la revisión de send-push (docs/historico/2026-10/auditoria-push.md, hallazgos
 -- 15, 17 y 18):
 --
 -- 1. LOS RECORDATORIOS DE EVENTOS SALEN DE send-push. La Edge Function llamaba a

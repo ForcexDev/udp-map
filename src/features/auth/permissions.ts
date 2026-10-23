@@ -1,7 +1,7 @@
 import type { Role } from '@/shared/types/database'
 
 /**
- * Matriz de permisos centralizada (los roles, en docs/DATABASE.md §2). Regla
+ * Matriz de permisos centralizada (los roles, en docs/referencia/base-de-datos.md, roles y capacidades). Regla
  * de oro: un guest consume pero no produce ni interactúa — toda escritura pasa
  * por can() en la UI y por RLS en la base de datos.
  */

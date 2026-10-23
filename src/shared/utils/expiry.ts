@@ -1,4 +1,4 @@
-/** Ventana de "desvanecimiento" visual antes de expirar (plan §7: reports efímeros). */
+/** Ventana de "desvanecimiento" visual antes de expirar (docs/referencia/base-de-datos.md, ciclo de vida). */
 export const FADE_WINDOW_MS = 2 * 60 * 60 * 1000 // últimas 2 horas
 
 /**

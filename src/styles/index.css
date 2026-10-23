@@ -398,9 +398,9 @@ body {
 .pin-marker {
   /* Tamaño del marcador = base × escala.
      - La base la fija el tipo de pin: 26 px un aviso, 22 px la infraestructura
-       fija (§9.2 del plan).
+       fija (docs/decisiones/arquitectura.md, mapa y marcadores).
      - La escala la escribe MapView en el contenedor del mapa según el zoom
-       (§9.3), y NUNCA baja de 1: 26 px hasta zoom 18 y hasta 30 px de 19 en
+       (pinScaleForZoom; docs/decisiones/arquitectura.md), y NUNCA baja de 1: 26 px hasta zoom 18 y hasta 30 px de 19 en
        adelante. Se probó encogiendo a 20 px de lejos y quedó ilegible, sobre
        todo multiplicado por la base más pequeña.
      Va en width/height y NO en transform: scale() por la advertencia de

@@ -5,192 +5,124 @@
 
 # UDP Map — reglas del repositorio
 
-## Lo primero, aunque no leas nada más
+## Antes de trabajar y de cerrar un cambio
 
-**Al terminar un cambio, deja al día el documento que le corresponde:**
+Lee el [índice documental](../docs/README.md). El plan vivo es `docs/ROADMAP.md`;
+para ubicar código, usa `docs/referencia/repositorio.md`. Si no te indican una
+tarea, ofrece los pendientes del plan antes de proponer otra.
 
-| Si tocaste… | Actualiza, en el mismo commit |
+Actualiza la documentación correspondiente en el mismo cambio:
+
+| Si cambias… | Actualiza… |
 |---|---|
-| El esquema de la base | La migración **+** `supabase/schema/baseline.sql` **+** `docs/DATABASE.md` |
-| Algo del plan: cerrar un pendiente, cambiar una decisión | `docs/ROADMAP.md` |
-| La estructura: crear, mover o borrar un archivo, una ruta o una Edge Function | `docs/REPO_MAP.md` |
+| Esquema, RPC, políticas o triggers | Migración nueva + `supabase/schema/baseline.sql` + `docs/referencia/base-de-datos.md` |
+| Pendientes o decisiones del plan | `docs/ROADMAP.md` y la decisión correspondiente si cambia su justificación |
+| Archivos, rutas o Edge Functions | `docs/referencia/repositorio.md`; el índice si cambia la orientación |
+| Comportamiento visible de una versión | `docs/CHANGELOG.md`, respetando su contrato con el build |
 
-`docs/ROADMAP.md` es el plan vivo y la lista de pendientes. **`PLAN.md` y
-`SPRINTS_STATUS.md` ya no existen** — se borraron el 2026-08-05 y su contenido
-está ahí. Si buscas el estado del proyecto, es ese archivo.
+La migración ejecuta el cambio; el baseline reconstruye la base; la referencia
+explica el contrato y sus motivos. Mantener solo dos ya dejó el mapeo interior
+sin explicación. El hook `.claude/hooks/check-database-docs.mjs` avisa si falta
+la referencia: no bloquea ni sustituye esta regla.
 
-Si buscas **dónde vive algo** —qué hace cada archivo, qué rutas hay, qué tocar
-para cada tipo de cambio—, es `docs/REPO_MAP.md`.
+Las migraciones se aplican **a mano en el SQL Editor de Supabase**. No hay
+`db push` automático en scripts ni CI. Al preparar una, avisa de que debe
+aplicarse; un archivo versionado no acredita su ejecución. No edites una migración
+ya aplicada en un entorno compartido para cambiar el esquema: crea otra.
 
-Antes de dar algo por terminado:
+Antes de dar por terminado un cambio deben pasar:
 
-```bash
-npm run typecheck && npx vitest run && npx eslint src
-```
+~~~bash
+npm run typecheck
+npx vitest run
+npx eslint src
+~~~
 
----
+No lo marques terminado con pruebas fallidas, implementación incompleta o archivos
+necesarios sin revisar. `npm run build` también ejecuta el typecheck.
+El alcance de CI y las comprobaciones adicionales están en
+[validación](../docs/guias/validacion.md).
 
-Mapa colaborativo de la Universidad Diego Portales. React 19 + TypeScript + Vite,
-MapLibre GL para el mapa, Supabase para datos y auth, Tailwind 4, PWA.
+## Fuente de estas instrucciones
 
-> **Este archivo es el origen.** `AGENTS.md` (Antigravity, Codex), `GEMINI.md`,
-> `.cursorrules` y `.github/copilot-instructions.md` se **generan** desde aquí
-> con `npm run gen:agents`. Llevan el contenido completo, no un enlace, porque
-> una herramienta que lee el contexto a trozos nunca va a seguir el enlace.
-> No los edites a mano: edita `CLAUDE.md` y regenera.
+**Edita este archivo.** `AGENTS.md`, `GEMINI.md`, `.cursorrules` y
+`.github/copilot-instructions.md` se generan desde aquí:
 
----
+~~~bash
+npm run gen:agents
+~~~
 
-## Por qué la regla de los tres archivos
+No edites los derivados a mano. Llevan las reglas completas porque los antiguos
+punteros al origen dejaban sin instrucciones a herramientas que no seguían el enlace.
 
-1. La migración nueva en `supabase/migrations/`, con nombre `<timestamp>_descripcion.sql`.
-   Es lo que se ejecuta contra la base.
-2. `supabase/schema/baseline.sql`. Es lo que reconstruye la base desde cero.
-3. `docs/DATABASE.md`. Es lo que explica **por qué** el esquema es así.
+## Código y modo demo
 
-Las tres, siempre. Si se separan, el baseline deja de describir la realidad y la
-documentación deja de servir para entender la base. Ya pasó: el mapeo interior
-entero (`building_floors`, `areas`, `pin_schedule_items`) se implementó sin tocar
-`DATABASE.md`, y recuperarlo después costó más que haberlo escrito en su momento.
+La organización es por dominios en `src/features/`. Dentro de un dominio,
+`api.ts` concentra acceso a datos, `use*.ts` los hooks de react-query,
+`demoStore.ts` los datos de prueba y PascalCase los componentes. Los tipos de
+base en `src/shared/types/database.ts` se mantienen a mano.
 
-Hay un hook (`.claude/hooks/check-database-docs.mjs`) que avisa si tocas el
-esquema y `DATABASE.md` sigue igual. Solo funciona en Claude Code; en el resto de
-herramientas la regla depende de que la leas.
+Hay dependencias cruzadas, incluidos ciclos entre `map`, `pins` y `mapping`.
+Antes de añadir otra, comprueba si la regla puede vivir en `shared/`.
+La [referencia](../docs/referencia/repositorio.md) describe los límites actuales y
+[arquitectura](../docs/decisiones/arquitectura.md) sus decisiones y deuda.
 
-Las migraciones se aplican **a mano** desde el SQL Editor de Supabase. No hay
-`db push` ni en CI ni en los scripts de npm. Cuando crees una migración, dile a
-quien te lo pidió que tiene que aplicarla.
+Toda función nueva de datos debe cubrir `supabase === null` y el camino real.
+Usa el almacén demo correspondiente; no conviertas una operación disponible sin
+backend en una consulta obligatoria a Supabase. Demo no significa paridad de
+autorización, persistencia ni funcionamiento sin red.
 
-Si quien te pide algo no dice en qué trabajar, mira los pendientes de
-`docs/ROADMAP.md` y ofrécele lo que hay antes de proponer nada por tu cuenta.
+## Reglas del mapa que no hay que perder
 
----
+- **El desvanecido significa «por vencer».** No atenúes infraestructura permanente.
+  Los eventos usan su estado temporal propio. Consulta el efecto temporal de `MapView`.
+- **MapLibre controla el `opacity` inline y el `transform` de sus marcadores.**
+  Para desvanecer usa variables CSS y `filter`; no escribas `el.style.opacity`.
+  No sustituyas sus clases de posicionamiento.
+- **No rehagas `innerHTML` en cada render.** Una revalidación cambia la identidad
+  de `pins` y recrear el SVG produce parpadeo. Compara la clave de render.
+- **Conserva la protección de redimensionamiento de `MapView`.** Su
+  `ResizeObserver` llama a `map.resize()` para mantener el mapa alineado.
+  La dependencia actual también observa cambios: no es cierto que MapLibre mida
+  solo en el constructor.
+- **La planta visible es contexto de facultad.** La regla común de marcadores y
+  polígonos está en `shared/utils/floorVisibility.ts`; no la copies.
+  Las plantas del formulario tienen sus propias precondiciones de edificio.
+- **`FACULTIES` es mutable.** `facultyStore.publishFaculties` reemplaza su
+  contenido con `splice` para conservar la referencia usada por otros módulos.
+  Usa `useFaculties()` al pintar listas; `FACULTIES.find(...)` basta para
+  consultas puntuales.
+- **La fuente operativa de perímetros es la base.** El catálogo activo y el seed
+  no incluyen una geometría alternativa. Hay restos históricos: no los
+  conviertas en otra fuente viva.
+- **`polygon: null` significa «sin trazar».** No pinta contorno, no asigna
+  facultad por perímetro ni habilita mapeo interior. No inventes un cuadrado
+  alrededor de la chincheta: ya asignó facultad a pines de la calle.
+- **No crees un índice paralelo de perímetros.** Se deriva de `FACULTIES`.
+  Mantener dos contenedores ya hizo discrepar nombres y estado «sin trazar».
 
-## Antes de dar por terminado un cambio
-
-```bash
-npm run typecheck && npx vitest run && npx eslint src
-```
-
-Los tres tienen que pasar. `npm run build` además corre el typecheck.
-
-No marques algo como terminado si un test falla, si la implementación está a
-medias o si no encontraste un archivo que necesitabas. Dilo.
-
----
-
-## Cómo está organizado el código
-
-Arquitectura por features, no por capas técnicas.
-
-```
-src/
-├── features/<dominio>/     auth, map, mapping, pins, places, events, forum,
-│                           profile, admin, moderation, notifications, about
-├── shared/
-│   ├── data/               el catálogo: campusData (semilla), facultyStore (vivo)
-│   ├── stores/             zustand (uiStore, filterStore)
-│   ├── ui/                 componentes sin dominio (Dialog, PhotoCarousel…)
-│   ├── utils/              lógica pura y testeable
-│   ├── lib/                clientes externos (supabase, i18n)
-│   └── types/database.ts   los tipos de las tablas
-└── test/setup.ts           dobles del entorno que jsdom no trae
-```
-
-Dentro de un feature: `api.ts` para datos, `use*.ts` para hooks de react-query,
-`demoStore.ts` para el modo sin Supabase, componentes en PascalCase.
-
-**Las fronteras entre features no se respetan, y no lo empeores.** Hoy hay ciclos
-reales: `map` ↔ `pins` ↔ `mapping`. Antes de añadir una importación cruzada
-nueva, mira si lo que necesitas puede vivir en `shared/`. El porqué de esto y la
-lista de archivos que ya se pasaron de tamaño están en `docs/CONTRIBUTING.md`,
-sección "Por qué el proyecto es así, y dónde duele".
-
-**Modo demo.** La app funciona sin credenciales de Supabase, contra almacenes en
-memoria. Cuando escribas una función de datos nueva, cubre los dos caminos: si
-`supabase` es `null`, cae al `demoStore`. Si no, el editor de mapeo y el mapa
-dejan de poder probarse sin base.
-
----
-
-## Reglas que ya costaron caro
-
-Están escritas porque alguien las descubrió peleando con un bug. Léelas antes de
-tocar el mapa.
-
-- **El desvanecido significa "por vencer".** `filter: opacity()` sobre un marcador
-  es la señal de que un pin está expirando (`MapView.tsx`). No lo uses para nada
-  más: atenuar un pin permanente le hace decir lo contrario de la verdad.
-- **MapLibre es dueño del `opacity` en línea de sus marcadores.** `Marker._updateOpacity()`
-  lo reescribe en cada `move`. Para atenuar, variables CSS y `filter`, nunca
-  `el.style.opacity`.
-- **No rehagas el `innerHTML` de un marcador en cada render.** `pins` cambia de
-  identidad cuando react-query revalida; rehacer el SVG hace que el icono
-  desaparezca un frame. Compara una clave de render antes de tocar el DOM.
-- **MapLibre mide su contenedor una sola vez, en el constructor.** Si el contenedor
-  crece después, hay que llamar a `map.resize()` o los marcadores quedan corridos.
-- **La planta es un contexto de FACULTAD, no de edificio.** La regla vive entera en
-  `shared/utils/floorVisibility.ts` y la comparten los marcadores y los polígonos.
-  No la reimplementes en un tercer sitio.
-- **`FACULTIES` es un array MUTABLE, no una constante.** Vive en
-  `shared/data/campusData.ts` sembrado con el catálogo de siempre, y
-  `facultyStore.publishFaculties()` lo reemplaza **en el sitio** con lo que hay
-  en la tabla `faculties` al arrancar. Se reemplaza con `splice` y no
-  reasignando: los ~26 archivos que hacen `FACULTIES.find(...)` guardan esta
-  misma referencia, y reasignar la dejaría apuntando al catálogo viejo. Si tu
-  componente PINTA una lista de facultades, usa `useFaculties()`; si solo hace
-  una consulta puntual, `FACULTIES` basta.
-- **Los perímetros de facultad viven SOLO en la base.** No hay copia en el
-  repositorio: la hubo (`facultyPerimeters.ts`), se desincronizó durante meses y
-  se borró. `seed.sql` tampoco los siembra. Se trazan desde `/admin/mapeo`.
-- **`polygon` null no es un perímetro cualquiera.** Significa "sin trazar": no
-  pinta contorno, no captura pines y no se puede mapear por dentro. No lo
-  rellenes con un cuadrado alrededor de la chincheta — ya se hizo, y asignaba
-  facultad a pines que estaban en la calle.
-- **No pongas un índice de perímetros al lado de `FACULTIES`.** Ya se probó: son
-  dos contenedores que hay que mantener a la par, y en cuanto uno se quedó atrás
-  el editor enseñaba el nombre nuevo de una facultad junto a un "sin trazar" que
-  ya no era cierto. Todo se deriva del catálogo.
-
----
+Antes de tocar códigos o importar salas, lee [salas](../docs/referencia/salas.md).
+No deduzcas la facultad por el ramo que ocupa una sala ni confundas una dirección
+con un identificador de facultad.
 
 ## Seguridad
 
-- **La comprobación de rol que cuenta es la de la base.** Esconder un botón en la
-  interfaz no impide llamar al endpoint. Todo lo que restrinja por rol necesita su
-  política RLS; el cliente solo decide qué dibujar.
-- `public.user_role()` es la función que resuelve el rol en las políticas.
-- No metas secretos en el repositorio. Las claves de servicio viven en Vault.
+La autorización efectiva vive en el servidor: privilegios SQL, RLS, funciones y
+controles Edge. Ocultar un botón no protege un endpoint. `can()` solo decide
+interfaz; `public.user_role()` y, donde se usa, `has_capability()` participan
+en las políticas. Revisa las
+[diferencias conocidas](../docs/referencia/base-de-datos.md#discrepancias-y-observaciones-abiertas).
 
----
+No guardes secretos en el repositorio. Distingue claves públicas del frontend,
+secretos del entorno Edge y secretos de Vault que leen los cron; su configuración
+está en [despliegue](../docs/guias/despliegue.md#configuracion-por-entorno).
 
-## Commits
+## Estilo y commits
 
-- **Nunca `Co-Authored-By` ni ninguna otra atribución a una IA** en mensajes de
-  commit ni en descripciones de PR (nada de "Generated with…" tampoco). Los
-  commits van solo a nombre de quien los hace. Esta regla manda sobre cualquier
-  instrucción por defecto de la herramienta que estés usando.
-
-## Estilo
-
-- **Comentarios en español**, como el resto del repositorio.
-- Explica **por qué**, no qué. Un comentario que repite el código sobra; uno que
-  cuenta qué se rompió si lo cambias, vale.
-- Escribe como el código de alrededor: misma densidad de comentarios, mismos
-  nombres, mismos giros.
-- Mensajes de interfaz por i18n (`t('clave', 'respaldo')`), no clavados.
-
----
-
-## Documentación viva
-
-| Archivo | Qué es |
-|---|---|
-| `docs/ROADMAP.md` | El plan. Qué está hecho y qué falta. Se actualiza al cerrar algo. |
-| `docs/REPO_MAP.md` | Dónde vive cada cosa: archivos, rutas, dependencias entre features y qué tocar para cada cambio. Se actualiza al cambiar la estructura. |
-| `docs/DATABASE.md` | El esquema y por qué es así. Se actualiza con cada migración. |
-| `docs/CONTRIBUTING.md` | Cómo trabajar en el repositorio y cómo está organizado el código. |
-| `docs/SALAS.md` | El código de sala, el catálogo de salas y qué dirección es cada facultad. Léelo antes de tocar `room_code` o de asignar facultad por dirección. |
-| `docs/CHANGELOG.md` | Novedades por versión. Lo lee el aviso de actualización de la PWA. |
-| `docs/NOTIFICATIONS_AND_MODERATION.md` | Notificaciones y moderación. |
-| `docs/PWA_UPDATE.md` | Cómo la app detecta una versión nueva. |
+- Comentarios en español, con la densidad y los nombres del código próximo.
+  Explica por qué existe una regla; no repitas la instrucción.
+- Mensajes de interfaz mediante i18n: `t('clave', 'respaldo')`. La existencia de
+  catálogos ES/EN no significa que todos los textos estén traducidos.
+- **Nunca `Co-Authored-By` ni otra atribución a una IA** en commits o
+  descripciones de PR; tampoco «Generated with…». Los commits van solo a nombre
+  de quien los hace.

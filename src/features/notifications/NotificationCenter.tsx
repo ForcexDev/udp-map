@@ -22,7 +22,7 @@ import { NotificationPreferences } from './NotificationPreferences'
 // El centro de avisos.
 //
 // Rehecho entero el 2026-08-27. Lo que había era, en sus propias palabras del
-// ROADMAP §13.2, "de lo más flojo de la aplicación visualmente": tipografía de
+// docs/decisiones/arquitectura.md, administración y avisos, "de lo más flojo de la aplicación visualmente": tipografía de
 // 9 a 11 px casi entera, tres radios distintos en el mismo componente y ni una
 // cadena por i18n. Además colgaba de aquí una sección de ADMINISTRACIÓN con la
 // cola de moderación, que no pinta nada en la bandeja personal de nadie: se

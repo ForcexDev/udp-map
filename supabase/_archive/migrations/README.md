@@ -1,35 +1,34 @@
 # Migraciones históricas
 
-**Estas 33 migraciones ya están aplicadas en producción. No las ejecutes.**
+**No las ejecutes para reconstruir ni actualizar una base actual.**
+Se archivaron al consolidar el esquema en
+[`baseline.sql`](../../schema/baseline.sql). Los comentarios conservan
+antecedentes útiles; la referencia actual está en
+[base de datos](../../../docs/referencia/base-de-datos.md).
 
-Se conservan como historia: sirven para entender por qué el esquema llegó a ser
-lo que es, y a veces el comentario de cabecera de una de ellas explica una
-decisión que hoy parece arbitraria.
+## Por qué se conservaron
 
-Se movieron fuera de `supabase/migrations/` para que quede claro cuál es la
-fuente de verdad, que ahora es [`supabase/schema/baseline.sql`](../../schema/baseline.sql).
+El registro anterior dice que ya se habían aplicado en producción. Mantener
+los archivos como historia evitó reescribir
+`supabase_migrations.schema_migrations` con `supabase migration repair` sobre
+una base compartida: una reparación a medias podía intentar reaplicar objetos.
 
-## Por qué no se hizo un squash de verdad
+El baseline resolvía reconstrucción y comprensión, e incluyó políticas
+registradas como creadas a mano. Los cron tienen pasos propios en
+[despliegue](../../../docs/guias/despliegue.md), no se provisionan por existir
+en este archivo o en una descripción del esquema.
 
-Supabase lleva el registro de qué migraciones se aplicaron en la tabla
-`supabase_migrations.schema_migrations`. Reemplazar estos archivos por un único
-baseline "de verdad" obligaría a reescribir esa tabla con
-`supabase migration repair`, sobre la base de producción y con usuarios reales
-encima. Si queda a medias, el CLI intenta reaplicar cosas que ya existen.
+La alternativa de un squash real quedó para un entorno de staging comprobado
+o un proyecto nuevo donde el baseline pueda ser la primera migración.
+Este antecedente no confirma qué lleva aplicado un servicio hoy.
 
-A cambio de ese riesgo se ganaría una carpeta ordenada, nada más. El problema
-real —poder reconstruir la base y saber qué hay dentro— lo resuelve el baseline,
-que además se construyó leyendo la base viva y por eso captura cosas que estos
-archivos nunca tuvieron (la política `profiles_admin_update` y el cron job de
-notificaciones push, ambos creados a mano en el dashboard).
+## Motivo de denuncia y categoría Easter egg
 
-El squash tendrá sentido el día que exista un proyecto de staging donde probarlo,
-o cuando se cree un proyecto Supabase nuevo desde cero: ahí el baseline pasa a
-ser la migración número uno sin necesidad de reparar nada.
+`20260724084902_add_easter_eggs_report_reason.sql` y
+`20260724090714_revert_easter_eggs_report_reason.sql` registran alta y reversión
+del motivo de denuncia. No se conserva el intervalo de minutos anterior porque
+los nombres y Git no acreditan el tiempo real de aplicación.
 
-## Nota sobre dos de ellas
-
-`20260724090638_add_easter_eggs_report_reason.sql` y
-`20260724090714_revert_easter_eggs_report_reason.sql` se anulan entre sí: se
-añadió un motivo de denuncia y se revirtió 36 minutos después. La base concuerda
-con el revert. La categoría de pin `easter-egg`, que es otra cosa, sí sigue viva.
+`20260724090638_add_easter_egg_pin_category.sql` es otra cosa: la categoría de
+pin `easter-egg`, que permanece en el catálogo versionado. No confundir la
+reversión del motivo con retirar la categoría.

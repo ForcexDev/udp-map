@@ -9,7 +9,7 @@ import { eventPhase } from '@/shared/utils/eventState'
 // ─────────────────────────────────────────────────────────────────────────────
 // "Mis eventos".
 //
-// ROADMAP §13.1, punto 2: hasta ahora pulsar "Asistiré" guardaba una fila y no
+// docs/referencia/repositorio.md, eventos y perfil: hasta ahora pulsar "Asistiré" guardaba una fila y no
 // cambiaba NADA en pantalla salvo el propio botón. Un botón que no deja rastro
 // en ningún sitio tuyo se siente como que no hizo nada, y esa era la queja.
 //

@@ -2,7 +2,7 @@
 -- La cola de push sin duplicados, sin atascos y sin perder el rastro.
 --
 -- Tres problemas de `notification_push_deliveries`, vistos al revisar send-push
--- (docs/PUSH_REWORK_REVIEW.md, hallazgos 12, 13 y 14):
+-- (docs/historico/2026-10/auditoria-push.md, hallazgos 12, 13 y 14):
 --
 -- 1. DOS EJECUCIONES ENVÍAN LO MISMO DOS VECES. send-push lee las entregas
 --    `pending` con un SELECT y las marca al terminar, y entre una cosa y otra

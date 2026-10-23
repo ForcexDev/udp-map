@@ -30,7 +30,7 @@ create table careers (
   name_en    text not null
 );
 
--- Categorías con TTL por categoría (plan §2: reports efímeros)
+-- Categorías con TTL por categoría (plan original de julio; referencia vigente en docs/referencia/base-de-datos.md)
 create table categories (
   id        text primary key,
   kind      text not null check (kind in ('report', 'event')),
@@ -56,7 +56,7 @@ create table profiles (
   created_at timestamptz not null default now()
 );
 
--- Lista blanca de correos admin (plan §3)
+-- Lista blanca de correos admin (plan original de julio; referencia vigente en docs/referencia/base-de-datos.md)
 create table admin_emails (email text primary key);
 
 -- ── ★ Tabla central: pins (los 3 tipos) ──
@@ -161,7 +161,7 @@ create policy "pins_insert" on pins for insert with check (
   auth.uid() is not null
   and creator_id = auth.uid()
   and public.user_role() <> 'guest'
-  -- 'place' solo mod/admin (plan §3)
+  -- 'place' solo mod/admin (plan original de julio; referencia vigente en docs/referencia/base-de-datos.md)
   and (type <> 'place' or public.user_role() in ('moderator', 'admin'))
   -- eventos oficiales solo mod/admin
   and (is_official = false or public.user_role() in ('moderator', 'admin'))

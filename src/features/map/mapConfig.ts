@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 
-/** Estilo vectorial de OpenFreeMap: sin API key ni límites (plan §4). */
+/** Estilo vectorial de OpenFreeMap; contrato en docs/referencia/repositorio.md. */
 export const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty'
 export const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/liberty'
 

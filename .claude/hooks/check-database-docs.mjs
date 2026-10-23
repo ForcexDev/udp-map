@@ -1,7 +1,7 @@
-// Avisa cuando se toca el esquema sin actualizar docs/DATABASE.md.
+// Avisa cuando se toca el esquema sin actualizar docs/referencia/base-de-datos.md.
 //
 // La regla del repositorio (CLAUDE.md) es que todo cambio en la base son TRES
-// cosas en el mismo commit: la migración, baseline.sql y DATABASE.md. Las dos
+// cosas en el mismo commit: migración, baseline.sql y referencia de la base. Las dos
 // primeras cuesta olvidarlas porque sin ellas nada funciona; la tercera se
 // olvida siempre, y así fue como el mapeo interior entero acabó sin documentar.
 //
@@ -14,7 +14,7 @@
 import { execSync } from 'node:child_process'
 
 const SCHEMA = /supabase[/\\](migrations[/\\]|schema[/\\]baseline\.sql)/
-const DOC = 'docs/DATABASE.md'
+const DOC = 'docs/referencia/base-de-datos.md'
 
 let raw = ''
 process.stdin.on('data', (chunk) => (raw += chunk))
@@ -24,7 +24,7 @@ process.stdin.on('end', () => {
     const file = event?.tool_input?.file_path ?? event?.tool_response?.filePath ?? ''
     if (!SCHEMA.test(file)) return
 
-    // ¿Está DATABASE.md entre lo que cambió y todavía no se ha commiteado? Si
+    // ¿Está la referencia de la base entre los cambios pendientes? Si
     // sí, la regla se está cumpliendo y no hay nada que decir.
     const pending = execSync(`git status --porcelain -- ${DOC}`, {
       encoding: 'utf8',

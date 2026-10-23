@@ -11,7 +11,7 @@
 -- Sobre un proyecto nuevo esta migración se aplica sin error aunque los
 -- secretos no existan todavía: cron.schedule solo guarda el texto del comando y
 -- no lo evalúa hasta la primera ejecución. El trabajo fallará en silencio hasta
--- que se creen (ver el runbook de docs/DATABASE.md).
+-- que se creen (ver el runbook de docs/guias/despliegue.md).
 --
 -- cron.schedule con un nombre ya existente reemplaza el trabajo anterior, de
 -- modo que volver a ejecutar esto no duplica nada.

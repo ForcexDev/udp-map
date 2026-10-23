@@ -209,7 +209,7 @@ async function deliver(
   // El reclamo devuelve columnas planas. Esta forma anidada es la que leen la URL
   // de navegación y el payload, cuyo texto fija golden.test.ts: no se reescriben.
   // Las columnas siguen planas en SQL porque un send-push anterior (20eee7e, la
-  // vuelta atrás de ROADMAP §17) las lee así.
+  // vuelta atrás de docs/guias/despliegue.md, vuelta atrás) las lee así.
   const delivery = {
     notification: {
       id: claimed.notification_id,
@@ -240,7 +240,7 @@ async function deliver(
   // + campos planos que lee push-sw.js. Es la forma que hoy entrega en iPhone: no
   // se toca sin probar allí. Con service worker instalado, quién pinta la
   // notificación en iOS 18.4+ no está claro (WebKit y el W3C se contradicen; ver
-  // docs/PUSH_REWORK_REVIEW.md), así que el SW sigue necesitando los campos planos.
+  // docs/historico/2026-10/auditoria-push.md), así que el SW sigue necesitando los campos planos.
   const payload = JSON.stringify({
         web_push: 8030,
         notification: {

@@ -263,7 +263,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       setStyleEpoch((n) => n + 1)
     })
 
-    // El tamaño del marcador según el zoom (ROADMAP §9.3) va como variable CSS
+    // El tamaño del marcador según el zoom (docs/decisiones/arquitectura.md, mapa y marcadores) va como variable CSS
     // en el contenedor y no marcador a marcador: los marcadores cuelgan de él,
     // así que una sola escritura por frame les sirve a todos. Y va en `width`
     // y no en `transform`, que es de MapLibre.
@@ -536,7 +536,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       el.setAttribute('aria-label', pin.title)
       el.title = pin.title
       el.classList.toggle('pin-marker--selected', pin.id === selectedPinId)
-      // Infraestructura fija más pequeña que los avisos (ROADMAP §9.2): un pin
+      // Infraestructura fija más pequeña que los avisos (docs/decisiones/arquitectura.md, mapa y marcadores): un pin
       // de sala es una cosa que está ahí siempre y uno de comida es una
       // novedad, y que compitan visualmente igual es un error. SOLO el tamaño:
       // atenuarlos está descartado, porque el desvanecido ya significa "por

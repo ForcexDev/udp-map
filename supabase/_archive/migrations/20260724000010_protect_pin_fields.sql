@@ -2,7 +2,7 @@
 -- type and expiration, but left votes_up, votes_down, reports and creator_id
 -- unprotected against a direct owner update. Location, faculty and category
 -- stay owner-editable on non-permanent pins per product decision (home
--- collaboration use case documented in docs/securityDB.md).
+-- caso colaborativo descrito en docs/referencia/base-de-datos.md).
 
 create or replace function public.protect_pin_sensitive_fields()
 returns trigger

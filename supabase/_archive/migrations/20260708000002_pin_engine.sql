@@ -3,7 +3,7 @@
 -- planos indoor, RPCs seguros, expiración y Storage
 -- ═══════════════════════════════════════════════════════════════
 
--- ── Satélites (sirven a los 3 tipos por pin_id, plan §6) ──
+-- ── Satélites (sirven a los 3 tipos por pin_id, plan original de julio; referencia vigente en docs/referencia/base-de-datos.md) ──
 create table pin_photos (
   id         uuid primary key default gen_random_uuid(),
   pin_id     uuid not null references pins on delete cascade,
@@ -94,7 +94,7 @@ create policy "floor_plans_read" on floor_plans for select using (true);
 create policy "floor_plans_admin" on floor_plans for all
   using (public.user_role() in ('moderator', 'admin'));
 
--- ── RPC: voto atómico, 1 por usuario (reemplaza localStorage v1, plan §6) ──
+-- ── RPC: voto atómico, 1 por usuario (reemplaza localStorage v1, plan original de julio; referencia vigente en docs/referencia/base-de-datos.md) ──
 create or replace function public.vote_pin(p_pin uuid, p_value smallint)
 returns void
 language plpgsql security definer set search_path = public
@@ -118,7 +118,7 @@ begin
 end;
 $$;
 
--- ── RPC: hacer permanente un report (solo admin, plan §3) ──
+-- ── RPC: hacer permanente un report (solo admin, plan original de julio; referencia vigente en docs/referencia/base-de-datos.md) ──
 create or replace function public.set_pin_permanent(p_pin uuid)
 returns void
 language plpgsql security definer set search_path = public
@@ -166,6 +166,6 @@ create policy "pin_photos_delete_own" on storage.objects for delete using (
        or public.user_role() in ('moderator', 'admin'))
 );
 
--- ── Realtime para pines y comentarios (plan §7) ──
+-- ── Realtime para pines y comentarios (plan original de julio; referencia vigente en docs/referencia/base-de-datos.md) ──
 alter publication supabase_realtime add table pins;
 alter publication supabase_realtime add table pin_comments;

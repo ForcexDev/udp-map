@@ -1,3 +1,17 @@
+# Auditoría y revisión de push
+
+Registro histórico. **No es un plan ni un procedimiento vigente.** Conservar el texto no equivale a comprobar hoy sus afirmaciones sobre servicios o dispositivos.
+
+Procedencia: `docs/PUSH_REWORK_REVIEW.md`, blob `9d76e2149d5a361aaea156a16cfe270ca7c7d944`, commit `b16bb4b59207550952e4e177c1de999413c9123e`. Captura: 2026-10-23.
+
+Destino vigente: [decisiones de push](../../decisiones/notificaciones-push.md), [referencia](../../referencia/notificaciones.md) y [operación](../../guias/despliegue.md). Recuperación desde Git: `git show b16bb4b59207550952e4e177c1de999413c9123e:docs/PUSH_REWORK_REVIEW.md`.
+
+Los sucesores explican el estado actual y sus correcciones. La fecha declarada del 23 de octubre en textos incorporados por un commit del 22 se conserva con ambas procedencias. El experimento Push 6 retirado no retiró el payload híbrido.
+
+<details>
+<summary>Texto original íntegro de docs/PUSH_REWORK_REVIEW.md</summary>
+
+~~~~markdown
 # Revisión del sistema de push y del plan de rework
 
 > **Fecha:** 2026-10-21 · **Sobre:** `main` en `eba61ee` · **Plan revisado:**
@@ -414,3 +428,7 @@ Se llaman **Push 0…6** para no chocar con las Fases 0–7 del mapeo.
   `subscribe()`? (D.4)
 - **¿Qué hace Apple con un `Topic` repetido** y con un JWT renovado por envío?
 - **¿Una pestaña de Safari iOS de verdad no expone `PushManager`?** (n.º 23)
+
+~~~~
+
+</details>

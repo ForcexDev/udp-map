@@ -61,7 +61,7 @@ export function useEventAttendees(pinId: string | null) {
  *
  * Existe porque hasta ahora pulsar "Asistiré" no cambiaba nada en pantalla
  * salvo el propio botón: la fila se guardaba y no aparecía en ningún sitio
- * tuyo (ROADMAP §13.1, punto 2). Un botón que no deja rastro se siente como
+ * tuyo (docs/referencia/repositorio.md, eventos y perfil). Un botón que no deja rastro se siente como
  * que no hizo nada.
  */
 export function useMyEvents() {

@@ -225,8 +225,8 @@ export function categoryById(id: string | null): Category | undefined {
 
 /**
  * Las categorías que describen infraestructura fija: cosas que están ahí
- * siempre. El mapa las dibuja un punto más pequeñas que los avisos (ROADMAP
- * §9.2), porque un pin de sala y uno de food truck no pueden competir igual: el
+ * siempre. El mapa las dibuja un punto más pequeñas que los avisos (docs/decisiones/arquitectura.md,
+ * mapa y marcadores), porque un pin de sala y uno de food truck no pueden competir igual: el
  * segundo es una novedad y el primero es el plano del edificio.
  *
  * Es una lista explícita y no una regla derivada, y las dos derivaciones que

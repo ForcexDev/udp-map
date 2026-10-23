@@ -54,7 +54,7 @@ export function usePins() {
     enabled: Boolean(userId),
   })
 
-  // Realtime: cualquier cambio en pins invalida la lista (plan §7)
+  // Realtime: cualquier cambio en pins invalida la lista (docs/referencia/repositorio.md, pines)
   useEffect(() => {
     if (!supabase) return
     const channel = supabase

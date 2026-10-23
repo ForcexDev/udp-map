@@ -23,7 +23,7 @@ describe('parseRoomCode', () => {
     // `E278A` y `E278B` son dos entradas del mismo número de Ejército, y
     // `M253A`/`M253B` lo mismo en Manuel Rodríguez. El patrón exigía que el
     // prefijo terminara en dígito, así que estas once salas del catálogo de
-    // `docs/SALAS.md` se quedaban sin planta.
+    // `docs/referencia/salas.md` se quedaban sin planta.
     expect(parseRoomCode('E278A.4.S402')).toEqual({
       buildingCode: 'E278A',
       floor: 4,

@@ -6,7 +6,7 @@ import { buildRoomCatalog, type CatalogRoom } from '@/shared/utils/roomCatalog'
 //
 // Fuente: `salas.docencia-eit.cl/data.json`, el archivo que consume la web de
 // "salas vacías" de la Facultad de Ingeniería y Ciencias. Todo lo que hay que
-// saber antes de apoyarse en ella está en `docs/SALAS.md` §1, y lo importante
+// saber antes de apoyarse en ella está en `docs/referencia/salas.md`, y lo importante
 // es esto:
 //
 //   · NO es una API oficial de la universidad. Es un archivo estático servido
@@ -17,7 +17,7 @@ import { buildRoomCatalog, type CatalogRoom } from '@/shared/utils/roomCatalog'
 //     el editor de mapeo.
 //   · Se usa SOLO en `/admin/mapeo`, o sea que hoy no se le pide nada a ese
 //     servidor desde la aplicación pública. Antes de llevarlo al mapa de los
-//     estudiantes hay que hablar con quien lo mantiene (`docs/SALAS.md` §1):
+//     estudiantes hay que hablar con quien lo mantiene (`docs/referencia/salas.md`):
 //     que un archivo sea accesible no lo hace un permiso.
 //   · Solo cubre la FIC. Trae salas de otras facultades, pero únicamente las
 //     que la FIC usa — no su horario completo.
@@ -63,7 +63,7 @@ export async function fetchEitRoomCatalog(signal?: AbortSignal): Promise<Catalog
   }
 }
 
-/** El catálogo, cacheado por sesión. Cambia como mucho una vez por semestre. */
+/** El catálogo, cacheado por sesión; no se supone periodicidad de la fuente. */
 export function useEitRoomCatalog() {
   return useQuery({
     queryKey: ['eit-room-catalog'],
