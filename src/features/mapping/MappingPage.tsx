@@ -12,6 +12,7 @@ import {
   PenLine,
   Plus,
   Redo2,
+  Route,
   Square,
   Undo2,
 } from 'lucide-react'
@@ -28,6 +29,7 @@ import { useMapping } from './useMapping'
 import { indoorLocationAt, mappingSnapshot } from './mappingCache'
 import { useAuthStore } from '@/features/auth/authStore'
 import { RoomImportPanel } from './RoomImportPanel'
+import { NavEditorPanel } from './NavEditorPanel'
 import {
   formatArea,
   openRing,
@@ -76,6 +78,7 @@ const TOOLS: { tool: Tool; icon: typeof Square; label: string; key: string }[] =
   { tool: 'rect', icon: Square, label: 'Rectángulo', key: 'R' },
   { tool: 'polygon', icon: PenLine, label: 'Polígono', key: 'P' },
   { tool: 'trace', icon: Copy, label: 'Calcar de OSM', key: 'T' },
+  { tool: 'nav', icon: Route, label: 'Navegación: puertas, pasillos y núcleos', key: 'N' },
 ]
 
 export function MappingPage() {
@@ -615,7 +618,7 @@ export function MappingPage() {
       }
       if (e.ctrlKey || e.metaKey) return
 
-      const shortcut: Record<string, Tool> = { v: 'select', r: 'rect', p: 'polygon', t: 'trace' }
+      const shortcut: Record<string, Tool> = { v: 'select', r: 'rect', p: 'polygon', t: 'trace', n: 'nav' }
       const next = shortcut[e.key.toLowerCase()]
       if (next) {
         state.setTool(next)
@@ -913,6 +916,11 @@ export function MappingPage() {
               )}
             </main>
 
+            {tool === 'nav' ? (
+              <aside className="flex w-72 shrink-0 flex-col border-l border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                <NavEditorPanel mapping={mapping} pins={pins} />
+              </aside>
+            ) : (
             <aside className="flex w-72 shrink-0 flex-col border-l border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
               <MappingProperties
                 areas={mapping.areas}
@@ -965,6 +973,7 @@ export function MappingPage() {
                 <RoomImportPanel mapping={mapping} pins={pins} building={selectedBuilding} />
               </div>
             </aside>
+            )}
           </>
         )}
       </div>

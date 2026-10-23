@@ -203,6 +203,17 @@ los handlers de teclado de `MappingPage` y los modos de `editorStore` antes de
 documentar un atajo. La herramienta de sala/importador coloca un pin: no propone
 automáticamente un contorno de habitación.
 
+La herramienta «Navegación» (N) edita el grafo planta a planta con
+`NavEditorPanel`: puertas ajustadas al borde de un área (la de la sala gana a
+la del pasillo), eje de pasillo que genera nodos, cadena y salas detrás de cada
+puerta (`shared/utils/indoor/corridor.ts`), escaleras y ascensores con su
+`shaft`, entradas, puntos exteriores y uniones a mano. «Unir plantas» crea las
+aristas verticales entre plantas consecutivas del mismo núcleo. La validación
+(`validate.ts`) se recalcula con cada cambio y lleva al nodo afectado. El lienzo
+solo pinta `navEditorStore.overlay` y entrega los clics; cambiar de planta no
+saca de la herramienta. Las salas generadas toman el código de un pin de su
+área si lo hay.
+
 `PinFloorPanel` asigna planta a pines en lote; no es movimiento geométrico masivo.
 `RoomImportPanel` usa el catálogo EIT como apoyo a colocación manual. El modo demo
 reproduce sus cascadas en memoria y arranca con un solo edificio: Vergara 432
