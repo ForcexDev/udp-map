@@ -114,6 +114,15 @@ export function facultyLevels(mapping: FacultyMapping, facultyId: string): Facul
 }
 
 /**
+ * Los edificios de una facultad con interior dibujado: los que tienen alguna
+ * área de planta. Son los únicos que se pueden ver por dentro en 3D.
+ */
+export function interiorBuildingIds(mapping: FacultyMapping, facultyId: string): string[] {
+  const withAreas = new Set(mapping.areas.filter((a) => a.building_id !== null).map((a) => a.building_id))
+  return mapping.buildings.filter((b) => b.faculty_id === facultyId && withAreas.has(b.id)).map((b) => b.id)
+}
+
+/**
  * Dónde está un pin, en palabras: `Edificio de Salas · Piso 3 · Sala 301`.
  * Va degradando conforme falten datos, hasta desaparecer del todo si el pin
  * está al aire libre y no hay nada mapeado.

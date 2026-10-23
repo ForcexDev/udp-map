@@ -94,6 +94,18 @@ interface UIState {
   setActiveFloor: (floor: number | null) => void
 
   /**
+   * Facultad por la que se está navegando por dentro ("cómo llegar" con grafo).
+   * Mientras dure, el mapa no entra ni sale de facultades por zoom: la cámara
+   * se mueve sola siguiendo la figura y eso no es la persona explorando.
+   */
+  indoorNavFacultyId: string | null
+  setIndoorNavFaculty: (facultyId: string | null) => void
+
+  /** Pisos del edificio separados en 3D ("vista explotada"). */
+  explodedFloors: boolean
+  setExplodedFloors: (v: boolean) => void
+
+  /**
    * Edificio o área por el que se entró al feed de la facultad, para
    * preseleccionarlo en su filtro. No abre panel propio: ver `PlaceFocus`.
    */
@@ -205,9 +217,21 @@ export const useUIStore = create<UIState>((set) => {
 
     activeFacultyId: null,
     activeFloor: null,
+    // Los pisos separados son de la facultad que se miraba: entrar en otra no
+    // la recibe ya explotada.
     setActiveMappingFaculty: (facultyId, floor = null) =>
-      set({ activeFacultyId: facultyId, activeFloor: facultyId === null ? null : floor }),
+      set((s) => ({
+        activeFacultyId: facultyId,
+        activeFloor: facultyId === null ? null : floor,
+        explodedFloors: facultyId === s.activeFacultyId ? s.explodedFloors : false,
+      })),
     setActiveFloor: (floor) => set({ activeFloor: floor }),
+
+    indoorNavFacultyId: null,
+    setIndoorNavFaculty: (facultyId) => set({ indoorNavFacultyId: facultyId }),
+
+    explodedFloors: false,
+    setExplodedFloors: (v) => set({ explodedFloors: v }),
 
     placeFocus: null,
     setPlaceFocus: (place) => set({ placeFocus: place }),
@@ -240,4 +264,13 @@ if (typeof window !== 'undefined' && window.matchMedia) {
     }
   }
   mediaQuery.addEventListener('change', handler)
+}
+
+/**
+ * La facultad cuyo interior se está viendo en 3D: la de la navegación, o la
+ * activa si se separaron los pisos. Lo leen el mapa (para apartar el 2D y las
+ * cajas de OSM) y la escena interior (para dibujarlo).
+ */
+export function indoor3dFacultyId(state: Pick<UIState, 'indoorNavFacultyId' | 'explodedFloors' | 'activeFacultyId'>) {
+  return state.indoorNavFacultyId ?? (state.explodedFloors ? state.activeFacultyId : null)
 }

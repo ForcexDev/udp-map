@@ -108,8 +108,9 @@ function syncBuildingLayers(map: MapLibreMap, source: string, sourceLayer: strin
     // `within` exige la huella COMPLETA dentro, y el perímetro corre pegado a
     // las fachadas: por eso se expande unos metros solo para el filtro.
     const filter = ['within', expandPolygon(polygon, 8)] as unknown as FilterSpecification
+    originalFiltersOf(map).set(id, filter)
     if (map.getLayer(id)) {
-      map.setFilter(id, filter)
+      map.setFilter(id, withInteriorExclusion(map, filter))
       continue
     }
     map.addLayer({
@@ -118,7 +119,7 @@ function syncBuildingLayers(map: MapLibreMap, source: string, sourceLayer: strin
       source,
       'source-layer': sourceLayer,
       minzoom: 14,
-      filter,
+      filter: withInteriorExclusion(map, filter) ?? undefined,
       paint: {
         'fill-extrusion-color': FACULTY_RED,
         'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 12],
@@ -154,6 +155,9 @@ export function refreshFacultyPerimeters(map: MapLibreMap) {
  */
 export function addFacultyLayers(map: MapLibreMap) {
   const layers = map.getStyle().layers ?? []
+  // Un estilo nuevo trae sus capas con sus filtros de fábrica: los guardados
+  // eran del anterior.
+  originalFilters.delete(map)
 
   // Capa 3D base del estilo (en OpenFreeMap Liberty: 'building-3d',
   // source 'openmaptiles', source-layer 'building').
@@ -227,5 +231,53 @@ export function addFacultyLayers(map: MapLibreMap) {
         'line-opacity': 0.85,
       },
     })
+  }
+}
+
+// ── Edificios vistos por dentro ─────────────────────────────────────────────
+//
+// Mientras un edificio se ve por dentro en 3D —navegando o con los pisos
+// separados— su caja de OSM, y la roja de la facultad, lo tapan entero. Se
+// excluyen SOLO esas huellas. El prototipo quitaba todas las extrusiones del
+// estilo, y en la aplicación eso rompería el 3D del resto del campus.
+
+const hiddenFootprints = new WeakMap<MapLibreMap, Polygon[]>()
+const originalFilters = new WeakMap<MapLibreMap, Map<string, FilterSpecification | null>>()
+
+function originalFiltersOf(map: MapLibreMap): Map<string, FilterSpecification | null> {
+  let filters = originalFilters.get(map)
+  if (!filters) {
+    filters = new Map()
+    originalFilters.set(map, filters)
+  }
+  return filters
+}
+
+function withInteriorExclusion(map: MapLibreMap, filter: FilterSpecification | null): FilterSpecification | null {
+  const hidden = hiddenFootprints.get(map) ?? []
+  if (hidden.length === 0) return filter
+  // `within` pide la huella de OSM entera dentro: se expande unos metros
+  // porque la nuestra se calca de la suya y nunca coincide al centímetro.
+  const exclusion = ['!', ['any', ...hidden.map((p) => ['within', expandPolygon(p, 4)])]]
+  return (filter ? ['all', filter, exclusion] : exclusion) as unknown as FilterSpecification
+}
+
+/** Oculta las extrusiones del estilo que caen sobre estas huellas; [] las devuelve. */
+export function setBaseBuildingsHidden(map: MapLibreMap, footprints: Polygon[]): void {
+  // Lo normal es no estar viendo ningún interior: no se toca ningún filtro.
+  if (footprints.length === 0 && (hiddenFootprints.get(map) ?? []).length === 0) return
+  hiddenFootprints.set(map, footprints)
+  const originals = originalFiltersOf(map)
+  for (const layer of map.getStyle().layers ?? []) {
+    if (layer.type !== 'fill-extrusion') continue
+    // Las propias no son cajas de OSM: el volumen de `height_m` y el interior.
+    if (layer.id === 'mapping-buildings-3d' || layer.id.startsWith('indoor-')) continue
+    if (!originals.has(layer.id)) originals.set(layer.id, map.getFilter(layer.id) ?? null)
+    try {
+      map.setFilter(layer.id, withInteriorExclusion(map, originals.get(layer.id) ?? null))
+    } catch {
+      // Un filtro heredado del estilo con sintaxis antigua no se puede combinar
+      // con una expresión; ese edificio seguirá tapando, no rompe el mapa.
+    }
   }
 }

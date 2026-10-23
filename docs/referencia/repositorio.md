@@ -144,6 +144,42 @@ todas las paradas de un ascensor y no redirige la polilínea hasta el acceso.
 Es guía contextual, no grafo indoor ni verificación física de un itinerario.
 Brújula, permisos de orientación e instalación dependen del dispositivo.
 
+## Navegación interior
+
+Cuando el destino tiene grafo (`nav_nodes`/`nav_edges`, ver
+[base de datos](base-de-datos.md#navegacion-interior)), «Cómo llegar» muestra
+`wayfinding/IndoorRouteSheet` giro a giro hasta la puerta; sin grafo, o si la
+consulta falla porque la migración no está aplicada, sigue `WayfinderSheet`.
+Nunca las dos. `MapPage` no pide ubicación ni ruta de calle hasta saber cuál
+corresponde: hacerlo y descartarlo gastaría cupo de ORS.
+
+| Pieza | Responsabilidad |
+|---|---|
+| `shared/utils/indoor/` | Lógica pura en metros (x = este, y = sur): proyección, grafo con costo en segundos, instrucciones, microdirección, línea de tiempo, pasillo generado, validación y el edificio de prueba |
+| `wayfinding/useNavGraph` | Grafo de una facultad (`['navGraph', facultyId]`), proyectado y con nombres de sala del área o del código |
+| `wayfinding/resolveTarget` | Pin → nodo: código normalizado, área, o nodo de paso más cercano de su planta (30 m). Elige entrada por cercanía + tiempo interior y ofrece orígenes sin GPS |
+| `wayfinding/IndoorRouteSheet` | Origen, sin escaleras, pasos, reproducción, cámara, voz y planta automática |
+| `wayfinding/IndoorScene` | Losas, suelos, muros y peldaños por planta; vista separada animada |
+| `wayfinding/LabelOverlay` | Etiquetas HTML a la altura de su planta con la matriz de MapLibre |
+| `shared/lib/mapInstance` | Instancia del mapa y época de estilo publicadas por `MapView` |
+
+`wayfinding` lee de `mapping` y `shared`; no importa de `map`. La ruta de calle
+(`routing.ts`) se le inyecta desde `MapPage`. Por eso el mapa se publica en
+`shared/lib/mapInstance`: pasar la pose por props re-renderizaría la pantalla
+en cada frame.
+
+`uiStore.indoorNavFacultyId` marca la navegación: `MapView` deja de entrar o
+salir de facultades por zoom y no apaga las capas `indoor-*` en 2D.
+`indoor3dFacultyId` (navegación o pisos separados desde `ContextLens`) hace que
+`MapView` aparte las áreas 2D de esos edificios y filtre, solo sobre sus
+huellas, las cajas 3D de OSM y las rojas de la facultad; el resto del campus
+conserva su 3D. Mientras se navega se apaga `centerClampedToGround` para que la
+cámara pueda centrarse en una planta alta, y se fuerza el modo 3D; al cerrar se
+restauran.
+
+El enlace directo `/sala/<código>?ir=1` que proponía el plan no existe: las
+salas se abren con `/mapa?pin=<id>`.
+
 ## Editor de mapeo
 
 `MappingPage` orquesta árbol, propiedades, herramientas y mutaciones;

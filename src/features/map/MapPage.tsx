@@ -33,6 +33,10 @@ import type { Polygon } from 'geojson'
 import { polygonCentroid } from '@/shared/utils/geometry'
 import { AREA_STYLES } from '@/features/mapping/areaStyles'
 import { useMapping } from '@/features/mapping/useMapping'
+import { IndoorRouteSheet, type StreetRoute } from '@/features/wayfinding/IndoorRouteSheet'
+import { IndoorScene } from '@/features/wayfinding/IndoorScene'
+import { resolveTarget } from '@/features/wayfinding/resolveTarget'
+import { useNavGraph } from '@/features/wayfinding/useNavGraph'
 
 function SearchRow({
   icon,
@@ -266,6 +270,18 @@ export function MapPage() {
   const selectedPin = pins.find((p) => p.id === selectedPinId) ?? null
   const routeTarget = pins.find((p) => p.id === routeTargetPinId) ?? null
 
+  // Con grafo interior, "cómo llegar" es giro a giro hasta la puerta; sin él,
+  // la guía de tres pasos de siempre. Nunca las dos a la vez.
+  const { model: navModel, isLoading: navLoading } = useNavGraph(routeTarget?.faculty_id ?? null)
+  const indoorTargetId = useMemo(
+    () => (routeTarget && navModel ? resolveTarget(routeTarget, navModel) : null),
+    [routeTarget, navModel],
+  )
+  const handleStreetRoute = useCallback((street: StreetRoute | null) => {
+    // Sale de `getWalkingRoute`, que es quien se le inyecta a la hoja.
+    setRoute(street as WalkingRoute | null)
+  }, [])
+
   // Filter faculties for search dropdown
   const faculties = useFaculties()
   const filteredFaculties = useMemo(() => {
@@ -468,6 +484,11 @@ export function MapPage() {
       return
     }
 
+    // Mientras no se sepa si hay grafo, no se pide nada: pedir ubicación y
+    // ruta de calle para luego descartarlas gastaría cupo de ORS. Con grafo,
+    // la hoja interior elige origen y entrada y pide la calle ella misma.
+    if (navLoading || indoorTargetId) return
+
     const calculate = async () => {
       let currentLoc: LatLng | null = null
       try {
@@ -520,7 +541,7 @@ export function MapPage() {
   // Do NOT include userLocation/requestLocation here — that would re-fire on
   // every GPS update and burn the ORS quota (the original bug).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeTarget?.id, accessibleRoute])
+  }, [routeTarget?.id, accessibleRoute, navLoading, indoorTargetId])
 
   const movePin = useMutation({
     mutationFn: ({ lat, lng }: { lat: number; lng: number }) => {
@@ -784,14 +805,29 @@ export function MapPage() {
       )}
 
       {/* ── ROUTE INFO BAR ──────────────────────────────── */}
-      {route && routeTarget && (
-        <WayfinderSheet
+      {routeTarget && navModel && indoorTargetId ? (
+        <IndoorRouteSheet
+          key={`${routeTarget.id}|${indoorTargetId}`}
+          model={navModel}
           targetPin={routeTarget}
-          allPins={pins}
-          durationSeconds={route.durationSeconds}
-          distanceMeters={route.distanceMeters}
+          targetNodeId={indoorTargetId}
+          userLocation={userLocation}
+          requestLocation={requestLocation}
+          getStreetRoute={getWalkingRoute}
+          onStreetRoute={handleStreetRoute}
         />
+      ) : (
+        route &&
+        routeTarget && (
+          <WayfinderSheet
+            targetPin={routeTarget}
+            allPins={pins}
+            durationSeconds={route.durationSeconds}
+            distanceMeters={route.distanceMeters}
+          />
+        )
       )}
+      <IndoorScene />
 
       {/* ── HUD Controls (Campus + 2D/3D Selectors) ───────────────────────────── */}
       {!pickingLocation && !movingPinId && !selectedPin && !selectedFacultyId && !routeTarget && (

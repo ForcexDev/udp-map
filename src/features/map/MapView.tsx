@@ -3,7 +3,7 @@ import { Locate, LocateFixed } from 'lucide-react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Pin } from '@/shared/types/database'
-import { useUIStore, type PlaceFocus } from '@/shared/stores/uiStore'
+import { indoor3dFacultyId, useUIStore, type PlaceFocus } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import {
   CAMPUSES,
@@ -20,7 +20,12 @@ import i18n from '@/shared/lib/i18n'
 import { pinScaleForZoom } from '@/shared/utils/pinScale'
 import { publishBounds } from '@/features/pins/usePins'
 import { MAP_STYLE_LIGHT, MAP_STYLE_DARK, DEFAULT_ZOOM, applyMapThemePalette } from './mapConfig'
-import { addFacultyLayers, PERIMETER_FILL_LAYER, refreshFacultyPerimeters } from './facultyLayers'
+import {
+  addFacultyLayers,
+  PERIMETER_FILL_LAYER,
+  refreshFacultyPerimeters,
+  setBaseBuildingsHidden,
+} from './facultyLayers'
 import {
   addMappingLayers,
   updateMappingData,
@@ -30,7 +35,8 @@ import {
   INDOOR_EXIT_ZOOM,
   INDOOR_EXIT_MARGIN_M,
 } from './mappingLayers'
-import { facultyLevels, useMapping } from '@/features/mapping/useMapping'
+import { facultyLevels, interiorBuildingIds, useMapping } from '@/features/mapping/useMapping'
+import { markMapStyleLoaded, publishMap } from '@/shared/lib/mapInstance'
 import { closestPointOnPolygon } from '@/shared/utils/geometry'
 import { GROUND_LEVEL, pinVisibleOnFloor } from '@/shared/utils/floorVisibility'
 import { facultyIdAt, facultyPerimeter, subscribeFaculties } from '@/shared/data/facultyStore'
@@ -89,6 +95,9 @@ function setBuildingsVisible(map: maplibregl.Map, visible: boolean) {
   const target = visible ? 'visible' : 'none'
   for (const l of style.layers) {
     if (l.type !== 'fill-extrusion') continue
+    // El interior en 3D (navegación, pisos separados) tiene su propio ciclo:
+    // el modo 2D no lo apaga.
+    if (l.id.startsWith('indoor-')) continue
     try {
       if (map.getLayoutProperty(l.id, 'visibility') !== target) {
         map.setLayoutProperty(l.id, 'visibility', target)
@@ -148,6 +157,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
   const { mapping } = useMapping()
   const activeFacultyId = useUIStore((s) => s.activeFacultyId)
   const activeFloor = useUIStore((s) => s.activeFloor)
+  const interior3dFaculty = useUIStore(indoor3dFacultyId)
 
   // Un evento que empieza a las 14:00 debe ponerse en vivo a las 14:00, no la
   // próxima vez que el usuario mueva el mapa.
@@ -261,6 +271,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       // Despierta a los efectos que pintan sobre el estilo (mapeo interior y
       // ruta). Va al final: para entonces sus capas ya existen.
       setStyleEpoch((n) => n + 1)
+      markMapStyleLoaded()
     })
 
     // El tamaño del marcador según el zoom (docs/decisiones/arquitectura.md, mapa y marcadores) va como variable CSS
@@ -318,8 +329,10 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
 
     mapRef.current = map
     _mapInstance = map
+    publishMap(map)
     const markers = markersRef.current
     return () => {
+      publishMap(null)
       resizeObserver.disconnect()
       window.removeEventListener('faculty-flyto', onFacultyFlyTo)
       map.off('rotate', updateOrientation)
@@ -786,8 +799,22 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       mapping.areas,
       activeFacultyId,
       activeFloor,
+      new Set(interior3dFaculty ? interiorBuildingIds(mapping, interior3dFaculty) : []),
     )
-  }, [mapping, activeFacultyId, activeFloor, styleEpoch, isDarkMode])
+  }, [mapping, activeFacultyId, activeFloor, styleEpoch, isDarkMode, interior3dFaculty])
+
+  // ── Interior en 3D: las cajas de OSM de esos edificios se apartan ──
+  //
+  // La escena interior (wayfinding) pinta losas y muros a su altura real; la
+  // caja que el estilo levanta para el mismo edificio la taparía entera. Solo
+  // esas huellas: el resto del campus conserva su 3D.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || styleEpoch === 0) return
+    const ids = new Set(interior3dFaculty ? interiorBuildingIds(mapping, interior3dFaculty) : [])
+    const footprints = mapping.buildings.filter((b) => ids.has(b.id)).map((b) => b.footprint)
+    setBaseBuildingsHidden(map, footprints)
+  }, [mapping, styleEpoch, interior3dFaculty])
 
   // ── Entrar y salir de una FACULTAD según el zoom y el centro ──
   //
@@ -816,7 +843,9 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       const ui = useUIStore.getState()
       // Durante la colocación de un pin no se cambia de contexto solo: el mapa
       // se está moviendo a propósito y cambiar de planta debajo desconcierta.
-      if (ui.pickingLocation || ui.movingPinId) return
+      // Navegando por dentro, tampoco: la cámara sigue a la figura, y es la
+      // navegación la que fija facultad y planta.
+      if (ui.pickingLocation || ui.movingPinId || ui.indoorNavFacultyId) return
 
       const inside = ui.activeFacultyId !== null
       const zoom = map.getZoom()
