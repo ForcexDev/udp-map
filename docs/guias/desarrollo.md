@@ -104,6 +104,10 @@ fallida en una lista vacía. Traduce rechazos reconocibles del servidor sin perd
 su explicación. Cuando una operación necesita una RPC transaccional, no la
 sustituyas por escrituras independientes del cliente.
 
+`useGuard` consulta `can()` para la acción y abre `LoginModal` si no autoriza;
+devuelve false para que el manejador no continúe. Esto aplica a las acciones
+que usan ese guard, no a toda navegación o interacción de un invitado.
+
 Para esquema, RLS y funciones sigue
 [aplicar un cambio de base](despliegue.md#aplicar-un-cambio-de-base). La
 interfaz no demuestra autorización y un archivo no acredita despliegue.
@@ -132,3 +136,9 @@ Antes de una PR ejecuta las comprobaciones obligatorias, revisa el diff y actual
 la documentación principal. Describe problema, resultado y validación.
 No atribuyas commits o PR a una IA. No cierres tareas que dependan de aplicar
 SQL o comprobar datos y dispositivos.
+
+Para el flujo habitual de contribución, parte de `main` actualizado y crea una
+rama con propósito, como `feature/nuevo-foro` o `fix/boton-login`. Usa un título
+claro y enlaza el issue cuando exista, por ejemplo `Closes #12` cuando la PR
+realmente lo cierre. La verificación local precede a abrir la PR; CI usa el
+lint completo, no solo el subconjunto de `src`.

@@ -148,18 +148,63 @@ coloca puntos, no propone contornos automáticamente. No se afirma que todo el
 flujo «área + ficha» se haga sin migración: el diseño posterior propone tipos,
 relaciones y cola que aún no existen.
 
-El estudiante puede proponer y la curaduría confirma ubicación y geometría.
-El diseño exige advertencia antes de publicar, seguimiento, respuesta con motivo
-y una acción que resuelva la sugerencia entera. Sigue abierta la responsabilidad
-administrador/moderador, porque panel y SQL no conceden el mismo acceso.
-El TTL de una sugerencia no debe hacer desaparecer una sala pendiente de
-curaduría sin la política de plazo de gracia acordada; esa política no está
-implementada por el solo hecho de existir la categoría sala.
+### Flujo acordado, todavía pendiente
+
+Antes de publicar se explica que es una sugerencia, su duración y qué significa
+que se acepte; requiere confirmación explícita. Desde la publicación es un pin
+visible y social: no se esconde mientras espera revisión. Quien aporta recibe
+respuesta de aceptación o rechazo con motivo.
+
+La revisión se diseñó dentro de `/admin/mapeo` porque necesita ver el plano:
+lista de pendientes del edificio/planta, corrección del punto y decisión con
+motivo. Aceptar convierte el pin en permanente y concede el premio de la
+verificación; después ofrece trazar un área ya asociada a ese pin.
+La relación y esa acción conjunta aún deben construirse: dibujar hoy un área
+no las produce automáticamente.
+
+Cuando se trace el área, el diseño elegido **sustituye la chincheta por el
+polígono con código**, y tocarlo abre exactamente la ficha social del pin.
+Mientras no haya área, permanece el marcador de pin. No se crea otra ficha
+parecida ni se dividen fotos, votos o conversación.
+
+Se descartó que el estudiante dibuje el polígono: la sugerencia es un punto;
+revisar trazo por trazo convertiría el aporte en trabajo de edición.
+También se descartó aprobar automáticamente al vencer un reloj.
+La cola espera resolución humana y el pin conserva, mientras no se implemente
+otra política, el TTL de categoría. La nota de «plazo de gracia» del plan
+anterior no define un contrato ya construido ni autoriza aprobación por tiempo.
+
+El original registra preferencia por una cola de pocas manos administradoras,
+pero deja por resolver su encaje con el rol moderador y el acceso al editor.
+Debe conservarse esa preferencia al cerrar el diseño; la capacidad SQL de
+mapear no abre por sí misma el panel actual.
 
 `computacion` se renombró a Sala de computación y escalera ya existe.
 «Sala» no obliga a tener código oficial: salas de estudio u otros recintos
 pueden no tenerlo. La propuesta de vincular categoría a tipo de área desde el
 catálogo evita otra lista fija en UI, pero ese vínculo sigue pendiente.
+
+### Alcance inicial de recintos
+
+El alcance registrado de la futura cola es deliberadamente corto por el coste
+humano de trazar cada recinto. Debe ser permanente y tener superficie útil
+para representar, no ser solo un punto.
+
+| Categoría del pin | Tipo de área previsto |
+|---|---|
+| `sala` | `room`, todavía ausente del enum |
+| `casino` | `cafeteria` |
+| `computacion` | `lab` |
+
+`bano`, `bicicletero` y `deporte` encajarían, pero quedaron aplazados.
+Ascensor, rampa y escalera se modelan como puntos/conectores; una caja de escalera
+grande puede ser área `service` trazada a mano. Impresora, agua, microondas,
+enchufe y entrada son puntos. Food truck, feria, estudio o sala-libre son
+efímeros: no entran por ese flujo de recintos permanentes.
+La propuesta `categories.area_kind` permite declarar el vínculo en el catálogo,
+en lugar de repartir esta lista en condicionales de UI; aún no existe.
+Las salas de computación de libre acceso pueden no tener código ni horario:
+su título conserva el nombre propio y la categoría no debe exigir inventar uno.
 
 ### Un conector vertical, una conversación
 

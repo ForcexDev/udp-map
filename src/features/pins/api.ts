@@ -46,7 +46,7 @@ function isLivePin(p: Pin, now = Date.now()): boolean {
   return new Date(p.expires_at).getTime() > now
 }
 
-// ── Lectura paginada/filtrada por bounds (docs/referencia/repositorio.md, pines) ──
+// ── Lectura limitada a 300 pines, con bounds opcionales (docs/referencia/repositorio.md, pines) ──
 
 export async function fetchPins(bounds: Bounds | null, filters: PinFilters): Promise<Pin[]> {
   if (!supabase) {

@@ -55,12 +55,16 @@ compatibilidad de rollback. Este orden expresa dependencias, no plazos nuevos.
 - [ ] Contactar a quien mantiene EIT: cobertura, periodicidad, uso en producción,
   formato y condiciones de reutilización. Un JSON accesible no acredita permiso
   o contrato estable.
-- [ ] Implementar el flujo acordado de sugerencia: aviso antes de publicar,
-  cola, revisión, respuesta con motivo, gracia de caducidad y acción que resuelva
-  pin/geometría juntos. Elegir responsable admin/moderador y su acceso efectivo.
-  El área no enlaza pines por el mero dibujo.
-- [ ] Completar la representación área + ficha social común, asociación de salas
-  ya existentes y trazo asistido. Resolver `room`/tipos de área y la propuesta
+- [ ] Implementar el [flujo acordado](decisiones/arquitectura.md#flujo-acordado-todavía-pendiente):
+  confirmación antes de publicar y pin visible/social desde ese momento;
+  cola sobre el plano, revisión y respuesta con motivo, sin aprobación por reloj;
+  aceptación y trazo asociado que resuelva pin/geometría juntos. Concretar
+  caducidad/gracia y acceso efectivo preservando la preferencia administrativa
+  registrada. El área no enlaza pines por el mero dibujo.
+- [ ] Completar la representación área + ficha social común: el polígono con
+  código sustituye la chincheta al existir área; tocarlo abre la ficha del pin.
+  Resolver asociación de salas ya existentes y trazo asistido dentro del
+  alcance inicial sala/casino/computacion; mantener las exclusiones registradas. Resolver `room`/tipos de área y la propuesta
   `categories.area_kind` sin una nueva lista fija de equivalencias en UI.
   La etiqueta actual de código y el permiso servidor de mover pines **ya existen**.
 - [ ] Añadir aviso no bloqueante de código de sala duplicado en el edificio,
@@ -153,6 +157,14 @@ compatibilidad de rollback. Este orden expresa dependencias, no plazos nuevos.
 El detalle de operación y rollback está en [despliegue](guias/despliegue.md), no
 en una lista de fases cerradas. El experimento de payload puro retirado y los
 diagnósticos anteriores permanecen accesibles desde [decisiones push](decisiones/notificaciones-push.md).
+
+## Deuda local sin corrección incidental
+
+- [ ] Revisar coherencia de datos demo `ingenieria/fic`, colores de tema HTML/
+  manifiesto y declaraciones de variables de entorno, localizados en la
+  [referencia](referencia/repositorio.md#desajustes-locales-conservados).
+- [ ] Revisar el límite de 300 pines y la deduplicación parcial del importador
+  antes de tratar sus resultados como inventario completo de una facultad.
 
 ## Criterio para cerrar
 

@@ -62,10 +62,13 @@ Resolver estado y volver a primer plano sincronizan una suscripción existente;
 no piden permiso ni crean una nueva por el mero arranque.
 
 El estado local del navegador y el registro del servidor son distintos.
-La tarjeta empieza en unknown y muestra esqueleto mientras resuelve.
-«Activadas» depende de la suscripción local; `serverSync` informa si el servidor
-la confirmó o necesita sesión/reintento. Un error de red no debe aparentar que
-se guardó ni destruir una suscripción sana.
+`seedState` reduce el parpadeo de la tarjeta al arrancar: resuelve
+primero instalación iOS, soporte y permiso. Con permiso default siembra idle;
+con permiso concedido usa subscribed si recuerda una suscripción local y
+unknown si no la recuerda. Solo unknown muestra esqueleto. La consulta del
+worker corrige esa siembra; la memoria local no confirma registro remoto.
+`serverSync` informa si el servidor confirmó o necesita sesión/reintento.
+Un error de red no debe aparentar que se guardó ni destruir una suscripción sana.
 
 Al activar se usa gesto de usuario, permiso y clave VAPID pública. Se reutiliza
 una suscripción existente en lugar de romperla antes de conseguir otra.
@@ -199,6 +202,18 @@ y suscripciones existentes siguiendo [despliegue](../guias/despliegue.md#configu
 drenar solo ese aviso y consulta sus entregas, incluso si otro proceso reclamó
 antes. `admin_push_delivery_stats` agrupa por host, no por endpoint completo;
 sus ventanas de retención están en la referencia DB.
+
+`admin_count_push_subscribers` cuenta navegadores registrados, no personas.
+`admin_push_subscribers` permite a admin listar nombre, rol, endpoint,
+User-Agent y fechas sin devolver correo. El endpoint identifica la suscripción
+que se administra; las estadísticas conservadas usan host.
+
+`admin_delete_push_subscription` da de baja ese endpoint y devuelve booleano
+según borró una fila; registra `push_unsubscribed` al hacerlo. Permite retirar
+un teléfono perdido o un cliente que no vuelve a abrir: un endpoint aún válido
+no responderá necesariamente 404/410 para que el sender lo limpie solo.
+La baja remota no revoca por sí misma el permiso ni ejecuta `unsubscribe` en
+el navegador perdido; no confundirla con la baja local del dispositivo abierto.
 
 La difusión usa `admin_broadcast_push_notification(título,cuerpo,url)`, con
 topes SQL de 60/180 caracteres. Cuenta avisos realmente creados, no meros

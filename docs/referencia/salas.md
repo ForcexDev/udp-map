@@ -91,6 +91,22 @@ importada y no verificada puede caducar. Un alta masiva en el centroide no aport
 ubicación real y choca con la regla de punto/planta ocupado. No hay un seed
 automático de salas ni un contorno propuesto para cada una.
 
+### Límites de deduplicación y colocación
+
+El editor consulta `fetchPins` por facultad: contra Supabase recibe como máximo
+300 pines vivos, sin paginación real. La lista de códigos tomados se calcula
+solo sobre esos resultados; no acredita un inventario completo ni evita por sí
+sola toda duplicación en una facultad con más resultados o datos no visibles.
+El importador y el formulario tampoco tienen una restricción SQL única por
+código normalizado.
+
+Al colocar una sala, `placeRoom` consulta el snapshot interior. Si conoce el
+edificio seleccionado, exige que `indoorLocationAt` resuelva ese mismo edificio:
+impide soltarla en el patio de una huella hueca. Con snapshot vacío o edificio
+desconocido no aplica esa comprobación cliente por falta de referencia. Los
+triggers del servidor conservan sus controles de planta y ocupación; esa
+excepción no prueba que la geometría declarada sea correcta.
+
 ## Representación e interacción
 
 La categoría `sala` es distinta de `sala-libre`, un aviso humano temporal de

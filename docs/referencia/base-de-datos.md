@@ -244,6 +244,12 @@ La matriz de orígenes, presentación y contratos HTTP está en
 [notificaciones](notificaciones.md). Aquí vive el contrato persistente.
 
 `notifications` conserva tipo, categoría, audiencia, destino, actor y dedupe.
+Para el cliente ordinario, RLS limita SELECT/UPDATE/DELETE a filas propias;
+`authenticated` no tiene INSERT y su UPDATE está concedido solo sobre
+`read_at`. No puede crear o reescribir libremente el aviso por tener sesión.
+Esto no describe como inexistentes los otros privilegios auxiliares que conserva
+el baseline: debe revisarse la ACL concreta para cada operación.
+
 `create_notification` y `queue_notification_push` consultan
 `wants_notification` para no discrepar entre canales.
 La ausencia de fila en `notification_preferences` significa permitir:
@@ -322,9 +328,13 @@ La función acepta servicio o ejecución sin JWT para cron. Los datos purgados
 no vuelven al deshacer la función.
 
 `admin_push_delivery_stats` agrupa por host en SQL. Solo admin, no service_role
-como sustituto de una sesión admin; la ventana de sent/expired/pending se
-acota a 30 días y failed conserva hasta 90. Eso evita tratar como error una
-retención distinta. La guía incluye consulta equivalente desde SQL Editor.
+como sustituto de una sesión admin. La RPC acota `p_days` a 1–90 y aplica esa
+ventana a todos los estados. La purga, en cambio, retiene sent/expired 30 días
+y failed 90, sin purgar pending por edad. En consultas mayores de 30 días las
+proporciones quedan sesgadas por esa retención; pending de 31–90 días sí puede
+aparecer. Para comparar estados usa una ventana de hasta 30 días; ventanas
+mayores sirven para rastrear fallos y pendientes. La guía incluye la consulta
+equivalente desde SQL Editor.
 
 ## Moderación y actividad
 

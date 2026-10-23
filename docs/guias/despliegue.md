@@ -102,6 +102,12 @@ Mantén en el mismo cambio migración `<timestamp>_descripcion.sql`, baseline y
 referencia DB, con los tipos cliente que cambien. El hook avisa de la referencia,
 no valida equivalencia de esquemas.
 
+Para cada función `SECURITY DEFINER` nueva o modificada, fija un `search_path`
+seguro, valida identidad/rol y objeto dentro de la función, revoca `EXECUTE`
+a `PUBLIC` y concédelo solo a los roles necesarios. Revisa también privilegios
+de columnas y la combinación OR de políticas permisivas. Es una regla de
+contribución; las excepciones del SQL heredado se auditan como tales.
+
 No cambies el cuerpo de una migración ya aplicada en un entorno compartido:
 prepara otra. El flujo desde las migraciones de agosto que incorporaron rollback
 incluye `.down.sql`; documenta pérdidas y condiciones de vuelta atrás, no solo
@@ -111,6 +117,12 @@ Antes de aplicar, confirma proyecto, dependencias y respaldo adecuado. Ejecuta
 desde SQL Editor, inspecciona resultado/catálogos y registra entorno, fecha,
 commit y pruebas. No cierres el pendiente por existir el archivo o por el
 nombre de su timestamp. No hay `db push` en CI o scripts npm.
+
+Registra hallazgos y cierre sin borrar su historia: problema, alcance, evidencia
+y resolución. Para cerrar un hallazgo de base, contrasta funciones y políticas
+con el catálogo real del entorno (`pg_proc`, `pg_policy` y ACL correspondientes);
+la afirmación de otra persona o herramienta no sustituye esa comprobación.
+Si solo verificaste el SQL local, registra ese alcance y deja pendiente lo remoto.
 
 Para cambios de catálogo, actualiza su fuente y el seed cuando corresponda.
 El generador no crea administradores, perímetros ni salas posicionadas.
@@ -189,7 +201,11 @@ y sender nuevo. Si necesitas reproducir ese ensayo, usa un checkout separado
 del commit correcto: desplegar `main` ya no reproduce aquella versión.
 No cambies cifrado/payload/sub/urgencia por pasar pruebas unitarias.
 
-El sender actual **ya no crea recordatorios**. Sin `000200` nadie los crea.
+El sender actual ya no ejecuta el **barrido periódico** de recordatorios.
+El trigger `notify_event_rsvp_in_window` todavía puede crearlos al insertar o
+actualizar una asistencia que ya está en la ventana. Sin el job de `000200`
+falta el barrido de asistencias previas que entran en los 20 días; no desaparecen
+todos los productores por el mero hecho de faltar cron.
 Un sender anterior como `4eae308` o `20eee7e` puede coexistir con el esquema
 nuevo y el cron de recordatorios gracias a `reminded_at`. Esto es compatibilidad
 de código registrada, no una invitación a saltarse la comprobación del entorno.

@@ -3,8 +3,9 @@
 --
 -- OJO: tras deshacerla, el send-push desplegado tiene que ser uno que TODAVÍA
 -- encole los recordatorios de eventos (20eee7e o anterior). Esta migración
--- desprograma el trabajo que lo hace ahora, y el send-push nuevo ya no lo hace:
--- con ese desplegado nadie avisaría de ningún evento. Redesplegar primero.
+-- desprograma el barrido periódico, que el send-push nuevo ya no ejecuta. Sin
+-- reemplazo, las asistencias previas que entren en ventana pierden ese aviso.
+-- El trigger de alta/cambio de RSVP sigue separado. Redesplegar primero.
 --
 -- La purga se pierde con la función: lo ya borrado por edad no vuelve.
 --

@@ -96,6 +96,39 @@ niveles de detalle completos ni abanico resueltos. El renderKey evita recrear
 SVG por cada revalidación; las reglas de `opacity`, clases y resize están en
 [CLAUDE.md](../../CLAUDE.md#reglas-del-mapa-que-no-hay-que-perder).
 
+### Cambios de estilo y prioridad de interacción
+
+Cambiar estilo con `setStyle` elimina capas y fuentes personalizadas.
+`MapView` las reconstruye al cargar el estilo y aumenta `styleEpoch` después
+de crearlas: los efectos de ruta e interior dependen de esa época para reponer
+sus datos aunque las propiedades React no hayan cambiado.
+Los marcadores separados del DOM también se vuelven a adjuntar.
+
+El catálogo puede llegar antes de que el estilo esté listo.
+`refreshFacultyPerimeters` se ejecuta si ya lo está; si no, se encola en `idle`
+y comprueba que la instancia siga viva. Descartar aquel aviso dejaba el mapa
+con perímetros diferentes según cómo se había abierto.
+
+`faculty-perimeter-fill` conserva opacidad cero como blanco de clic: no elimines
+esa capa por no verla. `syncBuildingLayers` retira las capas de edificios de
+facultades que ya no tienen perímetro y actualiza los filtros del catálogo
+vigente; solo añadir capas dejaría trazos antiguos visibles.
+
+El contexto interior usa histéresis: entra desde zoom 17.5, sale por debajo
+de 17.2 y tolera hasta 5 m fuera del perímetro antes de abandonar la facultad.
+Así evita cambiar de planta repetidamente al rozar el borde o el umbral.
+No cambia contexto durante colocación o traslado de pin y no activa una facultad
+sin plantas disponibles.
+
+El clic se resuelve en un único manejador: pin DOM, área, edificio, perímetro
+y finalmente deselección. El pin detiene propagación; dividir el resto en
+handlers independientes ya abrió dos fichas con el mismo toque.
+
+`MapPage` admite `/mapa?faculty=<id>` si el ID existe en el catálogo: selecciona
+su ficha y, al resolver un destino, limpia la query con `replaceState`.
+Con `?pin=` y una lista no vacía de pines, la rama del pin tiene prioridad;
+no hay un fallback general a facultad si ese pin no se encuentra.
+
 ## Rutas y orientación
 
 `routing.ts::getWalkingRoute` pide ORS con perfil `foot-walking` o `wheelchair`.
@@ -119,8 +152,14 @@ y borrador; `api.ts` y `demoStore.ts` comparten el contrato de operaciones.
 
 La jerarquía es facultad → edificio → planta → área, con áreas exteriores sin
 edificio ni planta. La chincheta de una facultad nueva sale de su perímetro.
-Altura explícita o inferida permite volumen; altura nula o cero no equivale a
-una medición de terreno. El calco de OSM no acredita precisión catastral.
+El volumen propio usa exclusivamente `height_m` positivo; `buildingHeightM`
+no infiere altura de plantas ni de otro dato. Sin altura declarada devuelve cero;
+guardar cero lo convierte a NULL. El estilo base puede representar edificios
+de OSM por separado. El calco de OSM no acredita precisión catastral.
+
+Se retiró deducir altura de las plantas para evitar superponer un volumen
+propio a edificios que el estilo OSM ya representa. La altura manual cubre
+los casos que necesitan esa representación propia, no una segunda copia general.
 
 El editor permite selección, rectángulos, polígonos y calco, edición de vértices,
 ajuste a referencias y modo ortogonal, división y copia entre plantas. Consulta
@@ -161,13 +200,26 @@ FK que pueden impedir el borrado en la base.
 ## Pines, lugares y eventos
 
 `pins/api.ts` concentra creación, edición, ubicación, fotos e interacción;
-`usePins` gestiona consultas paginadas por límites del mapa, filtros y realtime. `CreatePinModal` e
+`usePins` gestiona filtros y realtime. La API admite límites geográficos, pero
+el hook actual llama a `fetchPins(null, filters)`: panear no cambia su query.
+El límite remoto es 300 pines vivos ordenados por creación, sin cursor o paginación
+real. `boundsSnapshot` conserva una instantánea síncrona para otros consumidores,
+no una suscripción que dispare el fetch en cada movimiento. `CreatePinModal` e
 `IndoorFields` preparan la publicación; `PinDetail` y `usePinActions` la ficha
 y acciones. El ciclo de vida, campos protegidos y cupos están en
 [base de datos](base-de-datos.md#ciclo-de-vida-de-un-pin).
 
 La creación del pin y la carga de fotos/programa no forman una sola transacción
-cliente. `uploadPinPhotos` compensa fallos de subida quitando archivos sin fila;
+cliente. `CreatedPin` puede devolver `photosFailed` o `scheduleFailed`:
+el pin ya existe aunque esa parte accesoria falle. Recupera esa parte sobre el
+pin existente; repetir toda la creación puede duplicarlo o chocar con
+`PIN_LOCATION_OCCUPIED`.
+
+Los errores RPC se propagan sin envolver para conservar SQLSTATE.
+`dbErrorMessage` y `isUserFacingDbError` distinguen objetos planos y mensajes
+P0001; convertirlos sin más en `Error` o `String(error)` puede perder la
+explicación y mostrar `[object Object]`. `uploadPinPhotos` compensa fallos
+de subida quitando archivos sin fila;
 el GC limpia archivos asociados a filas eliminadas. No confundas ambos dueños.
 `place_photos` representa galerías de facultad, edificio o área; no se heredan
 automáticamente las fotos entre recintos.
@@ -230,6 +282,22 @@ mostraron el coste de sincronizar dos fuentes. La deuda está en
 Los scripts de iconos pueden sobrescribir assets. `bundle.mjs`, `geocode.js` y
 `engineering_polygon.json` son restos o herramientas fuera del arranque normal;
 no son fuentes del catálogo vivo ni una razón para restaurar perímetros estáticos.
+
+## Desajustes locales conservados
+
+La reorganización no corrigió estos desajustes de aplicación/configuración:
+
+- `index.html` y el manifiesto de Vite usan `theme-color` distintos.
+- `vite-env.d.ts` no enumera `VITE_GOOGLE_CLIENT_ID` ni
+  `VITE_VAPID_PUBLIC_KEY`, aunque el código las consume.
+- Auth demo usa `faculty_id: ingenieria` y `publicProfileApi` conserva `fic`;
+  la coherencia de los datos demo requiere trabajo propio.
+- `udp-map-demo` pasa `--mode demo` pero eso no desactiva credenciales.
+- Los nombres oficiales fijos siguen dependiendo de revisar alcance de
+  moderadores y atribución, no solo de traducir un texto.
+
+Estos casos tienen origen en el mapa anterior y siguen localizables en los
+archivos indicados; no se presentan como discrepancias corregidas por mover docs.
 
 ## Dónde intervenir
 

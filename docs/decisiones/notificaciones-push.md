@@ -106,8 +106,10 @@ que el Sidebar esté montado.
 El dedupe de recordatorio no puede depender solo de un aviso que su dueño puede
 borrar. Se eligió `event_rsvps.reminded_at`; preferencias apagadas no marcan
 para permitir recibirlo si se reactivan a tiempo. El barrido pasó a cron SQL
-separado, por lo que desplegar sender sin el job elimina de hecho el productor:
-esa dependencia se conserva en despliegue y rollback.
+separado. Sin ese job faltan los recordatorios periódicos de asistencias previas
+que entran en la ventana; el trigger de alta/cambio de asistencia todavía
+puede producir el suyo dentro de los 20 días. Esa dependencia del barrido
+se conserva en despliegue y rollback.
 
 Las preferencias tienen dos ejes para permitir bandeja sin sonido. Ausencia
 de fila permite por defecto; la función central evita reglas diferentes al crear
