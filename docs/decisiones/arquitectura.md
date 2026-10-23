@@ -220,6 +220,32 @@ Un rango no representa paradas intermedias omitidas; el plan acepta anotarlas
 en la descripción frente a añadir una lista de paradas para ese caso.
 Hoy solo existe un `floor`: no describas ese rango como conducta actual.
 
+### Navegación interior con grafo explícito
+
+«Cómo llegar» hasta la puerta usa un grafo de nodos y aristas por facultad,
+no deducido de los polígonos: inferir pasillos de la geometría es frágil y un
+grafo de decenas de nodos por planta se rutea y se prueba sin esfuerzo. El
+editor lo genera casi entero a partir del eje del pasillo y de las puertas.
+Lo validó un prototipo sobre Vergara 432 antes de llevarlo a la aplicación.
+
+- El costo es tiempo: en planta una escalera mide 0 m y ganaría siempre. La
+  espera del ascensor se paga una vez por viaje (estado del Dijkstra).
+- La lógica trabaja en metros sobre un plano local con y = sur, y lng/lat solo
+  al cargar y pintar. Ese signo decide izquierda y derecha; tiene pruebas.
+- La geometría decide la maniobra y el grafo pone las referencias («pasando la
+  Sala 412»). Llegar no es girar: el último paso dice el lado y el ordinal de
+  la puerta. La microdirección se deriva con el mismo planificador.
+- Todo el 3D es `fill-extrusion` con base y altura por objeto; separar pisos
+  es sumar un `gap` a cada altura, y las etiquetas en altura son HTML movido
+  con la matriz de MapLibre porque las capas `symbol` no tienen altura.
+- Solo se ocultan las cajas de OSM de los edificios que se ven por dentro;
+  quitarlas todas, como hacía el prototipo, rompería el 3D del campus.
+- El acceso a datos vive en `mapping` (lo escribe el editor y el demo
+  reproduce sus cascadas); `wayfinding` lee y no importa de `map`. La ruta de
+  calle se inyecta y el mapa se publica en `shared/lib/mapInstance`.
+
+Sin grafo sigue la guía de tres pasos; nunca se muestran las dos.
+
 ### Horario como capa externa
 
 La sala física debe sobrevivir a una caída de EIT. La decisión registrada es

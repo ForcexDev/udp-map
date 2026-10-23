@@ -40,6 +40,7 @@ import { DraggableBottomSheet } from '@/shared/ui/DraggableBottomSheet'
 import { PhotoCarousel } from '@/shared/ui/PhotoCarousel'
 import { BOUNDARY_RECT } from '@/features/map/campusBoundary'
 import { ReportContentDialog, type ReportTarget } from '@/features/moderation/ReportContentDialog'
+import { RoomMicroaddress } from '@/features/wayfinding/RoomMicroaddress'
 
 interface PinDetailProps {
   pin: Pin
@@ -226,6 +227,10 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
               )}
             </div>
           )}
+
+          {/* Microdirección: dónde está la sala dentro del edificio, derivada
+              del grafo de navegación. Sin grafo no se muestra nada. */}
+          <RoomMicroaddress pin={pin} />
 
           {pin.description && (
             <div className="mt-4 rounded-2xl border border-[#E6E0D5] bg-white p-3.5 dark:border-white/[0.07] dark:bg-[#1E222D]">

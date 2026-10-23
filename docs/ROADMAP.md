@@ -89,10 +89,40 @@ compatibilidad de rollback. Este orden expresa dependencias, no plazos nuevos.
   simultáneamente ficha del área y del pin.
 - [ ] Detalle por zoom facultad → edificio → pin y transiciones.
   No hay clustering completo por el hecho de reducir infraestructura.
-- [ ] Ruteo accesible fino: elegir acceso/rampa adecuado y continuación real
-  por conectores hasta destino. La guía actual toma primeros candidatos;
-  no comprueba cercanía, conectividad ni todas las paradas, y los respaldos
-  OSRM/recta no heredan garantía wheelchair.
+- [ ] Ruteo accesible fino donde no haya grafo: la guía de tres pasos toma
+  primeros candidatos; no comprueba cercanía, conectividad ni todas las
+  paradas, y los respaldos OSRM/recta no heredan garantía wheelchair. Con grafo
+  interior lo resuelve la navegación de abajo.
+
+<a id="navegacion-interior"></a>
+## Navegación interior (beta)
+
+Implementado en la rama `navegacion`: núcleo puro, migración, carga, hoja giro
+a giro con animación y cámara, edificio en 3D con pisos separables, editor
+«Navegación» y microdirección. Contrato en
+[base de datos](referencia/base-de-datos.md#navegacion-interior) y piezas en
+[repositorio](referencia/repositorio.md#navegación-interior).
+
+- [ ] Aplicar `20261023000000_indoor_navigation` a mano en cada entorno. Sin
+  ella el cliente vuelve a la guía de tres pasos; no rompe nada.
+- [ ] Cargar Vergara 432 real con el editor y cruzar códigos con
+  [salas](referencia/salas.md). Cerrar exige que todas las salas del catálogo
+  en V432 tengan ruta y que alguien recorra al menos cinco rutas en terreno.
+  El demo usa un edificio supuesto del prototipo, no el plano real.
+- [ ] Responder antes de esa carga: plano real (escalera, ascensor y lado de
+  cada sala), si existe el subterráneo -1 de `V432.-1.*` y por dónde se baja,
+  rampa/escalones y torniquetes de la puerta de Vergara, paso al patio hacia
+  Ejército 441, número de escaleras usables, origen por defecto (GPS + calle o
+  entrada a mano; hoy: GPS si ya hay ubicación, si no el primer punto
+  exterior) y voz por defecto (hoy opcional).
+- [ ] Medir en un teléfono de gama media: cálculo de ruta (< 5 ms; la prueba
+  local lo comprueba en escritorio) y FPS de la animación y de separar pisos.
+- [ ] Mobiliario decorativo derivado del tipo de área (pizarra y mesas en
+  salas, graderías, cubículos, torniquetes). Es lo último: no orienta solo.
+- [ ] Enlace directo a una sala con arranque de la ruta (el plan proponía
+  `/sala/<código>?ir=1`); hoy solo existe `/mapa?pin=<id>`.
+- [ ] Revisar en dispositivo la hoja a la derecha en escritorio: el plan la
+  quería a la izquierda, pero ahí está el buscador y la lente de plantas.
 - [ ] Sidebar como índice desplegable de edificios, conservando estado útil
   para facultades sin mapeo y evitando una segunda ficha social.
 - [ ] Capa pública de horarios solo después de carga/contacto/cobertura:
