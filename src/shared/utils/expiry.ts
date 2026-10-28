@@ -38,7 +38,10 @@ export function expiryState(
 }
 
 /** expires_at a partir del TTL de la categoría; null si no aplica. */
-export function expiresAtFromTtl(ttlHours: number | null, from: number = Date.now()): string | null {
+export function expiresAtFromTtl(
+  ttlHours: number | null,
+  from: number = Date.now(),
+): string | null {
   if (ttlHours === null || ttlHours <= 0) return null
   return new Date(from + ttlHours * 60 * 60 * 1000).toISOString()
 }

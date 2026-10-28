@@ -13,7 +13,14 @@ interface LeaderboardTableProps {
   onViewProfile: (id: string) => void
 }
 
-export function LeaderboardTable({ data, currentUserId, loading, faculty, onFacultyChange, onViewProfile }: LeaderboardTableProps) {
+export function LeaderboardTable({
+  data,
+  currentUserId,
+  loading,
+  faculty,
+  onFacultyChange,
+  onViewProfile,
+}: LeaderboardTableProps) {
   const { t, i18n } = useTranslation()
 
   return (
@@ -31,7 +38,9 @@ export function LeaderboardTable({ data, currentUserId, loading, faculty, onFacu
         <CustomSelect
           options={[
             { value: 'all', label: t('profile.globalLeaderboard', 'Global') },
-            ...FACULTIES.filter((f) => f.id !== 'deportes' && f.id !== 'dti' && f.id !== 'biblioteca').map((f) => ({
+            ...FACULTIES.filter(
+              (f) => f.id !== 'deportes' && f.id !== 'dti' && f.id !== 'biblioteca',
+            ).map((f) => ({
               value: f.id,
               label: i18n.language === 'en' ? f.name_en : f.name,
             })),
@@ -61,9 +70,13 @@ export function LeaderboardTable({ data, currentUserId, loading, faculty, onFacu
                 const isMe = profile.id === currentUserId
                 const rank = idx + 1
                 const medalClass =
-                  rank === 1 ? 'text-amber-500 dark:text-amber-400' :
-                  rank === 2 ? 'text-stone-400 dark:text-stone-300' :
-                  rank === 3 ? 'text-amber-700 dark:text-amber-600' : 'text-stone-400 dark:text-stone-500'
+                  rank === 1
+                    ? 'text-amber-500 dark:text-amber-400'
+                    : rank === 2
+                      ? 'text-stone-400 dark:text-stone-300'
+                      : rank === 3
+                        ? 'text-amber-700 dark:text-amber-600'
+                        : 'text-stone-400 dark:text-stone-500'
 
                 return (
                   <tr
@@ -74,7 +87,9 @@ export function LeaderboardTable({ data, currentUserId, loading, faculty, onFacu
                         : 'hover:bg-[#FAF8F5] dark:hover:bg-white/[0.04]'
                     }`}
                   >
-                    <td className={`px-4 py-3.5 text-center text-xs font-bold tabular-nums ${medalClass}`}>
+                    <td
+                      className={`px-4 py-3.5 text-center text-xs font-bold tabular-nums ${medalClass}`}
+                    >
                       {rank}
                     </td>
                     <td className="px-4 py-3.5">
@@ -82,7 +97,11 @@ export function LeaderboardTable({ data, currentUserId, loading, faculty, onFacu
                         onClick={() => onViewProfile(profile.id)}
                         className="flex cursor-pointer items-center gap-2.5 border-none bg-transparent p-0 text-left text-xs font-semibold text-stone-900 hover:underline dark:text-stone-100"
                       >
-                        <UserAvatar name={profile.name} src={profile.avatar_url} className="h-7 w-7 text-[26px]" />
+                        <UserAvatar
+                          name={profile.name}
+                          src={profile.avatar_url}
+                          className="h-7 w-7 text-[26px]"
+                        />
                         <span className="max-w-[140px] truncate sm:max-w-none">
                           {profile.name || 'Estudiante UDP'}
                         </span>
@@ -101,8 +120,14 @@ export function LeaderboardTable({ data, currentUserId, loading, faculty, onFacu
               })}
               {(!data || data.length === 0) && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-xs font-medium text-stone-400 dark:text-stone-500">
-                    {t('profile.leaderboardEmpty', 'No hay usuarios registrados en esta clasificación.')}
+                  <td
+                    colSpan={3}
+                    className="px-4 py-8 text-center text-xs font-medium text-stone-400 dark:text-stone-500"
+                  >
+                    {t(
+                      'profile.leaderboardEmpty',
+                      'No hay usuarios registrados en esta clasificación.',
+                    )}
                   </td>
                 </tr>
               )}

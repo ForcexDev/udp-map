@@ -39,7 +39,11 @@ export interface NavValidationInput {
 /** Una puerta más lejos que esto del borde de su sala está mal colocada. */
 export const DOOR_WALL_TOLERANCE_M = 0.3
 
-export function validateNavGraph({ graph, areas = [], roomCodes = [] }: NavValidationInput): NavIssue[] {
+export function validateNavGraph({
+  graph,
+  areas = [],
+  roomCodes = [],
+}: NavValidationInput): NavIssue[] {
   const issues: NavIssue[] = []
   const nodes = [...graph.nodes.values()]
 
@@ -57,7 +61,8 @@ export function validateNavGraph({ graph, areas = [], roomCodes = [] }: NavValid
 
   const mapped = new Set(rooms.filter((r) => r.roomCode).map((r) => normalizeRoomCode(r.roomCode!)))
   for (const code of new Set(roomCodes.map(normalizeRoomCode))) {
-    if (!mapped.has(code)) issues.push({ severity: 'warning', code: 'room-without-node', nodeIds: [], detail: code })
+    if (!mapped.has(code))
+      issues.push({ severity: 'warning', code: 'room-without-node', nodeIds: [], detail: code })
   }
 
   if (entrances.length > 0) {
@@ -65,9 +70,19 @@ export function validateNavGraph({ graph, areas = [], roomCodes = [] }: NavValid
     const stepFree = graph.reachable(entrances, { stepFree: true })
     for (const room of rooms) {
       if (!reachable.has(room.id)) {
-        issues.push({ severity: 'error', code: 'room-unreachable', nodeIds: [room.id], detail: label(room) })
+        issues.push({
+          severity: 'error',
+          code: 'room-unreachable',
+          nodeIds: [room.id],
+          detail: label(room),
+        })
       } else if (!stepFree.has(room.id)) {
-        issues.push({ severity: 'warning', code: 'room-unreachable-step-free', nodeIds: [room.id], detail: label(room) })
+        issues.push({
+          severity: 'warning',
+          code: 'room-unreachable-step-free',
+          nodeIds: [room.id],
+          detail: label(room),
+        })
       }
     }
   }
@@ -80,7 +95,12 @@ export function validateNavGraph({ graph, areas = [], roomCodes = [] }: NavValid
     if (!area) continue
     const distance = distanceToRing(door.p, area.ring)
     if (distance > DOOR_WALL_TOLERANCE_M) {
-      issues.push({ severity: 'warning', code: 'door-off-wall', nodeIds: [door.id], detail: distance.toFixed(1) })
+      issues.push({
+        severity: 'warning',
+        code: 'door-off-wall',
+        nodeIds: [door.id],
+        detail: distance.toFixed(1),
+      })
     }
   }
 
@@ -100,7 +120,8 @@ function shaftIssues(graph: NavGraph, nodes: NavNode[]): NavIssue[] {
   const issues: NavIssue[] = []
   const groups = new Map<string, NavNode[]>()
   for (const node of nodes) {
-    if ((node.kind !== 'stairs' && node.kind !== 'elevator') || !node.shaft || node.floor === null) continue
+    if ((node.kind !== 'stairs' && node.kind !== 'elevator') || !node.shaft || node.floor === null)
+      continue
     const key = `${node.buildingId}|${node.kind}|${node.shaft}`
     groups.set(key, [...(groups.get(key) ?? []), node])
   }
@@ -112,7 +133,12 @@ function shaftIssues(graph: NavGraph, nodes: NavNode[]): NavIssue[] {
       const above = sorted[i]
       const gap = levelIndex(above.floor!) - levelIndex(below.floor!)
       if (gap > 1) {
-        issues.push({ severity: 'warning', code: 'shaft-gap', nodeIds: [below.id, above.id], detail: above.shaft ?? '' })
+        issues.push({
+          severity: 'warning',
+          code: 'shaft-gap',
+          nodeIds: [below.id, above.id],
+          detail: above.shaft ?? '',
+        })
       }
       const vertical = graph.edgeBetween(below.id, above.id)
       if (!vertical || vertical.kind === 'walk') {

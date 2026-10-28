@@ -181,7 +181,12 @@ export const useUIStore = create<UIState>((set) => {
     pickingLocation: false,
     draftPinType: null,
     startPickingLocation: (type) =>
-      set({ pickingLocation: true, draftPinType: type ?? null, selectedPinId: null, createModalOpen: false }),
+      set({
+        pickingLocation: true,
+        draftPinType: type ?? null,
+        selectedPinId: null,
+        createModalOpen: false,
+      }),
     cancelPickingLocation: () => set({ pickingLocation: false, draftPinType: null }),
     draftLocation: null,
     setDraftLocation: (loc) =>
@@ -271,6 +276,8 @@ if (typeof window !== 'undefined' && window.matchMedia) {
  * activa si se separaron los pisos. Lo leen el mapa (para apartar el 2D y las
  * cajas de OSM) y la escena interior (para dibujarlo).
  */
-export function indoor3dFacultyId(state: Pick<UIState, 'indoorNavFacultyId' | 'explodedFloors' | 'activeFacultyId'>) {
+export function indoor3dFacultyId(
+  state: Pick<UIState, 'indoorNavFacultyId' | 'explodedFloors' | 'activeFacultyId'>,
+) {
   return state.indoorNavFacultyId ?? (state.explodedFloors ? state.activeFacultyId : null)
 }

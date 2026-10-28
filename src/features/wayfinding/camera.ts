@@ -36,7 +36,12 @@ export function sheetPadding(sheet: HTMLElement | null): PaddingOptions {
 }
 
 /** `easeTo` con la altura del centro animada a mano, que es lo que no hace. */
-export function easeCamera(map: MapLibreMap, options: EaseToOptions, elevation: number, duration = 750): void {
+export function easeCamera(
+  map: MapLibreMap,
+  options: EaseToOptions,
+  elevation: number,
+  duration = 750,
+): void {
   const from = map.getCenterElevation()
   map.easeTo({ ...options, duration })
   const start = performance.now()
@@ -74,13 +79,16 @@ export function followPose(
 ): void {
   const vertical = pose.kind === 'stairs' || pose.kind === 'elevator'
   const approach = (current: number | null, target: number, rate: number) =>
-    current === null || instant || dt === 0 ? target : current + (target - current) * Math.min(1, dt * rate)
+    current === null || instant || dt === 0
+      ? target
+      : current + (target - current) * Math.min(1, dt * rate)
 
   let bearing = state.bearing ?? map.getBearing()
   if (!vertical) {
     // Por el camino corto: de 350° a 10° son 20°, no 340°.
     const delta = ((bearingOf(pose.heading) - bearing + 540) % 360) - 180
-    bearing = instant || dt === 0 ? bearing + delta : bearing + delta * Math.min(1, dt * BEARING_RATE)
+    bearing =
+      instant || dt === 0 ? bearing + delta : bearing + delta * Math.min(1, dt * BEARING_RATE)
   }
   state.bearing = bearing
   state.zoom = approach(state.zoom, vertical ? CORE_ZOOM : WALK_ZOOM, ZOOM_RATE)

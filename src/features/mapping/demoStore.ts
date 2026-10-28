@@ -1,6 +1,13 @@
 import type { Area, Building, BuildingFloor, NavEdgeRow, NavNodeRow } from '@/shared/types/database'
 import { sampleRows } from '@/shared/utils/indoor/sampleBuilding'
-import type { AreaInput, BuildingInput, FacultyMapping, NavEdgeInput, NavGraphRows, NavNodeInput } from './api'
+import type {
+  AreaInput,
+  BuildingInput,
+  FacultyMapping,
+  NavEdgeInput,
+  NavGraphRows,
+  NavNodeInput,
+} from './api'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Almacén en memoria del mapeo para el MODO DEMO (sin Supabase).
@@ -29,12 +36,16 @@ const navEdges: NavEdgeRow[] = [...sample.edges]
 
 export const mappingDemoDb = {
   snapshot(facultyId?: string): FacultyMapping {
-    const scopedBuildings = facultyId ? buildings.filter((b) => b.faculty_id === facultyId) : buildings
+    const scopedBuildings = facultyId
+      ? buildings.filter((b) => b.faculty_id === facultyId)
+      : buildings
     const ids = new Set(scopedBuildings.map((b) => b.id))
     return {
       buildings: scopedBuildings.map((b) => ({ ...b })),
       floors: floors.filter((f) => ids.has(f.building_id)).map((f) => ({ ...f })),
-      areas: (facultyId ? areas.filter((a) => a.faculty_id === facultyId) : areas).map((a) => ({ ...a })),
+      areas: (facultyId ? areas.filter((a) => a.faculty_id === facultyId) : areas).map((a) => ({
+        ...a,
+      })),
     }
   },
 

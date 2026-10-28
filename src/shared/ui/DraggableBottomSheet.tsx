@@ -36,8 +36,12 @@ export function DraggableBottomSheet({
 
   // Get the parent container's height instead of window to avoid bottom nav bar overlap,
   // but use window.innerHeight as an initial fallback to prevent full-screen flash on first render.
-  const [maxSheetHeight, setMaxSheetHeight] = useState(() => typeof window !== 'undefined' ? window.innerHeight - 72 : 0)
-  const [compactSheetHeight, setCompactSheetHeight] = useState(() => typeof window !== 'undefined' ? window.innerHeight * 0.35 : 0)
+  const [maxSheetHeight, setMaxSheetHeight] = useState(() =>
+    typeof window !== 'undefined' ? window.innerHeight - 72 : 0,
+  )
+  const [compactSheetHeight, setCompactSheetHeight] = useState(() =>
+    typeof window !== 'undefined' ? window.innerHeight * 0.35 : 0,
+  )
   const [peekSheetHeight, setPeekSheetHeight] = useState(() =>
     typeof window !== 'undefined' && peekRatio ? window.innerHeight * peekRatio : 0,
   )
@@ -152,7 +156,7 @@ export function DraggableBottomSheet({
         //
         // Sigue bloqueando el gesto VERTICAL, que es lo que se quería evitar:
         // que arrastrar la hoja plegada mueva la página por detrás.
-        touchAction: !isExpanded ? 'pan-x' : 'auto'
+        touchAction: !isExpanded ? 'pan-x' : 'auto',
       }}
     >
       <div
@@ -169,7 +173,7 @@ export function DraggableBottomSheet({
 
         {/* Content wrapper */}
         <div
-          className={`flex-1 no-scrollbar ${(!isExpanded && !isDesktop) ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`}
+          className={`flex-1 no-scrollbar ${!isExpanded && !isDesktop ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`}
           onPointerDown={(e) => {
             // Allow scrolling without dragging the sheet if expanded or on desktop
             if (isExpanded || isDesktop) {

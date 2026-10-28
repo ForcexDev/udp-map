@@ -10,35 +10,62 @@ function demoSeed(userId: string, role: Role): AppNotification[] {
   const now = Date.now()
   const personal: AppNotification[] = [
     {
-      id: 'demo-achievement', user_id: userId, actor_id: null,
-      type: 'achievement', category: 'profile', audience: 'personal',
-      title: 'Nuevo logro desbloqueado', body: 'Explorador', url: '/perfil?tab=badges',
-      payload: { badgeId: 'explorer' }, dedupe_key: 'achievement:explorer',
+      id: 'demo-achievement',
+      user_id: userId,
+      actor_id: null,
+      type: 'achievement',
+      category: 'profile',
+      audience: 'personal',
+      title: 'Nuevo logro desbloqueado',
+      body: 'Explorador',
+      url: '/perfil?tab=badges',
+      payload: { badgeId: 'explorer' },
+      dedupe_key: 'achievement:explorer',
       read_at: demoRead.has('demo-achievement') ? new Date().toISOString() : null,
       created_at: new Date(now - 10 * 60_000).toISOString(),
     },
     {
-      id: 'demo-forum', user_id: userId, actor_id: null,
-      type: 'forum_reply', category: 'forum', audience: 'personal',
-      title: 'Nueva respuesta en el foro', body: 'Cata respondió en “Datos y algoritmos”',
-      url: '/foro?thread=demo-1', payload: { threadId: 'demo-1' }, dedupe_key: 'forum_reply:demo',
+      id: 'demo-forum',
+      user_id: userId,
+      actor_id: null,
+      type: 'forum_reply',
+      category: 'forum',
+      audience: 'personal',
+      title: 'Nueva respuesta en el foro',
+      body: 'Cata respondió en “Datos y algoritmos”',
+      url: '/foro?thread=demo-1',
+      payload: { threadId: 'demo-1' },
+      dedupe_key: 'forum_reply:demo',
       read_at: demoRead.has('demo-forum') ? new Date().toISOString() : null,
       created_at: new Date(now - 35 * 60_000).toISOString(),
     },
     {
-      id: 'demo-event', user_id: userId, actor_id: null,
-      type: 'event_reminder', category: 'events', audience: 'personal',
-      title: 'Evento próximo', body: '“Feria UDP” comienza dentro de 12 días',
-      url: '/eventos', payload: {}, dedupe_key: 'event_reminder:demo',
+      id: 'demo-event',
+      user_id: userId,
+      actor_id: null,
+      type: 'event_reminder',
+      category: 'events',
+      audience: 'personal',
+      title: 'Evento próximo',
+      body: '“Feria UDP” comienza dentro de 12 días',
+      url: '/eventos',
+      payload: {},
+      dedupe_key: 'event_reminder:demo',
       read_at: demoRead.has('demo-event') ? new Date().toISOString() : null,
       created_at: new Date(now - 2 * 60 * 60_000).toISOString(),
     },
     {
-      id: 'demo-announcement', user_id: userId, actor_id: null,
-      type: 'announcement', category: 'system', audience: 'personal',
+      id: 'demo-announcement',
+      user_id: userId,
+      actor_id: null,
+      type: 'announcement',
+      category: 'system',
+      audience: 'personal',
       title: 'Corte de agua en Ejército 441',
       body: 'Los baños del segundo piso estarán cerrados hasta las 16:00.',
-      url: '/', payload: {}, dedupe_key: 'announcement:demo',
+      url: '/',
+      payload: {},
+      dedupe_key: 'announcement:demo',
       read_at: demoRead.has('demo-announcement') ? new Date().toISOString() : null,
       created_at: new Date(now - 26 * 60 * 60_000).toISOString(),
     },
@@ -46,10 +73,17 @@ function demoSeed(userId: string, role: Role): AppNotification[] {
 
   if (role === 'admin') {
     personal.unshift({
-      id: 'demo-admin-report', user_id: userId, actor_id: null,
-      type: 'moderation_report', category: 'moderation', audience: 'admin',
-      title: 'Nuevo contenido reportado', body: 'Hay un reporte esperando revisión.',
-      url: '/admin/moderacion', payload: { reportId: 'demo-report' }, dedupe_key: 'moderation_report:demo',
+      id: 'demo-admin-report',
+      user_id: userId,
+      actor_id: null,
+      type: 'moderation_report',
+      category: 'moderation',
+      audience: 'admin',
+      title: 'Nuevo contenido reportado',
+      body: 'Hay un reporte esperando revisión.',
+      url: '/admin/moderacion',
+      payload: { reportId: 'demo-report' },
+      dedupe_key: 'moderation_report:demo',
       read_at: demoRead.has('demo-admin-report') ? new Date().toISOString() : null,
       created_at: new Date(now - 5 * 60_000).toISOString(),
     })
@@ -105,10 +139,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
     deletedDemoIds.add(notificationId)
     return
   }
-  const { error } = await supabase
-    .from('notifications')
-    .delete()
-    .eq('id', notificationId)
+  const { error } = await supabase.from('notifications').delete().eq('id', notificationId)
   if (error) throw error
 }
 
@@ -141,7 +172,10 @@ export async function deleteAllNotifications(userId: string, role: Role): Promis
   if (error) throw error
 }
 
-export async function markCategoryRead(userId: string, category: NotificationCategory): Promise<void> {
+export async function markCategoryRead(
+  userId: string,
+  category: NotificationCategory,
+): Promise<void> {
   if (!supabase) {
     for (const notification of demoNotifications(userId, 'admin')) {
       if (notification.category === category) demoRead.add(notification.id)
@@ -169,7 +203,9 @@ export async function markCategoryRead(userId: string, category: NotificationCat
  */
 export async function getPushSessionUserId(): Promise<string | null> {
   if (!supabase) return null
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
   return session?.user.id ?? null
 }
 

@@ -52,7 +52,8 @@ interface PinDetailProps {
 // sueltas) y un botón circular solo-ícono para favorito.
 const VOTE_SEGMENT =
   'flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-bold transition-colors cursor-pointer'
-const VOTE_INACTIVE = 'text-stone-600 hover:bg-[#F4F0E8] dark:text-stone-300 dark:hover:bg-white/[0.05]'
+const VOTE_INACTIVE =
+  'text-stone-600 hover:bg-[#F4F0E8] dark:text-stone-300 dark:hover:bg-white/[0.05]'
 const LIKE_ACTIVE = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
 const DISLIKE_ACTIVE = 'bg-[#FBECEB] text-[#B02330] dark:bg-[#D93846]/20 dark:text-rose-300'
 const FAVORITE_CIRCLE_ACTIVE =
@@ -107,7 +108,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
   const canExtend = can(role, 'pin.extendTime') && !pin.is_permanent && pin.type === 'report'
   // Solo se deshace lo que salió de una verificación: un lugar creado
   // directamente por un moderador nunca fue un reporte.
-  const canUnverify = can(role, 'pin.makePermanent') && pin.is_permanent && !!pin.verifier_entity_name
+  const canUnverify =
+    can(role, 'pin.makePermanent') && pin.is_permanent && !!pin.verifier_entity_name
   const canMove = can(role, 'pin.update.location')
   const photos = pin.pin_photos ?? []
 
@@ -146,18 +148,21 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
 
   const devUnlockMap = useUIStore((s) => s.devUnlockMap)
   const adminMapUnlocked = role === 'admin' && devUnlockMap
-  const isOutOfArea = !adminMapUnlocked && userLocation
-    ? userLocation.lat < BOUNDARY_RECT.south ||
-      userLocation.lat > BOUNDARY_RECT.north ||
-      userLocation.lng < BOUNDARY_RECT.west ||
-      userLocation.lng > BOUNDARY_RECT.east
-    : false
+  const isOutOfArea =
+    !adminMapUnlocked && userLocation
+      ? userLocation.lat < BOUNDARY_RECT.south ||
+        userLocation.lat > BOUNDARY_RECT.north ||
+        userLocation.lng < BOUNDARY_RECT.west ||
+        userLocation.lng > BOUNDARY_RECT.east
+      : false
 
   const onDirectionsClick = () => {
     if (isOutOfArea) {
       useUIStore
         .getState()
-        .showToast(t('map.outOfBounds', 'Estás demasiado lejos del campus para trazar una ruta a pie.'))
+        .showToast(
+          t('map.outOfBounds', 'Estás demasiado lejos del campus para trazar una ruta a pie.'),
+        )
     } else {
       setRouteTarget(pin.id)
       selectPin(null)
@@ -273,7 +278,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                   aria-pressed={userVote === 1}
                   className={`${VOTE_SEGMENT} ${userVote === 1 ? LIKE_ACTIVE : VOTE_INACTIVE}`}
                 >
-                  <ThumbsUp size={14} strokeWidth={2.2} /> <span className="tabular-nums">{pin.votes_up}</span>
+                  <ThumbsUp size={14} strokeWidth={2.2} />{' '}
+                  <span className="tabular-nums">{pin.votes_up}</span>
                 </button>
                 <div className="w-px bg-[#E6E0D5] dark:bg-white/[0.07]" />
                 <button
@@ -284,7 +290,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                   aria-pressed={userVote === -1}
                   className={`${VOTE_SEGMENT} ${userVote === -1 ? DISLIKE_ACTIVE : VOTE_INACTIVE}`}
                 >
-                  <ThumbsDown size={14} strokeWidth={2.2} /> <span className="tabular-nums">{pin.votes_down}</span>
+                  <ThumbsDown size={14} strokeWidth={2.2} />{' '}
+                  <span className="tabular-nums">{pin.votes_down}</span>
                 </button>
               </div>
             )}
@@ -292,9 +299,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
             {pin.type === 'event' && pin.starts_at && pin.ends_at && (
               <div className="flex h-9 min-w-0 flex-1 items-center gap-1.5 rounded-2xl border border-[#E6E0D5] bg-white px-3 text-xs font-semibold text-stone-700 shadow-xs dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-300">
                 <Calendar size={14} className="shrink-0 text-stone-500" />
-                <span className="truncate">
-                  {formatEventDate(pin.starts_at, pin.ends_at)}
-                </span>
+                <span className="truncate">{formatEventDate(pin.starts_at, pin.ends_at)}</span>
               </div>
             )}
             <button
@@ -306,7 +311,11 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                 isFavorite ? FAVORITE_CIRCLE_ACTIVE : FAVORITE_CIRCLE_INACTIVE
               }`}
             >
-              <Star size={16} fill={isFavorite ? '#F5B400' : 'none'} strokeWidth={isFavorite ? 1.5 : 2} />
+              <Star
+                size={16}
+                fill={isFavorite ? '#F5B400' : 'none'}
+                strokeWidth={isFavorite ? 1.5 : 2}
+              />
             </button>
             <button
               type="button"
@@ -346,12 +355,20 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
           {(canDelete || canPromote || canExtend || canUnverify || canEdit) && (
             <div className="mt-3 flex flex-wrap gap-2">
               {canEdit && (
-                <button type="button" onClick={() => openCreateModal(pin.id)} className={ACTION_CHIP}>
+                <button
+                  type="button"
+                  onClick={() => openCreateModal(pin.id)}
+                  className={ACTION_CHIP}
+                >
                   <Pencil size={14} /> {t('pin.edit', 'Editar')}
                 </button>
               )}
               {canMove && (
-                <button type="button" onClick={() => startMovingPin(pin.id)} className={ACTION_CHIP}>
+                <button
+                  type="button"
+                  onClick={() => startMovingPin(pin.id)}
+                  className={ACTION_CHIP}
+                >
                   <Move size={14} /> {t('pin.move', 'Mover')}
                 </button>
               )}
@@ -361,12 +378,14 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                   onClick={() =>
                     promote.mutate({
                       pinId: pin.id,
-                      verifierName: role === 'admin' ? 'Administración UDP' : 'Centro de Alumnos FIC',
+                      verifierName:
+                        role === 'admin' ? 'Administración UDP' : 'Centro de Alumnos FIC',
                     })
                   }
                   className={ACTION_CHIP}
                 >
-                  <BadgeCheck size={14} className="text-sky-500" /> {t('pin.verifyAndFix', 'Verificar y Fijar')}
+                  <BadgeCheck size={14} className="text-sky-500" />{' '}
+                  {t('pin.verifyAndFix', 'Verificar y Fijar')}
                 </button>
               )}
               {canExtend && (
@@ -375,7 +394,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                   onClick={() => extendTTL.mutate({ pinId: pin.id, hours: 24 })}
                   className={ACTION_CHIP}
                 >
-                  <Clock size={14} className="text-amber-500" /> {t('pin.extendTime', 'Extender (+24h)')}
+                  <Clock size={14} className="text-amber-500" />{' '}
+                  {t('pin.extendTime', 'Extender (+24h)')}
                 </button>
               )}
               {canUnverify && (
@@ -384,7 +404,8 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
                   onClick={() => unverify.mutate({ pinId: pin.id, hours: 24 })}
                   className={ACTION_CHIP}
                 >
-                  <BadgeX size={14} className="text-amber-500" /> {t('pin.unverify', 'Quitar verificación')}
+                  <BadgeX size={14} className="text-amber-500" />{' '}
+                  {t('pin.unverify', 'Quitar verificación')}
                 </button>
               )}
               {canDelete && (

@@ -11,8 +11,18 @@ interface CustomDateTimePickerProps {
 }
 
 const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
 ]
 const DAY_SHORT_NAMES = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá']
 
@@ -33,7 +43,7 @@ export function CustomDateTimePicker({
 
   const [viewDate, setViewDate] = useState<Date>(isValidDate ? parsedDate : new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(isValidDate ? parsedDate : null)
-  
+
   // Time states (24h)
   const [hours, setHours] = useState<number>(isValidDate ? parsedDate.getHours() : 12)
   const [minutes, setMinutes] = useState<number>(isValidDate ? parsedDate.getMinutes() : 0)
@@ -154,8 +164,17 @@ export function CustomDateTimePicker({
         }`}
       >
         <span className="flex items-center gap-2.5 truncate">
-          <CalendarIcon size={16} className={selectedDate ? 'text-[#C22B38] dark:text-[#D93846]' : 'text-stone-400'} />
-          <span className={selectedDate ? 'font-semibold text-stone-900 dark:text-stone-100 tabular-nums' : 'text-stone-400'}>
+          <CalendarIcon
+            size={16}
+            className={selectedDate ? 'text-[#C22B38] dark:text-[#D93846]' : 'text-stone-400'}
+          />
+          <span
+            className={
+              selectedDate
+                ? 'font-semibold text-stone-900 dark:text-stone-100 tabular-nums'
+                : 'text-stone-400'
+            }
+          >
             {formatDisplay()}
           </span>
         </span>
@@ -164,7 +183,9 @@ export function CustomDateTimePicker({
 
       {/* Popover Panel */}
       {isOpen && (
-        <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full mt-2 z-50 w-full sm:w-[320px] bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.09] rounded-2xl premium-shadow p-4 animate-scale-in`}>
+        <div
+          className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full mt-2 z-50 w-full sm:w-[320px] bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.09] rounded-2xl premium-shadow p-4 animate-scale-in`}
+        >
           {/* Header Mes y Año */}
           <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#E6E0D5] dark:border-white/[0.07]">
             <button
@@ -214,7 +235,9 @@ export function CustomDateTimePicker({
           {/* Días de la semana */}
           <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-stone-400 dark:text-stone-500 mb-1">
             {DAY_SHORT_NAMES.map((d) => (
-              <div key={d} className="py-1">{d}</div>
+              <div key={d} className="py-1">
+                {d}
+              </div>
             ))}
           </div>
 

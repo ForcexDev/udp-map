@@ -48,8 +48,14 @@ function claves(bloque) {
     if (!limpia || limpia.startsWith('//')) continue
 
     const abre = limpia.match(/^([A-Za-z0-9_]+)\s*:\s*\{$/)
-    if (abre) { pila.push(abre[1]); continue }
-    if (limpia.startsWith('}')) { pila.pop(); continue }
+    if (abre) {
+      pila.push(abre[1])
+      continue
+    }
+    if (limpia.startsWith('}')) {
+      pila.pop()
+      continue
+    }
 
     const par = limpia.match(/^([A-Za-z0-9_]+)\s*:\s*(['"`])([\s\S]*)$/)
     if (par) {
@@ -67,7 +73,8 @@ const faltanEnIngles = [...es.keys()].filter((k) => !en.has(k))
 const faltanEnEspanol = [...en.keys()].filter((k) => !es.has(k))
 
 /** Palabras que en inglés no deberían aparecer nunca. */
-const DELATORAS = /\b(el|la|los|las|de|del|para|con|una|que|tu|tus|sus|está|más|sin|por|desde|hasta|cuando|todos|todas|aquí|avisos|facultad|sala|pines|inicia|sesión|no se|ningún|ninguna)\b/i
+const DELATORAS =
+  /\b(el|la|los|las|de|del|para|con|una|que|tu|tus|sus|está|más|sin|por|desde|hasta|cuando|todos|todas|aquí|avisos|facultad|sala|pines|inicia|sesión|no se|ningún|ninguna)\b/i
 
 const sinTraducir = [...en.entries()].filter(([clave, valor]) => {
   const original = es.get(clave)
@@ -81,7 +88,10 @@ const sinTraducir = [...en.entries()].filter(([clave, valor]) => {
 const variables = (texto) => (texto.match(/\{\{[a-zA-Z0-9_]+\}\}/g) ?? []).sort().join(',')
 const variablesDistintas = [...es.entries()]
   .filter(([clave, valor]) => en.has(clave) && variables(valor) !== variables(en.get(clave)))
-  .map(([clave, valor]) => `${clave}\n      es: ${variables(valor) || '(ninguna)'}\n      en: ${variables(en.get(clave)) || '(ninguna)'}`)
+  .map(
+    ([clave, valor]) =>
+      `${clave}\n      es: ${variables(valor) || '(ninguna)'}\n      en: ${variables(en.get(clave)) || '(ninguna)'}`,
+  )
 
 let problemas = 0
 const seccion = (titulo, lista, formatea = (x) => x) => {

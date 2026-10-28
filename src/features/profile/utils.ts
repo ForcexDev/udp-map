@@ -10,8 +10,18 @@ export function memberSince(dateStr: string | null | undefined, lang: string): s
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export function handleFromEmail(email: string | null | undefined, fallbackName?: string | null): string {
-  if (email) return '@' + email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_')
+export function handleFromEmail(
+  email: string | null | undefined,
+  fallbackName?: string | null,
+): string {
+  if (email)
+    return (
+      '@' +
+      email
+        .split('@')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '_')
+    )
   if (fallbackName) return '@' + fallbackName.toLowerCase().replace(/[^a-z0-9_]/g, '_')
   return '@usuario'
 }

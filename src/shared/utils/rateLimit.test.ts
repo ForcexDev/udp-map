@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { DAILY_PIN_LIMIT, countPinsCreatedToday, hasReachedDailyPinLimit, nextDailyPinReset } from './rateLimit'
+import {
+  DAILY_PIN_LIMIT,
+  countPinsCreatedToday,
+  hasReachedDailyPinLimit,
+  nextDailyPinReset,
+} from './rateLimit'
 
 const NOW = Date.parse('2026-07-21T15:00:00.000Z')
 

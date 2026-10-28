@@ -10,7 +10,8 @@ export const demoForumDb = {
       author_id: 'demo-otro',
       author_name: 'Cata M.',
       title: '¿Alguien sabe si el laboratorio de computación está abierto hoy?',
-      content: 'Hola, necesito hacer un trabajo para Inteligencia Artificial y quería saber si los laboratorios del edificio Ejército 441 están abiertos los sábados.',
+      content:
+        'Hola, necesito hacer un trabajo para Inteligencia Artificial y quería saber si los laboratorios del edificio Ejército 441 están abiertos los sábados.',
       tags: ['Duda', 'Computación'],
       votes_up: 5,
       votes_down: 0,
@@ -25,7 +26,8 @@ export const demoForumDb = {
       author_id: 'demo-otro',
       author_name: 'Seba R.',
       title: 'Feria de Proyectos de Título 2026',
-      content: 'Este martes 14 se realizará la feria anual en el patio central. Vengan a ver los proyectos y a comer algo de las actividades del Centro de Alumnos.',
+      content:
+        'Este martes 14 se realizará la feria anual en el patio central. Vengan a ver los proyectos y a comer algo de las actividades del Centro de Alumnos.',
       tags: ['Anuncio', 'Feria'],
       votes_up: 12,
       votes_down: 1,
@@ -40,7 +42,8 @@ export const demoForumDb = {
       author_id: 'demo-otro',
       author_name: 'Diego P.',
       title: 'Apuntes para Derecho Constitucional',
-      content: 'Hola a todos, les dejo un link con mis apuntes del semestre pasado para el examen con el profesor Gómez. ¡Espero que les sirva!',
+      content:
+        'Hola a todos, les dejo un link con mis apuntes del semestre pasado para el examen con el profesor Gómez. ¡Espero que les sirva!',
       tags: ['Compartir', 'Apuntes'],
       votes_up: 8,
       votes_down: 0,
@@ -55,7 +58,8 @@ export const demoForumDb = {
       author_id: 'demo-otro',
       author_name: 'Felipe A.',
       title: '¡Bienvenidos al nuevo foro de UDP Map!',
-      content: 'Este es el tablón general de anuncios de la universidad. Recuerden mantener el respeto y usar las categorías correspondientes para sus facultades.',
+      content:
+        'Este es el tablón general de anuncios de la universidad. Recuerden mantener el respeto y usar las categorías correspondientes para sus facultades.',
       tags: ['Anuncio', 'UDP'],
       votes_up: 25,
       votes_down: 0,
@@ -63,7 +67,7 @@ export const demoForumDb = {
       is_official: false,
       created_at: ago(72),
       updated_at: ago(72),
-    }
+    },
   ] as ForumThread[],
   comments: [
     {
@@ -92,7 +96,7 @@ export const demoForumDb = {
       author_name: 'Carla J.',
       content: 'Ojo que a veces cierran antes si no hay nadie. Te recomiendo llegar temprano.',
       created_at: ago(20),
-    }
+    },
   ] as ForumComment[],
   votes: new Map<string, Map<string, 1 | -1>>(), // threadId -> (userId -> value)
 }

@@ -65,7 +65,9 @@ export function FiltersPanel() {
       ) : (
         <div className="glass-hud w-72 max-h-[calc(100dvh-220px)] sm:max-h-[calc(100dvh-120px)] overflow-y-auto rounded-[24px] p-4.5 premium-shadow animate-scale-in border border-[#E5DEC9] dark:border-white/10 [&::-webkit-scrollbar]:hidden sm:[&::-webkit-scrollbar]:block sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-track]:bg-transparent sm:[&::-webkit-scrollbar-thumb]:bg-stone-300 dark:sm:[&::-webkit-scrollbar-thumb]:bg-stone-600 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
           <div className="mb-4 flex items-center justify-between shrink-0">
-            <h2 className="text-sm font-bold tracking-tight text-stone-900 dark:text-stone-100">{t('filters.title')}</h2>
+            <h2 className="text-sm font-bold tracking-tight text-stone-900 dark:text-stone-100">
+              {t('filters.title')}
+            </h2>
             <button
               onClick={() => setOpen(false)}
               aria-label={t('common.close')}
@@ -84,10 +86,11 @@ export function FiltersPanel() {
                 key={type}
                 onClick={() => toggleType(type)}
                 aria-pressed={types.includes(type)}
-                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${types.includes(type)
-                  ? 'bg-[#D41F2D] text-white shadow-sm'
-                  : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
-                  }`}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
+                  types.includes(type)
+                    ? 'bg-[#D41F2D] text-white shadow-sm'
+                    : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
+                }`}
               >
                 {t(key)}
               </button>
@@ -100,10 +103,11 @@ export function FiltersPanel() {
           <div className="mb-4 flex flex-wrap gap-1.5">
             <button
               onClick={() => setCategoryId(null)}
-              className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${categoryId === null
-                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
-                }`}
+              className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
+                categoryId === null
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
+                  : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
+              }`}
             >
               {t('filters.allCategories')}
             </button>
@@ -111,10 +115,11 @@ export function FiltersPanel() {
               <button
                 key={c.id}
                 onClick={() => setCategoryId(c.id)}
-                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 ${categoryId === c.id
-                  ? 'text-white shadow-sm'
-                  : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
-                  }`}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  categoryId === c.id
+                    ? 'text-white shadow-sm'
+                    : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
+                }`}
                 style={categoryId === c.id ? { background: c.color } : {}}
               >
                 {c.svgPath ? (
@@ -140,7 +145,10 @@ export function FiltersPanel() {
             >
               <span className="truncate">
                 {facultyId
-                  ? localizedName(faculties.find(f => f.id === facultyId), i18n.language) || t('filters.allFaculties')
+                  ? localizedName(
+                      faculties.find((f) => f.id === facultyId),
+                      i18n.language,
+                    ) || t('filters.allFaculties')
                   : t('filters.allFaculties')}
               </span>
               <svg
@@ -149,7 +157,12 @@ export function FiltersPanel() {
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
 
@@ -161,10 +174,11 @@ export function FiltersPanel() {
                       setFacultyId(null)
                       setFacultyDropdownOpen(false)
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${facultyId === null
-                      ? 'bg-[#D41F2D]/10 text-[#D41F2D] font-bold'
-                      : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                      }`}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      facultyId === null
+                        ? 'bg-[#D41F2D]/10 text-[#D41F2D] font-bold'
+                        : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                    }`}
                   >
                     {t('filters.allFaculties')}
                   </button>
@@ -175,10 +189,11 @@ export function FiltersPanel() {
                         setFacultyId(f.id)
                         setFacultyDropdownOpen(false)
                       }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${facultyId === f.id
-                        ? 'bg-[#D41F2D]/10 text-[#D41F2D] font-bold'
-                        : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
-                        }`}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                        facultyId === f.id
+                          ? 'bg-[#D41F2D]/10 text-[#D41F2D] font-bold'
+                          : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+                      }`}
                     >
                       {localizedName(f, i18n.language)}
                     </button>
@@ -194,10 +209,11 @@ export function FiltersPanel() {
               setOnlyFavorites(!onlyFavorites)
             }}
             aria-pressed={onlyFavorites}
-            className={`mb-3 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all ${onlyFavorites
-              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200'
-              : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
-              }`}
+            className={`mb-3 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all ${
+              onlyFavorites
+                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200'
+                : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'
+            }`}
           >
             <Star size={14} fill={onlyFavorites ? 'currentColor' : 'none'} />
             {t('filters.onlyFavorites')}

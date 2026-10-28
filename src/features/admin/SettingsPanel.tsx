@@ -5,7 +5,12 @@ import { Loader2, MapPinOff, Send } from 'lucide-react'
 import { PushCard } from '@/features/notifications/PushCard'
 import { usePushStore } from '@/features/notifications/pushStore'
 import { useUIStore } from '@/shared/stores/uiStore'
-import { describeSelfPushTest, fetchPushDeliveryStats, PUSH_STATS_DAYS, sendSelfPushTest } from './api'
+import {
+  describeSelfPushTest,
+  fetchPushDeliveryStats,
+  PUSH_STATS_DAYS,
+  sendSelfPushTest,
+} from './api'
 import type { PushServiceStat } from './api'
 import { AdminScreen } from './AdminScreen'
 
@@ -42,18 +47,24 @@ export function SettingsPanel() {
       const result = await sendSelfPushTest()
       showToast(
         describeSelfPushTest(result)
-          .map((part) => t(
-            part.key,
-            part.count === undefined
-              ? { defaultValue: part.fallback }
-              : { count: part.count, defaultValue: part.fallback },
-          ))
+          .map((part) =>
+            t(
+              part.key,
+              part.count === undefined
+                ? { defaultValue: part.fallback }
+                : { count: part.count, defaultValue: part.fallback },
+            ),
+          )
           .join(' '),
       )
       // La prueba acaba de crear entregas: la tarjeta de abajo las cuenta.
       void queryClient.invalidateQueries({ queryKey: DELIVERY_STATS_KEY })
     } catch (err) {
-      showToast(err instanceof Error ? err.message : t('admin.push.test.failedToSend', 'No se pudo enviar la prueba.'))
+      showToast(
+        err instanceof Error
+          ? err.message
+          : t('admin.push.test.failedToSend', 'No se pudo enviar la prueba.'),
+      )
     } finally {
       setTesting(false)
     }
@@ -151,7 +162,9 @@ export function SettingsPanel() {
             </span>
             <span
               className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-                devUnlockMap ? 'bg-amber-400 dark:bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'
+                devUnlockMap
+                  ? 'bg-amber-400 dark:bg-amber-500'
+                  : 'bg-neutral-300 dark:bg-neutral-600'
               }`}
             >
               <span
@@ -177,7 +190,9 @@ function StatCell({ label, value, tone }: { label: string; value: number; tone: 
       <dt className="mt-1 truncate text-[10px] font-bold uppercase tracking-wider text-neutral-400">
         {label}
       </dt>
-      <dd className={`m-0 text-lg font-black tabular-nums leading-none ${value > 0 ? tone : 'text-neutral-300 dark:text-neutral-600'}`}>
+      <dd
+        className={`m-0 text-lg font-black tabular-nums leading-none ${value > 0 ? tone : 'text-neutral-300 dark:text-neutral-600'}`}
+      >
         {value}
       </dd>
     </div>
@@ -191,8 +206,10 @@ function DeliveryStatsCard() {
     queryFn: () => fetchPushDeliveryStats(PUSH_STATS_DAYS),
   })
 
-  const cardClass = 'rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900'
-  const noteClass = 'm-0 p-4 text-xs font-medium leading-snug text-neutral-500 dark:text-neutral-400'
+  const cardClass =
+    'rounded-3xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900'
+  const noteClass =
+    'm-0 p-4 text-xs font-medium leading-snug text-neutral-500 dark:text-neutral-400'
 
   if (isPending) {
     return (
@@ -236,14 +253,15 @@ function DeliveryStatsCard() {
     )
   }
 
-  const when = (stat: PushServiceStat) => stat.lastAt
-    ? new Date(stat.lastAt).toLocaleString(i18n.language, {
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : null
+  const when = (stat: PushServiceStat) =>
+    stat.lastAt
+      ? new Date(stat.lastAt).toLocaleString(i18n.language, {
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null
 
   return (
     <div className={`${cardClass} overflow-hidden`}>
@@ -251,21 +269,43 @@ function DeliveryStatsCard() {
         {data.map((stat) => (
           <li key={stat.host} className="flex flex-col gap-3 p-4">
             <div className="flex items-baseline justify-between gap-3">
-              <code className="min-w-0 truncate font-mono text-xs font-bold text-neutral-800 dark:text-neutral-200" title={stat.host}>
+              <code
+                className="min-w-0 truncate font-mono text-xs font-bold text-neutral-800 dark:text-neutral-200"
+                title={stat.host}
+              >
                 {stat.host}
               </code>
               {when(stat) && (
                 <span className="shrink-0 text-[10px] font-medium text-neutral-400">
-                  {t('admin.push.stats.lastAt', { when: when(stat), defaultValue: `Última: ${when(stat)}` })}
+                  {t('admin.push.stats.lastAt', {
+                    when: when(stat),
+                    defaultValue: `Última: ${when(stat)}`,
+                  })}
                 </span>
               )}
             </div>
 
             <dl className="m-0 grid grid-cols-4 gap-2">
-              <StatCell label={t('admin.push.stats.colSent', 'Enviadas')} value={stat.sent} tone="text-emerald-600 dark:text-emerald-400" />
-              <StatCell label={t('admin.push.stats.colFailed', 'Fallidas')} value={stat.failed} tone="text-[#D41F2D] dark:text-red-400" />
-              <StatCell label={t('admin.push.stats.colExpired', 'Caducadas')} value={stat.expired} tone="text-amber-600 dark:text-amber-400" />
-              <StatCell label={t('admin.push.stats.colPending', 'Pendientes')} value={stat.pending} tone="text-neutral-700 dark:text-neutral-200" />
+              <StatCell
+                label={t('admin.push.stats.colSent', 'Enviadas')}
+                value={stat.sent}
+                tone="text-emerald-600 dark:text-emerald-400"
+              />
+              <StatCell
+                label={t('admin.push.stats.colFailed', 'Fallidas')}
+                value={stat.failed}
+                tone="text-[#D41F2D] dark:text-red-400"
+              />
+              <StatCell
+                label={t('admin.push.stats.colExpired', 'Caducadas')}
+                value={stat.expired}
+                tone="text-amber-600 dark:text-amber-400"
+              />
+              <StatCell
+                label={t('admin.push.stats.colPending', 'Pendientes')}
+                value={stat.pending}
+                tone="text-neutral-700 dark:text-neutral-200"
+              />
             </dl>
 
             {stat.lastError && (
@@ -273,7 +313,9 @@ function DeliveryStatsCard() {
                 className="m-0 line-clamp-2 break-words rounded-xl bg-red-50 px-3 py-2 text-[11px] font-medium leading-snug text-red-700 dark:bg-red-950/30 dark:text-red-300"
                 title={stat.lastError}
               >
-                <span className="font-bold">{t('admin.push.stats.lastError', 'Último error:')}</span>{' '}
+                <span className="font-bold">
+                  {t('admin.push.stats.lastError', 'Último error:')}
+                </span>{' '}
                 {stat.lastError}
               </p>
             )}
@@ -281,7 +323,10 @@ function DeliveryStatsCard() {
         ))}
       </ul>
       <p className="m-0 border-t border-neutral-100 px-4 py-2.5 text-[11px] font-medium leading-snug text-neutral-400 dark:border-neutral-800">
-        {t('admin.push.stats.hint', 'Cuenta entregas, no dispositivos. «Caducadas» son suscripciones que el servicio dio por muertas.')}
+        {t(
+          'admin.push.stats.hint',
+          'Cuenta entregas, no dispositivos. «Caducadas» son suscripciones que el servicio dio por muertas.',
+        )}
       </p>
     </div>
   )

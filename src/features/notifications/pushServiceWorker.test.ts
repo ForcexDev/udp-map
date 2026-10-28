@@ -36,7 +36,9 @@ function loadServiceWorker() {
     openWindow: vi.fn().mockResolvedValue(null),
   }
   const self = {
-    addEventListener: (type: string, handler: Handler) => { handlers[type] = handler },
+    addEventListener: (type: string, handler: Handler) => {
+      handlers[type] = handler
+    },
     registration: { showNotification, pushManager: { subscribe } },
     location: { origin: ORIGIN },
     clients,
@@ -51,15 +53,14 @@ function pushEvent(payload?: unknown) {
   const raw = typeof payload === 'string' ? payload : JSON.stringify(payload)
   return {
     data: payload === undefined ? null : { json: () => JSON.parse(raw), text: () => raw },
-    waitUntil: (promise: Promise<unknown>) => { pending.push(promise) },
+    waitUntil: (promise: Promise<unknown>) => {
+      pending.push(promise)
+    },
     settled: () => Promise.all(pending),
   }
 }
 
-async function receive(
-  sw: ReturnType<typeof loadServiceWorker>,
-  payload?: unknown,
-) {
+async function receive(sw: ReturnType<typeof loadServiceWorker>, payload?: unknown) {
   const event = pushEvent(payload)
   sw.handlers.push(event)
   await event.settled()
@@ -149,7 +150,9 @@ function previousServiceWorker(data: Record<string, unknown>): [string, Record<s
       body: (data.body as string) || 'Tienes una nueva notificación.',
       icon: '/pwa-192x192.png',
       badge: '/notification-badge.png',
-      tag: (data.notificationId as string) || `${(data.type as string) || 'notification'}:${Date.now()}`,
+      tag:
+        (data.notificationId as string) ||
+        `${(data.type as string) || 'notification'}:${Date.now()}`,
       renotify: false,
       timestamp: Date.now(),
       lang: 'es',
@@ -190,7 +193,10 @@ describe('push: payload híbrido (el que se envía hoy)', () => {
     ['la URL raíz', { ...AVISO, url: '/' }],
     ['sin título', { ...AVISO, title: '' }],
     ['sin cuerpo', { ...AVISO, body: '' }],
-    ['una difusión con tipo distinto', { ...AVISO, type: 'announcement', category: 'system', url: '/mapa?pin=7' }],
+    [
+      'una difusión con tipo distinto',
+      { ...AVISO, type: 'announcement', category: 'system', url: '/mapa?pin=7' },
+    ],
   ])('%s: pinta exactamente lo mismo que el service worker anterior', async (_caso, aviso) => {
     const sw = loadServiceWorker()
     const payload = hybridPayload(aviso)
@@ -221,7 +227,9 @@ describe('push: payload declarativo puro', () => {
     const declarative = loadServiceWorker()
     await receive(declarative, declarativePayload(AVISO))
 
-    expect(declarative.showNotification.mock.calls[0]).toEqual(hybrid.showNotification.mock.calls[0])
+    expect(declarative.showNotification.mock.calls[0]).toEqual(
+      hybrid.showNotification.mock.calls[0],
+    )
   })
 
   it('sin campos planos, el destino y la marca del aviso salen del bloque', async () => {
@@ -310,12 +318,17 @@ describe('notificationclick (no ha cambiado)', () => {
     const pending: Promise<unknown>[] = []
     return {
       notification: { close: vi.fn(), data },
-      waitUntil: (promise: Promise<unknown>) => { pending.push(promise) },
+      waitUntil: (promise: Promise<unknown>) => {
+        pending.push(promise)
+      },
       settled: () => Promise.all(pending),
     }
   }
 
-  async function click(sw: ReturnType<typeof loadServiceWorker>, data: Parameters<typeof clickEvent>[0]) {
+  async function click(
+    sw: ReturnType<typeof loadServiceWorker>,
+    data: Parameters<typeof clickEvent>[0],
+  ) {
     const event = clickEvent(data)
     sw.handlers.notificationclick(event)
     await event.settled()
@@ -328,7 +341,9 @@ describe('notificationclick (no ha cambiado)', () => {
     const event = await click(sw, { url: '/eventos?event=42', notificationId: AVISO.id })
 
     expect(event.notification.close).toHaveBeenCalled()
-    expect(sw.clients.openWindow).toHaveBeenCalledWith(`${ORIGIN}/eventos?event=42&notification=${AVISO.id}`)
+    expect(sw.clients.openWindow).toHaveBeenCalledWith(
+      `${ORIGIN}/eventos?event=42&notification=${AVISO.id}`,
+    )
   })
 
   it('con una ventana de la app, la enfoca y navega en ella', async () => {
@@ -376,7 +391,9 @@ describe('pushsubscriptionchange', () => {
     const pending: Promise<unknown>[] = []
     return {
       oldSubscription,
-      waitUntil: (promise: Promise<unknown>) => { pending.push(promise) },
+      waitUntil: (promise: Promise<unknown>) => {
+        pending.push(promise)
+      },
       settled: () => Promise.all(pending),
     }
   }

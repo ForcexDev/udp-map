@@ -15,10 +15,12 @@ const rpc = vi.fn()
 const getSession = vi.fn()
 const fetchMock = vi.fn()
 
-async function loadApi(client: unknown = {
-  rpc: (...args: unknown[]) => rpc(...args),
-  auth: { getSession: () => getSession() },
-}) {
+async function loadApi(
+  client: unknown = {
+    rpc: (...args: unknown[]) => rpc(...args),
+    auth: { getSession: () => getSession() },
+  },
+) {
   vi.resetModules()
   vi.doMock('@/shared/lib/supabase', () => ({ supabase: client }))
   return import('./api')
@@ -119,9 +121,15 @@ function selfResult(partial: Partial<SelfPushTestResult>): SelfPushTestResult {
   return { processed: 0, sent: 0, failed: 0, notificationCreated: true, ...partial }
 }
 
-function withDeliveries(deliveries: Partial<{ pending: number; sent: number; failed: number; expired: number }>, extra: Partial<SelfPushTestResult> = {}) {
+function withDeliveries(
+  deliveries: Partial<{ pending: number; sent: number; failed: number; expired: number }>,
+  extra: Partial<SelfPushTestResult> = {},
+) {
   return selfResult({
-    notification: { id: UUID, deliveries: { pending: 0, sent: 0, failed: 0, expired: 0, ...deliveries } },
+    notification: {
+      id: UUID,
+      deliveries: { pending: 0, sent: 0, failed: 0, expired: 0, ...deliveries },
+    },
     ...extra,
   })
 }
@@ -191,7 +199,11 @@ describe('describeSelfPushTest', () => {
     const { describeSelfPushTest } = await loadApi()
     const result = selfResult({
       sent: 1,
-      notification: { id: UUID, deliveries: { pending: 0, sent: 0, failed: 0, expired: 0 }, error: 'timeout' },
+      notification: {
+        id: UUID,
+        deliveries: { pending: 0, sent: 0, failed: 0, expired: 0 },
+        error: 'timeout',
+      },
     })
     expect(describeSelfPushTest(result).map((p) => p.key)).toEqual(['admin.push.test.legacySent'])
   })
@@ -218,8 +230,24 @@ describe('fetchPushDeliveryStats', () => {
     const { fetchPushDeliveryStats } = await loadApi()
     rpc.mockResolvedValue({
       data: [
-        { host: 'web.push.apple.com', sent: 1, failed: 2, expired: 0, pending: 0, last_at: '2026-10-21T12:00:00Z', last_error: 'HTTP 403' },
-        { host: 'fcm.googleapis.com', sent: 3, failed: 0, expired: 0, pending: 0, last_at: null, last_error: null },
+        {
+          host: 'web.push.apple.com',
+          sent: 1,
+          failed: 2,
+          expired: 0,
+          pending: 0,
+          last_at: '2026-10-21T12:00:00Z',
+          last_error: 'HTTP 403',
+        },
+        {
+          host: 'fcm.googleapis.com',
+          sent: 3,
+          failed: 0,
+          expired: 0,
+          pending: 0,
+          last_at: null,
+          last_error: null,
+        },
       ],
       error: null,
     })
@@ -228,15 +256,40 @@ describe('fetchPushDeliveryStats', () => {
 
     expect(rpc).toHaveBeenCalledWith('admin_push_delivery_stats', { p_days: 7 })
     expect(stats).toEqual([
-      { host: 'web.push.apple.com', sent: 1, failed: 2, expired: 0, pending: 0, lastAt: '2026-10-21T12:00:00Z', lastError: 'HTTP 403' },
-      { host: 'fcm.googleapis.com', sent: 3, failed: 0, expired: 0, pending: 0, lastAt: null, lastError: null },
+      {
+        host: 'web.push.apple.com',
+        sent: 1,
+        failed: 2,
+        expired: 0,
+        pending: 0,
+        lastAt: '2026-10-21T12:00:00Z',
+        lastError: 'HTTP 403',
+      },
+      {
+        host: 'fcm.googleapis.com',
+        sent: 3,
+        failed: 0,
+        expired: 0,
+        pending: 0,
+        lastAt: null,
+        lastError: null,
+      },
     ])
   })
 
   it.each([
-    ['PGRST202 (el caso real: PostgREST corta antes de Postgres)', { code: 'PGRST202', message: 'x' }],
+    [
+      'PGRST202 (el caso real: PostgREST corta antes de Postgres)',
+      { code: 'PGRST202', message: 'x' },
+    ],
     ['42883 (Postgres)', { code: '42883', message: 'x' }],
-    ['solo el texto', { message: 'Could not find the function public.admin_push_delivery_stats(p_days) in the schema cache' }],
+    [
+      'solo el texto',
+      {
+        message:
+          'Could not find the function public.admin_push_delivery_stats(p_days) in the schema cache',
+      },
+    ],
   ])('si falta la migración devuelve null: %s', async (_name, error) => {
     const { fetchPushDeliveryStats } = await loadApi()
     rpc.mockResolvedValue({ data: null, error })

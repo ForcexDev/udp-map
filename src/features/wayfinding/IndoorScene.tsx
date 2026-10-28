@@ -30,7 +30,8 @@ import { useNavGraph } from './useNavGraph'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FLOOR_LABELS = 'floor:'
-const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+const prefersReducedMotion = () =>
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
 export function IndoorScene() {
   const facultyId = useUIStore(indoor3dFacultyId)
@@ -50,21 +51,29 @@ export function IndoorScene() {
     if (!facultyId) return null
     const ids = new Set(interiorBuildingIds(mapping, facultyId))
     if (ids.size === 0) return null
-    const sourceAreas = mapping.areas.filter((a) => a.building_id !== null && ids.has(a.building_id))
+    const sourceAreas = mapping.areas.filter(
+      (a) => a.building_id !== null && ids.has(a.building_id),
+    )
     const footprints = mapping.buildings.filter((b) => ids.has(b.id))
     // El plano de la navegación si hay grafo: ruta y edificio tienen que caer
     // en los mismos metros.
     const plane =
       model?.plane ??
       projectionAround(
-        footprints.flatMap((b) => openRing(b.footprint.coordinates[0] ?? []).map(([lng, lat]) => ({ lng, lat }))),
+        footprints.flatMap((b) =>
+          openRing(b.footprint.coordinates[0] ?? []).map(([lng, lat]) => ({ lng, lat })),
+        ),
       )
     const buildings: SceneBuilding[] = footprints.map((b) => ({
       id: b.id,
-      footprint: openRing(b.footprint.coordinates[0] ?? []).map(([lng, lat]) => plane.toLocal(lng, lat)),
+      footprint: openRing(b.footprint.coordinates[0] ?? []).map(([lng, lat]) =>
+        plane.toLocal(lng, lat),
+      ),
       levels: mapping.floors.filter((f) => f.building_id === b.id).map((f) => f.level),
     }))
-    const levels = [...new Set(buildings.flatMap((b) => b.levels))].sort((a, b) => levelIndex(a) - levelIndex(b))
+    const levels = [...new Set(buildings.flatMap((b) => b.levels))].sort(
+      (a, b) => levelIndex(a) - levelIndex(b),
+    )
     return { plane, buildings, levels, areas: areasToLocal(sourceAreas, plane), sourceAreas }
   }, [facultyId, mapping, model])
 
@@ -89,7 +98,8 @@ export function IndoorScene() {
     return () => cancelAnimationFrame(raf)
   }, [exploded, facultyId])
 
-  const active = activeFloor ?? scene?.levels.find((l) => l === GROUND_LEVEL) ?? scene?.levels[0] ?? GROUND_LEVEL
+  const active =
+    activeFloor ?? scene?.levels.find((l) => l === GROUND_LEVEL) ?? scene?.levels[0] ?? GROUND_LEVEL
 
   // Geometría: losas, suelos, muros y peldaños.
   useEffect(() => {
@@ -135,10 +145,13 @@ export function IndoorScene() {
       if (area.floor !== active || area.kind === 'corridor' || area.kind === 'service') continue
       const local = scene.areas.find((a) => a.id === area.id)
       if (!local) continue
-      const c = local.ring.reduce((acc, p) => ({ x: acc.x + p.x / local.ring.length, y: acc.y + p.y / local.ring.length }), {
-        x: 0,
-        y: 0,
-      })
+      const c = local.ring.reduce(
+        (acc, p) => ({ x: acc.x + p.x / local.ring.length, y: acc.y + p.y / local.ring.length }),
+        {
+          x: 0,
+          y: 0,
+        },
+      )
       const id = `${FLOOR_LABELS}area:${area.id}`
       wanted.add(id)
       overlay.set(id, {
@@ -160,7 +173,9 @@ export function IndoorScene() {
             lngLat: scene.plane.toLngLat(corner),
             altitude: zMeters(level, gap) + 0.6,
             html: `<span class="rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums shadow-xs ${
-              isActive ? 'bg-[#C22B38] text-white' : 'bg-white text-stone-700 dark:bg-stone-800 dark:text-stone-200'
+              isActive
+                ? 'bg-[#C22B38] text-white'
+                : 'bg-white text-stone-700 dark:bg-stone-800 dark:text-stone-200'
             }">${level < 0 ? `S${-level}` : `P${level}`}</span>`,
             onClick: () => useUIStore.getState().setActiveFloor(level),
           })

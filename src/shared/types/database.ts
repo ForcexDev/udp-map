@@ -354,5 +354,3 @@ export interface ContentReport {
   updated_at: string
   resolved_at: string | null
 }
-
-

@@ -170,7 +170,10 @@ function PhotoManager({
               {t('place.noPhotos', 'Todavía no hay fotos aquí.')}
             </p>
             <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
-              {t('place.fallbackNotice', 'Se está mostrando una foto de respaldo por defecto. Sube fotos para reemplazarla.')}
+              {t(
+                'place.fallbackNotice',
+                'Se está mostrando una foto de respaldo por defecto. Sube fotos para reemplazarla.',
+              )}
             </p>
           </div>
         )}

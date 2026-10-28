@@ -47,11 +47,17 @@ describe('vista por plantas', () => {
       dark: false,
     }
     const slabTop = (gap: number, level: number) =>
-      Math.max(...buildFloorPrisms({ ...input, gap }).filter((p) => p.props?.level === level && Math.abs(p.height - p.base - 0.35) < 1e-6).map((p) => p.height))
+      Math.max(
+        ...buildFloorPrisms({ ...input, gap })
+          .filter((p) => p.props?.level === level && Math.abs(p.height - p.base - 0.35) < 1e-6)
+          .map((p) => p.height),
+      )
     expect(slabTop(0, 4)).toBeCloseTo(3 * 3.6)
     expect(slabTop(7, 4)).toBeCloseTo(3 * (3.6 + 7))
     // Desde el piso 2 la losa lleva agujeros en los núcleos.
-    const slab2 = buildFloorPrisms({ ...input, gap: 0 }).find((p) => p.props?.level === 2 && p.rings.length > 1)
+    const slab2 = buildFloorPrisms({ ...input, gap: 0 }).find(
+      (p) => p.props?.level === 2 && p.rings.length > 1,
+    )
     expect(slab2?.rings).toHaveLength(3)
   })
 })

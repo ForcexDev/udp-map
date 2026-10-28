@@ -23,14 +23,16 @@ function fakeRegistration() {
 
   const installing = {
     state: 'installing' as ServiceWorker['state'],
-    addEventListener: (_: string, fn: Listener) => { workerListeners.push(fn) },
+    addEventListener: (_: string, fn: Listener) => {
+      workerListeners.push(fn)
+    },
   }
 
   const registration = {
     waiting: null as unknown,
     installing: null as unknown,
     addEventListener: (evento: string, fn: Listener) => {
-      (listeners[evento] ??= []).push(fn)
+      ;(listeners[evento] ??= []).push(fn)
     },
     removeEventListener: (evento: string, fn: Listener) => {
       listeners[evento] = (listeners[evento] ?? []).filter((l) => l !== fn)

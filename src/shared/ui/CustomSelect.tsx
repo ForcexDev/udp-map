@@ -43,7 +43,12 @@ export function CustomSelect({
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; width: number; openUp: boolean } | null>(null)
+  const [menuStyle, setMenuStyle] = useState<{
+    top: number
+    left: number
+    width: number
+    openUp: boolean
+  } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -90,8 +95,10 @@ export function CustomSelect({
     function handlePointerOutside(e: Event) {
       const target = e.target as Node
       if (
-        containerRef.current && !containerRef.current.contains(target)
-        && menuRef.current && !menuRef.current.contains(target)
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
       ) {
         setIsOpen(false)
       }
@@ -142,7 +149,9 @@ export function CustomSelect({
       >
         <span className="flex min-w-0 items-center gap-2 truncate">
           {selectedOption?.icon}
-          <span className="truncate">{selectedOption ? selectedOption.label : placeholder || 'Seleccionar...'}</span>
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder || 'Seleccionar...'}
+          </span>
         </span>
         <ChevronDown
           size={15}
@@ -151,88 +160,90 @@ export function CustomSelect({
       </button>
 
       {/* Menú Flotante Personalizado — portal a <body> para no recortarse contra modales con overflow */}
-      {isOpen && menuStyle && createPortal(
-        <div
-          ref={menuRef}
-          style={{
-            position: 'fixed',
-            top: menuStyle.openUp ? undefined : menuStyle.top + 4,
-            bottom: menuStyle.openUp ? window.innerHeight - menuStyle.top + 4 : undefined,
-            left: menuStyle.left,
-            width: menuStyle.width,
-            // Radix Dialog (modal) apaga los pointer-events del <body> y solo los
-            // reactiva dentro de su Content. Como el menú vive en <body> (portal),
-            // sin esto heredaría pointer-events:none y los clicks lo ATRAVESARÍAN
-            // hacia el elemento de atrás — el famoso "selecciona el de abajo".
-            pointerEvents: 'auto',
-          }}
-          // z-[4520]: tiene que ganarle al Overlay (z-4500) y al Content
-          // (z-4510) de Radix Dialog. Con z-50 el menú quedaba pintado DETRÁS
-          // del overlay cuando el CustomSelect vivía dentro de un modal
-          // (ProfileSetupModal), así que "no dejaba seleccionar la facultad".
-          className={`z-[4520] max-h-60 overflow-y-auto bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.09] rounded-2xl premium-shadow p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
-        >
-          {searchable && (
-            // `sticky` y no fuera del contenedor con scroll: así el campo se
-            // queda a la vista mientras recorres una lista larga.
-            <div className="sticky top-0 z-10 -m-1.5 mb-1 border-b border-[#E6E0D5] bg-white p-2 dark:border-white/[0.07] dark:bg-[#1E222D]">
-              <div className="flex items-center gap-2 rounded-xl bg-[#EFECE4] px-2.5 py-1.5 dark:bg-white/[0.08]">
-                <Search size={13} className="shrink-0 text-stone-400 dark:text-stone-500" />
-                <input
-                  autoFocus
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    // Enter elige la primera coincidencia: escribir "psico" y
-                    // pulsar Enter es el gesto que espera quien ya sabe cuál
-                    // quiere y no viene a mirar la lista.
-                    if (e.key !== 'Enter') return
-                    e.preventDefault()
-                    const first = visibleOptions[0]
-                    if (!first) return
-                    onChange(first.value)
+      {isOpen &&
+        menuStyle &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{
+              position: 'fixed',
+              top: menuStyle.openUp ? undefined : menuStyle.top + 4,
+              bottom: menuStyle.openUp ? window.innerHeight - menuStyle.top + 4 : undefined,
+              left: menuStyle.left,
+              width: menuStyle.width,
+              // Radix Dialog (modal) apaga los pointer-events del <body> y solo los
+              // reactiva dentro de su Content. Como el menú vive en <body> (portal),
+              // sin esto heredaría pointer-events:none y los clicks lo ATRAVESARÍAN
+              // hacia el elemento de atrás — el famoso "selecciona el de abajo".
+              pointerEvents: 'auto',
+            }}
+            // z-[4520]: tiene que ganarle al Overlay (z-4500) y al Content
+            // (z-4510) de Radix Dialog. Con z-50 el menú quedaba pintado DETRÁS
+            // del overlay cuando el CustomSelect vivía dentro de un modal
+            // (ProfileSetupModal), así que "no dejaba seleccionar la facultad".
+            className={`z-[4520] max-h-60 overflow-y-auto bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.09] rounded-2xl premium-shadow p-1.5 animate-scale-in hide-scrollbar ${dropdownClassName}`}
+          >
+            {searchable && (
+              // `sticky` y no fuera del contenedor con scroll: así el campo se
+              // queda a la vista mientras recorres una lista larga.
+              <div className="sticky top-0 z-10 -m-1.5 mb-1 border-b border-[#E6E0D5] bg-white p-2 dark:border-white/[0.07] dark:bg-[#1E222D]">
+                <div className="flex items-center gap-2 rounded-xl bg-[#EFECE4] px-2.5 py-1.5 dark:bg-white/[0.08]">
+                  <Search size={13} className="shrink-0 text-stone-400 dark:text-stone-500" />
+                  <input
+                    autoFocus
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      // Enter elige la primera coincidencia: escribir "psico" y
+                      // pulsar Enter es el gesto que espera quien ya sabe cuál
+                      // quiere y no viene a mirar la lista.
+                      if (e.key !== 'Enter') return
+                      e.preventDefault()
+                      const first = visibleOptions[0]
+                      if (!first) return
+                      onChange(first.value)
+                      setIsOpen(false)
+                    }}
+                    placeholder={searchPlaceholder}
+                    className="w-full min-w-0 bg-transparent text-xs font-semibold text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {visibleOptions.length === 0 && (
+              <p className="px-3 py-4 text-center text-xs font-medium text-stone-400 dark:text-stone-500">
+                Nada coincide con «{query.trim()}».
+              </p>
+            )}
+
+            {visibleOptions.map((option) => {
+              const isSelected = option.value === value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value)
                     setIsOpen(false)
                   }}
-                  placeholder={searchPlaceholder}
-                  className="w-full min-w-0 bg-transparent text-xs font-semibold text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-400 dark:text-stone-100 dark:placeholder:text-stone-500"
-                />
-              </div>
-            </div>
-          )}
-
-          {visibleOptions.length === 0 && (
-            <p className="px-3 py-4 text-center text-xs font-medium text-stone-400 dark:text-stone-500">
-              Nada coincide con «{query.trim()}».
-            </p>
-          )}
-
-          {visibleOptions.map((option) => {
-            const isSelected = option.value === value
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onChange(option.value)
-                  setIsOpen(false)
-                }}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer my-0.5 ${
-                  isSelected
-                    ? 'bg-[#C22B38] text-white shadow-xs dark:bg-[#D93846]'
-                    : 'text-stone-700 dark:text-stone-200 hover:bg-[#EFECE4] dark:hover:bg-white/[0.08]'
-                }`}
-              >
-                <span className="flex items-center gap-2 truncate">
-                  {option.icon}
-                  <span className="truncate">{option.label}</span>
-                </span>
-                {isSelected && <Check size={14} className="shrink-0" />}
-              </button>
-            )
-          })}
-        </div>,
-        document.body,
-      )}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer my-0.5 ${
+                    isSelected
+                      ? 'bg-[#C22B38] text-white shadow-xs dark:bg-[#D93846]'
+                      : 'text-stone-700 dark:text-stone-200 hover:bg-[#EFECE4] dark:hover:bg-white/[0.08]'
+                  }`}
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    {option.icon}
+                    <span className="truncate">{option.label}</span>
+                  </span>
+                  {isSelected && <Check size={14} className="shrink-0" />}
+                </button>
+              )
+            })}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

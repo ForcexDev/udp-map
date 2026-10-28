@@ -27,22 +27,22 @@
 
 /* ── Variables globales ─────────────────────────────────── */
 :root {
-  --udp-red: #C22B38;
-  --udp-red-dark: #9E1F2A;
+  --udp-red: #c22b38;
+  --udp-red-dark: #9e1f2a;
   --udp-red-glow: rgba(194, 43, 56, 0.22);
-  --surface-sheet: #FAF8F5;
-  --surface-card: #FFFFFF;
-  --surface-subtle: #EFECE4;
-  --border-warm: #E5DEC9;
+  --surface-sheet: #faf8f5;
+  --surface-card: #ffffff;
+  --surface-subtle: #efece4;
+  --border-warm: #e5dec9;
   --sidebar-width: 380px;
 }
 
 .dark {
-  --udp-red: #D93846;
-  --udp-red-dark: #B82532;
+  --udp-red: #d93846;
+  --udp-red-dark: #b82532;
   --udp-red-glow: rgba(217, 56, 70, 0.28);
   --surface-sheet: #151820;
-  --surface-card: #1E222D;
+  --surface-card: #1e222d;
   --surface-subtle: rgba(255, 255, 255, 0.08);
   --border-warm: rgba(255, 255, 255, 0.09);
 }
@@ -62,7 +62,13 @@ body,
 
 body {
   @apply bg-[#FAF8F5] text-stone-900 antialiased dark:bg-[#151820] dark:text-stone-100 font-medium;
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -70,23 +76,32 @@ body {
 
 /* ── Typography Scale (Apple/Premium Style) ─────────────── */
 @layer base {
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply tracking-tight text-stone-900 dark:text-stone-100;
   }
-  
+
   h1 {
     @apply font-bold;
   }
-  
-  h2, h3 {
+
+  h2,
+  h3 {
     @apply font-bold;
   }
-  
-  h4, h5, h6 {
+
+  h4,
+  h5,
+  h6 {
     @apply font-semibold;
   }
-  
-  strong, b {
+
+  strong,
+  b {
     @apply font-semibold;
   }
 }
@@ -105,8 +120,8 @@ body {
   height: auto;
   padding: 5px 10px;
   border-radius: 14px;
-  background: #FAF8F5;
-  border: 1px solid #E5DEC9;
+  background: #faf8f5;
+  border: 1px solid #e5dec9;
   gap: 6px;
 }
 
@@ -120,12 +135,12 @@ body {
   background: rgba(250, 248, 245, 0.95);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid #E5DEC9;
+  border: 1px solid #e5dec9;
 }
 
 .dark .glass-hud {
   background: rgba(24, 27, 35, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .glass-premium {
@@ -142,11 +157,15 @@ body {
 
 /* ── Shadows ────────────────────────────────────────────── */
 .premium-shadow {
-  box-shadow: 0 10px 28px -6px rgba(28, 25, 23, 0.09), 0 2px 6px -2px rgba(28, 25, 23, 0.04);
+  box-shadow:
+    0 10px 28px -6px rgba(28, 25, 23, 0.09),
+    0 2px 6px -2px rgba(28, 25, 23, 0.04);
 }
 
 .dark .premium-shadow {
-  box-shadow: 0 12px 32px -6px rgba(0, 0, 0, 0.55), 0 2px 8px -2px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 12px 32px -6px rgba(0, 0, 0, 0.55),
+    0 2px 8px -2px rgba(0, 0, 0, 0.35);
 }
 
 .red-shadow {
@@ -198,7 +217,6 @@ body {
 }
 
 @keyframes float {
-
   0%,
   100% {
     transform: translateY(0);
@@ -321,7 +339,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .floor-roll-up,
   .floor-roll-down {
     animation: none;
@@ -329,7 +346,6 @@ body {
 }
 
 @keyframes reticle-float {
-
   0%,
   100% {
     transform: translateY(0);
@@ -341,7 +357,6 @@ body {
 }
 
 @keyframes reticle-pulse {
-
   0%,
   100% {
     transform: scale(1);
@@ -418,7 +433,10 @@ body {
     0 3px 8px rgb(0 0 0 / 0.22),
     0 1px 3px rgb(0 0 0 / 0.12);
   cursor: pointer;
-  transition: opacity 300ms ease, filter 150ms ease, box-shadow 150ms ease;
+  transition:
+    opacity 300ms ease,
+    filter 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .pin-marker:hover {
@@ -461,7 +479,6 @@ body {
 }
 
 @keyframes pin-breathe {
-
   0%,
   100% {
     filter: opacity(1);
@@ -513,7 +530,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .pin-marker--live,
   .pin-marker--live::after {
     animation: none;
@@ -551,9 +567,18 @@ body {
 /* The element itself is built entirely in JS (MapView.tsx); only
    the pulse animation keyframe is defined here. */
 @keyframes user-pulse {
-  0% { transform: scale(0.8); opacity: 0.6; }
-  70% { transform: scale(2.2); opacity: 0; }
-  100% { transform: scale(2.2); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
 }
 
 /* ── Sidebar ────────────────────────────────────────────── */
@@ -608,7 +633,7 @@ body {
   /* Bleed the nav's own background below its box so any viewport-rounding
      gap on iOS/Android PWA shells is covered by the nav's color instead of
      the page background showing through. box-shadow doesn't affect layout. */
-  box-shadow: 0 200px 0 0 #FAF8F5;
+  box-shadow: 0 200px 0 0 #faf8f5;
 }
 
 .dark .bottom-nav {
@@ -754,10 +779,18 @@ body {
   background-color: transparent !important;
   padding: 0 6px 4px !important;
   pointer-events: none;
-  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8), 0 -1px 1px rgba(255, 255, 255, 0.8), 1px 0 1px rgba(255, 255, 255, 0.8), -1px 0 1px rgba(255, 255, 255, 0.8);
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.8),
+    0 -1px 1px rgba(255, 255, 255, 0.8),
+    1px 0 1px rgba(255, 255, 255, 0.8),
+    -1px 0 1px rgba(255, 255, 255, 0.8);
 }
 .dark .maplibregl-ctrl-attrib {
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8), 0 -1px 1px rgba(0, 0, 0, 0.8), 1px 0 1px rgba(0, 0, 0, 0.8), -1px 0 1px rgba(0, 0, 0, 0.8);
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.8),
+    0 -1px 1px rgba(0, 0, 0, 0.8),
+    1px 0 1px rgba(0, 0, 0, 0.8),
+    -1px 0 1px rgba(0, 0, 0, 0.8);
 }
 
 .maplibregl-ctrl-attrib a {
@@ -774,10 +807,9 @@ body {
    Invertimos el mapa claro (que sí tiene POIs) para simular el modo oscuro,
    dejando intactos los marcadores (que no son parte del canvas). */
 .dark .maplibregl-canvas {
-/* El modo oscuro del mapa se pinta de forma nativa sobre las capas de MapLibre
+  /* El modo oscuro del mapa se pinta de forma nativa sobre las capas de MapLibre
    en `applyMapThemePalette` (mapConfig.ts), sin invertir el canvas con filter. */
 }
-
 
 /* ── Safe areas ─────────────────────────────────────────── */
 @supports (padding: env(safe-area-inset-bottom)) {
@@ -825,7 +857,6 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
-
 
 /* ── Editor de mapeo (/admin/mapeo) ──────────────────────
    Los tiradores son elementos DOM que MapLibre posiciona, así que el estilo va

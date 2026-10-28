@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { ELEVATOR_WAIT_S, NavGraph } from './graph'
-import { bearingOf, cardinalOf, floorSpan, levelOfZ, turnAngle, zFromIndex, zMeters } from './projection'
+import {
+  bearingOf,
+  cardinalOf,
+  floorSpan,
+  levelOfZ,
+  turnAngle,
+  zFromIndex,
+  zMeters,
+} from './projection'
 import { buildSampleBuilding } from './sampleBuilding'
 
 const sample = buildSampleBuilding()

@@ -13,10 +13,19 @@ export function GuestGate() {
         <UserRound size={40} className="text-stone-400 dark:text-stone-500" />
       </div>
       <div>
-        <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">{t('profile.title', 'Perfil')}</h1>
-        <p className="mt-1 text-sm font-medium text-stone-500 dark:text-stone-400">{t('auth.guestGateBody', 'Inicia sesión para ver tu perfil.')}</p>
+        <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100">
+          {t('profile.title', 'Perfil')}
+        </h1>
+        <p className="mt-1 text-sm font-medium text-stone-500 dark:text-stone-400">
+          {t('auth.guestGateBody', 'Inicia sesión para ver tu perfil.')}
+        </p>
       </div>
-      <Button onClick={openLoginModal} className="mt-2 px-8 rounded-2xl bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] text-white">{t('auth.signIn', 'Iniciar sesión')}</Button>
+      <Button
+        onClick={openLoginModal}
+        className="mt-2 px-8 rounded-2xl bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] text-white"
+      >
+        {t('auth.signIn', 'Iniciar sesión')}
+      </Button>
     </div>
   )
 }

@@ -24,7 +24,9 @@ export function resolveTarget(pin: Pin, model: IndoorModel): string | null {
 
   if (pin.room_code) {
     const code = normalizeRoomCode(pin.room_code)
-    const byCode = nodes.find((n) => n.kind === 'room' && n.roomCode && normalizeRoomCode(n.roomCode) === code)
+    const byCode = nodes.find(
+      (n) => n.kind === 'room' && n.roomCode && normalizeRoomCode(n.roomCode) === code,
+    )
     if (byCode) return byCode.id
   }
 
@@ -59,7 +61,9 @@ export function entranceCandidates(model: IndoorModel, stepFree: boolean): NavNo
     (n) =>
       n.kind === 'entrance' &&
       (!stepFree ||
-        graph.neighbors(n.id).some(({ to, edge }) => edge.stepFree && graph.node(to).buildingId !== null)),
+        graph
+          .neighbors(n.id)
+          .some(({ to, edge }) => edge.stepFree && graph.node(to).buildingId !== null)),
   )
 }
 
@@ -102,7 +106,8 @@ export function originOptions(model: IndoorModel): NavNode[] {
         n.landmark !== null &&
         (n.kind === 'outdoor' ||
           n.kind === 'entrance' ||
-          (n.kind === 'walk' && (n.areaId ? hallAreas.has(n.areaId) : isInHall(n, model, hallAreas)))),
+          (n.kind === 'walk' &&
+            (n.areaId ? hallAreas.has(n.areaId) : isInHall(n, model, hallAreas)))),
     )
     .sort((a, b) => rank(a) - rank(b))
 }

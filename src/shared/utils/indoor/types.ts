@@ -108,4 +108,8 @@ export interface Step {
  * Traductor con la firma de i18next: `t('clave', 'respaldo', { vars })`.
  * La lógica pura lo recibe para no depender de React ni del idioma activo.
  */
-export type Translate = (key: string, fallback: string, vars?: Record<string, string | number>) => string
+export type Translate = (
+  key: string,
+  fallback: string,
+  vars?: Record<string, string | number>,
+) => string

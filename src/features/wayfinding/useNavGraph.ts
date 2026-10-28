@@ -43,8 +43,17 @@ export function useNavGraph(facultyId: string | null) {
   const model = useMemo<IndoorModel | null>(() => {
     if (!facultyId || !query.data || query.data.nodes.length === 0) return null
     const sourceAreas = mapping.areas.filter((a) => a.faculty_id === facultyId)
-    const { graph, plane } = graphFromRows(query.data.nodes, query.data.edges, { areas: sourceAreas })
-    return { facultyId, graph, plane, areas: areasToLocal(sourceAreas, plane), sourceAreas, rows: query.data }
+    const { graph, plane } = graphFromRows(query.data.nodes, query.data.edges, {
+      areas: sourceAreas,
+    })
+    return {
+      facultyId,
+      graph,
+      plane,
+      areas: areasToLocal(sourceAreas, plane),
+      sourceAreas,
+      rows: query.data,
+    }
   }, [facultyId, query.data, mapping.areas])
 
   return {

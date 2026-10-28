@@ -94,7 +94,9 @@ export function FloorSelector() {
           title={localizedName(faculty, i18n.language)}
           className="truncate border-b border-neutral-200/60 px-1 py-1 text-center text-[9px] font-black uppercase tracking-tight text-neutral-500 dark:border-neutral-700/60"
         >
-          {faculty ? facultyShortName(localizedName(faculty, i18n.language)) : t('indoor.floorsTitle', 'Piso')}
+          {faculty
+            ? facultyShortName(localizedName(faculty, i18n.language))
+            : t('indoor.floorsTitle', 'Piso')}
         </p>
 
         <button
@@ -112,7 +114,11 @@ export function FloorSelector() {
             número salta sin deslizarse. */}
         <div
           aria-live="polite"
-          title={current ? floorName(current.level, current.label) : t('indoor.allFloorsHint', 'Ver todas las plantas')}
+          title={
+            current
+              ? floorName(current.level, current.label)
+              : t('indoor.allFloorsHint', 'Ver todas las plantas')
+          }
           className={`flex h-9 items-center justify-center overflow-hidden transition-colors ${
             current ? 'bg-[#D41F2D] text-white' : 'text-neutral-400 dark:text-neutral-500'
           }`}

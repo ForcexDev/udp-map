@@ -89,7 +89,12 @@ export function ProfileView({
 
       <ProfileFacultyTag career={career} facultyName={facultyName} />
 
-      <ProfileTabs value={activeTab} onValueChange={onTabChange} hideLeaderboard={!leaderboard} showEvents={Boolean(myEvents)}>
+      <ProfileTabs
+        value={activeTab}
+        onValueChange={onTabChange}
+        hideLeaderboard={!leaderboard}
+        showEvents={Boolean(myEvents)}
+      >
         <Tabs.Content value="reports" className="outline-none">
           <ReportTimeline pins={pins} loading={pinsLoading} onViewOnMap={onViewOnMap} />
         </Tabs.Content>

@@ -3,8 +3,13 @@ import type { Pin } from '@/shared/types/database'
 import { pinContext } from './pinContext'
 
 const base = {
-  id: 'p1', type: 'report', title: 'Sala S101',
-  category_id: null, faculty_id: null, floor: null, room_code: null,
+  id: 'p1',
+  type: 'report',
+  title: 'Sala S101',
+  category_id: null,
+  faculty_id: null,
+  floor: null,
+  room_code: null,
 } as unknown as Pin
 
 const pin = (extra: Partial<Pin>) => ({ ...base, ...extra }) as Pin
@@ -12,8 +17,11 @@ const pin = (extra: Partial<Pin>) => ({ ...base, ...extra }) as Pin
 describe('pinContext', () => {
   it('ordena de lo más grande a lo más pequeño', () => {
     // Es como se ubica uno: primero el edificio, después el piso.
-    expect(pinContext(pin({ category_id: 'sala', faculty_id: 'ingenieria', floor: 2, room_code: 'E441.2.S201' })))
-      .toBe('Sala · Facultad de Ingeniería y Ciencias · Piso 2 · E441.2.S201')
+    expect(
+      pinContext(
+        pin({ category_id: 'sala', faculty_id: 'ingenieria', floor: 2, room_code: 'E441.2.S201' }),
+      ),
+    ).toBe('Sala · Facultad de Ingeniería y Ciencias · Piso 2 · E441.2.S201')
   })
 
   it('llama subterráneo al piso negativo', () => {
@@ -32,7 +40,10 @@ describe('pinContext', () => {
   })
 
   it('ignora una categoría o facultad que ya no existen en el catálogo', () => {
-    expect(pinContext(pin({ category_id: 'categoria-borrada', faculty_id: 'facultad-borrada', floor: 2 })))
-      .toBe('Piso 2')
+    expect(
+      pinContext(
+        pin({ category_id: 'categoria-borrada', faculty_id: 'facultad-borrada', floor: 2 }),
+      ),
+    ).toBe('Piso 2')
   })
 })

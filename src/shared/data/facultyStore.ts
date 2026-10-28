@@ -139,12 +139,10 @@ export function facultyIdAt(lat: number, lng: number): string | null {
 
 /** Los perímetros como FeatureCollection para pintarlos en MapLibre. */
 export function facultyPerimetersGeoJSON(): FeatureCollection<Polygon> {
-  const features: Feature<Polygon>[] = facultyPerimeterEntries().map(
-    ([facultyId, polygon]) => ({
-      type: 'Feature',
-      properties: { faculty_id: facultyId },
-      geometry: polygon,
-    }),
-  )
+  const features: Feature<Polygon>[] = facultyPerimeterEntries().map(([facultyId, polygon]) => ({
+    type: 'Feature',
+    properties: { faculty_id: facultyId },
+    geometry: polygon,
+  }))
   return { type: 'FeatureCollection', features }
 }

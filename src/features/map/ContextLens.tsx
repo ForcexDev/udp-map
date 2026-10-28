@@ -42,10 +42,7 @@ export function ContextLens() {
   )
 
   // Ordenamos de menor a mayor (-1, 1, 2, 3) para lectura izquierda → derecha natural
-  const sortedLevels = useMemo(
-    () => [...levels].sort((a, b) => a.level - b.level),
-    [levels],
-  )
+  const sortedLevels = useMemo(() => [...levels].sort((a, b) => a.level - b.level), [levels])
 
   const floorTrackRef = useRef<HTMLDivElement | null>(null)
   const floorBtnRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
@@ -126,9 +123,7 @@ export function ContextLens() {
             <button
               key={b.id}
               type="button"
-              onClick={() =>
-                setPlaceFocus(isSelected ? null : { kind: 'building', id: b.id })
-              }
+              onClick={() => setPlaceFocus(isSelected ? null : { kind: 'building', id: b.id })}
               className={`shrink-0 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                 isSelected
                   ? 'bg-stone-900 text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950'
@@ -206,9 +201,15 @@ export function ContextLens() {
               }}
               aria-pressed={explodedFloors}
               aria-label={
-                explodedFloors ? t('indoor.joinFloors', 'Juntar pisos') : t('indoor.separateFloors', 'Separar pisos')
+                explodedFloors
+                  ? t('indoor.joinFloors', 'Juntar pisos')
+                  : t('indoor.separateFloors', 'Separar pisos')
               }
-              title={explodedFloors ? t('indoor.joinFloors', 'Juntar pisos') : t('indoor.separateFloors', 'Separar pisos')}
+              title={
+                explodedFloors
+                  ? t('indoor.joinFloors', 'Juntar pisos')
+                  : t('indoor.separateFloors', 'Separar pisos')
+              }
               className={`order-last ml-0.5 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-xl transition-all ${
                 explodedFloors
                   ? 'bg-stone-900 text-[#FAF8F5] dark:bg-stone-100 dark:text-stone-950'

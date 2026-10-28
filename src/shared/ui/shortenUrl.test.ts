@@ -28,7 +28,9 @@ describe('shortenUrl', () => {
   })
 
   it('respeta el largo máximo pedido', () => {
-    expect(shortenUrl('https://ejemplo.com/uno/dos/tres/cuatro/cinco', 20).length).toBeLessThanOrEqual(21)
+    expect(
+      shortenUrl('https://ejemplo.com/uno/dos/tres/cuatro/cinco', 20).length,
+    ).toBeLessThanOrEqual(21)
   })
 
   it('devuelve el texto tal cual si no es una URL válida', () => {

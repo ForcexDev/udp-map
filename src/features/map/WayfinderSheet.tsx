@@ -13,11 +13,7 @@ interface WayfinderSheetProps {
   distanceMeters?: number
 }
 
-export function WayfinderSheet({
-  targetPin,
-  allPins,
-  durationSeconds,
-}: WayfinderSheetProps) {
+export function WayfinderSheet({ targetPin, allPins, durationSeconds }: WayfinderSheetProps) {
   const { t } = useTranslation()
   const { mapping } = useMapping()
 
@@ -44,13 +40,17 @@ export function WayfinderSheet({
     const facultyPins = allPins.filter((p) => p.faculty_id === targetPin.faculty_id)
     if (accessibleRoute) {
       return (
-        facultyPins.find((p) => p.building_id === targetPin.building_id && p.category_id === 'rampa') ??
+        facultyPins.find(
+          (p) => p.building_id === targetPin.building_id && p.category_id === 'rampa',
+        ) ??
         facultyPins.find((p) => p.category_id === 'rampa') ??
         null
       )
     }
     return (
-      facultyPins.find((p) => p.building_id === targetPin.building_id && p.category_id === 'entrada') ??
+      facultyPins.find(
+        (p) => p.building_id === targetPin.building_id && p.category_id === 'entrada',
+      ) ??
       facultyPins.find((p) => p.category_id === 'entrada') ??
       null
     )
@@ -64,13 +64,14 @@ export function WayfinderSheet({
       return inBuilding.find((p) => p.category_id === 'ascensor') ?? null
     }
     return (
-      inBuilding.find((p) => p.category_id === 'ascensor' || p.category_id === 'escalera') ??
-      null
+      inBuilding.find((p) => p.category_id === 'ascensor' || p.category_id === 'escalera') ?? null
     )
   }, [allPins, targetPin.building_id, accessibleRoute])
 
   const minutes = durationSeconds ? Math.max(1, Math.round(durationSeconds / 60)) : 2
-  const floorLabel = targetPin.floor ? floorName(targetPin.floor, null) : t('indoor.groundFloor', 'Planta baja')
+  const floorLabel = targetPin.floor
+    ? floorName(targetPin.floor, null)
+    : t('indoor.groundFloor', 'Planta baja')
 
   const steps = [
     {

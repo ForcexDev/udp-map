@@ -19,14 +19,16 @@ async function fetchUpdateInfo(signal: AbortSignal): Promise<UpdateInfo | null> 
     const response = await fetch('/update-info.json', { cache: 'no-store', signal })
     if (!response.ok) return null
 
-    const data = await response.json() as Partial<UpdateInfo>
+    const data = (await response.json()) as Partial<UpdateInfo>
     if (typeof data.buildId !== 'string') return null
 
     return {
       buildId: data.buildId,
       version: typeof data.version === 'string' ? data.version : null,
       improvements: Array.isArray(data.improvements)
-        ? data.improvements.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        ? data.improvements.filter(
+            (item): item is string => typeof item === 'string' && item.trim().length > 0,
+          )
         : [],
     }
   } catch {
@@ -36,7 +38,9 @@ async function fetchUpdateInfo(signal: AbortSignal): Promise<UpdateInfo | null> 
 
 export function UpdatePrompt() {
   const [info, setInfo] = useState<UpdateInfo | null>(null)
-  const [dismissedBuildId, setDismissedBuildId] = useState(() => localStorage.getItem(DISMISSED_KEY))
+  const [dismissedBuildId, setDismissedBuildId] = useState(() =>
+    localStorage.getItem(DISMISSED_KEY),
+  )
   const [isUpdating, setIsUpdating] = useState(false)
 
   useEffect(() => {
@@ -64,7 +68,13 @@ export function UpdatePrompt() {
   }
 
   if (!info) return null
-  if (!shouldShowUpdate({ currentBuildId: __BUILD_ID__, serverBuildId: info.buildId, dismissedBuildId })) {
+  if (
+    !shouldShowUpdate({
+      currentBuildId: __BUILD_ID__,
+      serverBuildId: info.buildId,
+      dismissedBuildId,
+    })
+  ) {
     return null
   }
 
@@ -79,14 +89,15 @@ export function UpdatePrompt() {
           `animate-in slide-in-from-bottom-4`, de tailwindcss-animate, que este
           proyecto no usa: eran clases muertas y el aviso aparecía de golpe. */}
       <div className="w-full max-w-[340px] sm:max-w-[400px] max-h-[70dvh] rounded-3xl p-5 premium-shadow flex flex-col gap-4 bg-[#FAF8F5] dark:bg-[#151820] animate-fade-in border border-[#E5DEC9] dark:border-white/10 overflow-hidden pointer-events-auto">
-
         <div className="flex flex-col items-center text-center mt-1 gap-2.5 flex-shrink-0">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 bg-[#EFECE4] dark:bg-white/[0.08] text-stone-900 dark:text-stone-100">
             <ArrowDownToLine size={24} strokeWidth={2} />
           </div>
           <div>
             <h3 className="text-base font-bold tracking-tight text-stone-900 dark:text-stone-100 leading-tight">
-              {info.version ? `Actualización disponible (${info.version})` : 'Actualización disponible'}
+              {info.version
+                ? `Actualización disponible (${info.version})`
+                : 'Actualización disponible'}
             </h3>
             <p className="text-xs font-normal mt-0.5 leading-snug px-2 text-stone-500 dark:text-stone-400">
               Hay una nueva versión de la aplicación.
@@ -99,14 +110,20 @@ export function UpdatePrompt() {
             {info.improvements.length > 0 ? (
               info.improvements.map((item, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <CheckCircle2 size={16} className="text-[#C22B38] dark:text-[#D93846] mt-0.5 flex-shrink-0" strokeWidth={2.5} />
+                  <CheckCircle2
+                    size={16}
+                    className="text-[#C22B38] dark:text-[#D93846] mt-0.5 flex-shrink-0"
+                    strokeWidth={2.5}
+                  />
                   <span className="text-xs font-medium text-stone-700 dark:text-stone-300 leading-snug">
                     {item}
                   </span>
                 </li>
               ))
             ) : (
-              <li className="text-xs text-stone-500 dark:text-stone-400 text-center font-medium">Mejoras de rendimiento.</li>
+              <li className="text-xs text-stone-500 dark:text-stone-400 text-center font-medium">
+                Mejoras de rendimiento.
+              </li>
             )}
           </ul>
         </div>

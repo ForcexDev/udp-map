@@ -57,12 +57,7 @@ export function buildingAt(buildings: Building[], lng: number, lat: number): Bui
  * en el área que está debajo en el piso 1, porque desde arriba ocupan el mismo
  * sitio. `floor` null busca entre las áreas exteriores.
  */
-export function areaAt(
-  areas: Area[],
-  lng: number,
-  lat: number,
-  floor: number | null,
-): Area | null {
+export function areaAt(areas: Area[], lng: number, lat: number, floor: number | null): Area | null {
   return smallestContaining(
     areas.filter((a) => a.floor === floor),
     lng,
@@ -118,8 +113,12 @@ export function facultyLevels(mapping: FacultyMapping, facultyId: string): Facul
  * área de planta. Son los únicos que se pueden ver por dentro en 3D.
  */
 export function interiorBuildingIds(mapping: FacultyMapping, facultyId: string): string[] {
-  const withAreas = new Set(mapping.areas.filter((a) => a.building_id !== null).map((a) => a.building_id))
-  return mapping.buildings.filter((b) => b.faculty_id === facultyId && withAreas.has(b.id)).map((b) => b.id)
+  const withAreas = new Set(
+    mapping.areas.filter((a) => a.building_id !== null).map((a) => a.building_id),
+  )
+  return mapping.buildings
+    .filter((b) => b.faculty_id === facultyId && withAreas.has(b.id))
+    .map((b) => b.id)
 }
 
 /**

@@ -22,79 +22,80 @@ compatibilidad de rollback. Este orden expresa dependencias, no plazos nuevos.
 ## Seguridad y permisos
 
 - [ ] Auditar y resolver las discrepancias de
-  [la referencia SQL](referencia/base-de-datos.md#discrepancias-y-observaciones-abiertas):
-  correo de perfiles, protección de role/karma con owner privilegiado, escritura
-  directa de votos, privacidad de nota y resolución de reportes asignados.
-  Verificar dueño, grants, políticas y llamadas reales antes de cerrar.
+      [la referencia SQL](referencia/base-de-datos.md#discrepancias-y-observaciones-abiertas):
+      correo de perfiles, protección de role/karma con owner privilegiado, escritura
+      directa de votos, privacidad de nota y resolución de reportes asignados.
+      Verificar dueño, grants, políticas y llamadas reales antes de cerrar.
 - [ ] Completar el alcance de capacidades: mapping/reports no representan todo
-  lo que prometen verify/content/official ni el acceso del panel. Definir y
-  comprobar interfaz, RLS y RPC por separado.
+      lo que prometen verify/content/official ni el acceso del panel. Definir y
+      comprobar interfaz, RLS y RPC por separado.
 - [ ] Acotar al moderador por facultad si ese rol representará organizaciones
-  estudiantiles. Las capacidades actuales acotan el qué en algunos puntos,
-  no el dónde. Definir excepciones de lugares compartidos y administración.
+      estudiantiles. Las capacidades actuales acotan el qué en algunos puntos,
+      no el dónde. Definir excepciones de lugares compartidos y administración.
 - [ ] Resolver atribución oficial dinámica junto con ese alcance.
-  El diseño registrado propone `student_org_name` en facultades y firma desde
-  la facultad del moderador, sin inventar nombres si falta el dato.
-  Quitar los respaldos contradictorios de FIC/UDP requiere tocar cliente, demo
-  y SQL; no basta corregir un texto del panel.
+      El diseño registrado propone `student_org_name` en facultades y firma desde
+      la facultad del moderador, sin inventar nombres si falta el dato.
+      Quitar los respaldos contradictorios de FIC/UDP requiere tocar cliente, demo
+      y SQL; no basta corregir un texto del panel.
 - [ ] Revisar paridad INVOKER/DEFINER de `prevent_occupied_pin_location` y
-  otros endurecimientos de RLS/funciones, índices FK y privilegios señalados.
-  No sustituir esa revisión por un GRANT masivo.
+      otros endurecimientos de RLS/funciones, índices FK y privilegios señalados.
+      No sustituir esa revisión por un GRANT masivo.
 - [ ] Comprobar en el entorno las filas interiores inválidas anteriores al
-  trigger. El control nuevo no corrige retrospectivamente los datos.
+      trigger. El control nuevo no corrige retrospectivamente los datos.
 
 ## Salas y mapeo
 
 - [ ] Cargar y verificar salas con el importador existente, edificio por edificio,
-  declarando antes sus plantas. La fuente no aporta puntos fiables y la
-  verificación evita que el TTL de sala borre el trabajo.
-  No marcar como completado por estar construido el importador.
+      declarando antes sus plantas. La fuente no aporta puntos fiables y la
+      verificación evita que el TTL de sala borre el trabajo.
+      No marcar como completado por estar construido el importador.
 - [ ] Confirmar en terreno las atribuciones/accesos dudosos conservados en
-  [salas](referencia/salas.md#direcciones-y-fuentes-externas), incluidos E278,
-  Biblioteca Nicanor Parra y presencia docente en Ejército 219/141.
+      [salas](referencia/salas.md#direcciones-y-fuentes-externas), incluidos E278,
+      Biblioteca Nicanor Parra y presencia docente en Ejército 219/141.
 - [ ] Contactar a quien mantiene EIT: cobertura, periodicidad, uso en producción,
-  formato y condiciones de reutilización. Un JSON accesible no acredita permiso
-  o contrato estable.
+      formato y condiciones de reutilización. Un JSON accesible no acredita permiso
+      o contrato estable.
 - [ ] Implementar el [flujo acordado](decisiones/arquitectura.md#flujo-acordado-todavía-pendiente):
-  confirmación antes de publicar y pin visible/social desde ese momento;
-  cola sobre el plano, revisión y respuesta con motivo, sin aprobación por reloj;
-  aceptación y trazo asociado que resuelva pin/geometría juntos. Concretar
-  caducidad/gracia y acceso efectivo preservando la preferencia administrativa
-  registrada. El área no enlaza pines por el mero dibujo.
+      confirmación antes de publicar y pin visible/social desde ese momento;
+      cola sobre el plano, revisión y respuesta con motivo, sin aprobación por reloj;
+      aceptación y trazo asociado que resuelva pin/geometría juntos. Concretar
+      caducidad/gracia y acceso efectivo preservando la preferencia administrativa
+      registrada. El área no enlaza pines por el mero dibujo.
 - [ ] Completar la representación área + ficha social común: el polígono con
-  código sustituye la chincheta al existir área; tocarlo abre la ficha del pin.
-  Resolver asociación de salas ya existentes y trazo asistido dentro del
-  alcance inicial sala/casino/computacion; mantener las exclusiones registradas. Resolver `room`/tipos de área y la propuesta
-  `categories.area_kind` sin una nueva lista fija de equivalencias en UI.
-  La etiqueta actual de código y el permiso servidor de mover pines **ya existen**.
+      código sustituye la chincheta al existir área; tocarlo abre la ficha del pin.
+      Resolver asociación de salas ya existentes y trazo asistido dentro del
+      alcance inicial sala/casino/computacion; mantener las exclusiones registradas. Resolver `room`/tipos de área y la propuesta
+      `categories.area_kind` sin una nueva lista fija de equivalencias en UI.
+      La etiqueta actual de código y el permiso servidor de mover pines **ya existen**.
 - [ ] Añadir aviso no bloqueante de código de sala duplicado en el edificio,
-  conservando normalización de comparación y correcciones legítimas.
+      conservando normalización de comparación y correcciones legítimas.
 - [ ] Implementar el rango `floor`/`floor_to` decidido para ascensor y escalera:
-  un pin social, extremos válidos, sin cero y editable al crear/corregir.
-  El límite de paradas salteadas está en la [decisión](decisiones/arquitectura.md#salas-geometria-y-horarios).
+      un pin social, extremos válidos, sin cero y editable al crear/corregir.
+      El límite de paradas salteadas está en la [decisión](decisiones/arquitectura.md#salas-geometria-y-horarios).
 - [ ] Completar controles de solape edificio/edificio y exterior/edificio y el
-  criterio de error para solapes de salas. La cobertura actual no detecta huecos
-  por planta; definir y construir esa comprobación sin llamar exacta a la suma.
+      criterio de error para solapes de salas. La cobertura actual no detecta huecos
+      por planta; definir y construir esa comprobación sin llamar exacta a la suma.
 - [ ] Completar mensajes/recuperación del editor: distinguir validación inline
-  de error remoto, vacío de planta con acciones y reintento público.
-  La confirmación de borrado no enumera pines y el borrador no persiste en disco.
+      de error remoto, vacío de planta con acciones y reintento público.
+      La confirmación de borrado no enumera pines y el borrador no persiste en disco.
 - [ ] Si se retoma alimentar demo desde exportación, definir importación explícita
-  y fuente; descargar TypeScript no lo implementa.
+      y fuente; descargar TypeScript no lo implementa.
 
 ## Densidad, orientación y descubrimiento
 
 - [ ] Abanico para colisiones cercanas, con el umbral aproximado del diseño
-  original como punto a calibrar. Mantener tamaño legible e IDs; no crear
-  etiquetas DOM que compitan con los mismos clics. Agrupar no puede activar
-  simultáneamente ficha del área y del pin.
+      original como punto a calibrar. Mantener tamaño legible e IDs; no crear
+      etiquetas DOM que compitan con los mismos clics. Agrupar no puede activar
+      simultáneamente ficha del área y del pin.
 - [ ] Detalle por zoom facultad → edificio → pin y transiciones.
-  No hay clustering completo por el hecho de reducir infraestructura.
+      No hay clustering completo por el hecho de reducir infraestructura.
 - [ ] Ruteo accesible fino donde no haya grafo: la guía de tres pasos toma
-  primeros candidatos; no comprueba cercanía, conectividad ni todas las
-  paradas, y los respaldos OSRM/recta no heredan garantía wheelchair. Con grafo
-  interior lo resuelve la navegación de abajo.
+      primeros candidatos; no comprueba cercanía, conectividad ni todas las
+      paradas, y los respaldos OSRM/recta no heredan garantía wheelchair. Con grafo
+      interior lo resuelve la navegación de abajo.
 
 <a id="navegacion-interior"></a>
+
 ## Navegación interior (beta)
 
 Implementado en la rama `navegacion`: núcleo puro, migración, carga, hoja giro
@@ -104,85 +105,86 @@ a giro con animación y cámara, edificio en 3D con pisos separables, editor
 [repositorio](referencia/repositorio.md#navegación-interior).
 
 - [ ] Aplicar `20261023000000_indoor_navigation` a mano en cada entorno. Sin
-  ella el cliente vuelve a la guía de tres pasos; no rompe nada.
+      ella el cliente vuelve a la guía de tres pasos; no rompe nada.
 - [ ] Cargar Vergara 432 real con el editor y cruzar códigos con
-  [salas](referencia/salas.md). Cerrar exige que todas las salas del catálogo
-  en V432 tengan ruta y que alguien recorra al menos cinco rutas en terreno.
-  El demo usa un edificio supuesto del prototipo, no el plano real.
+      [salas](referencia/salas.md). Cerrar exige que todas las salas del catálogo
+      en V432 tengan ruta y que alguien recorra al menos cinco rutas en terreno.
+      El demo usa un edificio supuesto del prototipo, no el plano real.
 - [ ] Responder antes de esa carga: plano real (escalera, ascensor y lado de
-  cada sala), si existe el subterráneo -1 de `V432.-1.*` y por dónde se baja,
-  rampa/escalones y torniquetes de la puerta de Vergara, paso al patio hacia
-  Ejército 441, número de escaleras usables, origen por defecto (GPS + calle o
-  entrada a mano; hoy: GPS si ya hay ubicación, si no el primer punto
-  exterior) y voz por defecto (hoy opcional).
+      cada sala), si existe el subterráneo -1 de `V432.-1.*` y por dónde se baja,
+      rampa/escalones y torniquetes de la puerta de Vergara, paso al patio hacia
+      Ejército 441, número de escaleras usables, origen por defecto (GPS + calle o
+      entrada a mano; hoy: GPS si ya hay ubicación, si no el primer punto
+      exterior) y voz por defecto (hoy opcional).
 - [ ] Medir en un teléfono de gama media: cálculo de ruta (< 5 ms; la prueba
-  local lo comprueba en escritorio) y FPS de la animación y de separar pisos.
+      local lo comprueba en escritorio) y FPS de la animación y de separar pisos.
 - [ ] Mobiliario decorativo derivado del tipo de área (pizarra y mesas en
-  salas, graderías, cubículos, torniquetes). Es lo último: no orienta solo.
+      salas, graderías, cubículos, torniquetes). Es lo último: no orienta solo.
 - [ ] Enlace directo a una sala con arranque de la ruta (el plan proponía
-  `/sala/<código>?ir=1`); hoy solo existe `/mapa?pin=<id>`.
+      `/sala/<código>?ir=1`); hoy solo existe `/mapa?pin=<id>`.
 - [ ] Revisar en dispositivo la hoja a la derecha en escritorio: el plan la
-  quería a la izquierda, pero ahí está el buscador y la lente de plantas.
+      quería a la izquierda, pero ahí está el buscador y la lente de plantas.
 - [ ] Sidebar como índice desplegable de edificios, conservando estado útil
-  para facultades sin mapeo y evitando una segunda ficha social.
+      para facultades sin mapeo y evitando una segunda ficha social.
 - [ ] Capa pública de horarios solo después de carga/contacto/cobertura:
-  ocupada, libre y sin datos. Ausencia de clase no permite pintar verde
-  indiscriminadamente. La entidad sala debe sobrevivir a caída de la fuente.
+      ocupada, libre y sin datos. Ausencia de clase no permite pintar verde
+      indiscriminadamente. La entidad sala debe sobrevivir a caída de la fuente.
 - [ ] Interior como imagen de calco y capacidad de sala siguen como ideas
-  fuera de fases: definir alcance cuando se retomen, sin afirmar que las
-  columnas legadas o el catálogo ya resuelven el flujo.
+      fuera de fases: definir alcance cuando se retomen, sin afirmar que las
+      columnas legadas o el catálogo ya resuelven el flujo.
 
 ## Onboarding, mensajes e interacción
 
 - [ ] Orquestador general, slides y coach marks/tours en momentos distintos,
-  mapa y facultad con acceso posterior desde Sidebar. El tutorial actual ya
-  se difiere ante setup de perfil; no reabrir ese caso como carencia total.
-  Wayfinder no es el tour propuesto.
+      mapa y facultad con acceso posterior desde Sidebar. El tutorial actual ya
+      se difiere ante setup de perfil; no reabrir ese caso como carencia total.
+      Wayfinder no es el tour propuesto.
 - [ ] Explicar plazos/caducidad, beneficios de verificar y causas de restricciones
-  durante creación/edición; conservar Exterior y permisos reales al concretar
-  qué campos serán obligatorios.
+      durante creación/edición; conservar Exterior y permisos reales al concretar
+      qué campos serán obligatorios.
 - [ ] Educación de karma con motivo y preguntas frecuentes. Verificar ya genera
-  aviso de permanencia/+25; no significa que todo cambio de karma esté explicado.
+      aviso de permanencia/+25; no significa que todo cambio de karma esté explicado.
 - [ ] Estado sin conexión con explicación y política de escritura/solo lectura.
-  La caché de teselas no implementa por sí sola este comportamiento.
+      La caché de teselas no implementa por sí sola este comportamiento.
 - [ ] Cerrar literales ES/EN restantes en mapping, IndoorFields, Wayfinder,
-  UpdatePrompt y formularios. `check:i18n` comprueba catálogos, no cobertura JSX.
+      UpdatePrompt y formularios. `check:i18n` comprueba catálogos, no cobertura JSX.
 - [ ] Búsqueda de texto completo y tags en foro.
 - [ ] Moderación con IA conserva la propuesta anterior: proveedor principal y
-  respaldo, evaluación de falsos positivos y cola humana; necesita definición
-  de alcance y verificación propia.
+      respaldo, evaluación de falsos positivos y cola humana; necesita definición
+      de alcance y verificación propia.
 - [ ] Pruebas E2E y escenarios de integración real; no equivalen a la suite
-  unitaria con dobles.
+      unitaria con dobles.
 
 <a id="push-y-operacion"></a>
+
 ## Push y operación
 
 - [ ] Verificar aplicación efectiva de migraciones, jobs, logs HTTP, preferencias,
-  cola, recepción y toque en dispositivos. Registrar resultado/fecha/entorno,
-  sin presentar el mensaje de commit como prueba actual.
+      cola, recepción y toque en dispositivos. Registrar resultado/fecha/entorno,
+      sin presentar el mensaje de commit como prueba actual.
 - [ ] Configurar `VAPID_SUBJECT` con contacto propio y probar iPhone.
-  El respaldo actual sigue siendo el registrado; no se cambió en este trabajo.
+      El respaldo actual sigue siendo el registrado; no se cambió en este trabajo.
 - [ ] Diseñar/probar TTL por tipo y `Topic` conservando el criterio de no bajar
-  urgencia sin prueba de dispositivo.
+      urgencia sin prueba de dispositivo.
 - [ ] Resolver memoria de endpoints caducados y comunicación al cliente, sin
-  identificar dispositivos por User-Agent.
+      identificar dispositivos por User-Agent.
 - [ ] Tras verificación de dispositivo, evaluar pasar VAPID como cadena a
-  `applicationServerKey` y simplificar conversión; comprobar primero formato
-  base64url y compatibilidad, no retirar los respaldos a ciegas.
+      `applicationServerKey` y simplificar conversión; comprobar primero formato
+      base64url y compatibilidad, no retirar los respaldos a ciegas.
 - [ ] Decidir cuándo deja de ser necesario el rollback antes de retirar
-  `p_old_endpoint` heredado, mensajes legacy y tarjeta de migración ausente.
-  Valorar diagnóstico con evidencia de uso y coste, no por una cifra de líneas.
+      `p_old_endpoint` heredado, mensajes legacy y tarjeta de migración ausente.
+      Valorar diagnóstico con evidencia de uso y coste, no por una cifra de líneas.
 - [ ] Medir CPU/volumen de difusión y la relación concurrencia/lease/cierre.
-  Los presupuestos de código no son throughput medido.
+      Los presupuestos de código no son throughput medido.
 - [ ] Inspeccionar el conteo de versión en el hosting real y elegir una solución
-  que no dependa de un historial truncado si el problema persiste.
-  No se da por activada una variable de deep clone por estar anotada.
+      que no dependa de un historial truncado si el problema persiste.
+      No se da por activada una variable de deep clone por estar anotada.
 - [ ] Revisar la espera sin timeout propio de `registration.update()` y su
-  comportamiento real ante red/instalación fallida. Recargar no acredita relevo.
+      comportamiento real ante red/instalación fallida. Recargar no acredita relevo.
 - [ ] Optimizar `fic.png` y comprobar impacto del build antes de decidir volver
-  a precachearla. La exclusión existe; la reducción no está hecha.
+      a precachearla. La exclusión existe; la reducción no está hecha.
 - [ ] Definir/programar poda del registro de actividad si se requiere.
-  `prune_activity_log` no se ejecuta automáticamente por existir.
+      `prune_activity_log` no se ejecuta automáticamente por existir.
 
 El detalle de operación y rollback está en [despliegue](guias/despliegue.md), no
 en una lista de fases cerradas. El experimento de payload puro retirado y los
@@ -191,10 +193,10 @@ diagnósticos anteriores permanecen accesibles desde [decisiones push](decisione
 ## Deuda local sin corrección incidental
 
 - [ ] Revisar coherencia de datos demo `ingenieria/fic`, colores de tema HTML/
-  manifiesto y declaraciones de variables de entorno, localizados en la
-  [referencia](referencia/repositorio.md#desajustes-locales-conservados).
+      manifiesto y declaraciones de variables de entorno, localizados en la
+      [referencia](referencia/repositorio.md#desajustes-locales-conservados).
 - [ ] Revisar el límite de 300 pines y la deduplicación parcial del importador
-  antes de tratar sus resultados como inventario completo de una facultad.
+      antes de tratar sus resultados como inventario completo de una facultad.
 
 ## Criterio para cerrar
 

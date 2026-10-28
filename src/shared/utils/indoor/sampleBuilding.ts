@@ -1,5 +1,12 @@
 import type { Polygon } from 'geojson'
-import type { Area, AreaKind, Building, BuildingFloor, NavEdgeRow, NavNodeRow } from '@/shared/types/database'
+import type {
+  Area,
+  AreaKind,
+  Building,
+  BuildingFloor,
+  NavEdgeRow,
+  NavNodeRow,
+} from '@/shared/types/database'
 import type { IndoorArea, NavEdge, NavEdgeKind, NavNode, NavNodeKind, Vec2 } from './types'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,7 +160,10 @@ export function buildSampleBuilding(): SampleBuilding {
     )
 
     add(f('esc'), 'stairs', 16, 6.3, floor, { shaft: 'ESC', landmark: 'la escalera principal' })
-    add(f('esc:door'), 'door', 16, NORTH_Y, floor, { landmark: 'la escalera principal', widthM: 1.4 })
+    add(f('esc:door'), 'door', 16, NORTH_Y, floor, {
+      landmark: 'la escalera principal',
+      widthM: 1.4,
+    })
     link(f('esc'), f('esc:door'))
     add(f('asc'), 'elevator', 19.5, 4, floor, { shaft: 'ASC', landmark: 'el ascensor' })
     add(f('asc:door'), 'door', 19.5, NORTH_Y, floor, { landmark: 'el ascensor', widthM: 1.1 })
@@ -164,18 +174,60 @@ export function buildSampleBuilding(): SampleBuilding {
     const rooms: RoomSpec[] = []
     if (floor === 1) {
       rooms.push(
-        { key: 'conserjeria', name: 'Conserjería', code: null, rect: [0, 0, 6, 7], door: { x: 3, y: NORTH_Y }, kind: 'office' },
-        { key: 'secretaria', name: 'Secretaría de Estudios', code: null, rect: [6, 0, 14, 7], door: { x: 10, y: NORTH_Y }, kind: 'office' },
-        { key: 'bodega', name: 'Bodega', code: null, rect: [0, 18, 4, 26], door: { x: 4, y: 22 }, kind: 'other', hostKey: 'lobby:d' },
-        { key: 'cafeteria', name: 'Cafetería', code: null, rect: [22, 10, 30, 18], door: { x: 22, y: 14 }, kind: 'cafeteria', hostKey: 'lobby:b' },
+        {
+          key: 'conserjeria',
+          name: 'Conserjería',
+          code: null,
+          rect: [0, 0, 6, 7],
+          door: { x: 3, y: NORTH_Y },
+          kind: 'office',
+        },
+        {
+          key: 'secretaria',
+          name: 'Secretaría de Estudios',
+          code: null,
+          rect: [6, 0, 14, 7],
+          door: { x: 10, y: NORTH_Y },
+          kind: 'office',
+        },
+        {
+          key: 'bodega',
+          name: 'Bodega',
+          code: null,
+          rect: [0, 18, 4, 26],
+          door: { x: 4, y: 22 },
+          kind: 'other',
+          hostKey: 'lobby:d',
+        },
+        {
+          key: 'cafeteria',
+          name: 'Cafetería',
+          code: null,
+          rect: [22, 10, 30, 18],
+          door: { x: 22, y: 14 },
+          kind: 'cafeteria',
+          hostKey: 'lobby:b',
+        },
       )
       corridorXs.add(9)
       corridorXs.add(18)
       landmarks.set(9, 'el hall de ascensores')
     } else if (floor === 3) {
       rooms.push(
-        { key: 'S312', name: 'Sala 312', code: 'V432.3.S312', rect: [0, 0, 7, 7], door: { x: 4, y: NORTH_Y } },
-        { key: 'S315', name: 'Sala 315', code: 'V432.3.S315', rect: [7, 0, 14, 7], door: { x: 11, y: NORTH_Y } },
+        {
+          key: 'S312',
+          name: 'Sala 312',
+          code: 'V432.3.S312',
+          rect: [0, 0, 7, 7],
+          door: { x: 4, y: NORTH_Y },
+        },
+        {
+          key: 'S315',
+          name: 'Sala 315',
+          code: 'V432.3.S315',
+          rect: [7, 0, 14, 7],
+          door: { x: 11, y: NORTH_Y },
+        },
         {
           key: 'AU',
           name: 'Auditorio',
@@ -184,16 +236,52 @@ export function buildSampleBuilding(): SampleBuilding {
           door: { x: 13, y: SOUTH_Y },
           doorLandmark: 'la puerta del auditorio',
         },
-        { key: 'S313', name: 'Sala 313', code: 'V432.3.S313', rect: [16, 10, 23, 26], door: { x: 20, y: SOUTH_Y } },
-        { key: 'S314', name: 'Sala 314', code: 'V432.3.S314', rect: [23, 10, 30, 26], door: { x: 27, y: SOUTH_Y } },
+        {
+          key: 'S313',
+          name: 'Sala 313',
+          code: 'V432.3.S313',
+          rect: [16, 10, 23, 26],
+          door: { x: 20, y: SOUTH_Y },
+        },
+        {
+          key: 'S314',
+          name: 'Sala 314',
+          code: 'V432.3.S314',
+          rect: [23, 10, 30, 26],
+          door: { x: 27, y: SOUTH_Y },
+        },
       )
     } else {
       const s = (n: number) => `S${floor}${n}`
       rooms.push(
-        { key: s(12), name: `Sala ${floor}12`, code: `V432.${floor}.${s(12)}`, rect: [0, 0, 14, 7], door: { x: 11, y: NORTH_Y } },
-        { key: s(13), name: `Sala ${floor}13`, code: `V432.${floor}.${s(13)}`, rect: [0, 10, 10, 26], door: { x: 7, y: SOUTH_Y } },
-        { key: s(14), name: `Sala ${floor}14`, code: `V432.${floor}.${s(14)}`, rect: [10, 10, 20, 26], door: { x: 17, y: SOUTH_Y } },
-        { key: s(15), name: `Sala ${floor}15`, code: `V432.${floor}.${s(15)}`, rect: [20, 10, 30, 26], door: { x: 27, y: SOUTH_Y } },
+        {
+          key: s(12),
+          name: `Sala ${floor}12`,
+          code: `V432.${floor}.${s(12)}`,
+          rect: [0, 0, 14, 7],
+          door: { x: 11, y: NORTH_Y },
+        },
+        {
+          key: s(13),
+          name: `Sala ${floor}13`,
+          code: `V432.${floor}.${s(13)}`,
+          rect: [0, 10, 10, 26],
+          door: { x: 7, y: SOUTH_Y },
+        },
+        {
+          key: s(14),
+          name: `Sala ${floor}14`,
+          code: `V432.${floor}.${s(14)}`,
+          rect: [10, 10, 20, 26],
+          door: { x: 17, y: SOUTH_Y },
+        },
+        {
+          key: s(15),
+          name: `Sala ${floor}15`,
+          code: `V432.${floor}.${s(15)}`,
+          rect: [20, 10, 30, 26],
+          door: { x: 27, y: SOUTH_Y },
+        },
       )
     }
 
@@ -202,7 +290,10 @@ export function buildSampleBuilding(): SampleBuilding {
     // El pasillo: un nodo frente a cada puerta y en cada extremo, encadenados.
     const xs = [...corridorXs].sort((a, b) => a - b)
     for (const x of xs) {
-      add(f(`c${x}`), 'walk', x, CORRIDOR_Y, floor, { landmark: landmarks.get(x) ?? null, areaId: corridorArea })
+      add(f(`c${x}`), 'walk', x, CORRIDOR_Y, floor, {
+        landmark: landmarks.get(x) ?? null,
+        areaId: corridorArea,
+      })
     }
     for (let i = 1; i < xs.length; i++) link(f(`c${xs[i - 1]}`), f(`c${xs[i]}`))
     link(f('esc:door'), f('c16'))
@@ -215,13 +306,20 @@ export function buildSampleBuilding(): SampleBuilding {
       area(1, 'lobby', 'hall', 'Lobby', [4, 10, 22, 26])
       area(1, 'hallpatio', 'hall', 'Hall al patio', [22, 18, 30, 26])
 
-      add('out:paradero', 'outdoor', -7, -24, null, { landmark: 'el paradero Vergara / esq. Gorbea' })
+      add('out:paradero', 'outdoor', -7, -24, null, {
+        landmark: 'el paradero Vergara / esq. Gorbea',
+      })
       add('out:vergara432', 'outdoor', -7, 14, null, {
         landmark: 'el número 432 de Vergara',
         via: 'la vereda de Vergara',
       })
-      add('out:patio', 'outdoor', 40, 22, null, { landmark: 'el patio de la FIC (lado Ejército 441)' })
-      add('1:ent:vergara', 'entrance', 0, 14, 1, { landmark: 'la puerta principal de Vergara 432', widthM: 2 })
+      add('out:patio', 'outdoor', 40, 22, null, {
+        landmark: 'el patio de la FIC (lado Ejército 441)',
+      })
+      add('1:ent:vergara', 'entrance', 0, 14, 1, {
+        landmark: 'la puerta principal de Vergara 432',
+        widthM: 2,
+      })
       add('1:acceso', 'walk', 2, 14, 1)
       add('1:torniquetes', 'door', 4, 14, 1, { landmark: 'los torniquetes', widthM: 3 })
       add('1:lobby:a', 'walk', 9, 14, 1, { landmark: 'el lobby' })
@@ -325,7 +423,8 @@ export function sampleRows(facultyId: string): SampleRows {
       building_id: a.buildingId,
       floor: a.floor,
       kind: a.kind as AreaKind,
-      custom_kind: a.kind === 'other' ? (a.name.startsWith('Sala') ? 'Sala de clases' : a.name) : null,
+      custom_kind:
+        a.kind === 'other' ? (a.name.startsWith('Sala') ? 'Sala de clases' : a.name) : null,
       name: a.name,
       polygon: ringToPolygon(a.ring),
       color: null,

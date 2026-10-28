@@ -15,7 +15,7 @@ import {
   voteThread,
   fetchUserVoteOnThread,
   type CreateThreadInput,
-  type CreateCommentInput
+  type CreateCommentInput,
 } from './api'
 
 export function useThreads(facultyId: string | null, sortBy: 'recent' | 'top') {
@@ -29,13 +29,9 @@ export function useThreads(facultyId: string | null, sortBy: 'recent' | 'top') {
     if (!supabase) return
     const channel = supabase
       .channel(`forum-threads-${Math.random()}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'forum_threads' },
-        () => {
-          void queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'forum_threads' }, () => {
+        void queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+      })
       .subscribe()
 
     return () => {
@@ -100,12 +96,17 @@ export function useComments(threadId: string) {
       .channel(`forum-comments-${threadId}-${Math.random()}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'forum_comments', filter: `thread_id=eq.${threadId}` },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'forum_comments',
+          filter: `thread_id=eq.${threadId}`,
+        },
         () => {
           void queryClient.invalidateQueries({ queryKey: ['forum-comments', threadId] })
           void queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
           void queryClient.invalidateQueries({ queryKey: ['forum-thread', threadId] })
-        }
+        },
       )
       .subscribe()
 
@@ -151,9 +152,10 @@ export function useVoteThread() {
       voteThread(threadId, value),
     onSuccess: (result, { threadId }) => {
       if (result) {
-        const updateThread = (thread: ForumThread): ForumThread => thread.id === threadId
-          ? { ...thread, votes_up: result.votesUp, votes_down: result.votesDown }
-          : thread
+        const updateThread = (thread: ForumThread): ForumThread =>
+          thread.id === threadId
+            ? { ...thread, votes_up: result.votesUp, votes_down: result.votesDown }
+            : thread
         queryClient.setQueriesData<ForumThread[]>({ queryKey: ['forum-threads'] }, (threads) =>
           threads?.map(updateThread),
         )
@@ -178,8 +180,7 @@ export function useUserVoteOnThread(threadId: string) {
 
   return useQuery({
     queryKey: ['forum-user-vote', threadId, userId],
-    queryFn: () =>
-      userId ? fetchUserVoteOnThread(threadId, userId) : Promise.resolve(null),
+    queryFn: () => (userId ? fetchUserVoteOnThread(threadId, userId) : Promise.resolve(null)),
     enabled: Boolean(threadId) && Boolean(userId),
   })
 }

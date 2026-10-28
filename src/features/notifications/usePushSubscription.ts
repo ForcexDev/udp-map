@@ -98,7 +98,10 @@ export function usePushForegroundSync(userId: string | null) {
       // es suyo. La baja es SOLO local: ya no hay sesión con la que borrar en
       // el servidor, y la fila caduca sola con el primer 404/410.
       void disablePushOnThisDevice({ server: false }).catch((cause: unknown) => {
-        console.error('[web-push] No se pudo dar de baja el dispositivo al terminar la sesión:', cause)
+        console.error(
+          '[web-push] No se pudo dar de baja el dispositivo al terminar la sesión:',
+          cause,
+        )
       })
       return
     }

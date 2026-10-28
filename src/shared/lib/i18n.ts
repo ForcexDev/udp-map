@@ -19,15 +19,19 @@ const es = {
         },
         test: {
           failedToSend: 'No se pudo enviar la prueba.',
-          notCreated: 'No se creó el aviso de prueba: tus preferencias de notificación silencian los avisos del sistema.',
-          noDeliveries: 'El aviso se creó, pero no generó ninguna entrega: tu cuenta no tiene dispositivos con push, o tus preferencias de push silencian los avisos del sistema.',
+          notCreated:
+            'No se creó el aviso de prueba: tus preferencias de notificación silencian los avisos del sistema.',
+          noDeliveries:
+            'El aviso se creó, pero no generó ninguna entrega: tu cuenta no tiene dispositivos con push, o tus preferencias de push silencian los avisos del sistema.',
           sent_one: 'Enviada a {{count}} dispositivo.',
           sent_other: 'Enviada a {{count}} dispositivos.',
           pending_one: '{{count}} entrega pendiente: el envío automático ya la está procesando.',
-          pending_other: '{{count}} entregas pendientes: el envío automático ya las está procesando.',
+          pending_other:
+            '{{count}} entregas pendientes: el envío automático ya las está procesando.',
           failed_one: '{{count}} entrega fallida.',
           failed_other: '{{count}} entregas fallidas.',
-          expired_one: '{{count}} entrega caducada: la suscripción de ese dispositivo ya no existe.',
+          expired_one:
+            '{{count}} entrega caducada: la suscripción de ese dispositivo ya no existe.',
           expired_other: '{{count}} entregas caducadas: esas suscripciones ya no existen.',
           seeStats: 'El último error está más abajo, en las entregas por servicio.',
           sentHint: 'Debería aparecer en tu pantalla en unos segundos.',
@@ -37,7 +41,8 @@ const es = {
         stats: {
           title: 'Entregas de los últimos {{days}} días por servicio',
           loadFailed: 'No se pudieron cargar las entregas.',
-          missingMigration: 'Para ver las entregas por servicio, aplica la migración {{migration}} en Supabase (SQL Editor).',
+          missingMigration:
+            'Para ver las entregas por servicio, aplica la migración {{migration}} en Supabase (SQL Editor).',
           empty: 'No ha salido ninguna entrega en los últimos {{days}} días.',
           lastAt: 'Última: {{when}}',
           colSent: 'Enviadas',
@@ -85,7 +90,8 @@ const es = {
       activityEmptyHint: 'Aquí aparecerá cada publicación, verificación, denuncia y cambio de rol.',
       activityFailed: 'No se pudo cargar el registro de actividad.',
       logInactive: 'El registro todavía no está activo',
-      logInactiveHint: 'Esto es una reconstrucción a partir de lo que sigue vivo: no incluye lo que se borró ni dice quién hizo cada cosa. Para tener el registro de verdad, aplica la migración {{migration}} en Supabase.',
+      logInactiveHint:
+        'Esto es una reconstrucción a partir de lo que sigue vivo: no incluye lo que se borró ni dice quién hizo cada cosa. Para tener el registro de verdad, aplica la migración {{migration}} en Supabase.',
       thisDevice: 'Este dispositivo',
       testPushHere: 'Probar el push aquí',
       testPushHint: 'Se envía solo a tu cuenta. Nadie más recibe nada.',
@@ -94,11 +100,13 @@ const es = {
       registeredEndpoint: 'Endpoint registrado:',
       unlockMap: 'Desbloquear mapa',
       mapUnlocked: 'Mapa desbloqueado',
-      unlockMapHint: 'Quita el límite de área para poner pines fuera del campus. Solo afecta a lo que ves tú, en este navegador.',
+      unlockMapHint:
+        'Quita el límite de área para poner pines fuera del campus. Solo afecta a lo que ves tú, en este navegador.',
       willReach: 'Llegará a',
       devices_one: '{{count}} dispositivo',
       devices_other: '{{count}} dispositivos',
-      noSubscribers: 'Nadie tiene las notificaciónes activadas todavía, así que no hay a quien envíar.',
+      noSubscribers:
+        'Nadie tiene las notificaciónes activadas todavía, así que no hay a quien envíar.',
       broadcastTitle: 'Título',
       broadcastBody: 'Mensaje',
       broadcastPreview: 'Así se verá',
@@ -110,11 +118,13 @@ const es = {
       linkedPinHint: 'Al tocar el aviso se abrirá este pin en el mapa.',
       removeLinkedPin: 'Quitar el pin vinculado',
       unsubscribeDevice: 'Dar de baja este dispositivo',
-      unsubscribeConfirm: '{{name}} dejará de recibir avisos en {{device}}. Puede volver a activarlos desde su aplicación.',
+      unsubscribeConfirm:
+        '{{name}} dejará de recibir avisos en {{device}}. Puede volver a activarlos desde su aplicación.',
       unsubscribeAction: 'Dar de baja',
       unsubscribed: '{{name}} ya no recibirá avisos en ese aparato.',
       confirmBroadcast: 'Enviar el aviso',
-      confirmBroadcastBody: 'Llegará al instante a {{count}} dispositivos. Una notificación entregada no se puede retirar.',
+      confirmBroadcastBody:
+        'Llegará al instante a {{count}} dispositivos. Una notificación entregada no se puede retirar.',
       testBefore: 'Pruébalo en tu dispositivo antes de envíar a todos.',
       noName: 'Sin nombre',
       searchUsers: 'Buscar por nombre o correo…',
@@ -168,7 +178,8 @@ const es = {
       facultiesFailed: 'No se pudo cargar el catálogo de facultades.',
       noFaculties: 'No hay facultades',
       noFacultiesHint: 'Se crean desde el editor de mapeo, junto con su perímetro.',
-      facultyEditHint: 'El perímetro y la posición no se tocan aquí: se dibujan en el editor de mapeo.',
+      facultyEditHint:
+        'El perímetro y la posición no se tocan aquí: se dibujan en el editor de mapeo.',
       fieldName: 'Nombre',
       fieldNameEn: 'Nombre en inglés',
       fieldCampus: 'Campus',
@@ -253,11 +264,13 @@ const es = {
       submit: 'Publicar',
       submitting: 'Publicando…',
       created: '¡Pin publicado!',
-      dailyLimitReached: '{{name}}, superaste el límite de 10 pines diarios. Regresa mañana a las {{resetAt}}.',
+      dailyLimitReached:
+        '{{name}}, superaste el límite de 10 pines diarios. Regresa mañana a las {{resetAt}}.',
       // La cerradura de ubicación única incluye la planta: dos pines del mismo
       // punto en pisos distintos conviven. Sin nombrar el piso, el aviso parece
       // mentir cuando el que estorba está en otra planta.
-      locationOccupied: 'Ya hay un pin en este punto de esta planta. Muévelo un poco o cambia de piso.',
+      locationOccupied:
+        'Ya hay un pin en este punto de esta planta. Muévelo un poco o cambia de piso.',
       // La planta la valida el servidor (trg_validate_pin_floor). Estos avisos
       // solo se ven si el mapeo cambió mientras el formulario estaba abierto:
       // el selector nunca ofrece una planta que no exista.
@@ -340,7 +353,8 @@ const es = {
     notifications: {
       title: 'Tus avisos',
       empty: 'No tienes avisos',
-      emptyHint: 'Aquí llegarán las respuestas del foro, los recordatorios de eventos y tus logros.',
+      emptyHint:
+        'Aquí llegarán las respuestas del foro, los recordatorios de eventos y tus logros.',
       emptyFiltered: 'Nada en esta categoría',
       loading: 'Cargando avisos…',
       loadFailed: 'No se pudieron cargar tus avisos',
@@ -395,12 +409,18 @@ const es = {
         syncNoSession: 'Inicia sesión para que el servidor conozca este dispositivo.',
         syncRetry: 'Reintentar',
         errors: {
-          blocked: 'Las notificaciones están bloqueadas para este sitio. Permítelas desde el candado de la barra de direcciones y vuelve a intentar.',
-          unreachable: 'El navegador no pudo conectarse a su servicio de notificaciones. Revisa los permisos del sistema y del sitio, y prueba sin VPN, bloqueadores ni modo privado.',
-          vapid: 'La configuración de Web Push de la aplicación no es válida. Contacta al administrador.',
-          serviceWorker: 'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.',
-          generic: 'No pudimos activar las notificaciones en este dispositivo. Revisa los permisos del navegador y vuelve a intentar.',
-          disable: 'No pudimos desactivar las notificaciones en este dispositivo. Vuelve a intentar.',
+          blocked:
+            'Las notificaciones están bloqueadas para este sitio. Permítelas desde el candado de la barra de direcciones y vuelve a intentar.',
+          unreachable:
+            'El navegador no pudo conectarse a su servicio de notificaciones. Revisa los permisos del sistema y del sitio, y prueba sin VPN, bloqueadores ni modo privado.',
+          vapid:
+            'La configuración de Web Push de la aplicación no es válida. Contacta al administrador.',
+          serviceWorker:
+            'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.',
+          generic:
+            'No pudimos activar las notificaciones en este dispositivo. Revisa los permisos del navegador y vuelve a intentar.',
+          disable:
+            'No pudimos desactivar las notificaciones en este dispositivo. Vuelve a intentar.',
           missingKey: 'Falta configurar VITE_VAPID_PUBLIC_KEY en el servidor de la aplicación.',
         },
       },
@@ -409,7 +429,8 @@ const es = {
       campus: 'Campus',
       aria: 'Mapa del campus',
       centerOnMe: 'Centrar en mi ubicación',
-      compassBlocked: 'Brújula bloqueada. Permite acceso a “Sensores de movimiento” en tu navegador (ej. Escudos Brave).',
+      compassBlocked:
+        'Brújula bloqueada. Permite acceso a “Sensores de movimiento” en tu navegador (ej. Escudos Brave).',
       locationDenied: 'Debes activar la ubicación en tu dispositivo o navegador.',
       locationDeniedCenter: 'Debes activar la ubicación en tu navegador para centrar el mapa.',
       locationFailed: 'No se pudo obtener tu ubicación.',
@@ -449,7 +470,8 @@ const es = {
       nextMonth: 'Mes siguiente',
       rsvpGoing: 'Asistiré',
       rsvpInterested: 'Me interesa',
-      rsvpVisibility: 'Al marcar “Asistiré” o “Me interesa”, quien organiza el evento verá tu nombre.',
+      rsvpVisibility:
+        'Al marcar “Asistiré” o “Me interesa”, quien organiza el evento verá tu nombre.',
       createEvent: 'Crear Evento',
       attendeesTitle: 'Quién va',
       attendeesEmpty: 'Todavía no se ha apuntado nadie.',
@@ -478,14 +500,16 @@ const es = {
       title: 'Bienvenido a UDP Map',
       subtitle: 'Descubre todo lo que puedes hacer en el mapa de tu universidad.',
       installTitle: 'Instala UDP Map para disfrutarla al máximo',
-      installBody: 'Agrega UDP Map a tu pantalla de inicio o usa la opción “Instalar” del navegador para tener acceso rápido y una experiencia completa.',
+      installBody:
+        'Agrega UDP Map a tu pantalla de inicio o usa la opción “Instalar” del navegador para tener acceso rápido y una experiencia completa.',
       browserBody: 'Recomendamos usar Google Chrome o Safari para una mejor experiencia.',
       installBenefit: 'Acceso instantáneo desde tu pantalla de inicio sin barra de navegador.',
       installAction: 'Instalar aplicación',
       installIOS: 'Ver cómo instalar en iPhone',
       installed: '¡UDP Map instalada en tu dispositivo!',
       installedAlready: 'Aplicación instalada y lista para usar',
-      installDesktopHint: 'En Chrome/Edge: haz clic en el icono “Instalar” (⊕) en la barra de direcciones o en el menú de opciones.',
+      installDesktopHint:
+        'En Chrome/Edge: haz clic en el icono “Instalar” (⊕) en la barra de direcciones o en el menú de opciones.',
       safariSteps: 'Pasos para instalar en Safari (iPhone):',
       safariStep1Before: 'Toca el botón',
       safariStep1Action: 'Compartir',
@@ -720,15 +744,18 @@ const en = {
         },
         test: {
           failedToSend: 'The test could not be sent.',
-          notCreated: 'The test alert was not created: your notification preferences mute system alerts.',
-          noDeliveries: 'The alert was created, but no delivery was generated: your account has no push devices, or your push preferences mute system alerts.',
+          notCreated:
+            'The test alert was not created: your notification preferences mute system alerts.',
+          noDeliveries:
+            'The alert was created, but no delivery was generated: your account has no push devices, or your push preferences mute system alerts.',
           sent_one: 'Sent to {{count}} device.',
           sent_other: 'Sent to {{count}} devices.',
           pending_one: '{{count}} delivery pending: the automatic sender is already processing it.',
-          pending_other: '{{count}} deliveries pending: the automatic sender is already processing them.',
+          pending_other:
+            '{{count}} deliveries pending: the automatic sender is already processing them.',
           failed_one: '{{count}} delivery failed.',
           failed_other: '{{count}} deliveries failed.',
-          expired_one: '{{count}} delivery expired: that device\'s subscription no longer exists.',
+          expired_one: "{{count}} delivery expired: that device's subscription no longer exists.",
           expired_other: '{{count}} deliveries expired: those subscriptions no longer exist.',
           seeStats: 'The latest error is below, in deliveries by service.',
           sentHint: 'It should show up on your screen in a few seconds.',
@@ -738,7 +765,8 @@ const en = {
         stats: {
           title: 'Deliveries in the last {{days}} days, by service',
           loadFailed: 'Deliveries could not be loaded.',
-          missingMigration: 'To see deliveries by service, apply migration {{migration}} in Supabase (SQL Editor).',
+          missingMigration:
+            'To see deliveries by service, apply migration {{migration}} in Supabase (SQL Editor).',
           empty: 'No deliveries went out in the last {{days}} days.',
           lastAt: 'Last: {{when}}',
           colSent: 'Sent',
@@ -783,10 +811,12 @@ const en = {
       today: 'Today',
       yesterday: 'Yesterday',
       nothingYet: 'Nothing yet',
-      activityEmptyHint: 'Every publication, verification, report and role change will show up here.',
+      activityEmptyHint:
+        'Every publication, verification, report and role change will show up here.',
       activityFailed: 'Could not load the activity log.',
       logInactive: 'The log is not active yet',
-      logInactiveHint: 'This is a reconstruction from what is still alive: it does not include what was deleted, nor who did each thing. For the real log, apply migration {{migration}} in Supabase.',
+      logInactiveHint:
+        'This is a reconstruction from what is still alive: it does not include what was deleted, nor who did each thing. For the real log, apply migration {{migration}} in Supabase.',
       thisDevice: 'This device',
       testPushHere: 'Test push here',
       testPushHint: 'It only goes to your account. Nobody else gets anything.',
@@ -795,7 +825,8 @@ const en = {
       registeredEndpoint: 'Registered endpoint:',
       unlockMap: 'Unlock map',
       mapUnlocked: 'Map unlocked',
-      unlockMapHint: 'Removes the area limit so pins can go outside campus. It only affects what you see, in this browser.',
+      unlockMapHint:
+        'Removes the area limit so pins can go outside campus. It only affects what you see, in this browser.',
       willReach: 'Will reach',
       devices_one: '{{count}} device',
       devices_other: '{{count}} devices',
@@ -811,11 +842,13 @@ const en = {
       linkedPinHint: 'Tapping the notice will open this pin on the map.',
       removeLinkedPin: 'Remove the linked pin',
       unsubscribeDevice: 'Unsubscribe this device',
-      unsubscribeConfirm: '{{name}} will stop receiving notices on {{device}}. They can turn them back on from their app.',
+      unsubscribeConfirm:
+        '{{name}} will stop receiving notices on {{device}}. They can turn them back on from their app.',
       unsubscribeAction: 'Unsubscribe',
       unsubscribed: '{{name}} will no longer receive notices on that device.',
       confirmBroadcast: 'Send the notice',
-      confirmBroadcastBody: 'It will reach {{count}} devices instantly. A delivered notification cannot be recalled.',
+      confirmBroadcastBody:
+        'It will reach {{count}} devices instantly. A delivered notification cannot be recalled.',
       testBefore: 'Try it on your device before sending to everyone.',
       noName: 'No name',
       searchUsers: 'Search by name or email…',
@@ -869,7 +902,8 @@ const en = {
       facultiesFailed: 'Could not load the faculty catalogue.',
       noFaculties: 'No faculties',
       noFacultiesHint: 'They are created in the mapping editor, along with their perimeter.',
-      facultyEditHint: 'The perimeter and position are not edited here: they are drawn in the mapping editor.',
+      facultyEditHint:
+        'The perimeter and position are not edited here: they are drawn in the mapping editor.',
       fieldName: 'Name',
       fieldNameEn: 'Name in English',
       fieldCampus: 'Campus',
@@ -954,8 +988,10 @@ const en = {
       submit: 'Publish',
       submitting: 'Publishing…',
       created: 'Pin published!',
-      dailyLimitReached: '{{name}}, you exceeded the daily limit of 10 pins. Come back tomorrow at {{resetAt}}.',
-      locationOccupied: 'There is already a pin at this spot on this floor. Move it slightly or change floor.',
+      dailyLimitReached:
+        '{{name}}, you exceeded the daily limit of 10 pins. Come back tomorrow at {{resetAt}}.',
+      locationOccupied:
+        'There is already a pin at this spot on this floor. Move it slightly or change floor.',
       invalidFloorForBuilding: 'That building does not have that floor. Pick the floor again.',
       floorNotInFaculty: 'That faculty has no such floor mapped. Pick the floor again.',
       floorZero: 'Floor 0 does not exist: the ground floor is 1 and the basement is -1.',
@@ -1035,7 +1071,8 @@ const en = {
       emptyFiltered: 'Nothing in this category',
       loading: 'Loading…',
       loadFailed: 'Could not load your notifications',
-      loadFailedHint: 'Check your connection. If you have been away, your session may have expired.',
+      loadFailedHint:
+        'Check your connection. If you have been away, your session may have expired.',
       retry: 'Try again',
       signedOut: 'Sign in to see your notifications',
       signedOutHint: 'They are private and tied to your UDP account.',
@@ -1086,11 +1123,15 @@ const en = {
         syncNoSession: 'Sign in so the server knows about this device.',
         syncRetry: 'Try again',
         errors: {
-          blocked: 'Notifications are blocked for this site. Allow them from the padlock in the address bar and try again.',
-          unreachable: 'The browser could not reach its notification service. Check the system and site permissions, and try without a VPN, ad blockers or private mode.',
+          blocked:
+            'Notifications are blocked for this site. Allow them from the padlock in the address bar and try again.',
+          unreachable:
+            'The browser could not reach its notification service. Check the system and site permissions, and try without a VPN, ad blockers or private mode.',
           vapid: 'The Web Push configuration of the app is not valid. Contact the administrator.',
-          serviceWorker: 'Could not set up the service that receives notifications in the background. Reload the page and try again.',
-          generic: 'We could not turn on notifications on this device. Check the browser permissions and try again.',
+          serviceWorker:
+            'Could not set up the service that receives notifications in the background. Reload the page and try again.',
+          generic:
+            'We could not turn on notifications on this device. Check the browser permissions and try again.',
           disable: 'We could not turn off notifications on this device. Try again.',
           missingKey: 'VITE_VAPID_PUBLIC_KEY is not configured on the app server.',
         },
@@ -1100,7 +1141,8 @@ const en = {
       campus: 'Campus',
       aria: 'Campus map',
       centerOnMe: 'Center on my location',
-      compassBlocked: 'Compass blocked. Allow access to “Motion sensors” in your browser (e.g. Brave Shields).',
+      compassBlocked:
+        'Compass blocked. Allow access to “Motion sensors” in your browser (e.g. Brave Shields).',
       locationDenied: 'You need to turn on location on your device or browser.',
       locationDeniedCenter: 'You need to turn on location in your browser to center the map.',
       locationFailed: 'We couldn’t get your location.',
@@ -1169,14 +1211,16 @@ const en = {
       title: 'Welcome to UDP Map',
       subtitle: 'Discover everything you can do on your university map.',
       installTitle: 'Install UDP Map for the full experience',
-      installBody: 'Add UDP Map to your home screen or use your browser’s “Install” option for quick access and the full experience.',
+      installBody:
+        'Add UDP Map to your home screen or use your browser’s “Install” option for quick access and the full experience.',
       browserBody: 'We recommend using Google Chrome or Safari for the best experience.',
       installBenefit: 'Instant access from your home screen, with no browser bar.',
       installAction: 'Install app',
       installIOS: 'See how to install on iPhone',
       installed: 'UDP Map installed on your device!',
       installedAlready: 'App installed and ready to use',
-      installDesktopHint: 'On Chrome/Edge: click the “Install” icon (⊕) in the address bar or in the options menu.',
+      installDesktopHint:
+        'On Chrome/Edge: click the “Install” icon (⊕) in the address bar or in the options menu.',
       safariSteps: 'Steps to install on Safari (iPhone):',
       safariStep1Before: 'Tap the',
       safariStep1Action: 'Share',

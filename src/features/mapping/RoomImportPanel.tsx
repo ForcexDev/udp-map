@@ -57,10 +57,7 @@ export function RoomImportPanel({ mapping, pins, building }: RoomImportPanelProp
   // declaró la rechaza `trg_validate_pin_floor`, así que aquí se avisa antes en
   // vez de dejar que el alta falle con un error de la base.
   const declaredFloors = useMemo(
-    () =>
-      new Set(
-        mapping.floors.filter((f) => f.building_id === building?.id).map((f) => f.level),
-      ),
+    () => new Set(mapping.floors.filter((f) => f.building_id === building?.id).map((f) => f.level)),
     [mapping.floors, building?.id],
   )
 
@@ -102,8 +99,8 @@ export function RoomImportPanel({ mapping, pins, building }: RoomImportPanelProp
   if (!buildingCode) {
     return (
       <Hint>
-        El horario no reconoce este edificio. El catálogo lo identifica por su dirección postal
-        (<code>E441</code>, <code>V432</code>, <code>E278A</code>…): pon ese código en el nombre
+        El horario no reconoce este edificio. El catálogo lo identifica por su dirección postal (
+        <code>E441</code>, <code>V432</code>, <code>E278A</code>…): pon ese código en el nombre
         corto del edificio o entre sus alias y aparecerán sus salas.
       </Hint>
     )

@@ -66,7 +66,13 @@ beforeEach(() => {
 describe('tarjeta de entregas por servicio', () => {
   it('una fila por servicio, con sus cuatro conteos y el último error', async () => {
     fetchStats.mockResolvedValue([
-      stat({ host: 'web.push.apple.com', sent: 412, failed: 3, pending: 2, lastError: 'HTTP 403: BadJwtToken' }),
+      stat({
+        host: 'web.push.apple.com',
+        sent: 412,
+        failed: 3,
+        pending: 2,
+        lastError: 'HTTP 403: BadJwtToken',
+      }),
       stat({ host: 'fcm.googleapis.com', sent: 880, expired: 12 }),
     ])
     renderPanel()
@@ -163,18 +169,24 @@ describe('prueba a uno mismo', () => {
     press()
 
     await waitFor(() => expect(toast).toHaveBeenCalled())
-    expect(toast.mock.calls[0][0]).toBe('Prueba enviada. Debería aparecer en tu pantalla en unos segundos.')
+    expect(toast.mock.calls[0][0]).toBe(
+      'Prueba enviada. Debería aparecer en tu pantalla en unos segundos.',
+    )
   })
 
   it('un error de la prueba llega al aviso con su texto', async () => {
-    selfTest.mockRejectedValue(new Error('Falta aplicar la migración 20260827000000 en Supabase (SQL Editor).'))
+    selfTest.mockRejectedValue(
+      new Error('Falta aplicar la migración 20260827000000 en Supabase (SQL Editor).'),
+    )
     renderPanel()
     await screen.findByText(/ninguna entrega/i)
 
     press()
 
-    await waitFor(() => expect(toast).toHaveBeenCalledWith(
-      'Falta aplicar la migración 20260827000000 en Supabase (SQL Editor).',
-    ))
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        'Falta aplicar la migración 20260827000000 en Supabase (SQL Editor).',
+      ),
+    )
   })
 })

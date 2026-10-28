@@ -41,7 +41,11 @@ describe('validación del grafo', () => {
       sample.nodes,
       sample.edges.filter((e) => e.id !== '4:esc~5:esc' && e.id !== '4:asc~5:asc'),
     )
-    const issues = validateNavGraph({ graph: broken, areas: sample.areas, roomCodes: ['V432.4.S413', 'v432.2.s299'] })
+    const issues = validateNavGraph({
+      graph: broken,
+      areas: sample.areas,
+      roomCodes: ['V432.4.S413', 'v432.2.s299'],
+    })
     const codes = issues.map((i) => i.code)
     expect(codes).toContain('room-unreachable')
     expect(codes).toContain('shaft-unlinked')
@@ -55,6 +59,8 @@ describe('validación del grafo', () => {
     )
     const issues = validateNavGraph({ graph: noLift })
     expect(issues.every((i) => i.code !== 'room-unreachable')).toBe(true)
-    expect(issues.some((i) => i.code === 'room-unreachable-step-free' && i.severity === 'warning')).toBe(true)
+    expect(
+      issues.some((i) => i.code === 'room-unreachable-step-free' && i.severity === 'warning'),
+    ).toBe(true)
   })
 })

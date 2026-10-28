@@ -125,7 +125,13 @@ export function buildFloorPrisms({ buildings, areas, graph, gap, dark }: SceneIn
               .map((n) => shaftRect(n.id))
               .filter((r): r is ShaftRect => r !== null)
               .map(rectRing)
-      prisms.push({ rings: [building.footprint, ...holes], base: z - SLAB_DEPTH, height: z, color: colors.slab, props })
+      prisms.push({
+        rings: [building.footprint, ...holes],
+        base: z - SLAB_DEPTH,
+        height: z,
+        color: colors.slab,
+        props,
+      })
 
       for (const area of floorAreas) {
         const style = AREA_STYLES[area.kind as AreaKind] ?? AREA_STYLES.other
@@ -140,7 +146,14 @@ export function buildFloorPrisms({ buildings, areas, graph, gap, dark }: SceneIn
         const doors = floorNodes.filter((n) => n.kind === 'door' || n.kind === 'entrance')
         for (const wall of wallSegments(area.ring, doors)) {
           const ring = band(wall[0], wall[1], WALL_THICKNESS)
-          if (ring) prisms.push({ rings: [ring], base: z + 0.05, height: z + WALL_HEIGHT, color: colors.wall, props })
+          if (ring)
+            prisms.push({
+              rings: [ring],
+              base: z + 0.05,
+              height: z + WALL_HEIGHT,
+              color: colors.wall,
+              props,
+            })
         }
       }
 
@@ -149,7 +162,8 @@ export function buildFloorPrisms({ buildings, areas, graph, gap, dark }: SceneIn
       for (const stairs of floorNodes.filter((n) => n.kind === 'stairs')) {
         if (!graph || !leadsUp(graph, stairs)) continue
         const rect = shaftRect(stairs.id)
-        if (rect) prisms.push(...stepPrisms(stairs.p, rect, z, FLOOR_HEIGHT_M + gap, colors.step, props))
+        if (rect)
+          prisms.push(...stepPrisms(stairs.p, rect, z, FLOOR_HEIGHT_M + gap, colors.step, props))
       }
     }
   }
@@ -165,7 +179,11 @@ function rectRing(rect: ShaftRect): Vec2[] {
 function leadsUp(graph: NavGraph, stairs: NavNode): boolean {
   return graph
     .neighbors(stairs.id)
-    .some(({ to, edge }) => edge.kind === 'stairs' && levelIndex(graph.node(to).floor ?? 1) > levelIndex(stairs.floor ?? 1))
+    .some(
+      ({ to, edge }) =>
+        edge.kind === 'stairs' &&
+        levelIndex(graph.node(to).floor ?? 1) > levelIndex(stairs.floor ?? 1),
+    )
 }
 
 /** Los bordes de un recinto, con un corte en cada puerta que cae sobre ellos. */
@@ -230,13 +248,25 @@ function stepPrisms(
     { x: mid.x + rect.v.x * rect.halfWidth, y: mid.y + rect.v.y * rect.halfWidth },
     Math.min(1.5, rect.halfLength * 0.5),
   )
-  if (ring) prisms.push({ rings: [ring], base: z + storey * 0.5 - 0.22, height: z + storey * 0.5, color, props })
+  if (ring)
+    prisms.push({
+      rings: [ring],
+      base: z + storey * 0.5 - 0.22,
+      height: z + storey * 0.5,
+      color,
+      props,
+    })
   return prisms
 }
 
 // ── Capas ───────────────────────────────────────────────────────────────────
 
-export function setFloorData(map: MapLibreMap, prisms: Prism[], plane: LocalPlane, levels: number[]): void {
+export function setFloorData(
+  map: MapLibreMap,
+  prisms: Prism[],
+  plane: LocalPlane,
+  levels: number[],
+): void {
   if (!map.getSource(SOURCE)) map.addSource(SOURCE, { type: 'geojson', data: EMPTY_COLLECTION })
   // Se dibujan de abajo arriba: con opacidades parciales el orden de capa
   // decide qué se ve a través de qué.
@@ -262,17 +292,32 @@ export function setFloorData(map: MapLibreMap, prisms: Prism[], plane: LocalPlan
  * transparentes para no tapar. Navegando se apagan más: lo que importa es la
  * planta por la que va la figura.
  */
-export function floorOpacity(level: number, active: number, navigating: boolean, separated: boolean): number {
+export function floorOpacity(
+  level: number,
+  active: number,
+  navigating: boolean,
+  separated: boolean,
+): number {
   if (level === active) return 1
   if (levelIndex(level) < levelIndex(active)) return navigating ? 0.22 : 0.4
   if (navigating) return 0.05
   return separated ? 0.28 : 0.12
 }
 
-export function setFloorOpacities(map: MapLibreMap, levels: number[], active: number, navigating: boolean, separated: boolean) {
+export function setFloorOpacities(
+  map: MapLibreMap,
+  levels: number[],
+  active: number,
+  navigating: boolean,
+  separated: boolean,
+) {
   for (const level of levels) {
     if (!map.getLayer(layerId(level))) continue
-    map.setPaintProperty(layerId(level), 'fill-extrusion-opacity', floorOpacity(level, active, navigating, separated))
+    map.setPaintProperty(
+      layerId(level),
+      'fill-extrusion-opacity',
+      floorOpacity(level, active, navigating, separated),
+    )
   }
 }
 

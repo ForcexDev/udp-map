@@ -13,12 +13,12 @@ tarea, ofrece los pendientes del plan antes de proponer otra.
 
 Actualiza la documentación correspondiente en el mismo cambio:
 
-| Si cambias… | Actualiza… |
-|---|---|
-| Esquema, RPC, políticas o triggers | Migración nueva + `supabase/schema/baseline.sql` + `docs/referencia/base-de-datos.md` |
-| Pendientes o decisiones del plan | `docs/ROADMAP.md` y la decisión correspondiente si cambia su justificación |
-| Archivos, rutas o Edge Functions | `docs/referencia/repositorio.md`; el índice si cambia la orientación |
-| Comportamiento visible de una versión | `docs/CHANGELOG.md`, respetando su contrato con el build |
+| Si cambias…                           | Actualiza…                                                                            |
+| ------------------------------------- | ------------------------------------------------------------------------------------- |
+| Esquema, RPC, políticas o triggers    | Migración nueva + `supabase/schema/baseline.sql` + `docs/referencia/base-de-datos.md` |
+| Pendientes o decisiones del plan      | `docs/ROADMAP.md` y la decisión correspondiente si cambia su justificación            |
+| Archivos, rutas o Edge Functions      | `docs/referencia/repositorio.md`; el índice si cambia la orientación                  |
+| Comportamiento visible de una versión | `docs/CHANGELOG.md`, respetando su contrato con el build                              |
 
 La migración ejecuta el cambio; el baseline reconstruye la base; la referencia
 explica el contrato y sus motivos. Mantener solo dos ya dejó el mapeo interior
@@ -32,11 +32,11 @@ ya aplicada en un entorno compartido para cambiar el esquema: crea otra.
 
 Antes de dar por terminado un cambio deben pasar:
 
-~~~bash
+```bash
 npm run typecheck
 npx vitest run
 npx eslint src
-~~~
+```
 
 No lo marques terminado con pruebas fallidas, implementación incompleta o archivos
 necesarios sin revisar. `npm run build` también ejecuta el typecheck.
@@ -48,9 +48,9 @@ El alcance de CI y las comprobaciones adicionales están en
 **Edita este archivo.** `AGENTS.md`, `GEMINI.md`, `.cursorrules` y
 `.github/copilot-instructions.md` se generan desde aquí:
 
-~~~bash
+```bash
 npm run gen:agents
-~~~
+```
 
 No edites los derivados a mano. Llevan las reglas completas porque los antiguos
 punteros al origen dejaban sin instrucciones a herramientas que no seguían el enlace.

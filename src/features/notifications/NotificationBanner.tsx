@@ -48,7 +48,9 @@ export function NotificationBanner() {
       style={{ top: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
     >
       <div className="glass-hud p-4 rounded-2xl shadow-2xl border border-[#E6E0D5] dark:border-white/[0.08] flex items-start gap-3 bg-white/95 dark:bg-[#1E222D]/95 backdrop-blur-md">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${look.bg} ${look.fg}`}>
+        <div
+          className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${look.bg} ${look.fg}`}
+        >
           <CategoryIcon size={18} strokeWidth={2.2} />
         </div>
 
@@ -59,7 +61,7 @@ export function NotificationBanner() {
           <p className="text-[11px] text-stone-600 dark:text-stone-300 font-normal line-clamp-2 mt-0.5 leading-snug">
             {activeBanner.body}
           </p>
-          
+
           <div className="flex items-center gap-2 mt-2.5">
             <button
               type="button"

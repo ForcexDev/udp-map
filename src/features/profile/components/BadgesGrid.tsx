@@ -95,7 +95,9 @@ export function BadgesGrid({ badges, userBadges, loading }: BadgesGridProps) {
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <h3 className={`text-sm font-bold m-0 ${isUnlocked ? 'text-stone-900 dark:text-stone-100' : 'text-stone-500 dark:text-stone-400'}`}>
+                  <h3
+                    className={`text-sm font-bold m-0 ${isUnlocked ? 'text-stone-900 dark:text-stone-100' : 'text-stone-500 dark:text-stone-400'}`}
+                  >
                     {badgeName}
                   </h3>
                   {isUnlocked && (
@@ -109,7 +111,8 @@ export function BadgesGrid({ badges, userBadges, loading }: BadgesGridProps) {
                 </p>
                 {isUnlocked && unlockedBadge.awarded_at && (
                   <p className="mt-2 mb-0 text-[10px] font-medium text-stone-400 dark:text-stone-500 tabular-nums">
-                    {t('profile.unlockedAt', 'Desbloqueada el')}: {new Date(unlockedBadge.awarded_at).toLocaleDateString(i18n.language)}
+                    {t('profile.unlockedAt', 'Desbloqueada el')}:{' '}
+                    {new Date(unlockedBadge.awarded_at).toLocaleDateString(i18n.language)}
                   </p>
                 )}
               </div>

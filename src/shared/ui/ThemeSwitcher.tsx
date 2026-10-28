@@ -18,7 +18,10 @@ export function ThemeSwitcher() {
   const theme = useUIStore((s) => s.theme)
   const setTheme = useUIStore((s) => s.setTheme)
 
-  const activeIndex = Math.max(0, MODES.findIndex((m) => m.value === theme))
+  const activeIndex = Math.max(
+    0,
+    MODES.findIndex((m) => m.value === theme),
+  )
 
   return (
     <div className="relative flex p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-2xl w-full select-none">
@@ -43,9 +46,10 @@ export function ThemeSwitcher() {
               rounded-[14px]
               flex items-center justify-center gap-2
               text-[11px] font-black tracking-wide transition-colors duration-300
-              ${isActive
-                ? 'text-neutral-900 dark:text-white'
-                : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
+              ${
+                isActive
+                  ? 'text-neutral-900 dark:text-white'
+                  : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
               }
             `}
           >

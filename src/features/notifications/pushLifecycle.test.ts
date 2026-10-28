@@ -22,7 +22,8 @@ const api = vi.hoisted(() => ({
 }))
 vi.mock('./api', () => api)
 
-const VAPID_PUBLIC_KEY = 'BMsTXlUoAaxx9brDhqgGzaboSa-kzRSaUYHpXZAenxCWA6-rwTNes_iRUtr7wQtZsC_AIuMUSvXrYsNOFFjQuZQ'
+const VAPID_PUBLIC_KEY =
+  'BMsTXlUoAaxx9brDhqgGzaboSa-kzRSaUYHpXZAenxCWA6-rwTNes_iRUtr7wQtZsC_AIuMUSvXrYsNOFFjQuZQ'
 const NEW_ENDPOINT = 'https://push.example/nuevo'
 const OLD_ENDPOINT = 'https://push.example/viejo'
 
@@ -57,7 +58,11 @@ interface BrowserOptions {
   answer?: NotificationPermission
 }
 
-function stubBrowser({ permission = 'granted', endpoint = null, answer = 'granted' }: BrowserOptions = {}): FakeBrowser {
+function stubBrowser({
+  permission = 'granted',
+  endpoint = null,
+  answer = 'granted',
+}: BrowserOptions = {}): FakeBrowser {
   const browser: FakeBrowser = {
     current: null,
     subscribe: vi.fn(),
@@ -132,9 +137,10 @@ describe('activar', () => {
     const browser = stubBrowser({ permission: 'default' })
     let serverCallsBeforeSubscribe = -1
     browser.subscribe.mockImplementation(async () => {
-      serverCallsBeforeSubscribe = api.getPushSessionUserId.mock.calls.length
-        + api.registerPushSubscription.mock.calls.length
-        + api.deletePushSubscription.mock.calls.length
+      serverCallsBeforeSubscribe =
+        api.getPushSessionUserId.mock.calls.length +
+        api.registerPushSubscription.mock.calls.length +
+        api.deletePushSubscription.mock.calls.length
       browser.current = makeSubscription(browser, NEW_ENDPOINT)
       return browser.current
     })
@@ -144,8 +150,9 @@ describe('activar', () => {
 
     expect(browser.subscribe).toHaveBeenCalledTimes(1)
     expect(serverCallsBeforeSubscribe).toBe(0)
-    expect(browser.requestPermission.mock.invocationCallOrder[0])
-      .toBeLessThan(browser.subscribe.mock.invocationCallOrder[0])
+    expect(browser.requestPermission.mock.invocationCallOrder[0]).toBeLessThan(
+      browser.subscribe.mock.invocationCallOrder[0],
+    )
   })
 
   it('suscribe, registra en el servidor y deja las dos verdades en orden', async () => {
@@ -155,7 +162,10 @@ describe('activar', () => {
     await subscribeToPush()
 
     expect(browser.subscribe).toHaveBeenCalledWith(
-      expect.objectContaining({ userVisibleOnly: true, applicationServerKey: expect.any(Uint8Array) }),
+      expect.objectContaining({
+        userVisibleOnly: true,
+        applicationServerKey: expect.any(Uint8Array),
+      }),
     )
     expect(api.registerPushSubscription).toHaveBeenCalledWith(browser.current, null)
     const store = usePushStore.getState()
@@ -223,8 +233,9 @@ describe('desactivar', () => {
     expect(api.deletePushSubscription).toHaveBeenCalledWith(NEW_ENDPOINT)
     // Al revés, un borrado fallido abortaba la baja y el navegador seguía
     // recibiendo los avisos de la cuenta que salía.
-    expect(subscription.unsubscribe.mock.invocationCallOrder[0])
-      .toBeLessThan(api.deletePushSubscription.mock.invocationCallOrder[0])
+    expect(subscription.unsubscribe.mock.invocationCallOrder[0]).toBeLessThan(
+      api.deletePushSubscription.mock.invocationCallOrder[0],
+    )
 
     const store = usePushStore.getState()
     expect(store.state).toBe('idle')
@@ -262,9 +273,12 @@ describe('desactivar', () => {
     const { unsubscribeFromPush, usePushStore } = await freshStore()
     const subscription = browser.current!
     let soltar: () => void = () => {}
-    subscription.unsubscribe.mockImplementation(() => new Promise<boolean>((resolve) => {
-      soltar = () => resolve(true)
-    }))
+    subscription.unsubscribe.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          soltar = () => resolve(true)
+        }),
+    )
 
     const desactivando = unsubscribeFromPush()
     await vi.waitFor(() => expect(subscription.unsubscribe).toHaveBeenCalled())
@@ -395,7 +409,8 @@ describe('la pista de iOS', () => {
     // Notification. Es justo donde la pista tiene que salir.
     Object.defineProperty(navigator, 'userAgent', {
       configurable: true,
-      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_4 like Mac OS X) AppleWebKit/605.1.15 Version/18.4 Mobile/15E148 Safari/604.1',
+      value:
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_4 like Mac OS X) AppleWebKit/605.1.15 Version/18.4 Mobile/15E148 Safari/604.1',
     })
   }
 
@@ -631,7 +646,13 @@ describe('resolvePushState', () => {
         intento += 1
         return intento === 1
           ? { ready: Promise.reject(new Error('service worker caído')) }
-          : { ready: Promise.resolve({ pushManager: { getSubscription: () => Promise.resolve({ endpoint: 'https://push.example/ok' }) } }) }
+          : {
+              ready: Promise.resolve({
+                pushManager: {
+                  getSubscription: () => Promise.resolve({ endpoint: 'https://push.example/ok' }),
+                },
+              }),
+            }
       },
     })
 

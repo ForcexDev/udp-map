@@ -8,11 +8,11 @@ está en [repositorio](../referencia/repositorio.md); las reglas, en
 
 Usa Node.js 24, como CI, y el lockfile:
 
-~~~bash
+```bash
 npm ci
 cp .env.example .env
 npm run dev
-~~~
+```
 
 En PowerShell, `Copy-Item .env.example .env` sustituye a `cp`. Si la política
 local bloquea `npm.ps1` o `npx.ps1`, usa `npm.cmd` y `npx.cmd`; no hace falta
@@ -20,15 +20,15 @@ cambiar la política del equipo.
 
 Vite usa 5173 por defecto. Para otra instancia:
 
-~~~bash
+```bash
 PORT=5199 npm run dev
-~~~
+```
 
-~~~powershell
+```powershell
 $env:PORT = '5199'
 npm run dev
 Remove-Item Env:PORT
-~~~
+```
 
 El puerto no selecciona el backend. OAuth debe admitir el origen usado; CORS y
 su extensión están en [despliegue](despliegue.md#configuracion-por-entorno).
@@ -39,14 +39,14 @@ no consulta ese modo para decidir si conecta a Supabase.
 
 La plantilla es [`.env.example`](../../.env.example).
 
-| Variable | Uso y ausencia |
-|---|---|
-| `VITE_SUPABASE_URL` | Junto con una clave pública activa el backend |
-| `VITE_SUPABASE_ANON_KEY` | Clave pública; tiene precedencia sobre el alias |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Alias si falta `ANON_KEY` |
-| `VITE_GOOGLE_CLIENT_ID` | Cliente del botón `GoogleLogin` activo |
-| `VITE_ORS_API_KEY` | Rutas ORS; sin ella se intenta OSRM y después recta |
-| `VITE_VAPID_PUBLIC_KEY` | Suscripción push; debe concordar con el par Edge |
+| Variable                        | Uso y ausencia                                      |
+| ------------------------------- | --------------------------------------------------- |
+| `VITE_SUPABASE_URL`             | Junto con una clave pública activa el backend       |
+| `VITE_SUPABASE_ANON_KEY`        | Clave pública; tiene precedencia sobre el alias     |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Alias si falta `ANON_KEY`                           |
+| `VITE_GOOGLE_CLIENT_ID`         | Cliente del botón `GoogleLogin` activo              |
+| `VITE_ORS_API_KEY`              | Rutas ORS; sin ella se intenta OSRM y después recta |
+| `VITE_VAPID_PUBLIC_KEY`         | Suscripción push; debe concordar con el par Edge    |
 
 `shared/lib/supabase.ts` crea el cliente solo si existen URL y una clave
 pública. Si falta cualquiera, `supabase` es `null`. Sin VAPID puede haber backend
@@ -115,14 +115,15 @@ interfaz no demuestra autorización y un archivo no acredita despliegue.
 ## Scripts y contribución
 
 `npm run dev` desarrolla; `npm run preview` sirve el build; `npm run build`
-verifica tipos y construye. Consulta [validación](validacion.md) para pruebas y CI.
+verifica tipos y construye; `npm run format` formatea el código con Prettier
+(`npm run format:check` verifica). Consulta [validación](validacion.md) para pruebas y CI.
 
 Después de editar `CLAUDE.md`:
 
-~~~bash
+```bash
 npm run gen:agents
 node scripts/gen_agents.mjs --check
-~~~
+```
 
 El generador guarda copias completas y solo escribe si cambian. Su comprobación
 compara bytes; los finales de línea pueden importar. Los enlaces de la copia

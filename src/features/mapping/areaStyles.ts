@@ -25,7 +25,7 @@ export const AREA_STYLES: Record<AreaKind, AreaStyle> = {
   corridor: { label: 'Pasillo', color: '#A8A29E', opacity: 0.14, outdoor: false },
   cafeteria: { label: 'Casino', color: '#F59E0B', opacity: 0.22, outdoor: false },
   kiosk: { label: 'Quiosco', color: '#B45309', opacity: 0.24, outdoor: false },
-  lab: { label: 'Laboratorio', color: '#3B82F6', opacity: 0.20, outdoor: false },
+  lab: { label: 'Laboratorio', color: '#3B82F6', opacity: 0.2, outdoor: false },
   office: { label: 'Oficinas', color: '#64748B', opacity: 0.18, outdoor: false },
   service: { label: 'Servicios', color: '#94A3B8', opacity: 0.14, outdoor: false },
   courtyard: { label: 'Patio', color: '#65A30D', opacity: 0.18, outdoor: true },

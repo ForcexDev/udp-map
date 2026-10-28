@@ -12,23 +12,23 @@ Google y autenticación. `App` monta sincronización del catálogo y del disposi
 push por encima de las rutas; `Layout` organiza navegación pública y modales.
 `UpdatePrompt` vive fuera de las pantallas.
 
-| Ruta | Responsable y acceso de interfaz |
-|---|---|
-| `/`, desconocidas | Redirigen a `/mapa` |
-| `/mapa` | `MapPage` y `MapView` |
-| `/eventos` | `EventsPage`, agenda y RSVP |
-| `/foro` | `ForumPage` e hilos |
-| `/perfil` | `profile/pages/ProfilePage` |
-| `/moderacion` | `LegacyModerationRedirect` conserva `?report=` al reenviar |
-| `/admin` | `AdminLayout` y `DashboardPanel` |
-| `/admin/moderacion` | `ReportsPanel` y avisos del equipo |
-| `/admin/usuarios` | `UsersPanel` y capacidades |
-| `/admin/contenido` | `ContentPanel` |
-| `/admin/facultades` | `FacultiesPanel` |
-| `/admin/difusion` | `BroadcastPanel` |
-| `/admin/actividad` | `ActivityLogPanel` |
-| `/admin/mapeo` | `MappingPage` |
-| `/admin/ajustes` | `SettingsPanel` |
+| Ruta                | Responsable y acceso de interfaz                           |
+| ------------------- | ---------------------------------------------------------- |
+| `/`, desconocidas   | Redirigen a `/mapa`                                        |
+| `/mapa`             | `MapPage` y `MapView`                                      |
+| `/eventos`          | `EventsPage`, agenda y RSVP                                |
+| `/foro`             | `ForumPage` e hilos                                        |
+| `/perfil`           | `profile/pages/ProfilePage`                                |
+| `/moderacion`       | `LegacyModerationRedirect` conserva `?report=` al reenviar |
+| `/admin`            | `AdminLayout` y `DashboardPanel`                           |
+| `/admin/moderacion` | `ReportsPanel` y avisos del equipo                         |
+| `/admin/usuarios`   | `UsersPanel` y capacidades                                 |
+| `/admin/contenido`  | `ContentPanel`                                             |
+| `/admin/facultades` | `FacultiesPanel`                                           |
+| `/admin/difusion`   | `BroadcastPanel`                                           |
+| `/admin/actividad`  | `ActivityLogPanel`                                         |
+| `/admin/mapeo`      | `MappingPage`                                              |
+| `/admin/ajustes`    | `SettingsPanel`                                            |
 
 `AdminLayout` espera `authStore.loading` antes de comprobar rol; de otro modo
 puede redirigir antes de conocerlo. Solo admite `admin`. Dar `mapping` o
@@ -39,18 +39,18 @@ su entrada en `App`. Mapeo se presenta como herramienta de escritorio.
 
 ## Fuentes y estado compartido
 
-| Pieza | Responsabilidad |
-|---|---|
-| `shared/lib/supabase.ts` | Cliente o `null` según URL y clave pública |
-| `shared/lib/queryClient.ts` | Caché remota compartida |
-| `shared/lib/i18n.ts` y `shared/utils/localized.ts` | Catálogos ES/EN y elección de textos |
-| `shared/stores/uiStore.ts` | Selección, modales, planta, orientación y rutas |
-| `filterStore` | Filtros de contenido; no es autorización |
-| `sidebarStore` | Apertura y sección de la barra lateral |
-| `shared/data/campusData.ts` | Semilla del catálogo activo |
-| `facultyStore` y `useFaculties` | Catálogo vivo, suscripción y geometría de facultades |
-| `mappingCache` | Instantánea síncrona del interior para consumidores no React |
-| `shared/types/database.ts` | Tipos manuales de lo consultado por el cliente |
+| Pieza                                              | Responsabilidad                                              |
+| -------------------------------------------------- | ------------------------------------------------------------ |
+| `shared/lib/supabase.ts`                           | Cliente o `null` según URL y clave pública                   |
+| `shared/lib/queryClient.ts`                        | Caché remota compartida                                      |
+| `shared/lib/i18n.ts` y `shared/utils/localized.ts` | Catálogos ES/EN y elección de textos                         |
+| `shared/stores/uiStore.ts`                         | Selección, modales, planta, orientación y rutas              |
+| `filterStore`                                      | Filtros de contenido; no es autorización                     |
+| `sidebarStore`                                     | Apertura y sección de la barra lateral                       |
+| `shared/data/campusData.ts`                        | Semilla del catálogo activo                                  |
+| `facultyStore` y `useFaculties`                    | Catálogo vivo, suscripción y geometría de facultades         |
+| `mappingCache`                                     | Instantánea síncrona del interior para consumidores no React |
+| `shared/types/database.ts`                         | Tipos manuales de lo consultado por el cliente               |
 
 `publishFaculties` ignora listas vacías y reemplaza el contenido de `FACULTIES`
 con `splice`: quienes conservan esa referencia ven el catálogo nuevo. Las listas
@@ -153,15 +153,15 @@ consulta falla porque la migración no está aplicada, sigue `WayfinderSheet`.
 Nunca las dos. `MapPage` no pide ubicación ni ruta de calle hasta saber cuál
 corresponde: hacerlo y descartarlo gastaría cupo de ORS.
 
-| Pieza | Responsabilidad |
-|---|---|
-| `shared/utils/indoor/` | Lógica pura en metros (x = este, y = sur): proyección, grafo con costo en segundos, instrucciones, microdirección, línea de tiempo, pasillo generado, validación y el edificio de prueba |
-| `wayfinding/useNavGraph` | Grafo de una facultad (`['navGraph', facultyId]`), proyectado y con nombres de sala del área o del código |
-| `wayfinding/resolveTarget` | Pin → nodo: código normalizado, área, o nodo de paso más cercano de su planta (30 m). Elige entrada por cercanía + tiempo interior y ofrece orígenes sin GPS |
-| `wayfinding/IndoorRouteSheet` | Origen, sin escaleras, pasos, reproducción, cámara, voz y planta automática |
-| `wayfinding/IndoorScene` | Losas, suelos, muros y peldaños por planta; vista separada animada |
-| `wayfinding/LabelOverlay` | Etiquetas HTML a la altura de su planta con la matriz de MapLibre |
-| `shared/lib/mapInstance` | Instancia del mapa y época de estilo publicadas por `MapView` |
+| Pieza                         | Responsabilidad                                                                                                                                                                          |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared/utils/indoor/`        | Lógica pura en metros (x = este, y = sur): proyección, grafo con costo en segundos, instrucciones, microdirección, línea de tiempo, pasillo generado, validación y el edificio de prueba |
+| `wayfinding/useNavGraph`      | Grafo de una facultad (`['navGraph', facultyId]`), proyectado y con nombres de sala del área o del código                                                                                |
+| `wayfinding/resolveTarget`    | Pin → nodo: código normalizado, área, o nodo de paso más cercano de su planta (30 m). Elige entrada por cercanía + tiempo interior y ofrece orígenes sin GPS                             |
+| `wayfinding/IndoorRouteSheet` | Origen, sin escaleras, pasos, reproducción, cámara, voz y planta automática                                                                                                              |
+| `wayfinding/IndoorScene`      | Losas, suelos, muros y peldaños por planta; vista separada animada                                                                                                                       |
+| `wayfinding/LabelOverlay`     | Etiquetas HTML a la altura de su planta con la matriz de MapLibre                                                                                                                        |
+| `shared/lib/mapInstance`      | Instancia del mapa y época de estilo publicadas por `MapView`                                                                                                                            |
 
 `wayfinding` lee de `mapping` y `shared`; no importa de `map`. La ruta de calle
 (`routing.ts`) se le inyecta desde `MapPage`. Por eso el mapa se publica en
@@ -321,19 +321,19 @@ mostraron el coste de sincronizar dos fuentes. La deuda está en
 
 ## Configuración y documentación como entradas
 
-| Fuente | Consumidor o propósito |
-|---|---|
-| `vite.config.ts` | Versiones, PWA, `update-info.json`, alias y Vitest |
-| `docs/CHANGELOG.md` | Entrada literal de `updateInfoJson`; todas las líneas con guion llegan al aviso |
-| `CLAUDE.md` | Origen de instrucciones; `scripts/gen_agents.mjs` produce los derivados |
-| `docs/referencia/base-de-datos.md` | Ruta que comprueba el hook de esquema |
-| `scripts/gen_seed_full.ts` | Seed público; no provisiona admins, perímetros ni interior |
-| `supabase/schema/baseline.sql` | Reconstrucción del esquema; cron y configuración externa requieren pasos adicionales |
-| `supabase/config.toml` | JWT de gateway desactivado para las funciones con autorización propia |
-| `vercel.json` | Reescritura SPA |
-| `wrangler.toml` | Configuración de assets SPA alternativa; su presencia no acredita un despliegue |
-| `.github/workflows/ci.yml` | Calidad y build; sin migraciones o despliegue automático |
-| `.claude/settings.json` | Aviso de documentación DB y generación de instrucciones |
+| Fuente                             | Consumidor o propósito                                                               |
+| ---------------------------------- | ------------------------------------------------------------------------------------ |
+| `vite.config.ts`                   | Versiones, PWA, `update-info.json`, alias y Vitest                                   |
+| `docs/CHANGELOG.md`                | Entrada literal de `updateInfoJson`; todas las líneas con guion llegan al aviso      |
+| `CLAUDE.md`                        | Origen de instrucciones; `scripts/gen_agents.mjs` produce los derivados              |
+| `docs/referencia/base-de-datos.md` | Ruta que comprueba el hook de esquema                                                |
+| `scripts/gen_seed_full.ts`         | Seed público; no provisiona admins, perímetros ni interior                           |
+| `supabase/schema/baseline.sql`     | Reconstrucción del esquema; cron y configuración externa requieren pasos adicionales |
+| `supabase/config.toml`             | JWT de gateway desactivado para las funciones con autorización propia                |
+| `vercel.json`                      | Reescritura SPA                                                                      |
+| `wrangler.toml`                    | Configuración de assets SPA alternativa; su presencia no acredita un despliegue      |
+| `.github/workflows/ci.yml`         | Calidad y build; sin migraciones o despliegue automático                             |
+| `.claude/settings.json`            | Aviso de documentación DB y generación de instrucciones                              |
 
 `public/push-sw.js` se mantiene como fuente; `sw.js` se genera.
 Los scripts de iconos pueden sobrescribir assets. `bundle.mjs`, `geocode.js` y
@@ -358,18 +358,18 @@ archivos indicados; no se presentan como discrepancias corregidas por mover docs
 
 ## Dónde intervenir
 
-| Cambio | Leer y tocar primero |
-|---|---|
-| Marcador, planta, selección | `MapView`, `floorVisibility` y `mappingLayers` |
-| Código o importación de sala | [Salas](salas.md), `roomCode`, `roomCatalog`, `RoomImportPanel` |
-| Crear/editar/mover pin | `pins/api`, formulario y contrato SQL; también demo |
-| Geometría de facultades | `facultyStore`, `facultiesApi`, editor; no duplicar perímetros |
-| Modelo o autorización | Migración + baseline + [base de datos](base-de-datos.md) y tipos cliente si aplican |
-| Push/sesión/bandeja | [Notificaciones](notificaciones.md), store, API, worker, cola Edge y SQL |
-| Actualización de aplicación | [PWA](pwa.md), `UpdatePrompt`, `swUpdate` y Vite |
-| Ruta o sección admin | `App`, `ADMIN_SECTIONS`, guard y autorización servidor |
-| Pendiente o decisión | [Plan](../ROADMAP.md) y decisión correspondiente |
-| Reglas para agentes | `CLAUDE.md` y generación de derivados |
+| Cambio                       | Leer y tocar primero                                                                |
+| ---------------------------- | ----------------------------------------------------------------------------------- |
+| Marcador, planta, selección  | `MapView`, `floorVisibility` y `mappingLayers`                                      |
+| Código o importación de sala | [Salas](salas.md), `roomCode`, `roomCatalog`, `RoomImportPanel`                     |
+| Crear/editar/mover pin       | `pins/api`, formulario y contrato SQL; también demo                                 |
+| Geometría de facultades      | `facultyStore`, `facultiesApi`, editor; no duplicar perímetros                      |
+| Modelo o autorización        | Migración + baseline + [base de datos](base-de-datos.md) y tipos cliente si aplican |
+| Push/sesión/bandeja          | [Notificaciones](notificaciones.md), store, API, worker, cola Edge y SQL            |
+| Actualización de aplicación  | [PWA](pwa.md), `UpdatePrompt`, `swUpdate` y Vite                                    |
+| Ruta o sección admin         | `App`, `ADMIN_SECTIONS`, guard y autorización servidor                              |
+| Pendiente o decisión         | [Plan](../ROADMAP.md) y decisión correspondiente                                    |
+| Reglas para agentes          | `CLAUDE.md` y generación de derivados                                               |
 
 Actualiza este mapa cuando cambie la responsabilidad o estructura, no por variar
 el tamaño de un archivo. El [índice](../README.md) orienta la documentación y

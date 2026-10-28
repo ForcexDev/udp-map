@@ -188,7 +188,8 @@ export function addFacultyLayers(map: MapLibreMap) {
     (baseExtrusion && 'source' in baseExtrusion && baseExtrusion.source) || 'openmaptiles',
   )
   const buildingSourceLayer = String(
-    (baseExtrusion && 'source-layer' in baseExtrusion && baseExtrusion['source-layer']) || 'building',
+    (baseExtrusion && 'source-layer' in baseExtrusion && baseExtrusion['source-layer']) ||
+      'building',
   )
 
   if (!map.getSource(PERIMETER_SOURCE)) {
@@ -253,7 +254,10 @@ function originalFiltersOf(map: MapLibreMap): Map<string, FilterSpecification | 
   return filters
 }
 
-function withInteriorExclusion(map: MapLibreMap, filter: FilterSpecification | null): FilterSpecification | null {
+function withInteriorExclusion(
+  map: MapLibreMap,
+  filter: FilterSpecification | null,
+): FilterSpecification | null {
   const hidden = hiddenFootprints.get(map) ?? []
   if (hidden.length === 0) return filter
   // `within` pide la huella de OSM entera dentro: se expande unos metros

@@ -21,7 +21,9 @@ describe('relativeTimeKey', () => {
   it('minutos y horas no distinguen singular, porque abrevian la unidad', () => {
     // "en 1 min" y "en 1 h" ya se leen bien; darles forma singular sería
     // inventar claves que nadie va a traducir distinto.
-    expect(relativeTimeKey({ direction: 'future', unit: 'minute', value: 1 })).toBe('time.inMinutes')
+    expect(relativeTimeKey({ direction: 'future', unit: 'minute', value: 1 })).toBe(
+      'time.inMinutes',
+    )
     expect(relativeTimeKey({ direction: 'future', unit: 'hour', value: 1 })).toBe('time.inHours')
     expect(relativeTimeKey({ direction: 'past', unit: 'minute', value: 1 })).toBe('time.agoMinutes')
   })

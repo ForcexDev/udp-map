@@ -19,7 +19,12 @@ interface CreateThreadModalProps {
   onCreated?: (newThread: ForumThread) => void
 }
 
-export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }: CreateThreadModalProps) {
+export function CreateThreadModal({
+  open,
+  onClose,
+  defaultFacultyId,
+  onCreated,
+}: CreateThreadModalProps) {
   const { t, i18n } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
@@ -60,9 +65,12 @@ export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }
         facultyId: facultyId === 'general' ? null : facultyId,
         authorId: user.id,
         isOfficial: canPostOfficial && isOfficial,
-        officialEntityName: canPostOfficial && isOfficial
-          ? (role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP')
-          : null,
+        officialEntityName:
+          canPostOfficial && isOfficial
+            ? role === 'moderator'
+              ? 'Centro de Alumnos FIC'
+              : 'Administración UDP'
+            : null,
       },
       {
         onSuccess: (newThread) => {
@@ -80,7 +88,7 @@ export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }
           const errorMsg = err instanceof Error ? err.message : 'Ocurrió un error'
           setError(errorMsg || t('common.error', 'Ocurrió un error'))
         },
-      }
+      },
     )
   }
 
@@ -89,7 +97,10 @@ export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }
       open={open}
       onOpenChange={(o) => !o && onClose()}
       title={t('forum.createThreadTitle', 'Crear Nuevo Hilo')}
-      description={t('forum.createThreadDesc', 'Inicia una conversación en tu facultad o en el tablón general.')}
+      description={t(
+        'forum.createThreadDesc',
+        'Inicia una conversación en tu facultad o en el tablón general.',
+      )}
       contentClassName="!bg-white dark:!bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] sm:max-w-lg shadow-2xl rounded-3xl"
     >
       <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-4">
@@ -167,7 +178,10 @@ export function CreateThreadModal({ open, onClose, defaultFacultyId, onCreated }
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-2">
                 <BadgeCheck size={18} className="shrink-0 text-blue-500" strokeWidth={2.2} />
-                <label htmlFor="forum-official" className="cursor-pointer text-xs font-bold text-blue-600 dark:text-blue-400">
+                <label
+                  htmlFor="forum-official"
+                  className="cursor-pointer text-xs font-bold text-blue-600 dark:text-blue-400"
+                >
                   {t('forum.officialToggle', 'Publicar como Oficial')}
                 </label>
               </div>

@@ -26,7 +26,8 @@ import { usePushSubscription } from './usePushSubscription'
 
 export function PushCard() {
   const { t } = useTranslation()
-  const { state, error, serverSync, operation, subscribe, unsubscribe, retry, retrySync } = usePushSubscription()
+  const { state, error, serverSync, operation, subscribe, unsubscribe, retry, retrySync } =
+    usePushSubscription()
   const openTutorial = useUIStore((s) => s.openTutorial)
   const [retryingSync, setRetryingSync] = useState(false)
 
@@ -71,15 +72,24 @@ export function PushCard() {
     : busy
       ? t('notifications.push.checking', 'Comprobando este dispositivo…')
       : blocked
-        ? t('notifications.push.deniedHint', 'Permítelas desde el candado de la barra de direcciones.')
+        ? t(
+            'notifications.push.deniedHint',
+            'Permítelas desde el candado de la barra de direcciones.',
+          )
         : iosPending
-          ? t('notifications.push.iosHint', 'Desde Safari: Compartir → Añadir a pantalla de inicio.')
+          ? t(
+              'notifications.push.iosHint',
+              'Desde Safari: Compartir → Añadir a pantalla de inicio.',
+            )
           : t('notifications.push.off', 'Recíbelas aunque la app esté cerrada')
 
   const title = blocked
     ? t('notifications.push.denied', 'Bloqueadas en este navegador')
     : iosPending
-      ? t('notifications.push.iosNotInstalled', 'En iPhone hay que añadir la app a la pantalla de inicio')
+      ? t(
+          'notifications.push.iosNotInstalled',
+          'En iPhone hay que añadir la app a la pantalla de inicio',
+        )
       : t('notifications.push.title', 'Notificaciones push')
 
   return (
@@ -114,7 +124,9 @@ export function PushCard() {
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold leading-tight text-stone-900 dark:text-stone-100">{title}</p>
+          <p className="text-sm font-bold leading-tight text-stone-900 dark:text-stone-100">
+            {title}
+          </p>
           <p className="mt-0.5 text-xs font-normal leading-snug text-stone-500 dark:text-stone-400">
             {subtitle}
           </p>
@@ -123,8 +135,8 @@ export function PushCard() {
         {/* Bloqueadas: no hay botón. Un "Activar" que el navegador va a rechazar
             en silencio enseña a desconfiar del botón, no a arreglar el permiso —
             lo que hace falta es la instrucción, y está en el subtítulo. */}
-        {!blocked && (
-          iosPending ? (
+        {!blocked &&
+          (iosPending ? (
             <button
               type="button"
               onClick={openTutorial}
@@ -156,16 +168,21 @@ export function PushCard() {
                   ? t('notifications.push.retry', 'Reintentar')
                   : t('notifications.push.enable', 'Activar')}
             </button>
-          )
-        )}
+          ))}
       </div>
 
       {serverUnaware && (
         <div className="mt-3 flex items-center gap-3 rounded-xl bg-amber-50/80 px-3 py-2 dark:bg-amber-950/30">
           <p className="min-w-0 flex-1 text-xs font-medium leading-snug text-amber-700 dark:text-amber-400">
             {serverSync === 'no-session'
-              ? t('notifications.push.syncNoSession', 'Inicia sesión para que el servidor conozca este dispositivo.')
-              : t('notifications.push.syncFailed', 'Activadas aquí, pero no pudimos avisar al servidor. Puede que no te lleguen.')}
+              ? t(
+                  'notifications.push.syncNoSession',
+                  'Inicia sesión para que el servidor conozca este dispositivo.',
+                )
+              : t(
+                  'notifications.push.syncFailed',
+                  'Activadas aquí, pero no pudimos avisar al servidor. Puede que no te lleguen.',
+                )}
           </p>
           <button
             type="button"

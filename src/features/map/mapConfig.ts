@@ -61,19 +61,9 @@ const ROAD_CASINGS = [
   'tunnel_service_track_casing',
 ] as const
 
-const HIGHWAY_LABELS = [
-  'highway-name-minor',
-  'highway-name-major',
-  'highway-name-path',
-] as const
+const HIGHWAY_LABELS = ['highway-name-minor', 'highway-name-major', 'highway-name-path'] as const
 
-const POI_LABELS = [
-  'poi_r20',
-  'poi_r7',
-  'poi_r1',
-  'poi_transit',
-  'airport',
-] as const
+const POI_LABELS = ['poi_r20', 'poi_r7', 'poi_r1', 'poi_transit', 'airport'] as const
 
 const PLACE_LABELS = [
   'label_other',

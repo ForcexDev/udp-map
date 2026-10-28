@@ -13,7 +13,14 @@ interface ProfileHeaderProps {
   onAdminPanel?: () => void
 }
 
-export function ProfileHeader({ name, email, avatarUrl, role, onEditProfile, onAdminPanel }: ProfileHeaderProps) {
+export function ProfileHeader({
+  name,
+  email,
+  avatarUrl,
+  role,
+  onEditProfile,
+  onAdminPanel,
+}: ProfileHeaderProps) {
   const { t } = useTranslation()
 
   return (

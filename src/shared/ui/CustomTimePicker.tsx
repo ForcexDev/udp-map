@@ -23,7 +23,8 @@ function minuteOptions(current: string): string[] {
 }
 
 const COLUMN = 'flex-1 max-h-[168px] overflow-y-auto hide-scrollbar flex flex-col gap-0.5 pr-0.5'
-const OPTION = 'h-8 shrink-0 rounded-xl text-xs font-semibold tabular-nums transition-all cursor-pointer'
+const OPTION =
+  'h-8 shrink-0 rounded-xl text-xs font-semibold tabular-nums transition-all cursor-pointer'
 
 /**
  * Selector de hora con panel propio, hermano de CustomDateTimePicker.
@@ -95,7 +96,12 @@ export function CustomTimePicker({
               : 'border-[#E6E0D5] bg-white hover:bg-[#FAF8F5] dark:border-white/[0.07] dark:bg-[#1E222D] dark:hover:bg-[#252A37]'
         }`}
       >
-        <Clock size={14} className={value ? 'shrink-0 text-[#C22B38] dark:text-[#D93846]' : 'shrink-0 text-stone-400'} />
+        <Clock
+          size={14}
+          className={
+            value ? 'shrink-0 text-[#C22B38] dark:text-[#D93846]' : 'shrink-0 text-stone-400'
+          }
+        />
         <span
           className={`tabular-nums ${
             value ? 'font-bold text-stone-900 dark:text-stone-100' : 'text-stone-400'

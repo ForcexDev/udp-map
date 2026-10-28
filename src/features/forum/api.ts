@@ -31,7 +31,7 @@ function demoThreadWithCount(thread: ForumThread): ForumThread {
 
 export async function fetchThreads(
   facultyId: string | null,
-  sortBy: 'recent' | 'top' = 'recent'
+  sortBy: 'recent' | 'top' = 'recent',
 ): Promise<ForumThread[]> {
   if (!supabase) {
     const list = demoForumDb.threads
@@ -41,9 +41,9 @@ export async function fetchThreads(
     list.sort((a, b) => {
       if (a.is_pinned && !b.is_pinned) return -1
       if (!a.is_pinned && b.is_pinned) return 1
-      
+
       if (sortBy === 'top') {
-        return (b.votes_up - b.votes_down) - (a.votes_up - a.votes_down)
+        return b.votes_up - b.votes_down - (a.votes_up - a.votes_down)
       } else {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       }
@@ -52,9 +52,7 @@ export async function fetchThreads(
   }
 
   // Consulta en Supabase
-  let query = supabase
-    .from('forum_threads')
-    .select('*, forum_comments(count)')
+  let query = supabase.from('forum_threads').select('*, forum_comments(count)')
 
   if (facultyId) {
     query = query.eq('faculty_id', facultyId)
@@ -74,9 +72,9 @@ export async function fetchThreads(
   threads.sort((a, b) => {
     if (a.is_pinned && !b.is_pinned) return -1
     if (!a.is_pinned && b.is_pinned) return 1
-    
+
     if (sortBy === 'top') {
-      return (b.votes_up - b.votes_down) - (a.votes_up - a.votes_down)
+      return b.votes_up - b.votes_down - (a.votes_up - a.votes_down)
     } else {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     }
@@ -171,10 +169,7 @@ export async function deleteThread(threadId: string): Promise<void> {
     return
   }
 
-  const { error } = await supabase
-    .from('forum_threads')
-    .delete()
-    .eq('id', threadId)
+  const { error } = await supabase.from('forum_threads').delete().eq('id', threadId)
 
   if (error) throw error
 }
@@ -271,7 +266,11 @@ export async function deleteComment(commentId: string): Promise<void> {
     while (foundDescendant) {
       foundDescendant = false
       for (const comment of demoForumDb.comments) {
-        if (comment.parent_comment_id && deletedIds.has(comment.parent_comment_id) && !deletedIds.has(comment.id)) {
+        if (
+          comment.parent_comment_id &&
+          deletedIds.has(comment.parent_comment_id) &&
+          !deletedIds.has(comment.id)
+        ) {
           deletedIds.add(comment.id)
           foundDescendant = true
         }
@@ -281,10 +280,7 @@ export async function deleteComment(commentId: string): Promise<void> {
     return
   }
 
-  const { error } = await supabase
-    .from('forum_comments')
-    .delete()
-    .eq('id', commentId)
+  const { error } = await supabase.from('forum_comments').delete().eq('id', commentId)
 
   if (error) throw error
 }
@@ -297,7 +293,10 @@ interface ThreadVoteResult {
   userVote: 1 | -1 | null
 }
 
-export async function voteThread(threadId: string, value: 1 | -1): Promise<ThreadVoteResult | null> {
+export async function voteThread(
+  threadId: string,
+  value: 1 | -1,
+): Promise<ThreadVoteResult | null> {
   if (!supabase) {
     const thread = demoForumDb.threads.find((t) => t.id === threadId)
     if (thread) {
@@ -308,7 +307,12 @@ export async function voteThread(threadId: string, value: 1 | -1): Promise<Threa
         demoForumDb.votes.set(threadId, votesMap)
       }
       const previousVote = votesMap.get(userId)
-      const transition = applyVoteTransition(previousVote, value, thread.votes_up, thread.votes_down)
+      const transition = applyVoteTransition(
+        previousVote,
+        value,
+        thread.votes_up,
+        thread.votes_down,
+      )
       if (transition.userVote === null) {
         votesMap.delete(userId)
       } else {
@@ -338,7 +342,10 @@ export async function voteThread(threadId: string, value: 1 | -1): Promise<Threa
   }
 }
 
-export async function fetchUserVoteOnThread(threadId: string, userId: string): Promise<1 | -1 | null> {
+export async function fetchUserVoteOnThread(
+  threadId: string,
+  userId: string,
+): Promise<1 | -1 | null> {
   if (!supabase) {
     const votesMap = demoForumDb.votes.get(threadId)
     return votesMap?.get('demo-current-user') || null

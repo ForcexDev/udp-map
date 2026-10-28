@@ -156,7 +156,10 @@ export function EventCard({
             <CalendarClock size={14} className="shrink-0" />
             <span>
               {t('pin.schedule', 'Programa')} ·{' '}
-              {t('pin.scheduleBlocks', { count: scheduleCount, defaultValue: `${scheduleCount} bloques` })}
+              {t('pin.scheduleBlocks', {
+                count: scheduleCount,
+                defaultValue: `${scheduleCount} bloques`,
+              })}
             </span>
           </div>
         )}
@@ -192,7 +195,6 @@ export function EventCard({
           {t('events.rsvpInterested', 'Me interesa')}
         </button>
       </div>
-
     </div>
   )
 }

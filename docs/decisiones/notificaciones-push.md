@@ -18,15 +18,15 @@ y descarta propuestas. Sus simulaciones, revisores, pruebas PGlite y observacion
 de dispositivo son registros atribuidos; los arneses temporales no forman una
 suite reproducible de este repositorio.
 
-| Registro Git | Alcance |
-|---|---|
-| `eba61ee` | Web Crypto e híbrido descritos en la bitácora |
-| `4eae308` | Protección criptográfica y endurecimiento Push 0/1 |
-| `20eee7e` | Cola con lease y fencing |
-| `6a50dc3`, `fc32c71` | SQL y sender del rework, incluido experimento puro |
-| `7480ced`, `0c26c42` | Cliente/sesión y diagnóstico del panel |
-| `d298270`, `d6ade1f` | Orden de despliegue y balance anterior al recorte |
-| `f49ced9` | Retirada del experimento, autenticación compartida y registro de aplicación/despliegue |
+| Registro Git         | Alcance                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| `eba61ee`            | Web Crypto e híbrido descritos en la bitácora                                          |
+| `4eae308`            | Protección criptográfica y endurecimiento Push 0/1                                     |
+| `20eee7e`            | Cola con lease y fencing                                                               |
+| `6a50dc3`, `fc32c71` | SQL y sender del rework, incluido experimento puro                                     |
+| `7480ced`, `0c26c42` | Cliente/sesión y diagnóstico del panel                                                 |
+| `d298270`, `d6ade1f` | Orden de despliegue y balance anterior al recorte                                      |
+| `f49ced9`            | Retirada del experimento, autenticación compartida y registro de aplicación/despliegue |
 
 `f49ced9` tiene fecha Git del 22 de octubre y agrega textos con fecha declarada
 23 de octubre. Se conservan ambas procedencias. Su mensaje registra migraciones

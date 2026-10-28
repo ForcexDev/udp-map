@@ -37,7 +37,13 @@ import { activeStepIndex, buildTrack } from '@/shared/utils/indoor/track'
 import type { Route, Step, StepIcon } from '@/shared/utils/indoor/types'
 import { easeCamera, followPose, newFollowState, sheetPadding } from './camera'
 import { shaftRectResolver, useIndoorGap } from './explodedView'
-import { ensureRouteLayers, removeRouteLayers, setFigure, setRouteActiveLevel, setRouteData } from './indoorLayers'
+import {
+  ensureRouteLayers,
+  removeRouteLayers,
+  setFigure,
+  setRouteActiveLevel,
+  setRouteData,
+} from './indoorLayers'
 import { hasLabelOverlay, labelOverlay } from './LabelOverlay'
 import { escapeHtml } from './shapes'
 import { chooseEntrance, originOptions } from './resolveTarget'
@@ -91,7 +97,8 @@ const ICONS: Record<StepIcon, typeof ArrowUp> = {
   arrive: MapPinCheck,
 }
 
-const reducedMotionQuery = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+const reducedMotionQuery = () =>
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
@@ -131,7 +138,12 @@ export function IndoorRouteSheet({
   const plan = useMemo(() => {
     if (origin === GPS) {
       if (!userLocation) return null
-      const choice = chooseEntrance(model, targetNodeId, plane.toLocal(userLocation.lng, userLocation.lat), accessibleRoute)
+      const choice = chooseEntrance(
+        model,
+        targetNodeId,
+        plane.toLocal(userLocation.lng, userLocation.lat),
+        accessibleRoute,
+      )
       return choice ? { route: choice.route, entranceId: choice.entrance.id } : null
     }
     const route = graph.route(origin, targetNodeId, { stepFree: accessibleRoute })
@@ -144,7 +156,10 @@ export function IndoorRouteSheet({
     [route, graph, t, targetPin.title],
   )
   const shaftRect = useMemo(() => shaftRectResolver(graph, model.areas), [graph, model.areas])
-  const track = useMemo(() => (route ? buildTrack(route, graph, { shaftRect }) : null), [route, graph, shaftRect])
+  const track = useMemo(
+    () => (route ? buildTrack(route, graph, { shaftRect }) : null),
+    [route, graph, shaftRect],
+  )
   const address = useMemo(
     () =>
       microaddress(targetNodeId, {
@@ -225,7 +240,12 @@ export function IndoorRouteSheet({
       const pose = track.sample(time)
       const currentGap = useIndoorGap.getState().gap
       setFigure(map, pose, plane, currentGap)
-      if (hasLabelOverlay(map)) labelOverlay(map).move(`${NAV_LABELS}balloon`, plane.toLngLat(pose.p), zMeters(pose.z, currentGap) + 1.9)
+      if (hasLabelOverlay(map))
+        labelOverlay(map).move(
+          `${NAV_LABELS}balloon`,
+          plane.toLngLat(pose.p),
+          zMeters(pose.z, currentGap) + 1.9,
+        )
       // A mitad de escalera la planta redondea a la de destino, y el
       // selector cambia solo: a través del store, para respetar la regla de
       // planta de facultad.
@@ -234,7 +254,16 @@ export function IndoorRouteSheet({
         useUIStore.getState().setActiveMappingFaculty(model.facultyId, pose.level)
       }
       if (followRef.current && startedRef.current) {
-        followPose(map, pose, plane, currentGap, followState.current, dt, sheetPadding(sheetRef.current), reducedMotionQuery())
+        followPose(
+          map,
+          pose,
+          plane,
+          currentGap,
+          followState.current,
+          dt,
+          sheetPadding(sheetRef.current),
+          reducedMotionQuery(),
+        )
       }
     },
     [track, plane, model.facultyId],
@@ -324,7 +353,10 @@ export function IndoorRouteSheet({
       lngLat: plane.toLngLat(start.p),
       altitude: zMeters(start.floor ?? 1, gap) + 1.8,
       anchor: 'bottom',
-      html: tag(t('wayfinder.indoor.startLabel', 'Partida'), 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900'),
+      html: tag(
+        t('wayfinder.indoor.startLabel', 'Partida'),
+        'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900',
+      ),
     })
     overlay.set(`${NAV_LABELS}end`, {
       lngLat: plane.toLngLat(end.p),
@@ -351,7 +383,9 @@ export function IndoorRouteSheet({
   // Voz opcional: lee el paso al entrar en él.
   useEffect(() => {
     if (!voice || !current || typeof window.speechSynthesis === 'undefined') return
-    const utterance = new SpeechSynthesisUtterance(current.detail ? `${current.text}. ${current.detail}` : current.text)
+    const utterance = new SpeechSynthesisUtterance(
+      current.detail ? `${current.text}. ${current.detail}` : current.text,
+    )
     utterance.lang = i18n.language === 'en' ? 'en-US' : 'es-CL'
     window.speechSynthesis.cancel()
     window.speechSynthesis.speak(utterance)
@@ -403,7 +437,11 @@ export function IndoorRouteSheet({
   const seconds = (route?.seconds ?? 0) + (street?.durationSeconds ?? 0)
   const meters = (route?.meters ?? 0) + (street?.distanceMeters ?? 0)
   const minutes = Math.max(1, Math.round(seconds / 60))
-  const verticalKind = route?.kinds.includes('elevator') ? 'elevator' : route?.kinds.includes('stairs') ? 'stairs' : null
+  const verticalKind = route?.kinds.includes('elevator')
+    ? 'elevator'
+    : route?.kinds.includes('stairs')
+      ? 'stairs'
+      : null
   const via =
     verticalKind === 'elevator'
       ? t('wayfinder.indoor.viaElevator', 'en ascensor')
@@ -419,7 +457,12 @@ export function IndoorRouteSheet({
     .join(' · ')
 
   const originChoices = [
-    { value: GPS, label: locating ? t('common.loading', 'Cargando…') : t('wayfinder.indoor.fromHere', 'Tu ubicación') },
+    {
+      value: GPS,
+      label: locating
+        ? t('common.loading', 'Cargando…')
+        : t('wayfinder.indoor.fromHere', 'Tu ubicación'),
+    },
     ...origins.map((n) => ({ value: n.id, label: capitalize(n.landmark ?? n.id) })),
   ]
 
@@ -442,7 +485,8 @@ export function IndoorRouteSheet({
 
   const chip =
     'flex h-9 min-w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl px-2.5 text-xs font-semibold transition-colors'
-  const chipIdle = 'bg-[#EFECE4] text-stone-700 hover:bg-stone-200 dark:bg-white/[0.08] dark:text-stone-200 dark:hover:bg-white/15'
+  const chipIdle =
+    'bg-[#EFECE4] text-stone-700 hover:bg-stone-200 dark:bg-white/[0.08] dark:text-stone-200 dark:hover:bg-white/15'
   const chipOn = 'bg-stone-900 text-[#FAF8F5] dark:bg-stone-100 dark:text-stone-950'
 
   return (
@@ -489,15 +533,23 @@ export function IndoorRouteSheet({
         {address && (
           <div className="rounded-2xl border border-[#F2D0CE] bg-[#FBECEB] px-3.5 py-2.5 text-xs dark:border-[#D93846]/30 dark:bg-[#D93846]/10">
             <div className="font-semibold text-[#B02330] dark:text-rose-300">{address.line1}</div>
-            {address.line2 && <div className="mt-0.5 text-stone-700 dark:text-stone-300">{address.line2}</div>}
+            {address.line2 && (
+              <div className="mt-0.5 text-stone-700 dark:text-stone-300">{address.line2}</div>
+            )}
           </div>
         )}
         {(approximate || supposed || (address && !address.line2)) && (
           <p className="-mt-1 text-[11px] leading-snug text-stone-500 dark:text-stone-400">
             {approximate
-              ? t('wayfinder.indoor.approximate', 'Destino aproximado: se llega al punto mapeado más cercano.')
+              ? t(
+                  'wayfinder.indoor.approximate',
+                  'Destino aproximado: se llega al punto mapeado más cercano.',
+                )
               : supposed
-                ? t('wayfinder.indoor.supposed', 'Plano de prueba: la posición de las salas es supuesta.')
+                ? t(
+                    'wayfinder.indoor.supposed',
+                    'Plano de prueba: la posición de las salas es supuesta.',
+                  )
                 : t('wayfinder.indoor.noStairsMapped', 'Esta planta no tiene escalera mapeada.')}
           </p>
         )}
@@ -531,9 +583,15 @@ export function IndoorRouteSheet({
         {!route && (
           <p className="rounded-2xl bg-[#EFECE4] p-3 text-xs text-stone-700 dark:bg-white/[0.06] dark:text-stone-300">
             {accessibleRoute
-              ? t('wayfinder.indoor.noStepFreeRoute', 'No hay una ruta sin escaleras desde ese punto.')
+              ? t(
+                  'wayfinder.indoor.noStepFreeRoute',
+                  'No hay una ruta sin escaleras desde ese punto.',
+                )
               : origin === GPS && !userLocation
-                ? t('wayfinder.indoor.needLocation', 'Elige un punto de partida o activa tu ubicación.')
+                ? t(
+                    'wayfinder.indoor.needLocation',
+                    'Elige un punto de partida o activa tu ubicación.',
+                  )
                 : t('wayfinder.indoor.noRouteFrom', 'No hay una ruta mapeada desde ese punto.')}
           </p>
         )}
@@ -542,10 +600,14 @@ export function IndoorRouteSheet({
           <>
             {street && street.distanceMeters > 1 && (
               <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                {t('wayfinder.indoor.streetLeg', 'Primero, {{m}} m por la calle hasta {{entrance}}', {
-                  m: Math.round(street.distanceMeters),
-                  entrance: plan?.entranceId ? (graph.node(plan.entranceId).landmark ?? '') : '',
-                })}
+                {t(
+                  'wayfinder.indoor.streetLeg',
+                  'Primero, {{m}} m por la calle hasta {{entrance}}',
+                  {
+                    m: Math.round(street.distanceMeters),
+                    entrance: plan?.entranceId ? (graph.node(plan.entranceId).landmark ?? '') : '',
+                  },
+                )}
               </p>
             )}
 
@@ -561,7 +623,9 @@ export function IndoorRouteSheet({
               <StepGlyph icon={current.icon} large />
               <div className="min-w-0">
                 <div className="text-sm font-bold leading-snug">{current.text}</div>
-                {current.detail && <div className="mt-1 text-xs leading-snug text-stone-300">{current.detail}</div>}
+                {current.detail && (
+                  <div className="mt-1 text-xs leading-snug text-stone-300">{current.detail}</div>
+                )}
                 <div className="mt-1.5 text-[11px] font-semibold tabular-nums text-stone-400">
                   {t('wayfinder.indoor.stepOf', 'Paso {{n}} de {{total}} · {{floor}}', {
                     n: stepIndex + 1,
@@ -602,7 +666,11 @@ export function IndoorRouteSheet({
                 type="button"
                 className={`${chip} bg-[#C22B38] text-white hover:opacity-95 dark:bg-[#D93846]`}
                 onClick={togglePlay}
-                aria-label={playback.playing ? t('wayfinder.indoor.pause', 'Pausar') : t('wayfinder.indoor.play', 'Reproducir')}
+                aria-label={
+                  playback.playing
+                    ? t('wayfinder.indoor.pause', 'Pausar')
+                    : t('wayfinder.indoor.play', 'Reproducir')
+                }
               >
                 {playback.playing ? <Pause size={15} /> : <Play size={15} />}
               </button>
@@ -619,7 +687,9 @@ export function IndoorRouteSheet({
                 className={`${chip} ${chipIdle} tabular-nums`}
                 onClick={() => {
                   const i = PLAYBACK_SPEEDS.indexOf(playback.speed)
-                  playback.setSpeed(PLAYBACK_SPEEDS[(i + 1) % PLAYBACK_SPEEDS.length] as PlaybackSpeed)
+                  playback.setSpeed(
+                    PLAYBACK_SPEEDS[(i + 1) % PLAYBACK_SPEEDS.length] as PlaybackSpeed,
+                  )
                 }}
                 aria-label={t('wayfinder.indoor.speed', 'Velocidad')}
               >
@@ -657,8 +727,13 @@ export function IndoorRouteSheet({
               className="flex cursor-pointer items-center justify-between rounded-xl px-1 text-xs font-semibold text-stone-600 dark:text-stone-300"
               aria-expanded={stepsOpen}
             >
-              <span>{t('wayfinder.indoor.seeSteps', 'Ver los {{n}} pasos', { n: steps.length })}</span>
-              <ChevronDown size={15} className={`transition-transform ${stepsOpen ? 'rotate-180' : ''}`} />
+              <span>
+                {t('wayfinder.indoor.seeSteps', 'Ver los {{n}} pasos', { n: steps.length })}
+              </span>
+              <ChevronDown
+                size={15}
+                className={`transition-transform ${stepsOpen ? 'rotate-180' : ''}`}
+              />
             </button>
             {stepsOpen && (
               <div ref={stepListRef} className="flex flex-col gap-1">
@@ -681,9 +756,13 @@ export function IndoorRouteSheet({
                     >
                       <StepGlyph icon={step.icon} />
                       <span className="min-w-0">
-                        <span className="block text-xs font-semibold text-stone-900 dark:text-stone-100">{step.text}</span>
+                        <span className="block text-xs font-semibold text-stone-900 dark:text-stone-100">
+                          {step.text}
+                        </span>
                         {step.detail && (
-                          <span className="mt-0.5 block text-[11px] text-stone-500 dark:text-stone-400">{step.detail}</span>
+                          <span className="mt-0.5 block text-[11px] text-stone-500 dark:text-stone-400">
+                            {step.detail}
+                          </span>
                         )}
                       </span>
                     </button>
@@ -703,7 +782,9 @@ function StepGlyph({ icon, large = false }: { icon: StepIcon; large?: boolean })
   return (
     <span
       className={`flex shrink-0 items-center justify-center rounded-xl ${
-        large ? 'h-10 w-10 bg-white/10 text-white' : 'h-7 w-7 bg-[#EFECE4] text-stone-700 dark:bg-white/[0.08] dark:text-stone-200'
+        large
+          ? 'h-10 w-10 bg-white/10 text-white'
+          : 'h-7 w-7 bg-[#EFECE4] text-stone-700 dark:bg-white/[0.08] dark:text-stone-200'
       }`}
     >
       <Icon size={large ? 20 : 15} strokeWidth={2.2} />

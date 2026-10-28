@@ -19,11 +19,12 @@ export function isPinLocationOccupied(
   excludePinId?: string | null,
   now = Date.now(),
 ): boolean {
-  return pins.some((pin) =>
-    pin.id !== excludePinId &&
-    pin.lat === lat &&
-    pin.lng === lng &&
-    pin.floor === floor &&
-    (pin.is_permanent || !pin.expires_at || new Date(pin.expires_at).getTime() > now),
+  return pins.some(
+    (pin) =>
+      pin.id !== excludePinId &&
+      pin.lat === lat &&
+      pin.lng === lng &&
+      pin.floor === floor &&
+      (pin.is_permanent || !pin.expires_at || new Date(pin.expires_at).getTime() > now),
   )
 }

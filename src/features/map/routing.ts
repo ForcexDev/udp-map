@@ -59,7 +59,9 @@ export async function getWalkingRoute(
 
   // Si no hay API Key de ORS o falló, intentamos con el servidor público de OSRM (gratis, sin registro)
   try {
-    const res = await fetch(`https://router.project-osrm.org/route/v1/foot/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`)
+    const res = await fetch(
+      `https://router.project-osrm.org/route/v1/foot/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`,
+    )
     if (res.ok) {
       const data = await res.json()
       if (data.code === 'Ok' && data.routes && data.routes.length > 0) {

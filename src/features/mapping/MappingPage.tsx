@@ -188,13 +188,17 @@ export function MappingPage() {
     onError: (error) => {
       const message = dbErrorMessage(error) || (error as Error).message
       if (message.includes('FUERA_DEL_EDIFICIO')) {
-        return showToast('Ese punto queda fuera de la huella del edificio. Ojo con los patios interiores.')
+        return showToast(
+          'Ese punto queda fuera de la huella del edificio. Ojo con los patios interiores.',
+        )
       }
       if (message.includes('PIN_LOCATION_OCCUPIED')) {
         return showToast('Ya hay un pin vivo en ese punto y esa planta. Elige otro sitio.')
       }
       if (message.includes('INVALID_FLOOR_FOR_BUILDING')) {
-        return showToast('Ese edificio no tiene declarada esa planta. Créala antes de colocar la sala.')
+        return showToast(
+          'Ese edificio no tiene declarada esa planta. Créala antes de colocar la sala.',
+        )
       }
       if (message.includes('FLOOR_NOT_IN_FACULTY')) {
         return showToast('Ninguna planta de esta facultad tiene ese nivel. Decláralo primero.')
@@ -205,7 +209,13 @@ export function MappingPage() {
 
   const pinsQuery = useQuery({
     queryKey: ['mapping-pins', facultyId],
-    queryFn: () => fetchPins(null, { types: ['place', 'event', 'report'], categoryId: null, facultyId, onlyFavorites: false }),
+    queryFn: () =>
+      fetchPins(null, {
+        types: ['place', 'event', 'report'],
+        categoryId: null,
+        facultyId,
+        onlyFavorites: false,
+      }),
   })
 
   const mapping = mappingQuery.data ?? { buildings: [], floors: [], areas: [] }
@@ -222,8 +232,11 @@ export function MappingPage() {
   const activePolygon: Polygon | null = draft
     ? draftPolygon(draft)
     : facultyEdit
-      ? (facultyEdit === 'edit' ? perimeter : null)
-      : (selectedArea?.polygon ?? (selectedFloor === null ? (selectedBuilding?.footprint ?? null) : null))
+      ? facultyEdit === 'edit'
+        ? perimeter
+        : null
+      : (selectedArea?.polygon ??
+        (selectedFloor === null ? (selectedBuilding?.footprint ?? null) : null))
 
   /**
    * Cuánto de la facultad está mapeado, para saber qué falta.
@@ -307,7 +320,9 @@ export function MappingPage() {
         (f) => f.building_id === match.id && f.level === state.activeLevel,
       )
       if (!hasLevel) {
-        showToast(`Ese edificio no tiene ${floorName(state.activeLevel ?? 1, null)}. Se guarda como exterior.`)
+        showToast(
+          `Ese edificio no tiene ${floorName(state.activeLevel ?? 1, null)}. Se guarda como exterior.`,
+        )
         return { buildingId: null, floor: null }
       }
       return { buildingId: match.id, floor: state.activeLevel }
@@ -356,7 +371,7 @@ export function MappingPage() {
   const saveFaculty = useMutation({
     mutationFn: async (values: FacultyFormValues) => {
       const existing = facultyEdit === 'edit' ? faculty : null
-      const polygon = draft ? draftPolygon(draft) : (existing ? perimeter : null)
+      const polygon = draft ? draftPolygon(draft) : existing ? perimeter : null
       if (!existing && !polygon) throw new Error('SIN_FORMA')
 
       const id = existing?.id ?? facultySlug(values.name)
@@ -618,7 +633,13 @@ export function MappingPage() {
       }
       if (e.ctrlKey || e.metaKey) return
 
-      const shortcut: Record<string, Tool> = { v: 'select', r: 'rect', p: 'polygon', t: 'trace', n: 'nav' }
+      const shortcut: Record<string, Tool> = {
+        v: 'select',
+        r: 'rect',
+        p: 'polygon',
+        t: 'trace',
+        n: 'nav',
+      }
       const next = shortcut[e.key.toLowerCase()]
       if (next) {
         state.setTool(next)
@@ -704,8 +725,8 @@ export function MappingPage() {
           El editor de mapeo necesita un computador
         </p>
         <p className="max-w-xs text-xs leading-snug text-neutral-400">
-          Trazar áreas se hace con ratón y teclado. Abre esta página desde un
-          computador para dibujar edificios, plantas y áreas.
+          Trazar áreas se hace con ratón y teclado. Abre esta página desde un computador para
+          dibujar edificios, plantas y áreas.
         </p>
         <Link
           to="/admin"
@@ -716,267 +737,272 @@ export function MappingPage() {
       </div>
 
       <div className="hidden h-full w-full flex-col overflow-hidden lg:flex">
-      {/* ── Barra de herramientas unificada y centrada ── */}
-      <div className="relative flex min-h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 dark:border-neutral-800 dark:bg-neutral-900">
-        {/* Sección izquierda: Selección de Facultad y Modo */}
-        <div className="flex items-center gap-3">
-          <div className="w-64 shrink-0">
-            <CustomSelect
-              options={faculties.map((f) => ({ value: f.id, label: f.name }))}
-              value={facultyId}
-              onChange={setFacultyId}
-              placeholder="Facultad"
-              // Diecisiete facultades y creciendo: la lista ya no se recorre de
-              // un vistazo, y casi todas empiezan por "Facultad de".
-              searchable
-              searchPlaceholder="Buscar facultad…"
-            />
-          </div>
+        {/* ── Barra de herramientas unificada y centrada ── */}
+        <div className="relative flex min-h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 dark:border-neutral-800 dark:bg-neutral-900">
+          {/* Sección izquierda: Selección de Facultad y Modo */}
+          <div className="flex items-center gap-3">
+            <div className="w-64 shrink-0">
+              <CustomSelect
+                options={faculties.map((f) => ({ value: f.id, label: f.name }))}
+                value={facultyId}
+                onChange={setFacultyId}
+                placeholder="Facultad"
+                // Diecisiete facultades y creciendo: la lista ya no se recorre de
+                // un vistazo, y casi todas empiezan por "Facultad de".
+                searchable
+                searchPlaceholder="Buscar facultad…"
+              />
+            </div>
 
-          {/* Crear una facultad es trazar su perímetro, así que entra ya con la
+            {/* Crear una facultad es trazar su perímetro, así que entra ya con la
               herramienta de polígono: es el único primer paso posible. */}
-          <button
-            onClick={() => {
-              setFacultyEdit('new')
-              setTool('polygon')
-            }}
-            title="Crear una facultad nueva trazando su perímetro"
-            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-black uppercase tracking-wider transition-colors ${
-              facultyEdit === 'new'
-                ? 'bg-[#D41F2D] text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-            }`}
-          >
-            <Plus size={13} /> Facultad
-          </button>
+            <button
+              onClick={() => {
+                setFacultyEdit('new')
+                setTool('polygon')
+              }}
+              title="Crear una facultad nueva trazando su perímetro"
+              className={`flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[11px] font-black uppercase tracking-wider transition-colors ${
+                facultyEdit === 'new'
+                  ? 'bg-[#D41F2D] text-white'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+              }`}
+            >
+              <Plus size={13} /> Facultad
+            </button>
 
-          <div className="flex shrink-0 items-center gap-0.5 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800">
-            <ModeButton active={mode === 'draw'} onClick={() => setMode('draw')}>
-              Trazar
-            </ModeButton>
-            <ModeButton active={mode === 'pins'} onClick={() => setMode('pins')}>
-              Pines
-            </ModeButton>
+            <div className="flex shrink-0 items-center gap-0.5 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800">
+              <ModeButton active={mode === 'draw'} onClick={() => setMode('draw')}>
+                Trazar
+              </ModeButton>
+              <ModeButton active={mode === 'pins'} onClick={() => setMode('pins')}>
+                Pines
+              </ModeButton>
+            </div>
           </div>
-        </div>
 
-        {/* Sección central: Herramientas de dibujo (Centrado absoluto) */}
-        {mode === 'draw' && (
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-xl bg-neutral-100/90 p-1 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-200/60 dark:border-neutral-700/60 shadow-xs">
-            {TOOLS.map(({ tool: id, icon: Icon, label, key }) => (
+          {/* Sección central: Herramientas de dibujo (Centrado absoluto) */}
+          {mode === 'draw' && (
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-xl bg-neutral-100/90 p-1 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-200/60 dark:border-neutral-700/60 shadow-xs">
+              {TOOLS.map(({ tool: id, icon: Icon, label, key }) => (
+                <ToolButton
+                  key={id}
+                  active={tool === id}
+                  onClick={() => setTool(id)}
+                  title={`${label} (${key})`}
+                >
+                  <Icon size={15} />
+                </ToolButton>
+              ))}
+
+              <div className="mx-1 h-4 w-px shrink-0 bg-neutral-300 dark:bg-neutral-700" />
+
               <ToolButton
-                key={id}
-                active={tool === id}
-                onClick={() => setTool(id)}
-                title={`${label} (${key})`}
+                active={ortho}
+                onClick={() => useMappingEditor.getState().setOrtho(!ortho)}
+                title="Modo ortogonal: aristas a 90°/45° de la veta del edificio (Shift)"
               >
-                <Icon size={15} />
+                <Grid3x3 size={15} />
               </ToolButton>
-            ))}
+              <ToolButton
+                active={snapEnabled}
+                onClick={() => useMappingEditor.getState().setSnapEnabled(!snapEnabled)}
+                title="Imanes a vértices y aristas cercanas (Alt para desactivar)"
+              >
+                <Magnet size={15} />
+              </ToolButton>
+              <ToolButton
+                active={showGhostFloor}
+                onClick={toggleGhostFloor}
+                title="Calco: dibuja en línea de puntos las áreas de la planta de abajo, para copiar su forma sin volver a medirla"
+              >
+                <Layers size={15} />
+              </ToolButton>
 
-            <div className="mx-1 h-4 w-px shrink-0 bg-neutral-300 dark:bg-neutral-700" />
+              <div className="mx-1 h-4 w-px shrink-0 bg-neutral-300 dark:bg-neutral-700" />
 
-            <ToolButton
-              active={ortho}
-              onClick={() => useMappingEditor.getState().setOrtho(!ortho)}
-              title="Modo ortogonal: aristas a 90°/45° de la veta del edificio (Shift)"
-            >
-              <Grid3x3 size={15} />
-            </ToolButton>
-            <ToolButton
-              active={snapEnabled}
-              onClick={() => useMappingEditor.getState().setSnapEnabled(!snapEnabled)}
-              title="Imanes a vértices y aristas cercanas (Alt para desactivar)"
-            >
-              <Magnet size={15} />
-            </ToolButton>
-            <ToolButton
-              active={showGhostFloor}
-              onClick={toggleGhostFloor}
-              title="Calco: dibuja en línea de puntos las áreas de la planta de abajo, para copiar su forma sin volver a medirla"
-            >
-              <Layers size={15} />
-            </ToolButton>
+              <ToolButton
+                active={false}
+                disabled={!canUndo}
+                onClick={() => useMappingEditor.getState().undo()}
+                title="Deshacer (Ctrl+Z)"
+              >
+                <Undo2 size={15} />
+              </ToolButton>
+              <ToolButton
+                active={false}
+                disabled={!canRedo}
+                onClick={() => useMappingEditor.getState().redo()}
+                title="Rehacer (Ctrl+Y)"
+              >
+                <Redo2 size={15} />
+              </ToolButton>
 
-            <div className="mx-1 h-4 w-px shrink-0 bg-neutral-300 dark:bg-neutral-700" />
-
-            <ToolButton
-              active={false}
-              disabled={!canUndo}
-              onClick={() => useMappingEditor.getState().undo()}
-              title="Deshacer (Ctrl+Z)"
-            >
-              <Undo2 size={15} />
-            </ToolButton>
-            <ToolButton
-              active={false}
-              disabled={!canRedo}
-              onClick={() => useMappingEditor.getState().redo()}
-              title="Rehacer (Ctrl+Y)"
-            >
-              <Redo2 size={15} />
-            </ToolButton>
-
-            {selectedFloor !== null && floorsOfBuilding.length > 1 && (
-              <>
-                <div className="mx-1 h-4 w-px shrink-0 bg-neutral-300 dark:bg-neutral-700" />
-                <CopyFloorMenu
-                  levels={floorsOfBuilding.filter((l) => l !== selectedFloor)}
-                  onCopy={(target) => copyFloor.mutate(target)}
-                />
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Sección derecha: cobertura + Exportar */}
-        <div className="flex items-center gap-2">
-          {coverage && (
-            <div
-              className="hidden shrink-0 items-center gap-2 rounded-xl bg-neutral-50 px-3 py-1.5 lg:flex dark:bg-neutral-800/60"
-              title={`${formatArea(coverage.mapped)} mapeados de ${formatArea(coverage.total)} del perímetro. Es una suma, así que los solapes cuentan doble.`}
-            >
-              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
-                <div
-                  className="h-full rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${coverage.percent}%` }}
-                />
-              </div>
-              <span className="text-[10px] font-black tabular-nums text-neutral-500 dark:text-neutral-400">
-                {coverage.percent}% mapeado
-              </span>
+              {selectedFloor !== null && floorsOfBuilding.length > 1 && (
+                <>
+                  <div className="mx-1 h-4 w-px shrink-0 bg-neutral-300 dark:bg-neutral-700" />
+                  <CopyFloorMenu
+                    levels={floorsOfBuilding.filter((l) => l !== selectedFloor)}
+                    onCopy={(target) => copyFloor.mutate(target)}
+                  />
+                </>
+              )}
             </div>
           )}
 
-          <button
-            onClick={handleExport}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-neutral-100 px-3.5 py-2 text-[11px] font-black uppercase tracking-wider text-neutral-600 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-            title="Descarga buildings.ts y areas.ts para versionarlos en git"
-          >
-            <Download size={13} /> Exportar
-          </button>
+          {/* Sección derecha: cobertura + Exportar */}
+          <div className="flex items-center gap-2">
+            {coverage && (
+              <div
+                className="hidden shrink-0 items-center gap-2 rounded-xl bg-neutral-50 px-3 py-1.5 lg:flex dark:bg-neutral-800/60"
+                title={`${formatArea(coverage.mapped)} mapeados de ${formatArea(coverage.total)} del perímetro. Es una suma, así que los solapes cuentan doble.`}
+              >
+                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${coverage.percent}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-black tabular-nums text-neutral-500 dark:text-neutral-400">
+                  {coverage.percent}% mapeado
+                </span>
+              </div>
+            )}
+
+            <button
+              onClick={handleExport}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-neutral-100 px-3.5 py-2 text-[11px] font-black uppercase tracking-wider text-neutral-600 transition-colors hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+              title="Descarga buildings.ts y areas.ts para versionarlos en git"
+            >
+              <Download size={13} /> Exportar
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* ── Tres paneles ── */}
-      <div className="flex min-h-0 flex-1">
-        {mode === 'pins' ? (
-          <PinFloorPanel mapping={mapping} pins={pins} onSaved={() => void pinsQuery.refetch()} />
-        ) : (
-          <>
-            <aside className="w-56 shrink-0 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-              {mappingQuery.isLoading ? (
-                <div className="flex h-full items-center justify-center">
-                  <Spinner />
-                </div>
-              ) : (
-                <MappingTree
-                  buildings={mapping.buildings}
-                  floors={mapping.floors}
-                  areaCounts={areaCounts}
-                  outdoorCount={areaCounts.get(floorKey(null, null)) ?? 0}
-                  facultyName={faculty?.name ?? 'Facultad'}
-                  hasPerimeter={perimeter !== null}
-                  onAddBuilding={() => {
-                    useMappingEditor.getState().selectBuilding(null)
-                    useMappingEditor.getState().setTool('rect')
-                    setDrawingBuilding(true)
-                  }}
-                  onAddFloor={(buildingId, level) => floorMutation.mutate({ buildingId, level })}
-                  onRemoveFloor={(buildingId, level) =>
-                    setConfirmDelete({
-                      kind: 'floor',
-                      buildingId,
-                      level,
-                      areas: areaCounts.get(floorKey(buildingId, level)) ?? 0,
-                    })
-                  }
-                />
-              )}
-            </aside>
-
-            <main className="relative min-w-0 flex-1">
-              {mappingQuery.isError ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-                  <p className="text-sm font-bold text-[#D41F2D]">No se pudo cargar el mapeo.</p>
-                  <button
-                    onClick={() => void mappingQuery.refetch()}
-                    className="rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-bold dark:bg-neutral-800"
-                  >
-                    Reintentar
-                  </button>
-                </div>
-              ) : (
-                <MappingCanvas
-                  mapping={mapping}
-                  pins={pins}
-                  onDraftReady={() => {}}
-                  onRoomPlaced={({ lng, lat }) => placeRoom.mutate({ lng, lat })}
-                />
-              )}
-            </main>
-
-            {tool === 'nav' ? (
-              <aside className="flex w-72 shrink-0 flex-col border-l border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-                <NavEditorPanel mapping={mapping} pins={pins} />
+        {/* ── Tres paneles ── */}
+        <div className="flex min-h-0 flex-1">
+          {mode === 'pins' ? (
+            <PinFloorPanel mapping={mapping} pins={pins} onSaved={() => void pinsQuery.refetch()} />
+          ) : (
+            <>
+              <aside className="w-56 shrink-0 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                {mappingQuery.isLoading ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Spinner />
+                  </div>
+                ) : (
+                  <MappingTree
+                    buildings={mapping.buildings}
+                    floors={mapping.floors}
+                    areaCounts={areaCounts}
+                    outdoorCount={areaCounts.get(floorKey(null, null)) ?? 0}
+                    facultyName={faculty?.name ?? 'Facultad'}
+                    hasPerimeter={perimeter !== null}
+                    onAddBuilding={() => {
+                      useMappingEditor.getState().selectBuilding(null)
+                      useMappingEditor.getState().setTool('rect')
+                      setDrawingBuilding(true)
+                    }}
+                    onAddFloor={(buildingId, level) => floorMutation.mutate({ buildingId, level })}
+                    onRemoveFloor={(buildingId, level) =>
+                      setConfirmDelete({
+                        kind: 'floor',
+                        buildingId,
+                        level,
+                        areas: areaCounts.get(floorKey(buildingId, level)) ?? 0,
+                      })
+                    }
+                  />
+                )}
               </aside>
-            ) : (
-            <aside className="flex w-72 shrink-0 flex-col border-l border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-              <MappingProperties
-                areas={mapping.areas}
-                selectedArea={selectedArea}
-                selectedBuilding={selectedBuilding}
-                activePolygon={activePolygon}
-                drawingBuilding={drawingBuilding}
-                onSaveArea={(values) => saveArea.mutate(values)}
-                onSaveBuilding={(values) => saveBuilding.mutate(values)}
-                onSaveFaculty={(values) => saveFaculty.mutate(values)}
-                onDeleteFaculty={
-                  canDeleteFaculty && faculty
-                    ? () => setConfirmDelete({ kind: 'faculty', id: faculty.id, name: faculty.name })
-                    : undefined
-                }
-                onDeleteArea={(id) =>
-                  setConfirmDelete({
-                    kind: 'area',
-                    id,
-                    name: mapping.areas.find((a) => a.id === id)?.name ?? 'esta área',
-                  })
-                }
-                onDeleteBuilding={(id) =>
-                  setConfirmDelete({
-                    kind: 'building',
-                    id,
-                    name: mapping.buildings.find((b) => b.id === id)?.name ?? 'este edificio',
-                  })
-                }
-                onSplit={(parts) => splitArea.mutate(parts)}
-                onEditShape={editShape}
-                onCancel={() => {
-                  useMappingEditor.getState().resetHistory()
-                  useMappingEditor.getState().setFacultyEdit(null)
-                  useMappingEditor.getState().selectArea(null)
-                  setDrawingBuilding(false)
-                }}
-                saving={
-                  saveArea.isPending ||
-                  saveBuilding.isPending ||
-                  splitArea.isPending ||
-                  saveFaculty.isPending
-                }
-              />
 
-              {/* El importador va aquí y no en el modo "pines" porque necesita
+              <main className="relative min-w-0 flex-1">
+                {mappingQuery.isError ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+                    <p className="text-sm font-bold text-[#D41F2D]">No se pudo cargar el mapeo.</p>
+                    <button
+                      onClick={() => void mappingQuery.refetch()}
+                      className="rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-bold dark:bg-neutral-800"
+                    >
+                      Reintentar
+                    </button>
+                  </div>
+                ) : (
+                  <MappingCanvas
+                    mapping={mapping}
+                    pins={pins}
+                    onDraftReady={() => {}}
+                    onRoomPlaced={({ lng, lat }) => placeRoom.mutate({ lng, lat })}
+                  />
+                )}
+              </main>
+
+              {tool === 'nav' ? (
+                <aside className="flex w-72 shrink-0 flex-col border-l border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                  <NavEditorPanel mapping={mapping} pins={pins} />
+                </aside>
+              ) : (
+                <aside className="flex w-72 shrink-0 flex-col border-l border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                  <MappingProperties
+                    areas={mapping.areas}
+                    selectedArea={selectedArea}
+                    selectedBuilding={selectedBuilding}
+                    activePolygon={activePolygon}
+                    drawingBuilding={drawingBuilding}
+                    onSaveArea={(values) => saveArea.mutate(values)}
+                    onSaveBuilding={(values) => saveBuilding.mutate(values)}
+                    onSaveFaculty={(values) => saveFaculty.mutate(values)}
+                    onDeleteFaculty={
+                      canDeleteFaculty && faculty
+                        ? () =>
+                            setConfirmDelete({
+                              kind: 'faculty',
+                              id: faculty.id,
+                              name: faculty.name,
+                            })
+                        : undefined
+                    }
+                    onDeleteArea={(id) =>
+                      setConfirmDelete({
+                        kind: 'area',
+                        id,
+                        name: mapping.areas.find((a) => a.id === id)?.name ?? 'esta área',
+                      })
+                    }
+                    onDeleteBuilding={(id) =>
+                      setConfirmDelete({
+                        kind: 'building',
+                        id,
+                        name: mapping.buildings.find((b) => b.id === id)?.name ?? 'este edificio',
+                      })
+                    }
+                    onSplit={(parts) => splitArea.mutate(parts)}
+                    onEditShape={editShape}
+                    onCancel={() => {
+                      useMappingEditor.getState().resetHistory()
+                      useMappingEditor.getState().setFacultyEdit(null)
+                      useMappingEditor.getState().selectArea(null)
+                      setDrawingBuilding(false)
+                    }}
+                    saving={
+                      saveArea.isPending ||
+                      saveBuilding.isPending ||
+                      splitArea.isPending ||
+                      saveFaculty.isPending
+                    }
+                  />
+
+                  {/* El importador va aquí y no en el modo "pines" porque necesita
                   el mapa delante: la coordenada es lo único que la fuente no
                   trae, y se pone clicando. */}
-              <div className="border-t border-neutral-200 p-4 dark:border-neutral-800">
-                <RoomImportPanel mapping={mapping} pins={pins} building={selectedBuilding} />
-              </div>
-            </aside>
-            )}
-          </>
-        )}
-      </div>
+                  <div className="border-t border-neutral-200 p-4 dark:border-neutral-800">
+                    <RoomImportPanel mapping={mapping} pins={pins} building={selectedBuilding} />
+                  </div>
+                </aside>
+              )}
+            </>
+          )}
+        </div>
 
         <ConfirmDialog
           open={confirmDelete !== null}
@@ -996,14 +1022,14 @@ export function MappingPage() {
             confirmDelete?.kind === 'faculty'
               ? `Se eliminará "${confirmDelete.name}". Está vacía: no tiene edificios, áreas ni pines.`
               : confirmDelete?.kind === 'building'
-              ? `Se eliminarán "${confirmDelete.name}", todas sus plantas y todas las áreas que haya dentro.`
-              : confirmDelete?.kind === 'floor'
-                ? `Se eliminará ${floorName(confirmDelete.level, null)}${
-                    confirmDelete.areas > 0
-                      ? ` y las ${confirmDelete.areas} áreas que tiene dentro`
-                      : ''
-                  }.`
-                : `Se eliminará "${confirmDelete?.name}".`
+                ? `Se eliminarán "${confirmDelete.name}", todas sus plantas y todas las áreas que haya dentro.`
+                : confirmDelete?.kind === 'floor'
+                  ? `Se eliminará ${floorName(confirmDelete.level, null)}${
+                      confirmDelete.areas > 0
+                        ? ` y las ${confirmDelete.areas} áreas que tiene dentro`
+                        : ''
+                    }.`
+                  : `Se eliminará "${confirmDelete?.name}".`
           }
           confirmText="Eliminar"
           onConfirm={() => confirmDelete && removeMutation.mutate(confirmDelete)}

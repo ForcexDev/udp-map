@@ -54,13 +54,19 @@ export function ReportTimeline({ pins, loading, onViewOnMap }: ReportTimelinePro
         <div className="flex flex-col gap-3.5">
           {pins.map((pin) => {
             const faculty = pin.faculty_id ? FACULTIES.find((f) => f.id === pin.faculty_id) : null
-            const facultyName = faculty ? (i18n.language === 'en' ? faculty.name_en : faculty.name) : null
+            const facultyName = faculty
+              ? i18n.language === 'en'
+                ? faculty.name_en
+                : faculty.name
+              : null
 
             // Sin categoría (lugares y algunos eventos) la etiqueta cae al tipo
             // de pin, que es lo que muestran las badges del mapa.
             const category = categoryById(pin.category_id)
             const categoryLabel = category
-              ? (i18n.language === 'en' ? category.name_en : category.name)
+              ? i18n.language === 'en'
+                ? category.name_en
+                : category.name
               : pin.type === 'place'
                 ? t('pin.typePlace', 'Lugar')
                 : pin.type === 'event'
@@ -68,7 +74,10 @@ export function ReportTimeline({ pins, loading, onViewOnMap }: ReportTimelinePro
                   : t('pin.typeReport', 'Reporte')
 
             const rel = relativeTime(pin.created_at)
-            const timeAgo = t(`time.${AGO_KEY[rel.unit]}`, { n: rel.value, defaultValue: `hace ${rel.value} ${rel.unit}` })
+            const timeAgo = t(`time.${AGO_KEY[rel.unit]}`, {
+              n: rel.value,
+              defaultValue: `hace ${rel.value} ${rel.unit}`,
+            })
 
             return (
               <ReportCardWithVote

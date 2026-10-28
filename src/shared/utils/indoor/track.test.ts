@@ -49,7 +49,8 @@ describe('línea de tiempo', () => {
     expect(track.sample(midRide).still).toBe(true)
     expect(track.sample(midRide).kind).toBe('elevator')
     // Cuarenta segundos de espera no se animan: el viaje dura puertas + 4 s por piso.
-    const ride = track.nodeTimes[route.kinds.lastIndexOf('elevator') + 1] - track.nodeTimes[firstElevator]
+    const ride =
+      track.nodeTimes[route.kinds.lastIndexOf('elevator') + 1] - track.nodeTimes[firstElevator]
     expect(ride).toBeLessThan(25)
   })
 
@@ -60,6 +61,8 @@ describe('línea de tiempo', () => {
     expect(activeStepIndex(steps, track.nodeTimes, 0)).toBe(0)
     expect(activeStepIndex(steps, track.nodeTimes, track.duration)).toBe(steps.length - 1)
     const stairs = steps.findIndex((s) => s.icon === 'stairs-up')
-    expect(activeStepIndex(steps, track.nodeTimes, track.nodeTimes[steps[stairs].from] + 1)).toBe(stairs)
+    expect(activeStepIndex(steps, track.nodeTimes, track.nodeTimes[steps[stairs].from] + 1)).toBe(
+      stairs,
+    )
   })
 })

@@ -69,8 +69,8 @@ export function useComments(pinId: string) {
     onMutate: async (commentId) => {
       await queryClient.cancelQueries({ queryKey: ['comments', pinId] })
       const previous = queryClient.getQueryData<PinComment[]>(['comments', pinId])
-      queryClient.setQueryData<PinComment[]>(['comments', pinId], (old) => 
-        (old ?? []).filter(c => c.id !== commentId)
+      queryClient.setQueryData<PinComment[]>(['comments', pinId], (old) =>
+        (old ?? []).filter((c) => c.id !== commentId),
       )
       return { previous }
     },

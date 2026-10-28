@@ -1,6 +1,13 @@
 import type { Polygon } from 'geojson'
 import { supabase } from '@/shared/lib/supabase'
-import type { Area, AreaKind, Building, BuildingFloor, NavEdgeRow, NavNodeRow } from '@/shared/types/database'
+import type {
+  Area,
+  AreaKind,
+  Building,
+  BuildingFloor,
+  NavEdgeRow,
+  NavNodeRow,
+} from '@/shared/types/database'
 import { mappingDemoDb } from './demoStore'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,7 +71,10 @@ export async function fetchFacultyMapping(facultyId: string): Promise<FacultyMap
     const floorsRes = await supabase
       .from('building_floors')
       .select('*')
-      .in('building_id', buildings.map((b) => b.id))
+      .in(
+        'building_id',
+        buildings.map((b) => b.id),
+      )
       .order('level')
     if (floorsRes.error) throw floorsRes.error
     floors = (floorsRes.data ?? []) as BuildingFloor[]
@@ -226,7 +236,10 @@ export async function fetchNavGraph(facultyId: string): Promise<NavGraphRows> {
   ])
   if (nodesRes.error) throw nodesRes.error
   if (edgesRes.error) throw edgesRes.error
-  return { nodes: (nodesRes.data ?? []) as NavNodeRow[], edges: (edgesRes.data ?? []) as NavEdgeRow[] }
+  return {
+    nodes: (nodesRes.data ?? []) as NavNodeRow[],
+    edges: (edgesRes.data ?? []) as NavEdgeRow[],
+  }
 }
 
 export async function createNavNodes(inputs: NavNodeInput[]): Promise<NavNodeRow[]> {
@@ -241,7 +254,12 @@ export async function createNavNodes(inputs: NavNodeInput[]): Promise<NavNodeRow
 export async function updateNavNode(id: string, patch: Partial<NavNodeInput>): Promise<NavNodeRow> {
   if (!supabase) return mappingDemoDb.updateNavNode(id, patch)
 
-  const { data, error } = await supabase.from('nav_nodes').update(patch).eq('id', id).select().single()
+  const { data, error } = await supabase
+    .from('nav_nodes')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single()
   if (error) throw error
   return data as NavNodeRow
 }

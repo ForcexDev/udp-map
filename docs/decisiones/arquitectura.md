@@ -128,6 +128,7 @@ describe contención, umbrales y cobertura actuales. No se deben presentar los
 huecos por planta o controles cruzados planeados como verificaciones existentes.
 
 <a id="salas-geometria-y-horarios"></a>
+
 ## Salas, geometría y horarios
 
 ### Un objeto social, geometría opcional
@@ -190,11 +191,11 @@ El alcance registrado de la futura cola es deliberadamente corto por el coste
 humano de trazar cada recinto. Debe ser permanente y tener superficie útil
 para representar, no ser solo un punto.
 
-| Categoría del pin | Tipo de área previsto |
-|---|---|
-| `sala` | `room`, todavía ausente del enum |
-| `casino` | `cafeteria` |
-| `computacion` | `lab` |
+| Categoría del pin | Tipo de área previsto            |
+| ----------------- | -------------------------------- |
+| `sala`            | `room`, todavía ausente del enum |
+| `casino`          | `cafeteria`                      |
+| `computacion`     | `lab`                            |
 
 `bano`, `bicicletero` y `deporte` encajarían, pero quedaron aplazados.
 Ascensor, rampa y escalera se modelan como puntos/conectores; una caja de escalera

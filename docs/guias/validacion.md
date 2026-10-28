@@ -8,14 +8,15 @@ demuestra que una persona recibió un push.
 
 Antes de cerrar un cambio:
 
-~~~bash
+```bash
 npm run typecheck
 npx vitest run
 npx eslint src
-~~~
+```
 
 Los tres deben pasar. `npm run build` añade construcción y worker generado.
 `npm run lint` ejecuta `eslint .`, el alcance de CI, más amplio que `src`.
+`npm run format:check` verifica el formateo con Prettier (`npm run format` para aplicar).
 
 CI usa Node 24, instala con `npm ci` y ejecuta lint, typecheck, tests y build.
 Pide historial completo para calcular versión. No aplica SQL, despliega funciones
@@ -23,10 +24,10 @@ ni comprueba automáticamente `check:i18n` o los derivados de instrucciones.
 
 Según el cambio:
 
-~~~bash
+```bash
 npm run check:i18n
 node scripts/gen_agents.mjs --check
-~~~
+```
 
 i18n comprueba claves e interpolaciones ES/EN, no todos los literales JSX.
 Puede pasar aunque falten traducciones. El segundo comando comprueba coincidencia
@@ -68,28 +69,29 @@ muestreo en solapes cóncavos. Prueba vacíos y umbrales. El porcentaje de cober
 no prueba que todos los interiores estén trazados.
 
 <a id="push-y-moderacion"></a>
+
 ## Push y moderación
 
 Prepara el entorno con [despliegue](despliegue.md). Registra fecha, commit,
 migraciones y dispositivo; distingue esperado, observado y pendiente.
 
-| Caso | Qué comprobar |
-|---|---|
-| Activar | Gesto, permiso, suscripción local y confirmación remota independiente |
-| Reabrir o volver a primer plano | Sincronizar sin permiso nuevo; no confundir «Activadas» con registro remoto |
-| Fallo de registro | `serverSync` y reintento; conservar suscripción sana |
-| Desactivar y cerrar sesión | Navegador primero, servidor después; reintentar baja y cerrar sesión aun con error |
-| Fin de sesión fuera del botón | Baja local; no dar de baja por el mero arranque |
-| Rotación o cambio de cuenta | Endpoint confirmado, `p_old_endpoint`, pendientes y reasociación |
-| Sin API, denegado, iPhone no instalado | Pista apropiada y resto de aplicación utilizable |
-| Concurrencia de cola | Cron/panel, lease vencido, cierre atrasado, fencing y error de cierre |
-| Servicio push | 404/410, 400/413/401/403, 429 y `Retry-After`, 5xx, timeout/red |
-| Recepción | Notificación visible real; aceptación del servicio no basta |
-| Toque | Ventana controlada/no controlada, nueva ventana, destino y marcado leído |
-| Worker | Híbrido, campos faltantes, datos ilegibles y fallo de `showNotification`; también puede fallar el respaldo |
-| Autotest | Solo su aviso, aun si cron reclamó antes; mirar `notification.error` |
-| Bandeja | Grupos temporales, filtros sin marcado automático, leído/no leído, borrado, vaciar con confirmación y rollback optimista |
-| Moderación | Lectura RLS y RPC; detectar discrepancias de asignación y privacidad de nota |
+| Caso                                   | Qué comprobar                                                                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Activar                                | Gesto, permiso, suscripción local y confirmación remota independiente                                                    |
+| Reabrir o volver a primer plano        | Sincronizar sin permiso nuevo; no confundir «Activadas» con registro remoto                                              |
+| Fallo de registro                      | `serverSync` y reintento; conservar suscripción sana                                                                     |
+| Desactivar y cerrar sesión             | Navegador primero, servidor después; reintentar baja y cerrar sesión aun con error                                       |
+| Fin de sesión fuera del botón          | Baja local; no dar de baja por el mero arranque                                                                          |
+| Rotación o cambio de cuenta            | Endpoint confirmado, `p_old_endpoint`, pendientes y reasociación                                                         |
+| Sin API, denegado, iPhone no instalado | Pista apropiada y resto de aplicación utilizable                                                                         |
+| Concurrencia de cola                   | Cron/panel, lease vencido, cierre atrasado, fencing y error de cierre                                                    |
+| Servicio push                          | 404/410, 400/413/401/403, 429 y `Retry-After`, 5xx, timeout/red                                                          |
+| Recepción                              | Notificación visible real; aceptación del servicio no basta                                                              |
+| Toque                                  | Ventana controlada/no controlada, nueva ventana, destino y marcado leído                                                 |
+| Worker                                 | Híbrido, campos faltantes, datos ilegibles y fallo de `showNotification`; también puede fallar el respaldo               |
+| Autotest                               | Solo su aviso, aun si cron reclamó antes; mirar `notification.error`                                                     |
+| Bandeja                                | Grupos temporales, filtros sin marcado automático, leído/no leído, borrado, vaciar con confirmación y rollback optimista |
+| Moderación                             | Lectura RLS y RPC; detectar discrepancias de asignación y privacidad de nota                                             |
 
 Incluye escritorio Chrome/Edge, Android e iPhone/PWA según el alcance. No cambies
 cifrado, cabeceras, `sub` o payload solo porque pasan mocks. El camino declarativo,
@@ -100,20 +102,21 @@ figurar exitoso por encolar HTTP y recibir después 401/500. Cron con `EdgeRunti
 recibe 202; el panel espera 200 y resumen.
 
 <a id="comprobar-una-actualizacion-pwa"></a>
+
 ## Comprobar una actualización PWA
 
 El mecanismo está en [PWA](../referencia/pwa.md). Para probar **detección**:
 
-~~~bash
+```bash
 VERCEL_GIT_COMMIT_SHA=a npm run build
 npm run preview
-~~~
+```
 
-~~~powershell
+```powershell
 $env:VERCEL_GIT_COMMIT_SHA = 'a'
 npm run build
 npm run preview
-~~~
+```
 
 Cambia `buildId` en `dist/update-info.json` con la página abierta y vuelve a hacerla
 visible. El aviso debe aparecer; descartarlo persiste para ese ID y otro ID

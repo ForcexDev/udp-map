@@ -36,7 +36,10 @@ export function makeProjection(origin: { lng: number; lat: number }): LocalPlane
 /** Plano centrado en el centroide de unos puntos (los nodos de una facultad). */
 export function projectionAround(points: { lng: number; lat: number }[]): LocalPlane {
   if (points.length === 0) return makeProjection({ lng: 0, lat: 0 })
-  const sum = points.reduce((acc, p) => ({ lng: acc.lng + p.lng, lat: acc.lat + p.lat }), { lng: 0, lat: 0 })
+  const sum = points.reduce((acc, p) => ({ lng: acc.lng + p.lng, lat: acc.lat + p.lat }), {
+    lng: 0,
+    lat: 0,
+  })
   return makeProjection({ lng: sum.lng / points.length, lat: sum.lat / points.length })
 }
 
@@ -47,7 +50,10 @@ export const add = (a: Vec2, b: Vec2): Vec2 => ({ x: a.x + b.x, y: a.y + b.y })
 export const scale = (a: Vec2, k: number): Vec2 => ({ x: a.x * k, y: a.y * k })
 export const length = (a: Vec2): number => Math.hypot(a.x, a.y)
 export const dist = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y)
-export const lerp = (a: Vec2, b: Vec2, f: number): Vec2 => ({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f })
+export const lerp = (a: Vec2, b: Vec2, f: number): Vec2 => ({
+  x: a.x + (b.x - a.x) * f,
+  y: a.y + (b.y - a.y) * f,
+})
 
 export function unit(a: Vec2): Vec2 {
   const l = length(a)
@@ -121,7 +127,8 @@ export function pointInRing(p: Vec2, ring: Vec2[]): boolean {
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const a = ring[i]
     const b = ring[j]
-    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x)
+      inside = !inside
   }
   return inside
 }
@@ -129,7 +136,8 @@ export function pointInRing(p: Vec2, ring: Vec2[]): boolean {
 /** Área firmada (shoelace). El signo depende del sentido del anillo. */
 export function ringArea(ring: Vec2[]): number {
   let sum = 0
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) sum += ring[j].x * ring[i].y - ring[i].x * ring[j].y
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++)
+    sum += ring[j].x * ring[i].y - ring[i].x * ring[j].y
   return sum / 2
 }
 

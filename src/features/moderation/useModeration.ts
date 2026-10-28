@@ -3,7 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/shared/lib/supabase'
 import type { ModerationStatus } from '@/shared/types/database'
 import {
-  claimModerationReport, createContentReport, fetchModerationReports, resolveModerationReport,
+  claimModerationReport,
+  createContentReport,
+  fetchModerationReports,
+  resolveModerationReport,
 } from './api'
 
 export function useModerationQueue(status: ModerationStatus) {
@@ -16,12 +19,15 @@ export function useModerationQueue(status: ModerationStatus) {
   useEffect(() => {
     const client = supabase
     if (!client) return
-    const channel = client.channel(`moderation-queue:${crypto.randomUUID()}`)
+    const channel = client
+      .channel(`moderation-queue:${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_reports' }, () => {
         void queryClient.invalidateQueries({ queryKey: ['moderation-reports'] })
       })
       .subscribe()
-    return () => { void client.removeChannel(channel) }
+    return () => {
+      void client.removeChannel(channel)
+    }
   }, [queryClient])
   return query
 }
@@ -41,8 +47,15 @@ export function useClaimModerationReport() {
 export function useResolveModerationReport() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ reportId, action, note }: { reportId: string; action: 'dismiss' | 'delete'; note?: string }) =>
-      resolveModerationReport(reportId, action, note),
+    mutationFn: ({
+      reportId,
+      action,
+      note,
+    }: {
+      reportId: string
+      action: 'dismiss' | 'delete'
+      note?: string
+    }) => resolveModerationReport(reportId, action, note),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['moderation-reports'] })
       void queryClient.invalidateQueries({ queryKey: ['notifications'] })

@@ -54,7 +54,8 @@ export function projectOnAxis(axis: Vec2[], p: Vec2): Projected | null {
     const b = axis[i]
     const { point, f } = closestOnSegment(p, a, b)
     const distance = dist(p, point)
-    if (!best || distance < best.distance) best = { point, along: walked + f * dist(a, b), distance }
+    if (!best || distance < best.distance)
+      best = { point, along: walked + f * dist(a, b), distance }
     walked += dist(a, b)
   }
   return best
@@ -80,7 +81,12 @@ export function planCorridor(axis: Vec2[], doors: CorridorDoor[], keyPrefix = 'w
     const projected = projectOnAxis(axis, door.p)
     if (!projected) continue
     projections.set(door.id, projected)
-    candidates.push({ point: projected.point, along: projected.along, vertex: false, doors: [door] })
+    candidates.push({
+      point: projected.point,
+      along: projected.along,
+      vertex: false,
+      doors: [door],
+    })
   }
   candidates.sort((a, b) => a.along - b.along)
 

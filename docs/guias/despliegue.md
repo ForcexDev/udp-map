@@ -10,17 +10,18 @@ El [modelo SQL](../referencia/base-de-datos.md), el
 [validación](validacion.md) completan esta guía.
 
 <a id="configuracion-por-entorno"></a>
+
 ## Configuración por entorno
 
 No guardes valores de secretos en documentos, scripts o variables `VITE_*`.
 
-| Entorno | Configuración |
-|---|---|
-| Frontend | `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` o alias `VITE_SUPABASE_PUBLISHABLE_KEY`; Google, ORS y VAPID público según función |
-| Supabase Auth / Google | Proveedor y credenciales OAuth; cliente y orígenes reales del botón Google; restricción de correo también validada en código/SQL |
-| Edge compartido | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y `CRON_SECRET` |
-| `send-push` | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`; opcionales `APP_ORIGIN` y `ALLOWED_ORIGINS` |
-| Vault para cron HTTP | `udp_map_project_url` y `udp_map_send_push_cron_secret` |
+| Entorno                | Configuración                                                                                                                     |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend               | `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` o alias `VITE_SUPABASE_PUBLISHABLE_KEY`; Google, ORS y VAPID público según función |
+| Supabase Auth / Google | Proveedor y credenciales OAuth; cliente y orígenes reales del botón Google; restricción de correo también validada en código/SQL  |
+| Edge compartido        | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y `CRON_SECRET`                                                                       |
+| `send-push`            | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`; opcionales `APP_ORIGIN` y `ALLOWED_ORIGINS`                             |
+| Vault para cron HTTP   | `udp_map_project_url` y `udp_map_send_push_cron_secret`                                                                           |
 
 Las variables Supabase del entorno Edge pueden ser provistas por la plataforma;
 comprueba su disponibilidad en el proyecto, no las copies al frontend.
@@ -84,9 +85,9 @@ exportó los valores remotos.
 Inserta el correo en `admin_emails` **antes del alta** para que
 `handle_new_user` cree el perfil con rol adecuado:
 
-~~~sql
+```sql
 insert into public.admin_emails (email) values ('persona@mail.udp.cl');
-~~~
+```
 
 Si ya existe el perfil, la primera promoción requiere sesión SQL administrativa
 y comprobación del resultado. `admin_set_user_role` necesita un admin existente:
@@ -134,10 +135,10 @@ comentario documental.
 Desde un checkout del código que deseas desplegar y una CLI autenticada al
 proyecto correcto:
 
-~~~bash
+```bash
 npm run deploy:push
 npx --yes supabase functions deploy storage-gc
-~~~
+```
 
 `supabase/config.toml` declara ambas con `verify_jwt = false`. El cron HTTP usa
 `x-cron-secret` sin Authorization; si el gateway exige JWT, devuelve 401 antes
@@ -146,13 +147,13 @@ control: `_shared/auth.ts` comprueba cron o sesión admin.
 Tras desplegar, inspecciona la configuración efectiva, por ejemplo con
 `npx supabase functions list` y la consola del proyecto.
 
-| Job | Frecuencia versionada / procedimiento | Dependencia |
-|---|---|---|
-| `expire-pins` | Cada 30 minutos, bloque siguiente | Esquema de pines |
-| `udp-map-storage-gc` | Cada 10 minutos, `20260803120500_schedule_storage_gc.sql` | Cola, función y Vault |
-| `udp-map-send-push-every-minute` | Cada minuto, `20261021000200_push_cron_jobs.sql` | Función y Vault |
-| `udp-map-event-reminders` | Cada minuto, mismo archivo | `enqueue_upcoming_event_notifications` |
-| `udp-map-prune-push-history` | Diario 04:17 UTC, mismo archivo | `prune_push_history` |
+| Job                              | Frecuencia versionada / procedimiento                     | Dependencia                            |
+| -------------------------------- | --------------------------------------------------------- | -------------------------------------- |
+| `expire-pins`                    | Cada 30 minutos, bloque siguiente                         | Esquema de pines                       |
+| `udp-map-storage-gc`             | Cada 10 minutos, `20260803120500_schedule_storage_gc.sql` | Cola, función y Vault                  |
+| `udp-map-send-push-every-minute` | Cada minuto, `20261021000200_push_cron_jobs.sql`          | Función y Vault                        |
+| `udp-map-event-reminders`        | Cada minuto, mismo archivo                                | `enqueue_upcoming_event_notifications` |
+| `udp-map-prune-push-history`     | Diario 04:17 UTC, mismo archivo                           | `prune_push_history`                   |
 
 Sobre un proyecto reconstruido, una vez desplegadas las funciones y disponibles
 los secretos, programa Storage con su archivo específico y los jobs de push con
@@ -163,13 +164,13 @@ secretos o la función respondan.
 
 El job de expiración que no provisiona el baseline:
 
-~~~sql
+```sql
 select cron.schedule(
   'expire-pins',
   '*/30 * * * *',
   $$ delete from public.pins where is_permanent = false and expires_at < now() $$
 );
-~~~
+```
 
 Los jobs HTTP leen exclusivamente URL y secreto cron de Vault; nunca service role.
 Los jobs de recordatorios/purga ejecutan SQL sin JWT. No sustituyas las
@@ -214,7 +215,7 @@ de código registrada, no una invitación a saltarse la comprobación del entorn
 
 Estas consultas de lectura no muestran claves de suscripción ni secretos:
 
-~~~sql
+```sql
 select jobname, schedule, active, left(command, 80)
 from cron.job order by jobname;
 
@@ -233,7 +234,7 @@ select coalesce(push_host, '(sin host)') as host,
 from public.notification_push_deliveries
 where created_at >= now() - interval '7 days'
 group by 1 order by 3 desc, 1;
-~~~
+```
 
 `cron.job_run_details` puede decir succeeded porque `pg_net` encoló HTTP aunque
 el destino conteste 401/500. El cron push con `EdgeRuntime` devuelve 202 y el
@@ -256,7 +257,7 @@ Solo en un entorno controlado. El bloque reclama/cierra provisionalmente y
 termina con excepción para deshacer la transacción. No envía push ni deja
 marcadas como sent entregas que nunca salieron:
 
-~~~sql
+```sql
 do $prueba$
 declare
   v_lote jsonb;
@@ -276,7 +277,7 @@ begin
     (select count(*) from public.finish_push_deliveries(v_lote));
 end;
 $prueba$;
-~~~
+```
 
 Se espera N reclamadas, N cerradas y cero al repetir el cierre, mostrado como
 error deliberado. No elimines la excepción dejando un ensayo que consuma intentos.
@@ -284,6 +285,7 @@ La prueba completa requiere además lease vencido, competencia de dos sesiones,
 fallos y permisos con roles reales; este bloque no los sustituye.
 
 <a id="vuelta-atras"></a>
+
 ## Vuelta atrás
 
 Si falla la función actual, el procedimiento registrado permite redesplegar
@@ -293,11 +295,11 @@ recepción/toque, no solo un POST exitoso.
 Si debes deshacer también esquema, primero despliega un sender compatible y
 aplica down en orden inverso: `000200` → `000100` → `000000`.
 
-| Down | Condición y pérdida que hay que conservar |
-|---|---|
-| `000200` | Antes despliega un sender que encole recordatorios, como `4eae308`/`20eee7e`. Quita cron de recordatorios/purga y restaura el cron HTTP anterior; datos ya purgados no vuelven |
+| Down     | Condición y pérdida que hay que conservar                                                                                                                                                                                 |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `000200` | Antes despliega un sender que encole recordatorios, como `4eae308`/`20eee7e`. Quita cron de recordatorios/purga y restaura el cron HTTP anterior; datos ya purgados no vuelven                                            |
 | `000100` | Quita `reminded_at`: vuelve el riesgo de reaviso al borrar notificación. No restaura endpoints retirados ni movimientos ya hechos. Restituye exposición de `wants_notification` a authenticated según el esquema anterior |
-| `000000` | Antes retira el sender que usa claim/finish. Borra entregas NULL o expired para volver a NOT NULL/CASCADE/CHECK antiguo: se pierde ese rastro |
+| `000000` | Antes retira el sender que usa claim/finish. Borra entregas NULL o expired para volver a NOT NULL/CASCADE/CHECK antiguo: se pierde ese rastro                                                                             |
 
 Los fallback de cliente de octubre todavía sirven a esta compatibilidad,
 incluidos reintento sin `p_old_endpoint` y mensajes heredados. No los confundas
@@ -306,6 +308,7 @@ los down de agosto siguen en el repositorio. Retirarlos requiere decidir que
 ese rollback dejó de ser una opción.
 
 <a id="storage-y-recuperacion"></a>
+
 ## Storage y recuperación
 
 Al borrar filas confirmadas, los triggers encolan archivos y `storage-gc` los
@@ -314,12 +317,12 @@ quita por API de Storage, hasta 200 por pasada. No borres solo filas de
 
 Inspecciona pendientes y errores sin ocultar filas cerradas por agotamiento:
 
-~~~sql
+```sql
 select bucket_id, attempts, processed_at, last_error, count(*)
 from public.storage_cleanup_queue
 group by bucket_id, attempts, processed_at, last_error
 order by processed_at nulls first, attempts;
-~~~
+```
 
 Si un archivo ya se borró y falló marcar la cola, reprocesar es idempotente.
 Tras cinco intentos el worker cierra con error: investiga la causa antes de

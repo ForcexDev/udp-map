@@ -1,5 +1,11 @@
 import type { NavGraph } from './graph'
-import { cardinalWord, fallbackTranslate, planSteps, sideWord, turnContinuation } from './instructions'
+import {
+  cardinalWord,
+  fallbackTranslate,
+  planSteps,
+  sideWord,
+  turnContinuation,
+} from './instructions'
 import { cardinalOf, dist, pointInRing, ringArea, sub } from './projection'
 import type { IndoorArea, NavNode, Translate } from './types'
 
@@ -38,7 +44,11 @@ export function microaddress(roomId: string, ctx: MicroaddressContext): Microadd
   const room = graph.nodes.get(roomId)
   if (!room || room.kind !== 'room' || room.buildingId === null || room.floor === null) return null
 
-  const door = graph.neighbors(room.id).map(({ to }) => graph.node(to)).find((n) => n.kind === 'door') ?? null
+  const door =
+    graph
+      .neighbors(room.id)
+      .map(({ to }) => graph.node(to))
+      .find((n) => n.kind === 'door') ?? null
   const hall = door
     ? (graph
         .neighbors(door.id)
@@ -50,14 +60,16 @@ export function microaddress(roomId: string, ctx: MicroaddressContext): Microadd
   const building = ctx.buildingName(room.buildingId)
   if (building) parts.push(building)
   parts.push(
-    ctx.floorLabel?.(room.buildingId, room.floor) ?? t('wayfinder.micro.floor', 'Piso {{n}}', { n: room.floor }),
+    ctx.floorLabel?.(room.buildingId, room.floor) ??
+      t('wayfinder.micro.floor', 'Piso {{n}}', { n: room.floor }),
   )
 
   if (door && hall) {
     const area = circulationArea(hall, ctx.areas)
     const offset = sub(door.p, hall.p)
     const dir = dist(door.p, hall.p) >= SIDE_MIN_M ? cardinalWord(cardinalOf(offset), t) : null
-    if (area && dir) parts.push(t('wayfinder.micro.areaSide', '{{area}}, lado {{dir}}', { area: area.name, dir }))
+    if (area && dir)
+      parts.push(t('wayfinder.micro.areaSide', '{{area}}, lado {{dir}}', { area: area.name, dir }))
     else if (area) parts.push(area.name)
     else if (dir) parts.push(t('wayfinder.micro.side', 'lado {{dir}}', { dir }))
   }
@@ -111,18 +123,33 @@ function fromStairs(room: NavNode, ctx: MicroaddressContext, t: Translate): stri
 
   if (arrive.side === 'ahead') {
     return turn
-      ? t('wayfinder.micro.fromStairsAhead', 'Saliendo de la escalera, {{turn}}: la puerta de enfrente', { turn })
-      : t('wayfinder.micro.fromStairsAheadStraight', 'Saliendo de la escalera: la puerta de enfrente')
+      ? t(
+          'wayfinder.micro.fromStairsAhead',
+          'Saliendo de la escalera, {{turn}}: la puerta de enfrente',
+          { turn },
+        )
+      : t(
+          'wayfinder.micro.fromStairsAheadStraight',
+          'Saliendo de la escalera: la puerta de enfrente',
+        )
   }
   const side = sideWord(arrive.side, t)
   return turn
-    ? t('wayfinder.micro.fromStairs', 'Saliendo de la escalera, {{turn}}: {{n}}.ª puerta a tu {{side}}', {
-        turn,
-        n: arrive.ordinal,
-        side,
-      })
-    : t('wayfinder.micro.fromStairsStraight', 'Saliendo de la escalera: {{n}}.ª puerta a tu {{side}}', {
-        n: arrive.ordinal,
-        side,
-      })
+    ? t(
+        'wayfinder.micro.fromStairs',
+        'Saliendo de la escalera, {{turn}}: {{n}}.ª puerta a tu {{side}}',
+        {
+          turn,
+          n: arrive.ordinal,
+          side,
+        },
+      )
+    : t(
+        'wayfinder.micro.fromStairsStraight',
+        'Saliendo de la escalera: {{n}}.ª puerta a tu {{side}}',
+        {
+          n: arrive.ordinal,
+          side,
+        },
+      )
 }

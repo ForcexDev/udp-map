@@ -9,7 +9,8 @@ import type { FeatureCollection } from 'geojson'
 // puertas, pasillos y núcleos, y el panel no necesita la instancia del mapa.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type NavMode = 'select' | 'door' | 'corridor' | 'stairs' | 'elevator' | 'entrance' | 'outdoor' | 'link'
+export type NavMode =
+  'select' | 'door' | 'corridor' | 'stairs' | 'elevator' | 'entrance' | 'outdoor' | 'link'
 
 export interface NavClick {
   lng: number

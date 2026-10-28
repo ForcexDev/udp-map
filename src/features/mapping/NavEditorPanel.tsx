@@ -1,18 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Feature, FeatureCollection } from 'geojson'
-import { CircleDot, DoorOpen, Link2, Route, ShieldCheck, Spline, Trash2, TriangleAlert, Trees } from 'lucide-react'
+import {
+  CircleDot,
+  DoorOpen,
+  Link2,
+  Route,
+  ShieldCheck,
+  Spline,
+  Trash2,
+  TriangleAlert,
+  Trees,
+} from 'lucide-react'
 import type { NavEdgeRow, NavNodeKind, NavNodeRow, Pin } from '@/shared/types/database'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { dbErrorMessage } from '@/shared/utils/dbError'
 import { openRing } from '@/shared/utils/geometry'
 import { planCorridor, projectOnAxis } from '@/shared/utils/indoor/corridor'
 import { areasToLocal, graphFromRows } from '@/shared/utils/indoor/load'
-import {
-  dist,
-  levelIndex,
-  projectionAround,
-} from '@/shared/utils/indoor/projection'
+import { dist, levelIndex, projectionAround } from '@/shared/utils/indoor/projection'
 import type { Vec2 } from '@/shared/utils/indoor/types'
 import { validateNavGraph, type NavIssue } from '@/shared/utils/indoor/validate'
 import {
@@ -48,19 +54,54 @@ const CORE_LINK_M = 4
 const ENTRANCE_LINK_M = 8
 
 const MODES: { mode: NavMode; label: string; icon: typeof Route; hint: string }[] = [
-  { mode: 'select', label: 'Elegir', icon: CircleDot, hint: 'Clic en un nodo para ver y editar sus datos.' },
-  { mode: 'door', label: 'Puerta', icon: DoorOpen, hint: 'Clic sobre el borde de un área: la puerta se ajusta al borde.' },
+  {
+    mode: 'select',
+    label: 'Elegir',
+    icon: CircleDot,
+    hint: 'Clic en un nodo para ver y editar sus datos.',
+  },
+  {
+    mode: 'door',
+    label: 'Puerta',
+    icon: DoorOpen,
+    hint: 'Clic sobre el borde de un área: la puerta se ajusta al borde.',
+  },
   {
     mode: 'corridor',
     label: 'Pasillo',
     icon: Spline,
     hint: 'Clic a lo largo del eje del pasillo; doble clic o "Generar" lo cierra y une las puertas cercanas.',
   },
-  { mode: 'stairs', label: 'Escalera', icon: Route, hint: 'Clic en el descanso de la escalera, dentro de su hueco.' },
-  { mode: 'elevator', label: 'Ascensor', icon: Route, hint: 'Clic dentro de la cabina del ascensor.' },
-  { mode: 'entrance', label: 'Entrada', icon: DoorOpen, hint: 'Clic en la puerta de fachada; se une al nodo interior más cercano.' },
-  { mode: 'outdoor', label: 'Exterior', icon: Trees, hint: 'Clic en un punto exterior (vereda, patio). Únelo luego a la entrada.' },
-  { mode: 'link', label: 'Unir', icon: Link2, hint: 'Clic en dos nodos para unirlos con un tramo a pie.' },
+  {
+    mode: 'stairs',
+    label: 'Escalera',
+    icon: Route,
+    hint: 'Clic en el descanso de la escalera, dentro de su hueco.',
+  },
+  {
+    mode: 'elevator',
+    label: 'Ascensor',
+    icon: Route,
+    hint: 'Clic dentro de la cabina del ascensor.',
+  },
+  {
+    mode: 'entrance',
+    label: 'Entrada',
+    icon: DoorOpen,
+    hint: 'Clic en la puerta de fachada; se une al nodo interior más cercano.',
+  },
+  {
+    mode: 'outdoor',
+    label: 'Exterior',
+    icon: Trees,
+    hint: 'Clic en un punto exterior (vereda, patio). Únelo luego a la entrada.',
+  },
+  {
+    mode: 'link',
+    label: 'Unir',
+    icon: Link2,
+    hint: 'Clic en dos nodos para unirlos con un tramo a pie.',
+  },
 ]
 
 const KIND_COLOR: Record<NavNodeKind, string> = {
@@ -128,10 +169,14 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
     return projectionAround(points.length > 0 ? points : [{ lng: -70.66, lat: -33.45 }])
   }, [mapping.buildings, buildingId, rows])
 
-  const facultyAreas = useMemo(() => mapping.areas.filter((a) => a.faculty_id === facultyId), [mapping.areas, facultyId])
+  const facultyAreas = useMemo(
+    () => mapping.areas.filter((a) => a.faculty_id === facultyId),
+    [mapping.areas, facultyId],
+  )
   const localAreas = useMemo(() => areasToLocal(facultyAreas, plane), [facultyAreas, plane])
   const graph = useMemo(
-    () => (rows ? graphFromRows(rows.nodes, rows.edges, { plane, areas: facultyAreas }).graph : null),
+    () =>
+      rows ? graphFromRows(rows.nodes, rows.edges, { plane, areas: facultyAreas }).graph : null,
     [rows, plane, facultyAreas],
   )
   const floorAreas = useMemo(
@@ -139,7 +184,8 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
     [localAreas, buildingId, level],
   )
   const onFloor = (n: NavNodeRow) =>
-    (n.building_id === null && n.floor === null) || (n.building_id === buildingId && n.floor === level)
+    (n.building_id === null && n.floor === null) ||
+    (n.building_id === buildingId && n.floor === level)
 
   const issues = useMemo(() => {
     if (!graph) return []
@@ -150,7 +196,8 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
   }, [graph, localAreas, pins, facultyId])
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['navGraph', facultyId] })
-  const fail = (error: unknown) => showToast(dbErrorMessage(error) || 'No se pudo guardar el grafo.')
+  const fail = (error: unknown) =>
+    showToast(dbErrorMessage(error) || 'No se pudo guardar el grafo.')
 
   const write = useMutation({
     mutationFn: async (change: { nodes?: NavNodeInput[]; edges?: NavEdgeInput[] }) => {
@@ -175,12 +222,17 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
   })
 
   const update = useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Partial<NavNodeInput> }) => updateNavNode(id, patch),
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<NavNodeInput> }) =>
+      updateNavNode(id, patch),
     onSuccess: () => void refresh(),
     onError: fail,
   })
 
-  const nodeInput = (kind: NavNodeKind, p: Vec2, extra: Partial<NavNodeInput> = {}): NavNodeInput => {
+  const nodeInput = (
+    kind: NavNodeKind,
+    p: Vec2,
+    extra: Partial<NavNodeInput> = {},
+  ): NavNodeInput => {
     const [lng, lat] = plane.toLngLat(p)
     const outdoor = kind === 'outdoor'
     return {
@@ -200,7 +252,12 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
       ...extra,
     }
   }
-  const edgeInput = (a: string, b: string, kind: NavEdgeInput['kind'] = 'walk', free = true): NavEdgeInput => ({
+  const edgeInput = (
+    a: string,
+    b: string,
+    kind: NavEdgeInput['kind'] = 'walk',
+    free = true,
+  ): NavEdgeInput => ({
     id: crypto.randomUUID(),
     faculty_id: facultyId,
     a,
@@ -214,7 +271,8 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
     let best: string | null = null
     let bestD = maxM
     for (const node of graph.nodes.values()) {
-      if (!kinds.includes(node.kind) || node.buildingId !== buildingId || node.floor !== level) continue
+      if (!kinds.includes(node.kind) || node.buildingId !== buildingId || node.floor !== level)
+        continue
       const d = dist(node.p, p)
       if (d < bestD) {
         bestD = d
@@ -261,7 +319,9 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
     const edges = plan.edges.map((e) => edgeInput(ids.get(e.a) ?? e.a, ids.get(e.b) ?? e.b))
     write.mutate({ nodes, edges })
     useNavEditor.getState().setAxis([])
-    showToast(`Pasillo: ${plan.walk.length} nodos, ${doors.length} puertas unidas, ${plan.rooms.length} salas.`)
+    showToast(
+      `Pasillo: ${plan.walk.length} nodos, ${doors.length} puertas unidas, ${plan.rooms.length} salas.`,
+    )
   }
 
   /** La puerta abre a una sala cerrada que aún no tiene su nodo. */
@@ -278,16 +338,26 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
     if (!graph || !buildingId) return
     const groups = new Map<string, { id: string; floor: number; kind: 'stairs' | 'elevator' }[]>()
     for (const node of graph.nodes.values()) {
-      if ((node.kind !== 'stairs' && node.kind !== 'elevator') || node.buildingId !== buildingId || !node.shaft) continue
+      if (
+        (node.kind !== 'stairs' && node.kind !== 'elevator') ||
+        node.buildingId !== buildingId ||
+        !node.shaft
+      )
+        continue
       const key = `${node.kind}|${node.shaft}`
-      groups.set(key, [...(groups.get(key) ?? []), { id: node.id, floor: node.floor ?? 1, kind: node.kind }])
+      groups.set(key, [
+        ...(groups.get(key) ?? []),
+        { id: node.id, floor: node.floor ?? 1, kind: node.kind },
+      ])
     }
     const edges: NavEdgeInput[] = []
     for (const group of groups.values()) {
       group.sort((a, b) => levelIndex(a.floor) - levelIndex(b.floor))
       for (let i = 1; i < group.length; i++) {
         if (graph.edgeBetween(group[i - 1].id, group[i].id)) continue
-        edges.push(edgeInput(group[i - 1].id, group[i].id, group[i].kind, group[i].kind === 'elevator'))
+        edges.push(
+          edgeInput(group[i - 1].id, group[i].id, group[i].kind, group[i].kind === 'elevator'),
+        )
       }
     }
     if (edges.length === 0) {
@@ -313,7 +383,8 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
           editor.setLinkFrom(nodeId)
           return
         }
-        if (editor.linkFrom !== nodeId) write.mutate({ edges: [edgeInput(editor.linkFrom, nodeId, 'walk', stepFree)] })
+        if (editor.linkFrom !== nodeId)
+          write.mutate({ edges: [edgeInput(editor.linkFrom, nodeId, 'walk', stepFree)] })
         editor.setLinkFrom(null)
         return
       }
@@ -336,7 +407,13 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
           return
         }
         write.mutate({
-          nodes: [nodeInput('door', snap.p, { area_id: snap.areaId, width_m: doorWidth, landmark: label || null })],
+          nodes: [
+            nodeInput('door', snap.p, {
+              area_id: snap.areaId,
+              width_m: doorWidth,
+              landmark: label || null,
+            }),
+          ],
         })
         return
       }
@@ -353,7 +430,10 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
       if (editor.mode === 'entrance') {
         const node = nodeInput('entrance', p, { landmark: label || null, width_m: doorWidth })
         const inside = nearest(p, ['walk'], ENTRANCE_LINK_M)
-        write.mutate({ nodes: [node], edges: inside ? [edgeInput(node.id!, inside, 'walk', stepFree)] : [] })
+        write.mutate({
+          nodes: [node],
+          edges: inside ? [edgeInput(node.id!, inside, 'walk', stepFree)] : [],
+        })
       }
     }
     useNavEditor.getState().setHandlers(onClick, generateCorridor)
@@ -375,7 +455,13 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
       features.push({
         type: 'Feature',
         properties: { part: 'edge', color: e.step_free ? '#64748b' : '#c22b38' },
-        geometry: { type: 'LineString', coordinates: [[a.lng, a.lat], [b.lng, b.lat]] },
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [a.lng, a.lat],
+            [b.lng, b.lat],
+          ],
+        },
       })
     }
     for (const n of visible.values()) {
@@ -394,7 +480,10 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
       features.push({
         type: 'Feature',
         properties: { part: 'axis', color: '#2563eb' },
-        geometry: axis.length > 1 ? { type: 'LineString', coordinates: axis } : { type: 'Point', coordinates: axis[0] },
+        geometry:
+          axis.length > 1
+            ? { type: 'LineString', coordinates: axis }
+            : { type: 'Point', coordinates: axis[0] },
       })
     }
     const overlay: FeatureCollection = { type: 'FeatureCollection', features }
@@ -413,8 +502,8 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
   if (navQuery.isError) {
     return (
       <div className="p-4 text-xs text-neutral-500">
-        No se pudo cargar el grafo de navegación. Si la migración 20261023000000 no está aplicada en este
-        entorno, aplícala en el SQL Editor de Supabase.
+        No se pudo cargar el grafo de navegación. Si la migración 20261023000000 no está aplicada en
+        este entorno, aplícala en el SQL Editor de Supabase.
       </div>
     )
   }
@@ -422,7 +511,9 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
   return (
     <div className="flex min-h-0 flex-col gap-3 overflow-y-auto p-4 text-xs">
       <div>
-        <h3 className="text-[11px] font-black uppercase tracking-wider text-neutral-500">Navegación</h3>
+        <h3 className="text-[11px] font-black uppercase tracking-wider text-neutral-500">
+          Navegación
+        </h3>
         <p className="mt-1 text-neutral-500">
           {buildingId && level !== null
             ? `Planta ${level} de ${mapping.buildings.find((b) => b.id === buildingId)?.name ?? buildingId}`
@@ -464,14 +555,32 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
         </label>
       )}
       {(mode === 'stairs' || mode === 'elevator') && (
-        <TextField label="Núcleo (shaft)" value={shaft} onChange={setShaft} placeholder={mode === 'stairs' ? 'ESC' : 'ASC'} />
+        <TextField
+          label="Núcleo (shaft)"
+          value={shaft}
+          onChange={setShaft}
+          placeholder={mode === 'stairs' ? 'ESC' : 'ASC'}
+        />
       )}
-      {(mode === 'door' || mode === 'stairs' || mode === 'elevator' || mode === 'entrance' || mode === 'outdoor') && (
-        <TextField label="Lo que se ve (landmark)" value={label} onChange={setLabel} placeholder="la puerta principal" />
+      {(mode === 'door' ||
+        mode === 'stairs' ||
+        mode === 'elevator' ||
+        mode === 'entrance' ||
+        mode === 'outdoor') && (
+        <TextField
+          label="Lo que se ve (landmark)"
+          value={label}
+          onChange={setLabel}
+          placeholder="la puerta principal"
+        />
       )}
       {(mode === 'link' || mode === 'entrance') && (
         <label className="flex items-center gap-2 text-neutral-600 dark:text-neutral-300">
-          <input type="checkbox" checked={stepFree} onChange={(e) => setStepFree(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={stepFree}
+            onChange={(e) => setStepFree(e.target.checked)}
+          />
           Apto sin escalones
         </label>
       )}
@@ -524,7 +633,10 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
             </>
           ) : (
             <>
-              <TriangleAlert size={14} className={errors.length > 0 ? 'text-[#D41F2D]' : 'text-amber-500'} />
+              <TriangleAlert
+                size={14}
+                className={errors.length > 0 ? 'text-[#D41F2D]' : 'text-amber-500'}
+              />
               {errors.length} errores · {warnings.length} avisos
             </>
           )}
@@ -537,7 +649,9 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
                 onClick={() => issue.nodeIds[0] && focusNode(issue.nodeIds[0], rows?.nodes ?? [])}
                 className="w-full rounded-lg px-2 py-1 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
               >
-                <span className={issue.severity === 'error' ? 'text-[#D41F2D]' : 'text-amber-600'}>●</span>{' '}
+                <span className={issue.severity === 'error' ? 'text-[#D41F2D]' : 'text-amber-600'}>
+                  ●
+                </span>{' '}
                 {ISSUE_TEXT[issue.code]}
                 {issue.detail ? ` · ${issue.detail}` : ''}
               </button>
@@ -553,7 +667,8 @@ export function NavEditorPanel({ mapping, pins }: NavEditorPanelProps) {
 function focusNode(id: string, nodes: NavNodeRow[]) {
   const node = nodes.find((n) => n.id === id)
   if (!node) return
-  if (node.building_id && node.floor !== null) useMappingEditor.getState().selectFloor(node.building_id, node.floor)
+  if (node.building_id && node.floor !== null)
+    useMappingEditor.getState().selectFloor(node.building_id, node.floor)
   useMappingEditor.getState().setTool('nav')
   useNavEditor.getState().setMode('select')
   useNavEditor.getState().selectNode(id)
@@ -584,9 +699,16 @@ function NodeForm({
       <div className="font-bold">Nodo: {node.kind}</div>
       <TextField label="Lo que se ve (landmark)" value={landmark} onChange={setLandmark} />
       {(node.kind === 'room' || node.kind === 'door') && (
-        <TextField label="Código de sala" value={roomCode} onChange={setRoomCode} placeholder="V432.4.S413" />
+        <TextField
+          label="Código de sala"
+          value={roomCode}
+          onChange={setRoomCode}
+          placeholder="V432.4.S413"
+        />
       )}
-      {node.kind === 'outdoor' && <TextField label="Por dónde (vía)" value={via} onChange={setVia} />}
+      {node.kind === 'outdoor' && (
+        <TextField label="Por dónde (vía)" value={via} onChange={setVia} />
+      )}
       {vertical && <TextField label="Núcleo (shaft)" value={shaft} onChange={setShaft} />}
       {(node.kind === 'door' || node.kind === 'entrance') && (
         <TextField label="Ancho (m)" value={width} onChange={setWidth} />
@@ -624,7 +746,12 @@ function NodeForm({
                 {e.kind}
                 {e.step_free ? '' : ' · con escalones'}
               </span>
-              <button type="button" onClick={() => onDeleteEdge(e.id)} className="text-[#D41F2D]" title="Quitar tramo">
+              <button
+                type="button"
+                onClick={() => onDeleteEdge(e.id)}
+                className="text-[#D41F2D]"
+                title="Quitar tramo"
+              >
                 ×
               </button>
             </li>

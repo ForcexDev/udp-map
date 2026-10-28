@@ -37,7 +37,11 @@ export function FacultiesPanel() {
   const showToast = useUIStore((s) => s.showToast)
   const [editing, setEditing] = useState<Faculty | null>(null)
 
-  const { data: faculties = [], isLoading, error } = useQuery({
+  const {
+    data: faculties = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: FACULTIES_QUERY_KEY,
     queryFn: fetchFaculties,
   })
@@ -84,7 +88,13 @@ export function FacultiesPanel() {
         <AdminError message={t('admin.facultiesFailed')} />
       ) : faculties.length === 0 ? (
         <AdminEmpty
-          icon={<Building2 size={40} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />}
+          icon={
+            <Building2
+              size={40}
+              strokeWidth={1.5}
+              className="text-neutral-300 dark:text-neutral-700"
+            />
+          }
           title={t('admin.noFaculties')}
           hint={t('admin.noFacultiesHint')}
         />
@@ -127,7 +137,9 @@ export function FacultiesPanel() {
                     mapear por dentro. */}
                 <span
                   className={`flex items-center gap-1 ${
-                    faculty.polygon ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-500'
+                    faculty.polygon
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-amber-600 dark:text-amber-500'
                   }`}
                 >
                   <Shapes size={11} />

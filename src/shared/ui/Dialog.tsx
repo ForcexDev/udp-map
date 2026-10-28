@@ -13,7 +13,15 @@ interface DialogProps {
   contentClassName?: string
 }
 
-export function Dialog({ open, onOpenChange, title, description, children, hideClose, contentClassName }: DialogProps) {
+export function Dialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  hideClose,
+  contentClassName,
+}: DialogProps) {
   const { t } = useTranslation()
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -46,7 +54,9 @@ export function Dialog({ open, onOpenChange, title, description, children, hideC
           }}
         >
           <div className="mb-3 flex items-start justify-between gap-4 shrink-0">
-            <RadixDialog.Title className="text-lg font-bold text-stone-900 dark:text-stone-100">{title}</RadixDialog.Title>
+            <RadixDialog.Title className="text-lg font-bold text-stone-900 dark:text-stone-100">
+              {title}
+            </RadixDialog.Title>
             {!hideClose && (
               <RadixDialog.Close
                 aria-label={t('common.close')}

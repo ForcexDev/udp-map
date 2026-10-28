@@ -43,7 +43,10 @@ export function AboutModal() {
             <UsersRound size={19} />
           </div>
           <p className="text-xs sm:text-sm leading-relaxed text-stone-600 dark:text-stone-300">
-            {t('about.body', 'UDP Map es una iniciativa creada para ayudar a la comunidad UDP a explorar sus campus, compartir información y mantenerse conectada.')}
+            {t(
+              'about.body',
+              'UDP Map es una iniciativa creada para ayudar a la comunidad UDP a explorar sus campus, compartir información y mantenerse conectada.',
+            )}
           </p>
         </div>
 
@@ -55,7 +58,10 @@ export function AboutModal() {
             >
               <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
                 <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-[#FBECEB] text-[11px] sm:text-xs font-bold text-[#B02330] dark:bg-[#D93846]/15 dark:text-rose-300">
-                  {member.name.split(' ').map((part) => part[0]).join('')}
+                  {member.name
+                    .split(' ')
+                    .map((part) => part[0])
+                    .join('')}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 leading-tight">

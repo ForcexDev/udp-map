@@ -41,7 +41,7 @@ export function PinBadges({ pin }: { pin: Pin }) {
     <div key="type" className="flex items-center gap-1">
       <TypeIcon size={14} className="text-neutral-500" />
       <span>{typeLabel}</span>
-    </div>
+    </div>,
   )
 
   // En vivo: va en la línea de identidad, pegado al tipo, porque es lo primero
@@ -54,7 +54,7 @@ export function PinBadges({ pin }: { pin: Pin }) {
       >
         <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
         {t('events.live', 'En vivo')}
-      </div>
+      </div>,
     )
   }
 
@@ -62,11 +62,14 @@ export function PinBadges({ pin }: { pin: Pin }) {
   if (!pin.is_permanent && pin.type !== 'event' && expiry.remainingMs !== null && pin.expires_at) {
     badges.push(
       <div key="exp" className="flex items-center gap-1">
-        <Clock size={14} className={expiry.status === 'fading' ? 'text-amber-500' : 'text-neutral-500'} />
+        <Clock
+          size={14}
+          className={expiry.status === 'fading' ? 'text-amber-500' : 'text-neutral-500'}
+        />
         <span className={expiry.status === 'fading' ? 'text-amber-600 dark:text-amber-400' : ''}>
           {t('pin.expiresIn', { defaultValue: 'Expira en {{when}}', when: whenText })}
         </span>
-      </div>
+      </div>,
     )
   }
 
@@ -80,14 +83,20 @@ export function PinBadges({ pin }: { pin: Pin }) {
           {t('pin.addedBy', 'Añadido por:')}{' '}
           <span className="text-[#D41F2D] font-bold">{entityName}</span>
         </span>
-      </div>
+      </div>,
     )
   } else {
     badges.push(
-      <button key="user" onClick={() => pin.creator_id && setProfileId(pin.creator_id)} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+      <button
+        key="user"
+        onClick={() => pin.creator_id && setProfileId(pin.creator_id)}
+        className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+      >
         <User size={14} className="text-neutral-400" />
-        <span className="text-neutral-500 hover:underline">{pin.creator_name || 'Estudiante UDP'}</span>
-      </button>
+        <span className="text-neutral-500 hover:underline">
+          {pin.creator_name || 'Estudiante UDP'}
+        </span>
+      </button>,
     )
 
     if (pin.verifier_entity_name || (pin.is_permanent && !pin.is_official)) {
@@ -99,7 +108,7 @@ export function PinBadges({ pin }: { pin: Pin }) {
             {t('pin.verifiedByLabel', 'Verificado por:')}{' '}
             <span className="text-[#D41F2D] font-bold">{verifierName}</span>
           </span>
-        </div>
+        </div>,
       )
     }
   }

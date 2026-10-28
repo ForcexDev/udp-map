@@ -251,14 +251,28 @@ export const useMappingEditor = create<MappingEditorState>((set, get) => {
 
     selectBuilding: (buildingId) => {
       clearDraft()
-      set({ selectedBuildingId: buildingId, selectedFloor: null, selectedAreaId: null, facultyEdit: null, tool: 'select', previewHeightM: null })
+      set({
+        selectedBuildingId: buildingId,
+        selectedFloor: null,
+        selectedAreaId: null,
+        facultyEdit: null,
+        tool: 'select',
+        previewHeightM: null,
+      })
     },
     selectFloor: (buildingId, level) => {
       clearDraft()
       // El grafo de navegación se edita planta a planta: cambiar de planta no
       // debe sacar de la herramienta.
       const tool = get().tool === 'nav' ? 'nav' : 'select'
-      set({ selectedBuildingId: buildingId, selectedFloor: level, selectedAreaId: null, facultyEdit: null, tool, previewHeightM: null })
+      set({
+        selectedBuildingId: buildingId,
+        selectedFloor: level,
+        selectedAreaId: null,
+        facultyEdit: null,
+        tool,
+        previewHeightM: null,
+      })
     },
     selectArea: (areaId) => {
       clearDraft()
@@ -266,7 +280,14 @@ export const useMappingEditor = create<MappingEditorState>((set, get) => {
     },
     selectOutdoor: () => {
       clearDraft()
-      set({ selectedBuildingId: null, selectedFloor: null, selectedAreaId: null, facultyEdit: null, tool: 'select', previewHeightM: null })
+      set({
+        selectedBuildingId: null,
+        selectedFloor: null,
+        selectedAreaId: null,
+        facultyEdit: null,
+        tool: 'select',
+        previewHeightM: null,
+      })
     },
 
     tool: 'select',

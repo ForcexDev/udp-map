@@ -45,9 +45,11 @@ describe('instrucciones sobre el edificio del prototipo', () => {
     const { steps: s } = steps('out:paradero', '4:S413', true)
     const last = s[s.length - 1]
     expect(last.detail).toContain('2.ª puerta a tu izquierda')
-    expect(s.some((x) => x.detail?.includes('pasando la Sala 414 (a tu izquierda) y la Sala 412 (a tu derecha)'))).toBe(
-      true,
-    )
+    expect(
+      s.some((x) =>
+        x.detail?.includes('pasando la Sala 414 (a tu izquierda) y la Sala 412 (a tu derecha)'),
+      ),
+    ).toBe(true)
     expect(s.some((x) => x.icon === 'elevator' && x.text.includes('marca el 4'))).toBe(true)
   })
 

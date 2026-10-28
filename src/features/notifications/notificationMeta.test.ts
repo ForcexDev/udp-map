@@ -60,10 +60,7 @@ describe('groupNotifications', () => {
 
   it('conserva el orden que traía la lista dentro de cada grupo', () => {
     const groups = groupNotifications(
-      [
-        notification('nuevo', '2026-08-27T11:00:00'),
-        notification('viejo', '2026-08-27T07:00:00'),
-      ],
+      [notification('nuevo', '2026-08-27T11:00:00'), notification('viejo', '2026-08-27T07:00:00')],
       NOW,
     )
     expect(groups[0].items.map((n) => n.id)).toEqual(['nuevo', 'viejo'])

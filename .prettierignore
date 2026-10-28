@@ -1,0 +1,26 @@
+node_modules
+dist
+dev-dist
+coverage
+package-lock.json
+
+# Supabase migrations, edge functions (cerrojo criptográfico golden.test.ts) y temporales
+supabase/.temp
+supabase/.branches
+supabase/migrations
+supabase/schema/baseline.sql
+supabase/functions
+
+# Archivos autogenerados por npm run gen:agents
+AGENTS.md
+GEMINI.md
+.cursorrules
+.github/copilot-instructions.md
+
+# Archivos históricos inmutables
+docs/historico/
+
+# Archivos de seguimiento temporal
+PLAN_IMPLEMENTACION.md
+skills-lock.json
+.agents

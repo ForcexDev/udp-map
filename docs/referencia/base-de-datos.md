@@ -20,19 +20,19 @@ configuración de servicios requieren pasos adicionales. El catálogo público
 sale de `campusData.ts` y del seed; insignias se cargan antes desde `badges.sql`.
 No reapliques las migraciones archivadas para reconstruir: usa el baseline.
 
-| Dominio | Entidades y relación |
-|---|---|
-| Catálogo | `campuses`, `faculties`, `careers`, `categories` y `badges` |
-| Identidad | `profiles`, vista `profiles_public` y `admin_emails` |
-| Interior | `buildings` → `building_floors` → `areas`; `floor_plans` es una estructura anterior sin consumo activo del mapa actual |
-| Navegación | `nav_nodes` y `nav_edges`: grafo por facultad para «cómo llegar» hasta la puerta de una sala |
-| Publicación | `pins` con fotos, comentarios y `pin_schedule_items` |
-| Lugares | `place_photos` con un único destino facultad, edificio o área |
-| Interacción | `pin_votes`, `favorites`, `event_rsvps` y `user_badges` |
-| Foro | `forum_threads`, `forum_comments` y `forum_votes` |
-| Moderación | `content_reports` y `moderator_capabilities` |
-| Avisos | `notifications`, `notification_preferences`, `push_subscriptions` y `notification_push_deliveries` |
-| Operación | `pin_creation_events`, `storage_cleanup_queue` y `activity_log` |
+| Dominio     | Entidades y relación                                                                                                   |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Catálogo    | `campuses`, `faculties`, `careers`, `categories` y `badges`                                                            |
+| Identidad   | `profiles`, vista `profiles_public` y `admin_emails`                                                                   |
+| Interior    | `buildings` → `building_floors` → `areas`; `floor_plans` es una estructura anterior sin consumo activo del mapa actual |
+| Navegación  | `nav_nodes` y `nav_edges`: grafo por facultad para «cómo llegar» hasta la puerta de una sala                           |
+| Publicación | `pins` con fotos, comentarios y `pin_schedule_items`                                                                   |
+| Lugares     | `place_photos` con un único destino facultad, edificio o área                                                          |
+| Interacción | `pin_votes`, `favorites`, `event_rsvps` y `user_badges`                                                                |
+| Foro        | `forum_threads`, `forum_comments` y `forum_votes`                                                                      |
+| Moderación  | `content_reports` y `moderator_capabilities`                                                                           |
+| Avisos      | `notifications`, `notification_preferences`, `push_subscriptions` y `notification_push_deliveries`                     |
+| Operación   | `pin_creation_events`, `storage_cleanup_queue` y `activity_log`                                                        |
 
 Los catálogos no son un recuento de producción. Facultades y perímetros se
 rehidratan desde la base en el arranque; el array activo conserva referencia.
@@ -51,20 +51,20 @@ de `@mail.udp.cl` y consulta `admin_emails` al crear el perfil.
 privilegios, políticas y controles internos de RPC/Edge; revisa las
 discrepancias de esta referencia antes de llamarla uniforme.
 
-| Acción | Contrato local del servidor |
-|---|---|
-| Leer mapa, pines, fotos y perfiles públicos | Lectura pública según políticas/vista; la exposición de correo en la tabla es una discrepancia |
-| Crear reporte o evento | Sesión no invitada y RPC de creación |
-| Crear lugar permanente, verificar, desverificar, extender | Rol moderador/admin en las funciones actuales |
-| Editar o borrar pin propio | RLS de autor, con triggers que limitan campos; permanentes tienen restricciones |
-| Editar/borrar contenido ajeno u oficializar | Políticas/funciones que aún comprueban rol moderador/admin |
-| Trazar edificios, plantas, áreas y `floor_plans` | Admin o moderador con `mapping` |
-| Leer reportes | Propios o `has_capability('reports')` |
-| Tomar/resolver reporte | RPC solo admin; no equivale al permiso de lectura |
-| Roles, capacidades, difusión, autotest y gestión push | RPC solo admin |
-| Preferencias | Filas propias |
-| Registro de actividad | Administración |
-| Cola push y limpieza Storage | Tablas internas, sin acceso ordinario del cliente |
+| Acción                                                    | Contrato local del servidor                                                                    |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Leer mapa, pines, fotos y perfiles públicos               | Lectura pública según políticas/vista; la exposición de correo en la tabla es una discrepancia |
+| Crear reporte o evento                                    | Sesión no invitada y RPC de creación                                                           |
+| Crear lugar permanente, verificar, desverificar, extender | Rol moderador/admin en las funciones actuales                                                  |
+| Editar o borrar pin propio                                | RLS de autor, con triggers que limitan campos; permanentes tienen restricciones                |
+| Editar/borrar contenido ajeno u oficializar               | Políticas/funciones que aún comprueban rol moderador/admin                                     |
+| Trazar edificios, plantas, áreas y `floor_plans`          | Admin o moderador con `mapping`                                                                |
+| Leer reportes                                             | Propios o `has_capability('reports')`                                                          |
+| Tomar/resolver reporte                                    | RPC solo admin; no equivale al permiso de lectura                                              |
+| Roles, capacidades, difusión, autotest y gestión push     | RPC solo admin                                                                                 |
+| Preferencias                                              | Filas propias                                                                                  |
+| Registro de actividad                                     | Administración                                                                                 |
+| Cola push y limpieza Storage                              | Tablas internas, sin acceso ordinario del cliente                                              |
 
 `moderator_capabilities` permite `mapping`, `reports`, `verify`,
 `content` y `official`. `has_capability` da true a admin sin exigir una fila;
@@ -130,6 +130,7 @@ El desvanecido visual significa «por vencer» para los reportes correspondiente
 los eventos usan estado temporal propio.
 
 <a id="ubicacion-y-plantas"></a>
+
 ## Ubicación y plantas
 
 `buildings` usa ID de texto, facultad, `footprint`, nombre, `short_name`,
@@ -171,6 +172,7 @@ eximan al mantenimiento: `protect_pin_sensitive_fields` todavía puede conservar
 campos según `user_role()`. Inspecciona el resultado completo en operaciones manuales.
 
 <a id="navegacion-interior"></a>
+
 ## Navegación interior
 
 Migración `20261023000000_indoor_navigation`. `nav_nodes` son puntos donde la
@@ -179,17 +181,17 @@ explícito: deducir pasillos de los polígonos de `areas` es frágil, y unas
 decenas de nodos por planta se rutean y prueban sin esfuerzo. Quien mapea
 dibuja el eje del pasillo y marca puertas; el editor genera el resto.
 
-| Columna | Contrato |
-|---|---|
-| `kind` | `walk`, `door`, `room` (destino), `stairs`, `elevator`, `entrance` (empalme con la calle) u `outdoor` |
-| `building_id`, `floor` | Juntos o ambos NULL (exterior), como en `areas`; la FK compuesta exige la planta y borra en cascada |
-| `lng`, `lat` | Coordenadas reales. El cliente proyecta a metros al cargar: la base no conoce planos locales |
-| `landmark` | Lo que se ve, con su artículo («los torniquetes»). Alimenta las instrucciones; ≤ 80 |
-| `via` | Solo exterior: por dónde se camina hasta el nodo («la vereda de Vergara») |
-| `area_id` | Sala de un nodo `room` o `door`; `SET NULL` al borrar el área |
-| `room_code` | Llave con `pins.room_code`. Se guarda como se escribió y se compara normalizado (índice en `upper`) |
-| `shaft` | Obligatorio en `stairs` y `elevator`: agrupa un núcleo entre plantas |
-| `width_m` | Ancho del vano (0–10 m): dibuja la puerta y corta el muro en 3D |
+| Columna                | Contrato                                                                                              |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| `kind`                 | `walk`, `door`, `room` (destino), `stairs`, `elevator`, `entrance` (empalme con la calle) u `outdoor` |
+| `building_id`, `floor` | Juntos o ambos NULL (exterior), como en `areas`; la FK compuesta exige la planta y borra en cascada   |
+| `lng`, `lat`           | Coordenadas reales. El cliente proyecta a metros al cargar: la base no conoce planos locales          |
+| `landmark`             | Lo que se ve, con su artículo («los torniquetes»). Alimenta las instrucciones; ≤ 80                   |
+| `via`                  | Solo exterior: por dónde se camina hasta el nodo («la vereda de Vergara»)                             |
+| `area_id`              | Sala de un nodo `room` o `door`; `SET NULL` al borrar el área                                         |
+| `room_code`            | Llave con `pins.room_code`. Se guarda como se escribió y se compara normalizado (índice en `upper`)   |
+| `shaft`                | Obligatorio en `stairs` y `elevator`: agrupa un núcleo entre plantas                                  |
+| `width_m`              | Ancho del vano (0–10 m): dibuja la puerta y corta el muro en 3D                                       |
 
 Las aristas no tienen sentido: `nav_edges_pair_uniq` impide repetir `(a, b)`
 como `(b, a)`, y `a <> b`. `step_free = false` marca escalones o un torniquete
@@ -339,6 +341,7 @@ cliente: no sustituyas mecánicamente `<>` por `IS DISTINCT FROM`.
 En cambio claim/finish exigen explícitamente `service_role` y rechazan NULL.
 
 <a id="reclamo-cierre-y-conservacion"></a>
+
 ### Reclamo, cierre y conservación
 
 Cada fila de `notification_push_deliveries` representa aviso + suscripción.

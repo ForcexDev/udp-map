@@ -103,7 +103,8 @@ export class NavGraph {
         const core = this.isCoreDoor(node.id)
         for (const { to } of this.neighbors(node.id)) {
           const host = this.nodes.get(to)
-          if (!host || host.kind === 'room' || host.kind === 'stairs' || host.kind === 'elevator') continue
+          if (!host || host.kind === 'room' || host.kind === 'stairs' || host.kind === 'elevator')
+            continue
           const list = this.doorsCache.get(to) ?? []
           list.push({ door: node, room, core })
           this.doorsCache.set(to, list)
@@ -142,7 +143,9 @@ export class NavGraph {
     const key = (id: string, inside: boolean) => `${id}|${inside ? 1 : 0}`
     const best = new Map<string, number>()
     const previous = new Map<string, { key: string; id: string; edge: NavEdge }>()
-    const heap = new MinHeap<{ key: string; id: string; inside: boolean; cost: number }>((x) => x.cost)
+    const heap = new MinHeap<{ key: string; id: string; inside: boolean; cost: number }>(
+      (x) => x.cost,
+    )
 
     best.set(key(fromId, false), 0)
     heap.push({ key: key(fromId, false), id: fromId, inside: false, cost: 0 })

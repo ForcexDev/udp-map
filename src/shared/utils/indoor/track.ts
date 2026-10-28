@@ -1,4 +1,10 @@
-import { ELEVATOR_PER_FLOOR_S, STAIRS_DOWN_S, STAIRS_UP_S, WALK_SPEED, type NavGraph } from './graph'
+import {
+  ELEVATOR_PER_FLOOR_S,
+  STAIRS_DOWN_S,
+  STAIRS_UP_S,
+  WALK_SPEED,
+  type NavGraph,
+} from './graph'
 import {
   add,
   dist,
@@ -110,7 +116,13 @@ export function rectFromRing(ring: Vec2[]): ShaftRect | null {
   // El eje largo es el de los tramos: si el lado más largo resultó ser el
   // corto del rectángulo (un anillo con un vértice de más), se intercambian.
   if (rect.halfWidth > rect.halfLength) {
-    rect = { ...rect, u: normal, v: { x: -normal.y, y: normal.x }, halfLength: rect.halfWidth, halfWidth: rect.halfLength }
+    rect = {
+      ...rect,
+      u: normal,
+      v: { x: -normal.y, y: normal.x },
+      halfLength: rect.halfWidth,
+      halfWidth: rect.halfLength,
+    }
   }
   return rect
 }
@@ -122,7 +134,11 @@ export function rectFromRing(ring: Vec2[]): ShaftRect | null {
  * pisos (0 → 1). El primer tramo es el de la izquierda mirando hacia el hueco.
  */
 export function stairsU(from: Vec2, to: Vec2, rect: ShaftRect | null): { p: Vec2; rise: number }[] {
-  if (!rect) return [{ p: from, rise: 0 }, { p: to, rise: 1 }]
+  if (!rect)
+    return [
+      { p: from, rise: 0 },
+      { p: to, rise: 1 },
+    ]
   const { center, u, halfLength: hl, halfWidth: hw } = rect
   const footInset = Math.min(1, hl * 2 * 0.15)
   const landing = Math.min(1.5, hl * 2 * 0.25)
@@ -189,13 +205,16 @@ export function buildTrack(route: Route, graph: NavGraph, options: TrackOptions 
       // Al bajar se recorre la U de la planta de abajo, al revés.
       const lower = up ? i : i + 1
       const rect = options.shaftRect?.(route.nodes[lower]) ?? null
-      const base = up ? stairsU(node(i).p, node(i + 1).p, rect) : stairsU(node(i + 1).p, node(i).p, rect).reverse()
+      const base = up
+        ? stairsU(node(i).p, node(i + 1).p, rect)
+        : stairsU(node(i + 1).p, node(i).p, rect).reverse()
       const path = base.map((s) => ({ p: s.p, rise: up ? s.rise : 1 - s.rise }))
       const seconds = floors * (up ? STAIRS_UP_S : STAIRS_DOWN_S)
       let total = 0
       for (let k = 1; k < path.length; k++) total += dist(path[k - 1].p, path[k].p)
       for (let k = 1; k < path.length; k++) {
-        const share = total > 1e-6 ? dist(path[k - 1].p, path[k].p) / total : k === path.length - 1 ? 1 : 0
+        const share =
+          total > 1e-6 ? dist(path[k - 1].p, path[k].p) / total : k === path.length - 1 ? 1 : 0
         t += seconds * share
         push(path[k].p, a + (b - a) * path[k].rise, i)
       }
@@ -276,7 +295,11 @@ export function buildTrack(route: Route, graph: NavGraph, options: TrackOptions 
 }
 
 /** El paso activo: el último cuyo primer nodo ya se alcanzó. */
-export function activeStepIndex(steps: Pick<Step, 'from'>[], nodeTimes: number[], t: number): number {
+export function activeStepIndex(
+  steps: Pick<Step, 'from'>[],
+  nodeTimes: number[],
+  t: number,
+): number {
   let active = 0
   for (let i = 0; i < steps.length; i++) {
     if ((nodeTimes[steps[i].from] ?? Infinity) <= t + 1e-6) active = i

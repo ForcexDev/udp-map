@@ -59,10 +59,7 @@ export function ContentPanel() {
     id ? (faculties.find((f) => f.id === id)?.name ?? id) : null
 
   return (
-    <AdminScreen
-      title={t('admin.sections.content')}
-      description={t('admin.sections.contentHint')}
-    >
+    <AdminScreen title={t('admin.sections.content')} description={t('admin.sections.contentHint')}>
       <div className="mb-5">
         <FilterPills
           label={t('admin.filterByType')}
@@ -76,7 +73,13 @@ export function ContentPanel() {
         <AdminLoading />
       ) : pins.length === 0 ? (
         <AdminEmpty
-          icon={<MapPinOff size={40} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />}
+          icon={
+            <MapPinOff
+              size={40}
+              strokeWidth={1.5}
+              className="text-neutral-300 dark:text-neutral-700"
+            />
+          }
           title={t('admin.nothingHere')}
           hint={typeFilter === 'all' ? 'Todavía no se ha publicado nada.' : 'Prueba con otro tipo.'}
         />

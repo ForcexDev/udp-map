@@ -75,7 +75,10 @@ export function EventSchedule({ pinId, isLive }: EventScheduleProps) {
         <h3 className="m-0 text-[12px] font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
           {t('pin.schedule', 'Programa')}
           <span className="ml-2 font-semibold normal-case tracking-normal text-neutral-400">
-            {t('pin.scheduleBlocks', { count: items.length, defaultValue: `${items.length} bloques` })}
+            {t('pin.scheduleBlocks', {
+              count: items.length,
+              defaultValue: `${items.length} bloques`,
+            })}
           </span>
         </h3>
         <ChevronDown
@@ -98,7 +101,9 @@ export function EventSchedule({ pinId, isLive }: EventScheduleProps) {
                 <div className="w-[42px] shrink-0 pt-0.5 whitespace-nowrap">
                   <div
                     className={`text-[13px] font-black tabular-nums leading-none ${
-                      isNow ? 'text-[#D41F2D] dark:text-red-400' : 'text-neutral-700 dark:text-neutral-300'
+                      isNow
+                        ? 'text-[#D41F2D] dark:text-red-400'
+                        : 'text-neutral-700 dark:text-neutral-300'
                     }`}
                   >
                     {hhmm(item.starts_at)}

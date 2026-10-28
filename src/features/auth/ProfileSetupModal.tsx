@@ -25,7 +25,7 @@ export function ProfileSetupModal() {
   // Filter careers by selected faculty
   const availableCareers = useMemo(() => {
     if (!facultyId) return []
-    return CAREERS.filter(c => c.faculty_id === facultyId)
+    return CAREERS.filter((c) => c.faculty_id === facultyId)
   }, [facultyId])
 
   const faculties = useFaculties()
@@ -36,15 +36,15 @@ export function ProfileSetupModal() {
     setLoading(true)
     try {
       await updateProfile(facultyId, career)
-      
+
       // Update map campus
-      const faculty = faculties.find(f => f.id === facultyId)
+      const faculty = faculties.find((f) => f.id === facultyId)
       if (faculty) {
         setCampusId(faculty.campus_id)
         // Fly map to faculty
         setTimeout(() => {
           window.dispatchEvent(
-            new CustomEvent('faculty-flyto', { detail: { lat: faculty.lat, lng: faculty.lng } })
+            new CustomEvent('faculty-flyto', { detail: { lat: faculty.lat, lng: faculty.lng } }),
           )
         }, 300)
       }
@@ -58,14 +58,16 @@ export function ProfileSetupModal() {
   return (
     <Dialog
       open={open}
-      onOpenChange={() => {}} 
+      onOpenChange={() => {}}
       hideClose={true} // Bloquear cerrado accidental (obligatorio)
       title={t('auth.setupProfile', 'Configura tu Perfil')}
-      description={t('auth.setupProfileDesc', 'Cuéntanos de qué facultad eres para personalizar tu experiencia.')}
+      description={t(
+        'auth.setupProfileDesc',
+        'Cuéntanos de qué facultad eres para personalizar tu experiencia.',
+      )}
       contentClassName="!bg-[#FAF8F5] dark:!bg-[#151820] sm:max-w-md border border-[#E5DEC9] dark:border-white/10 rounded-3xl premium-shadow"
     >
       <div className="flex flex-col gap-5 py-2">
-        
         {/* Facultad */}
         <div className="flex flex-col gap-2">
           <label className="text-sm font-semibold text-stone-900 dark:text-stone-100 flex items-center gap-2">
@@ -101,21 +103,20 @@ export function ProfileSetupModal() {
             value={career}
             onChange={(val) => setCareer(val)}
             placeholder={
-              !facultyId 
+              !facultyId
                 ? t('auth.careerRequiresFaculty', 'Primero selecciona una facultad')
-                : availableCareers.length === 0 
+                : availableCareers.length === 0
                   ? t('auth.noCareers', 'No hay carreras registradas')
                   : t('auth.selectCareer', 'Selecciona tu carrera')
             }
             className="w-full"
           />
         </div>
-
       </div>
 
       <div className="mt-6 flex flex-col gap-2 pt-3 border-t border-[#E5DEC9] dark:border-white/10">
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={!facultyId || (!career && availableCareers.length > 0) || loading}
           className="w-full bg-[#C22B38] hover:bg-[#A82430] dark:bg-[#D93846] dark:hover:bg-[#C22B38] text-white rounded-2xl py-3 text-sm font-semibold shadow-xs transition-opacity"
         >

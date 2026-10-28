@@ -98,7 +98,9 @@ export function AdminLayout() {
             className="flex h-11 w-full items-center justify-between gap-2 rounded-2xl border border-[#E6E0D5] bg-white px-4 text-left transition-colors active:scale-[0.99] dark:border-white/[0.07] dark:bg-[#1E222D] sm:hidden"
           >
             <span className="flex min-w-0 items-center gap-2">
-              {current && <current.icon size={15} className="shrink-0 text-[#C22B38] dark:text-[#D93846]" />}
+              {current && (
+                <current.icon size={15} className="shrink-0 text-[#C22B38] dark:text-[#D93846]" />
+              )}
               <span className="truncate text-xs font-semibold text-stone-900 dark:text-stone-100">
                 {current ? t(current.labelKey) : t('admin.sectionsTitle', 'Secciones')}
               </span>
@@ -182,7 +184,9 @@ export function AdminLayout() {
                         : t(section.descriptionKey)}
                     </span>
                   </span>
-                  {active && <Check size={16} className="shrink-0 text-[#C22B38] dark:text-[#D93846]" />}
+                  {active && (
+                    <Check size={16} className="shrink-0 text-[#C22B38] dark:text-[#D93846]" />
+                  )}
                 </NavLink>
               </li>
             )

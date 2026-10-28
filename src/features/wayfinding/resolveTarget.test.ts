@@ -14,7 +14,14 @@ async function demoModel(): Promise<IndoorModel> {
   const rows = await fetchNavGraph('ingenieria')
   const sourceAreas = mappingDemoDb.snapshot('ingenieria').areas
   const { graph, plane } = graphFromRows(rows.nodes, rows.edges, { areas: sourceAreas })
-  return { facultyId: 'ingenieria', graph, plane, areas: areasToLocal(sourceAreas, plane), sourceAreas, rows }
+  return {
+    facultyId: 'ingenieria',
+    graph,
+    plane,
+    areas: areasToLocal(sourceAreas, plane),
+    sourceAreas,
+    rows,
+  }
 }
 
 const pin = (id: string) => demoDb.pins.find((p) => p.id === id)!
@@ -31,7 +38,9 @@ describe('navegación en modo demo', () => {
       'Desde el paradero Vergara / esq. Gorbea, camina hacia el sur por la vereda de Vergara',
     )
     expect(steps[steps.length - 1].text).toBe('Sala 413 está a tu izquierda')
-    expect(steps.find((s) => s.icon === 'stairs-up')?.text).toBe('Sube por la escalera principal hasta el piso 4')
+    expect(steps.find((s) => s.icon === 'stairs-up')?.text).toBe(
+      'Sube por la escalera principal hasta el piso 4',
+    )
   })
 
   it('resuelve por código aunque el pin esté en otro sitio y lo escriba distinto', async () => {
@@ -53,7 +62,9 @@ describe('navegación en modo demo', () => {
     const model = await demoModel()
     const target = resolveTarget(pin('v432-s413'), model)!
     const nearPatio = model.graph.node('demo-v432-out:patio').p
-    expect(chooseEntrance(model, target, nearPatio, false)?.entrance.landmark).toBe('la salida al patio')
+    expect(chooseEntrance(model, target, nearPatio, false)?.entrance.landmark).toBe(
+      'la salida al patio',
+    )
     const nearVergara = model.graph.node('demo-v432-out:vergara432').p
     expect(chooseEntrance(model, target, nearVergara, false)?.entrance.landmark).toBe(
       'la puerta principal de Vergara 432',

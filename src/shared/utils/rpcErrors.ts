@@ -9,7 +9,9 @@
  * "falta la migración de esta función".
  */
 export function isMissingFunction(error: { code?: string; message?: string }): boolean {
-  return error.code === '42883'
-    || error.code === 'PGRST202'
-    || /could not find the function|function .* does not exist/i.test(error.message ?? '')
+  return (
+    error.code === '42883' ||
+    error.code === 'PGRST202' ||
+    /could not find the function|function .* does not exist/i.test(error.message ?? '')
+  )
 }

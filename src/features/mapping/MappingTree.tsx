@@ -1,4 +1,13 @@
-import { Building2, ChevronDown, ChevronRight, Hexagon, Layers, Minus, Plus, Trees } from 'lucide-react'
+import {
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  Hexagon,
+  Layers,
+  Minus,
+  Plus,
+  Trees,
+} from 'lucide-react'
 import type { Building, BuildingFloor } from '@/shared/types/database'
 import { floorName } from './areaStyles'
 import { floorKey, useMappingEditor, type FloorViewMode } from './editorStore'
@@ -25,8 +34,10 @@ interface MappingTreeProps {
   onRemoveFloor: (buildingId: string, level: number) => void
 }
 
-const ROW = 'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors'
-const ROW_IDLE = 'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+const ROW =
+  'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors'
+const ROW_IDLE =
+  'text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
 const ROW_ACTIVE = 'bg-[#D41F2D]/10 text-[#D41F2D] font-bold'
 
 export function MappingTree({

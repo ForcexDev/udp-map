@@ -40,7 +40,12 @@ import { markMapStyleLoaded, publishMap } from '@/shared/lib/mapInstance'
 import { closestPointOnPolygon } from '@/shared/utils/geometry'
 import { GROUND_LEVEL, pinVisibleOnFloor } from '@/shared/utils/floorVisibility'
 import { facultyIdAt, facultyPerimeter, subscribeFaculties } from '@/shared/data/facultyStore'
-import { addBoundaryMask, BOUNDARY_MAX_BOUNDS, BOUNDARY_MIN_ZOOM, isLocationOutOfBounds } from './campusBoundary'
+import {
+  addBoundaryMask,
+  BOUNDARY_MAX_BOUNDS,
+  BOUNDARY_MIN_ZOOM,
+  isLocationOutOfBounds,
+} from './campusBoundary'
 import type { WalkingRoute } from './routing'
 
 interface MapViewProps {
@@ -65,8 +70,10 @@ function markerColor(pin: Pin): string {
 }
 
 function markerSvgContent(pin: Pin): string {
-  const defaultEvent = 'M12 6c1.11 0 2-.9 2-2 0-.38-.1-.73-.29-1.03L12 0l-1.71 2.97c-.19.3-.29.65-.29 1.03 0 1.1.9 2 2 2zm4.6 9.99l-1.07-1.07-1.08 1.07c-1.3 1.3-3.58 1.31-4.89 0l-1.07-1.07-1.09 1.07C6.75 16.64 5.88 17 4.96 17c-.73 0-1.4-.23-1.96-.61V21c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-4.61c-.56.38-1.23.61-1.96.61-.92 0-1.79-.36-2.44-1.01zM18 9h-5V7h-2v2H6c-1.66 0-3 1.34-3 3v1.54c0 1.08.88 1.96 1.96 1.96.52 0 1.02-.2 1.38-.57l2.14-2.13 2.13 2.13c.74.74 2.03.74 2.77 0l2.14-2.13 2.13 2.13c.37.37.86.57 1.38.57 1.08 0 1.96-.88 1.96-1.96V12c.01-1.66-1.33-3-2.99-3z'
-  const fallbackSvg = 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87 3.13-7 7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'
+  const defaultEvent =
+    'M12 6c1.11 0 2-.9 2-2 0-.38-.1-.73-.29-1.03L12 0l-1.71 2.97c-.19.3-.29.65-.29 1.03 0 1.1.9 2 2 2zm4.6 9.99l-1.07-1.07-1.08 1.07c-1.3 1.3-3.58 1.31-4.89 0l-1.07-1.07-1.09 1.07C6.75 16.64 5.88 17 4.96 17c-.73 0-1.4-.23-1.96-.61V21c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-4.61c-.56.38-1.23.61-1.96.61-.92 0-1.79-.36-2.44-1.01zM18 9h-5V7h-2v2H6c-1.66 0-3 1.34-3 3v1.54c0 1.08.88 1.96 1.96 1.96.52 0 1.02-.2 1.38-.57l2.14-2.13 2.13 2.13c.74.74 2.03.74 2.77 0l2.14-2.13 2.13 2.13c.37.37.86.57 1.38.57 1.08 0 1.96-.88 1.96-1.96V12c.01-1.66-1.33-3-2.99-3z'
+  const fallbackSvg =
+    'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87 3.13-7 7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'
 
   if (pin.category_id) {
     const cat = categoryById(pin.category_id)
@@ -116,7 +123,14 @@ export function getMapCenter(): { lat: number; lng: number } | null {
   return { lat: c.lat, lng: c.lng }
 }
 
-export function MapView({ pins, route, userLocation, userHeading, isTrackingLocation, onRequestLocation }: MapViewProps) {
+export function MapView({
+  pins,
+  route,
+  userLocation,
+  userHeading,
+  isTrackingLocation,
+  onRequestLocation,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map())
@@ -169,16 +183,16 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
     const campus = CAMPUSES.find((c) => c.id === useUIStore.getState().campusId) ?? CAMPUSES[0]
     const initialViewMode = useUIStore.getState().viewMode
     const show3D = initialViewMode === '3d'
-    
+
     const currentPinId = useUIStore.getState().selectedPinId
     let initialCenter: [number, number] = [campus.lng, campus.lat]
     let initialZoom = DEFAULT_ZOOM
-    
+
     if (currentPinId) {
-      const pin = pins.find(p => p.id === currentPinId)
+      const pin = pins.find((p) => p.id === currentPinId)
       if (pin) {
-         initialCenter = [pin.lng, pin.lat]
-         initialZoom = 18
+        initialCenter = [pin.lng, pin.lat]
+        initialZoom = 18
       }
     }
 
@@ -197,8 +211,8 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       pitch: show3D ? 45 : 0,
       dragPan: {
         deceleration: 2800, // Detiene el deslizamiento más rápido (default: 2500)
-        maxSpeed: 650,    // Reduce la velocidad máxima al deslizar (default: 1400)
-        linearity: 0.15,   // Reduce la sensibilidad y momentum inicial (default: 0.3)
+        maxSpeed: 650, // Reduce la velocidad máxima al deslizar (default: 1400)
+        linearity: 0.15, // Reduce la sensibilidad y momentum inicial (default: 0.3)
       },
       // Hace la rotación con mouse/arrastre más lenta y controlada (default: 0.8)
       rotateDegreesPerPixelMoved: 0.25,
@@ -206,13 +220,10 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       // cerca del medio del mapa, usando en su lugar rotación puramente lineal.
       aroundCenter: false,
     } as unknown as maplibregl.MapOptions)
-    
+
     // Mostramos la atribución como texto estático (watermark) en lugar de un botón/menú desplegable
-    map.addControl(
-      new maplibregl.AttributionControl({ compact: false }),
-      'bottom-left',
-    )
-    
+    map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-left')
+
     // No native controls — our custom FABs handle navigation/geolocation
 
     if (!show3D && map.touchPitch) {
@@ -221,7 +232,12 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
 
     const emitBounds = () => {
       const b = map.getBounds()
-      publishBounds({ west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() })
+      publishBounds({
+        west: b.getWest(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        north: b.getNorth(),
+      })
     }
     const updateOrientation = () => {
       const currentBearing = map.getBearing()
@@ -503,8 +519,10 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
           ev.stopPropagation()
           useUIStore.getState().selectPin(pin.id)
         })
-        marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-          .setLngLat([pin.lng, pin.lat])
+        marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([
+          pin.lng,
+          pin.lat,
+        ])
         markers.set(pin.id, marker)
       }
 
@@ -614,7 +632,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       map.flyTo({
         center: [pin.lng, pin.lat],
         zoom: 18,
-        duration: 800
+        duration: 800,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -730,7 +748,7 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
         coneSvg.style.display = 'block'
         // Subtract map bearing so the cone always points to the real-world direction
         const mapBearing = map.getBearing()
-        const visualHeading = ((userHeading - mapBearing) % 360 + 360) % 360
+        const visualHeading = (((userHeading - mapBearing) % 360) + 360) % 360
         coneSvg.style.transform = `translateX(-50%) translateY(-100%) rotate(${visualHeading}deg)`
       } else {
         coneSvg.style.display = 'none'
@@ -757,10 +775,19 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       if (!route) return
 
       if (route.coordinates.length > 0) {
-        const bounds = route.coordinates.reduce((b, coord) => {
-          return b.extend([coord[0], coord[1]])
-        }, new maplibregl.LngLatBounds(route.coordinates[0] as [number, number], route.coordinates[0] as [number, number]))
-        map.fitBounds(bounds, { padding: { top: 120, bottom: 180, left: 50, right: 50 }, duration: 1000 })
+        const bounds = route.coordinates.reduce(
+          (b, coord) => {
+            return b.extend([coord[0], coord[1]])
+          },
+          new maplibregl.LngLatBounds(
+            route.coordinates[0] as [number, number],
+            route.coordinates[0] as [number, number],
+          ),
+        )
+        map.fitBounds(bounds, {
+          padding: { top: 120, bottom: 180, left: 50, right: 50 },
+          duration: 1000,
+        })
       }
 
       map.addSource('route', {
@@ -989,29 +1016,44 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full" aria-label={i18n.t('map.aria', 'Mapa del campus')} />
+      <div
+        ref={containerRef}
+        className="h-full w-full"
+        aria-label={i18n.t('map.aria', 'Mapa del campus')}
+      />
 
       {/* Location button */}
       <button
         onClick={async () => {
           if (onRequestLocation) {
-             try {
-               const loc = await onRequestLocation()
-               if (loc) {
-                  if (!devUnlockMap && isLocationOutOfBounds(loc.lat, loc.lng)) {
-                     useUIStore.getState().showToast(i18n.t('map.locationOutOfBounds', 'Estás fuera del área del mapa'))
-                  } else {
-                     mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 18, duration: 1000 })
-                  }
-               }
-             } catch (err) {
-               const error = err as Error
-               if (error.message === 'PERMISSION_DENIED') {
-                 useUIStore.getState().showToast(i18n.t('map.locationDeniedCenter', 'Debes activar la ubicación en tu navegador para centrar el mapa.'))
-               } else {
-                 useUIStore.getState().showToast(i18n.t('map.locationFailed', 'No se pudo obtener tu ubicación.'))
-               }
-             }
+            try {
+              const loc = await onRequestLocation()
+              if (loc) {
+                if (!devUnlockMap && isLocationOutOfBounds(loc.lat, loc.lng)) {
+                  useUIStore
+                    .getState()
+                    .showToast(i18n.t('map.locationOutOfBounds', 'Estás fuera del área del mapa'))
+                } else {
+                  mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 18, duration: 1000 })
+                }
+              }
+            } catch (err) {
+              const error = err as Error
+              if (error.message === 'PERMISSION_DENIED') {
+                useUIStore
+                  .getState()
+                  .showToast(
+                    i18n.t(
+                      'map.locationDeniedCenter',
+                      'Debes activar la ubicación en tu navegador para centrar el mapa.',
+                    ),
+                  )
+              } else {
+                useUIStore
+                  .getState()
+                  .showToast(i18n.t('map.locationFailed', 'No se pudo obtener tu ubicación.'))
+              }
+            }
           }
         }}
         aria-label={i18n.t('map.centerOnMe', 'Centrar en mi ubicación')}
@@ -1028,8 +1070,9 @@ export function MapView({ pins, route, userLocation, userHeading, isTrackingLoca
       <button
         onClick={handleResetOrientation}
         aria-label="Restaurar orientación al Norte"
-        className={`absolute right-3 top-[120px] sm:right-5 sm:top-[128px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 ${isDefaultOrientation ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}
+        className={`absolute right-3 top-[120px] sm:right-5 sm:top-[128px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 ${
+          isDefaultOrientation ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
       >
         <svg
           viewBox="0 0 24 24"

@@ -124,4 +124,3 @@ export function groupNotifications(
     .filter((id) => buckets[id].length > 0)
     .map((id) => ({ id, items: buckets[id] }))
 }
-

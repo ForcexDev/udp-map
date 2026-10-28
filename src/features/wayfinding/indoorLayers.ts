@@ -3,7 +3,15 @@ import type { NavGraph } from '@/shared/utils/indoor/graph'
 import { zMeters, type LocalPlane } from '@/shared/utils/indoor/projection'
 import type { Pose, ShaftRect } from '@/shared/utils/indoor/track'
 import type { Route } from '@/shared/utils/indoor/types'
-import { arrowHead, band, circle, collection, EMPTY_COLLECTION, PRISM_PAINT, type Prism } from './shapes'
+import {
+  arrowHead,
+  band,
+  circle,
+  collection,
+  EMPTY_COLLECTION,
+  PRISM_PAINT,
+  type Prism,
+} from './shapes'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Capas de la ruta interior: cinta, postes verticales, destino y figura.
@@ -32,7 +40,11 @@ const POLE_RADIUS = 0.18
 
 /** Cinta y poste de la planta activa enteros; los de otras plantas, al 30 %. */
 const onActive = (level: number) =>
-  ['any', ['==', ['get', 'level'], level], ['==', ['get', 'part'], 'pole']] as unknown as FilterSpecification
+  [
+    'any',
+    ['==', ['get', 'level'], level],
+    ['==', ['get', 'part'], 'pole'],
+  ] as unknown as FilterSpecification
 
 export function ensureRouteLayers(map: MapLibreMap): void {
   for (const id of [ROUTE_SOURCE, TARGET_SOURCE, FIGURE_SOURCE]) {
@@ -94,7 +106,10 @@ export interface RouteDrawing {
   shaftRect: (nodeId: string) => ShaftRect | null
 }
 
-export function setRouteData(map: MapLibreMap, { route, graph, plane, gap, shaftRect }: RouteDrawing): void {
+export function setRouteData(
+  map: MapLibreMap,
+  { route, graph, plane, gap, shaftRect }: RouteDrawing,
+): void {
   const prisms: Prism[] = []
   const node = (i: number) => graph.node(route.nodes[i])
 
@@ -108,7 +123,13 @@ export function setRouteData(map: MapLibreMap, { route, graph, plane, gap, shaft
       const ring = band(a.p, b.p, RIBBON_WIDTH, RIBBON_EXTEND)
       if (ring) {
         const z = zMeters(level, gap)
-        prisms.push({ rings: [ring], base: z + 0.14, height: z + 0.2, color: RED, props: { level, part: 'ribbon' } })
+        prisms.push({
+          rings: [ring],
+          base: z + 0.14,
+          height: z + 0.2,
+          color: RED,
+          props: { level, part: 'ribbon' },
+        })
       }
       i += 1
       continue
@@ -155,7 +176,12 @@ export function setFigure(map: MapLibreMap, pose: Pose, plane: LocalPlane, gap: 
   const z = zMeters(pose.z, gap)
   const prisms: Prism[] = [
     { rings: [circle(pose.p, 0.85, 18)], base: z + 0.02, height: z + 0.06, color: '#F4C2C6' },
-    { rings: [arrowHead(pose.p, pose.heading, 1.25, 0.38)], base: z + 0.02, height: z + 0.09, color: RED },
+    {
+      rings: [arrowHead(pose.p, pose.heading, 1.25, 0.38)],
+      base: z + 0.02,
+      height: z + 0.09,
+      color: RED,
+    },
     { rings: [circle(pose.p, 0.3)], base: z + 0.08, height: z + 1.1, color: RED },
     { rings: [circle(pose.p, 0.22)], base: z + 1.15, height: z + 1.55, color: '#FAF8F5' },
   ]

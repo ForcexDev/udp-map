@@ -1,6 +1,12 @@
 import { supabase, PHOTOS_BUCKET } from '@/shared/lib/supabase'
 import { fetchPublicProfiles, type PublicProfile } from '@/shared/lib/publicProfiles'
-import type { Pin, PinComment, PinScheduleDraft, PinScheduleItem, PinType } from '@/shared/types/database'
+import type {
+  Pin,
+  PinComment,
+  PinScheduleDraft,
+  PinScheduleItem,
+  PinType,
+} from '@/shared/types/database'
 import type { Bounds } from '@/shared/utils/geo'
 import { isInBounds } from '@/shared/utils/geo'
 import { expiresAtFromTtl } from '@/shared/utils/expiry'
@@ -10,7 +16,17 @@ import { indoorLocationAt, mappingSnapshot } from '@/features/mapping/mappingCac
 import { validatePinFloor } from '@/shared/utils/floorValidation'
 import type { PinFilters } from '@/shared/stores/filterStore'
 import { compressImage, photoStoragePath } from './photos'
-import { demoDb, demoAddPhotos, demoRemovePhotos, demoVerifyPin, demoUnverifyPin, demoExtendPinTTL, demoPinCreationEvents, demoSchedules, demoReplaceSchedule } from './demoStore'
+import {
+  demoDb,
+  demoAddPhotos,
+  demoRemovePhotos,
+  demoVerifyPin,
+  demoUnverifyPin,
+  demoExtendPinTTL,
+  demoPinCreationEvents,
+  demoSchedules,
+  demoReplaceSchedule,
+} from './demoStore'
 import { useAuthStore } from '@/features/auth/authStore'
 import { can } from '@/features/auth/permissions'
 import { hasReachedDailyPinLimit } from '@/shared/utils/rateLimit'
@@ -84,7 +100,7 @@ export async function fetchPins(bounds: Bounds | null, filters: PinFilters): Pro
       console.error('Error fetching pins from Supabase:', error)
       return []
     }
-    
+
     const rows = (data ?? []) as Pin[]
 
     // Un fallo resolviendo nombres no debe dejar el mapa sin pines: se degrada a
@@ -131,9 +147,9 @@ async function uploadPinPhotos(pinId: string, userId: string, files: File[]): Pr
       uploaded.push({ path, url: pub.publicUrl, width, height })
     }
 
-    const { error: photoErr } = await supabase.from('pin_photos').insert(
-      uploaded.map(({ url, width, height }) => ({ pin_id: pinId, url, width, height })),
-    )
+    const { error: photoErr } = await supabase
+      .from('pin_photos')
+      .insert(uploaded.map(({ url, width, height }) => ({ pin_id: pinId, url, width, height })))
     if (photoErr) throw photoErr
   } catch (err) {
     // Nada quedó registrado en la tabla, así que estos archivos no los va a
@@ -170,7 +186,8 @@ export async function createPin(
   }
   // Cluster automático por perímetro: si el usuario no eligió facultad y el
   // pin cae dentro de un perímetro trazado (hoy solo Ingeniería), se asigna solo.
-  const facultyId = input.facultyId !== undefined ? input.facultyId : facultyIdAt(input.lat, input.lng)
+  const facultyId =
+    input.facultyId !== undefined ? input.facultyId : facultyIdAt(input.lat, input.lng)
   // Edificio y área salen del punto; la planta viene del formulario. Sin la
   // planta no se puede resolver el área: desde arriba, el piso 1 y el 3 ocupan
   // el mismo sitio y cualquiera de los dos "contendría" el punto.
@@ -219,7 +236,8 @@ export async function createPin(
       starts_at: input.startsAt ?? null,
       ends_at: input.endsAt ?? null,
       is_official: input.isOfficial ?? false,
-      official_entity_name: input.officialEntityName ?? (input.isOfficial ? 'Administración UDP' : null),
+      official_entity_name:
+        input.officialEntityName ?? (input.isOfficial ? 'Administración UDP' : null),
       created_at: nowIso(),
       pin_photos: [],
     }
@@ -290,7 +308,9 @@ export async function createPin(
 
 export async function fetchPinSchedule(pinId: string): Promise<PinScheduleItem[]> {
   if (!supabase) {
-    return [...(demoSchedules.get(pinId) ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+    return [...(demoSchedules.get(pinId) ?? [])].sort((a, b) =>
+      a.starts_at.localeCompare(b.starts_at),
+    )
   }
 
   const { data, error } = await supabase
@@ -362,7 +382,7 @@ export async function updatePin(
     deletedPhotoIds?: string[]
     /** undefined = no tocar el programa; [] = borrarlo. */
     schedule?: PinScheduleDraft[]
-  }
+  },
 ): Promise<void> {
   const { newPhotos = [], deletedPhotoIds = [], schedule } = options ?? {}
 
@@ -371,7 +391,7 @@ export async function updatePin(
     if (pin) {
       if (input.title !== undefined) pin.title = input.title
       if (input.description !== undefined) pin.description = input.description
-      
+
       const isModerator = can(useAuthStore.getState().role, 'pin.moderate')
       const isVerified = pin.is_permanent
       const canEditStruct = !isVerified || isModerator
@@ -380,7 +400,7 @@ export async function updatePin(
         if (input.categoryId !== undefined) pin.category_id = input.categoryId
         if (input.facultyId !== undefined) pin.faculty_id = input.facultyId
       }
-      
+
       if (input.type !== undefined) pin.type = input.type
       // La planta y el código los elige el autor, verificado el pin o no:
       // corregir en qué piso está una sala es justo la edición que hace falta.
@@ -404,7 +424,8 @@ export async function updatePin(
       }
       if (input.roomCode !== undefined) pin.room_code = input.roomCode
       if (input.isOfficial !== undefined) pin.is_official = input.isOfficial
-      if (input.officialEntityName !== undefined) pin.official_entity_name = input.officialEntityName
+      if (input.officialEntityName !== undefined)
+        pin.official_entity_name = input.officialEntityName
       if (input.startsAt !== undefined) pin.starts_at = input.startsAt
       if (input.endsAt !== undefined) {
         pin.ends_at = input.endsAt
@@ -437,7 +458,9 @@ export async function updatePin(
       ...(input.roomCode !== undefined ? { room_code: input.roomCode } : {}),
       ...(input.type === 'event' && input.endsAt !== undefined ? { expires_at: input.endsAt } : {}),
       ...(input.isOfficial !== undefined ? { is_official: input.isOfficial } : {}),
-      ...(input.officialEntityName !== undefined ? { official_entity_name: input.officialEntityName } : {})
+      ...(input.officialEntityName !== undefined
+        ? { official_entity_name: input.officialEntityName }
+        : {}),
     })
     .eq('id', pinId)
   if (error) throw error
@@ -445,10 +468,7 @@ export async function updatePin(
   // 2. Eliminar fotos. Solo la fila: al borrarse, un trigger encola la ruta del
   //    archivo y el recolector (Edge Function storage-gc) lo retira de Storage.
   if (deletedPhotoIds.length > 0) {
-    const { error: delErr } = await supabase
-      .from('pin_photos')
-      .delete()
-      .in('id', deletedPhotoIds)
+    const { error: delErr } = await supabase.from('pin_photos').delete().in('id', deletedPhotoIds)
     if (delErr) throw delErr
   }
 
@@ -490,7 +510,11 @@ interface PinVoteResult {
   userVote: 1 | -1 | null
 }
 
-export async function votePin(pinId: string, value: 1 | -1, userId: string): Promise<PinVoteResult | null> {
+export async function votePin(
+  pinId: string,
+  value: 1 | -1,
+  userId: string,
+): Promise<PinVoteResult | null> {
   if (!supabase) {
     const pin = demoDb.pins.find((p) => p.id === pinId)
     if (!pin) return null
@@ -520,18 +544,24 @@ export async function votePin(pinId: string, value: 1 | -1, userId: string): Pro
 
 // ── Permanente & Verificación (moderador/admin, RPC security definer) ──
 
-export async function makePermanent(pinId: string, verifierName: string = 'Centro de Alumnos FIC'): Promise<void> {
+export async function makePermanent(
+  pinId: string,
+  verifierName: string = 'Centro de Alumnos FIC',
+): Promise<void> {
   return verifyPin(pinId, verifierName)
 }
 
-export async function verifyPin(pinId: string, verifierName: string = 'Centro de Alumnos FIC'): Promise<void> {
+export async function verifyPin(
+  pinId: string,
+  verifierName: string = 'Centro de Alumnos FIC',
+): Promise<void> {
   if (!supabase) {
     demoVerifyPin(pinId, verifierName)
     return
   }
-  const { error } = await supabase.rpc('verify_and_make_permanent', { 
-    p_pin: pinId, 
-    p_verifier_name: verifierName 
+  const { error } = await supabase.rpc('verify_and_make_permanent', {
+    p_pin: pinId,
+    p_verifier_name: verifierName,
   })
   if (error) throw error
 }
@@ -562,9 +592,9 @@ export async function extendPinTTL(pinId: string, hours: number = 24): Promise<v
     demoExtendPinTTL(pinId, hours)
     return
   }
-  const { error } = await supabase.rpc('extend_pin_ttl', { 
-    p_pin: pinId, 
-    p_hours: hours 
+  const { error } = await supabase.rpc('extend_pin_ttl', {
+    p_pin: pinId,
+    p_hours: hours,
   })
   if (error) throw error
 }
@@ -717,12 +747,12 @@ export async function addComment(
 export async function deleteComment(commentId: string, pinId: string): Promise<void> {
   if (!supabase) {
     const list = demoDb.comments.get(pinId) ?? []
-    demoDb.comments.set(pinId, list.filter(c => c.id !== commentId))
+    demoDb.comments.set(
+      pinId,
+      list.filter((c) => c.id !== commentId),
+    )
     return
   }
-  const { error } = await supabase
-    .from('pin_comments')
-    .delete()
-    .eq('id', commentId)
+  const { error } = await supabase.from('pin_comments').delete().eq('id', commentId)
   if (error) throw error
 }

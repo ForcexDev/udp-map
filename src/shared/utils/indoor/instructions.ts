@@ -1,5 +1,14 @@
 import type { NavGraph } from './graph'
-import { cardinalOf, dist, length, levelIndex, sub, turnAngle, floorSpan, type Cardinal } from './projection'
+import {
+  cardinalOf,
+  dist,
+  length,
+  levelIndex,
+  sub,
+  turnAngle,
+  floorSpan,
+  type Cardinal,
+} from './projection'
 import type { Route, Side, Step, StepIcon, StepKind, Translate, Vec2 } from './types'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,7 +123,12 @@ function segmentsOf(route: Route): Segment[] {
   return segments
 }
 
-function emptyStep(kind: StepKind, icon: StepIcon, from: number, level: number | null): PlannedStep {
+function emptyStep(
+  kind: StepKind,
+  icon: StepIcon,
+  from: number,
+  level: number | null,
+): PlannedStep {
   return { kind, icon, from, to: from, meters: 0, level, crosses: [], passes: [] }
 }
 
@@ -202,7 +216,11 @@ export function planSteps(route: Route, graph: NavGraph, options: PlanOptions = 
         if (!core && room?.name && !room.service) current.passes.push({ name: room.name, side })
       }
 
-      if ((here.kind === 'door' || here.kind === 'entrance') && here.landmark && !graph.isCoreDoor(here.id)) {
+      if (
+        (here.kind === 'door' || here.kind === 'entrance') &&
+        here.landmark &&
+        !graph.isCoreDoor(here.id)
+      ) {
         current.crosses.push(here.landmark)
       }
 
@@ -312,7 +330,9 @@ export function cardinalWord(c: Cardinal, t: Translate): string {
 }
 
 export function sideWord(side: Side, t: Translate): string {
-  return side === 'left' ? t('wayfinder.indoor.left', 'izquierda') : t('wayfinder.indoor.right', 'derecha')
+  return side === 'left'
+    ? t('wayfinder.indoor.left', 'izquierda')
+    : t('wayfinder.indoor.right', 'derecha')
 }
 
 /**
@@ -328,7 +348,9 @@ export function isFeminine(name: string): boolean {
 }
 
 function articleFor(name: string, t: Translate): string {
-  return isFeminine(name) ? t('wayfinder.indoor.articleF', 'la') : t('wayfinder.indoor.articleM', 'el')
+  return isFeminine(name)
+    ? t('wayfinder.indoor.articleF', 'la')
+    : t('wayfinder.indoor.articleM', 'el')
 }
 
 function joinList(items: string[], t: Translate): string {
@@ -371,7 +393,12 @@ export function floorRef(level: number, t: Translate): string {
     : t('wayfinder.indoor.floorRef', 'el piso {{n}}', { n: level })
 }
 
-function withTarget(verb: string, target: string | null | undefined, place: string | null | undefined, t: Translate) {
+function withTarget(
+  verb: string,
+  target: string | null | undefined,
+  place: string | null | undefined,
+  t: Translate,
+) {
   if (target) return t('wayfinder.indoor.toward', '{{verb}} hacia {{target}}', { verb, target })
   if (place) return t('wayfinder.indoor.at', '{{verb}} en {{place}}', { verb, place })
   return verb
@@ -379,9 +406,13 @@ function withTarget(verb: string, target: string | null | undefined, place: stri
 
 function walkDetail(step: PlannedStep, t: Translate): string | undefined {
   if (step.meters <= MIN_WALK_M) return undefined
-  let detail = t('wayfinder.indoor.walk', 'Avanza {{meters}} m', { meters: Math.round(step.meters) })
+  let detail = t('wayfinder.indoor.walk', 'Avanza {{meters}} m', {
+    meters: Math.round(step.meters),
+  })
   if (step.crosses.length > 0) {
-    detail += t('wayfinder.indoor.crossing', ', cruzando {{list}}', { list: joinList(step.crosses, t) })
+    detail += t('wayfinder.indoor.crossing', ', cruzando {{list}}', {
+      list: joinList(step.crosses, t),
+    })
   }
   if (step.passes.length > 0) {
     const list = joinList(
@@ -405,21 +436,32 @@ function walkDetail(step: PlannedStep, t: Translate): string | undefined {
 function departText(step: PlannedStep, t: Translate): string {
   const d = step.depart!
   if (d.mode === 'stairs') {
-    return t('wayfinder.indoor.exitStairs', 'Sal de la escalera en {{floor}}', { floor: floorRef(d.level ?? 1, t) })
+    return t('wayfinder.indoor.exitStairs', 'Sal de la escalera en {{floor}}', {
+      floor: floorRef(d.level ?? 1, t),
+    })
   }
   if (d.mode === 'elevator') {
-    return t('wayfinder.indoor.exitElevator', 'Sal del ascensor en {{floor}}', { floor: floorRef(d.level ?? 1, t) })
+    return t('wayfinder.indoor.exitElevator', 'Sal del ascensor en {{floor}}', {
+      floor: floorRef(d.level ?? 1, t),
+    })
   }
   if (d.mode === 'outdoor') {
     const dir = cardinalWord(d.dir, t)
     if (!d.landmark) return t('wayfinder.indoor.departWalk', 'Camina hacia el {{dir}}', { dir })
     return d.via
-      ? t('wayfinder.indoor.departOutdoorVia', 'Desde {{from}}, camina hacia el {{dir}} por {{via}}', {
+      ? t(
+          'wayfinder.indoor.departOutdoorVia',
+          'Desde {{from}}, camina hacia el {{dir}} por {{via}}',
+          {
+            from: d.landmark,
+            dir,
+            via: d.via,
+          },
+        )
+      : t('wayfinder.indoor.departOutdoor', 'Desde {{from}}, camina hacia el {{dir}}', {
           from: d.landmark,
           dir,
-          via: d.via,
         })
-      : t('wayfinder.indoor.departOutdoor', 'Desde {{from}}, camina hacia el {{dir}}', { from: d.landmark, dir })
   }
   return d.landmark
     ? t('wayfinder.indoor.departIndoor', 'Sal desde {{from}}', { from: d.landmark })
@@ -430,7 +472,10 @@ function verticalText(step: PlannedStep, t: Translate): { text: string; detail: 
   const v = step.vertical!
   if (v.kind === 'elevator') {
     const core = v.core ?? t('wayfinder.indoor.theElevator', 'el ascensor')
-    const text = t('wayfinder.indoor.elevator', 'Toma {{core}} y marca el {{n}}', { core, n: v.toLevel })
+    const text = t('wayfinder.indoor.elevator', 'Toma {{core}} y marca el {{n}}', {
+      core,
+      n: v.toLevel,
+    })
     const detail = v.up
       ? v.floors === 1
         ? t('wayfinder.indoor.elevatorUpOne', 'Subes 1 piso')
@@ -464,10 +509,14 @@ function arriveText(step: PlannedStep, t: Translate): { text: string; detail?: s
     }
   }
   const side = sideWord(a.side, t)
-  const door = t('wayfinder.indoor.arriveDoor', 'Es la {{n}}.ª puerta a tu {{side}} desde el último giro', {
-    n: a.ordinal,
-    side,
-  })
+  const door = t(
+    'wayfinder.indoor.arriveDoor',
+    'Es la {{n}}.ª puerta a tu {{side}} desde el último giro',
+    {
+      n: a.ordinal,
+      side,
+    },
+  )
   return {
     text: t('wayfinder.indoor.arrive', '{{name}} está a tu {{side}}', { name: a.name, side }),
     detail: a.code ? `${door} · ${a.code}` : door,
@@ -495,7 +544,14 @@ function polish(step: Step): Step {
 }
 
 function renderStep(step: PlannedStep, t: Translate): Step {
-  const base = { kind: step.kind, icon: step.icon, meters: step.meters, level: step.level, from: step.from, to: step.to }
+  const base = {
+    kind: step.kind,
+    icon: step.icon,
+    meters: step.meters,
+    level: step.level,
+    from: step.from,
+    to: step.to,
+  }
   switch (step.kind) {
     case 'depart':
       return { ...base, text: departText(step, t), detail: walkDetail(step, t) }
@@ -513,14 +569,24 @@ function renderStep(step: PlannedStep, t: Translate): Step {
     default: {
       let verb = verbPhrase(step.turn!, t)
       if (!step.then) {
-        return { ...base, text: withTarget(verb, step.target, step.place, t), detail: walkDetail(step, t) }
+        return {
+          ...base,
+          text: withTarget(verb, step.target, step.place, t),
+          detail: walkDetail(step, t),
+        }
       }
-      const first = step.place ? t('wayfinder.indoor.at', '{{verb}} en {{place}}', { verb, place: step.place }) : verb
+      const first = step.place
+        ? t('wayfinder.indoor.at', '{{verb}} en {{place}}', { verb, place: step.place })
+        : verb
       verb = t('wayfinder.indoor.thenJoin', '{{first}} y enseguida {{next}}', {
         first,
         next: turnContinuation(step.then, t),
       })
-      return { ...base, text: withTarget(verb, step.target, step.thenPlace, t), detail: walkDetail(step, t) }
+      return {
+        ...base,
+        text: withTarget(verb, step.target, step.thenPlace, t),
+        detail: walkDetail(step, t),
+      }
     }
   }
 }
@@ -533,4 +599,3 @@ export function buildInstructions(
 ): Step[] {
   return renderSteps(planSteps(route, graph, options), t)
 }
-

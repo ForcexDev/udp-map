@@ -10,7 +10,10 @@ export const DOOR_SNAP_M = 1.5
 export const OPEN_KINDS = new Set(['corridor', 'hall'])
 
 /** Quita las aristas que ya existen en cualquier sentido o que se repiten. */
-export function dedupeEdges(inputs: NavEdgeInput[], existing: { a: string; b: string }[]): NavEdgeInput[] {
+export function dedupeEdges(
+  inputs: NavEdgeInput[],
+  existing: { a: string; b: string }[],
+): NavEdgeInput[] {
   const key = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`)
   const seen = new Set(existing.map((e) => key(e.a, e.b)))
   return inputs.filter((e) => {
@@ -27,7 +30,10 @@ export function dedupeEdges(inputs: NavEdgeInput[], existing: { a: string; b: st
  * de cerca —la pared que comparten una sala y el pasillo— gana la sala: la
  * puerta es suya, el pasillo no tiene puertas propias.
  */
-export function snapToWall(areas: IndoorArea[], p: Vec2): { p: Vec2; areaId: string | null } | null {
+export function snapToWall(
+  areas: IndoorArea[],
+  p: Vec2,
+): { p: Vec2; areaId: string | null } | null {
   let best: { p: Vec2; areaId: string | null; d: number; open: boolean } | null = null
   for (const area of areas) {
     for (let i = 0; i < area.ring.length; i++) {
@@ -35,7 +41,8 @@ export function snapToWall(areas: IndoorArea[], p: Vec2): { p: Vec2; areaId: str
       const d = dist(point, p)
       if (d > DOOR_SNAP_M) continue
       const open = OPEN_KINDS.has(area.kind)
-      const better = !best || d < best.d - 0.2 || (Math.abs(d - best.d) <= 0.2 && best.open && !open)
+      const better =
+        !best || d < best.d - 0.2 || (Math.abs(d - best.d) <= 0.2 && best.open && !open)
       if (better) best = { p: point, areaId: open ? null : area.id, d, open }
     }
   }

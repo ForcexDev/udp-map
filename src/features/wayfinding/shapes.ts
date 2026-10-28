@@ -45,7 +45,11 @@ export function arrowHead(center: Vec2, heading: Vec2, reach: number, halfWidth:
   const u = length(heading) < 1e-6 ? { x: 0, y: -1 } : unit(heading)
   const n = { x: -u.y, y: u.x }
   const back = add(center, scale(u, reach * 0.5))
-  return [add(center, scale(u, reach)), add(back, scale(n, halfWidth)), sub(back, scale(n, halfWidth))]
+  return [
+    add(center, scale(u, reach)),
+    add(back, scale(n, halfWidth)),
+    sub(back, scale(n, halfWidth)),
+  ]
 }
 
 function closed(ring: Vec2[], plane: LocalPlane): [number, number][] {

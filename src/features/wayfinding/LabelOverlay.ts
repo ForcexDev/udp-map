@@ -1,4 +1,8 @@
-import maplibregl, { type CustomLayerInterface, type CustomRenderMethodInput, type Map as MapLibreMap } from 'maplibre-gl'
+import maplibregl, {
+  type CustomLayerInterface,
+  type CustomRenderMethodInput,
+  type Map as MapLibreMap,
+} from 'maplibre-gl'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Etiquetas HTML en altura.
@@ -44,7 +48,8 @@ export class LabelOverlay implements CustomLayerInterface {
 
   constructor() {
     this.container = document.createElement('div')
-    this.container.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2'
+    this.container.style.cssText =
+      'position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2'
   }
 
   onAdd(map: MapLibreMap): void {
@@ -67,7 +72,11 @@ export class LabelOverlay implements CustomLayerInterface {
         this.items.get(id)?.label.onClick?.()
       })
       this.container.appendChild(el)
-      item = { el, m: maplibregl.MercatorCoordinate.fromLngLat(label.lngLat, label.altitude), label }
+      item = {
+        el,
+        m: maplibregl.MercatorCoordinate.fromLngLat(label.lngLat, label.altitude),
+        label,
+      }
       this.items.set(id, item)
       item.el.innerHTML = label.html
     } else if (item.label.html !== label.html) {

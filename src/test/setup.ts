@@ -36,12 +36,20 @@ if (!globalThis.ResizeObserver) {
 if (!globalThis.localStorage) {
   const store = new Map<string, string>()
   const memoryStorage: Storage = {
-    get length() { return store.size },
+    get length() {
+      return store.size
+    },
     key: (index) => [...store.keys()][index] ?? null,
     getItem: (key) => store.get(String(key)) ?? null,
-    setItem: (key, value) => { store.set(String(key), String(value)) },
-    removeItem: (key) => { store.delete(String(key)) },
-    clear: () => { store.clear() },
+    setItem: (key, value) => {
+      store.set(String(key), String(value))
+    },
+    removeItem: (key) => {
+      store.delete(String(key))
+    },
+    clear: () => {
+      store.clear()
+    },
   }
   Object.defineProperty(globalThis, 'localStorage', {
     value: memoryStorage,

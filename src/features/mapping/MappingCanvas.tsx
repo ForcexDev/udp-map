@@ -53,7 +53,6 @@ interface MappingCanvasProps {
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] }
 const NAV_NODES_LAYER = 'nav-nodes'
 
-
 function areaFeature(area: Area): Feature<Polygon> {
   return {
     type: 'Feature',
@@ -277,7 +276,12 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
         id: 'ghost-line',
         type: 'line',
         source: 'ghost',
-        paint: { 'line-color': '#71717a', 'line-width': 1, 'line-dasharray': [2, 2], 'line-opacity': 0.7 },
+        paint: {
+          'line-color': '#71717a',
+          'line-width': 1,
+          'line-dasharray': [2, 2],
+          'line-opacity': 0.7,
+        },
       })
 
       map.addLayer({
@@ -302,7 +306,11 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
         id: 'areas-label',
         type: 'symbol',
         source: 'areas',
-        layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-font': ['Noto Sans Regular'] },
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-size': 11,
+          'text-font': ['Noto Sans Regular'],
+        },
         paint: { 'text-color': '#27272a', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
       })
 
@@ -541,9 +549,11 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
       // Las teselas vectoriales llegan recortadas al borde del tile, así que un
       // edificio que cruza ese borde se calca partido. Es limitación del
       // formato, no un fallo: por eso se avisa en vez de fingir precisión.
-      useUIStore.getState().showToast(
-        'Huella calcada de OpenStreetMap. Revisa el contorno: si el edificio cruza el borde de una tesela, puede llegar recortado.',
-      )
+      useUIStore
+        .getState()
+        .showToast(
+          'Huella calcada de OpenStreetMap. Revisa el contorno: si el edificio cruza el borde de una tesela, puede llegar recortado.',
+        )
       onDraftReadyRef.current()
     }
 
@@ -687,7 +697,8 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
     () =>
       useNavEditor.subscribe((state, previous) => {
         if (state.overlay === previous.overlay) return
-        const source = mapRef.current?.getSource('nav-overlay') as maplibregl.GeoJSONSource | undefined
+        const source = mapRef.current?.getSource('nav-overlay') as
+          maplibregl.GeoJSONSource | undefined
         source?.setData(state.overlay)
       }),
     [],
@@ -806,10 +817,7 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
     if (draft.kind === 'rect' && polygon) {
       const ring = openRing(polygon.coordinates[0])
       // A media altura del lado que sale del ancla: es el que marca el giro.
-      const handleAt: Position = [
-        (ring[1][0] + ring[2][0]) / 2,
-        (ring[1][1] + ring[2][1]) / 2,
-      ]
+      const handleAt: Position = [(ring[1][0] + ring[2][0]) / 2, (ring[1][1] + ring[2][1]) / 2]
       const el = document.createElement('div')
       el.className = 'mapping-rotate-handle'
       el.title = 'Arrastra para girar'

@@ -1,6 +1,15 @@
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
-import { Megaphone, UserX, AlertTriangle, EyeOff, HelpCircle, CheckCircle2, ShieldAlert, Loader2 } from 'lucide-react'
+import {
+  Megaphone,
+  UserX,
+  AlertTriangle,
+  EyeOff,
+  HelpCircle,
+  CheckCircle2,
+  ShieldAlert,
+  Loader2,
+} from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
 import { useAuthStore } from '@/features/auth/authStore'
 import { useUIStore } from '@/shared/stores/uiStore'
@@ -20,7 +29,13 @@ export interface ReportTarget {
   id: string
 }
 
-export function ReportContentDialog({ target, onClose }: { target: ReportTarget | null; onClose: () => void }) {
+export function ReportContentDialog({
+  target,
+  onClose,
+}: {
+  target: ReportTarget | null
+  onClose: () => void
+}) {
   const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
   const showToast = useUIStore((state) => state.showToast)
@@ -30,21 +45,25 @@ export function ReportContentDialog({ target, onClose }: { target: ReportTarget 
 
   const submit = () => {
     if (!target || !user || mutation.isPending) return
-    mutation.mutate({
-      reporterId: user.id,
-      targetType: target.type,
-      targetId: target.id,
-      reason,
-      details: details.trim() || undefined,
-    }, {
-      onSuccess: () => {
-        showToast('Reporte enviado a administración.')
-        setReason('spam')
-        setDetails('')
-        onClose()
+    mutation.mutate(
+      {
+        reporterId: user.id,
+        targetType: target.type,
+        targetId: target.id,
+        reason,
+        details: details.trim() || undefined,
       },
-      onError: (error) => showToast(error instanceof Error ? error.message : 'No se pudo enviar el reporte.'),
-    })
+      {
+        onSuccess: () => {
+          showToast('Reporte enviado a administración.')
+          setReason('spam')
+          setDetails('')
+          onClose()
+        },
+        onError: (error) =>
+          showToast(error instanceof Error ? error.message : 'No se pudo enviar el reporte.'),
+      },
+    )
   }
 
   return (
@@ -78,7 +97,9 @@ export function ReportContentDialog({ target, onClose }: { target: ReportTarget 
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isSelected ? 'bg-[#D41F2D] text-white' : 'bg-neutral-200/60 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400'}`}>
+                    <div
+                      className={`w-7 h-7 rounded-xl flex items-center justify-center ${isSelected ? 'bg-[#D41F2D] text-white' : 'bg-neutral-200/60 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400'}`}
+                    >
                       <Icon size={14} strokeWidth={2.2} />
                     </div>
                     <span className="text-xs font-bold">{item.label}</span>
@@ -93,7 +114,9 @@ export function ReportContentDialog({ target, onClose }: { target: ReportTarget 
         {/* Detalle opcional */}
         <div className="space-y-1.5">
           <div className="flex justify-between items-center">
-            <label className="text-[11px] font-black uppercase tracking-wider text-neutral-400">Detalle opcional</label>
+            <label className="text-[11px] font-black uppercase tracking-wider text-neutral-400">
+              Detalle opcional
+            </label>
             <span className="text-[10px] font-bold text-neutral-400">{details.length}/1000</span>
           </div>
           <textarea
@@ -102,7 +125,10 @@ export function ReportContentDialog({ target, onClose }: { target: ReportTarget 
             maxLength={1000}
             rows={3}
             className="w-full resize-none rounded-2xl border border-neutral-200 dark:border-neutral-700/80 bg-neutral-50 dark:bg-neutral-800/60 px-4 py-3 text-xs font-medium text-neutral-900 dark:text-white placeholder:text-neutral-400 outline-none focus:border-[#D41F2D] focus:bg-white dark:focus:bg-neutral-900 transition-all shadow-sm"
-            placeholder={t('moderation.detailsPlaceholder', 'Entrega contexto para facilitar la revisión…')}
+            placeholder={t(
+              'moderation.detailsPlaceholder',
+              'Entrega contexto para facilitar la revisión…',
+            )}
           />
         </div>
 

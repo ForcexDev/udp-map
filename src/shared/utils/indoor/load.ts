@@ -33,7 +33,11 @@ export function roomNameFromCode(code: string): string {
   return numbered ? `Sala ${numbered[1]}` : room.trim()
 }
 
-export function graphFromRows(nodes: NavNodeRow[], edges: NavEdgeRow[], options: LoadOptions = {}): LoadedGraph {
+export function graphFromRows(
+  nodes: NavNodeRow[],
+  edges: NavEdgeRow[],
+  options: LoadOptions = {},
+): LoadedGraph {
   const plane = options.plane ?? projectionAround(nodes)
   const areaById = new Map((options.areas ?? []).map((a) => [a.id, a]))
 
@@ -43,7 +47,9 @@ export function graphFromRows(nodes: NavNodeRow[], edges: NavEdgeRow[], options:
     if (row.kind === 'room') {
       name =
         area?.name ??
-        (row.room_code ? (options.nameByRoomCode?.(row.room_code) ?? roomNameFromCode(row.room_code)) : null) ??
+        (row.room_code
+          ? (options.nameByRoomCode?.(row.room_code) ?? roomNameFromCode(row.room_code))
+          : null) ??
         row.landmark
     }
     return {
@@ -63,7 +69,13 @@ export function graphFromRows(nodes: NavNodeRow[], edges: NavEdgeRow[], options:
     }
   })
 
-  const navEdges = edges.map((e) => ({ id: e.id, a: e.a, b: e.b, kind: e.kind, stepFree: e.step_free }))
+  const navEdges = edges.map((e) => ({
+    id: e.id,
+    a: e.a,
+    b: e.b,
+    kind: e.kind,
+    stepFree: e.step_free,
+  }))
   return { graph: new NavGraph(navNodes, navEdges), plane }
 }
 

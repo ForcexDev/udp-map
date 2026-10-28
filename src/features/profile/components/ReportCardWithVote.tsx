@@ -6,7 +6,10 @@ import { useGuard } from '@/features/auth/useGuard'
 import { ReportCard, type ReportCardProps } from './ReportCard'
 import type { Pin } from '@/shared/types/database'
 
-interface ReportCardWithVoteProps extends Omit<ReportCardProps, 'userVote' | 'onVote' | 'votesUp' | 'votesDown'> {
+interface ReportCardWithVoteProps extends Omit<
+  ReportCardProps,
+  'userVote' | 'onVote' | 'votesUp' | 'votesDown'
+> {
   pin: Pin
 }
 
