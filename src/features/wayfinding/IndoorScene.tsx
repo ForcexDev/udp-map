@@ -142,6 +142,7 @@ export function IndoorScene() {
     const wanted = new Set<string>()
 
     for (const area of scene.sourceAreas) {
+      if (navigating) continue
       if (area.floor !== active || area.kind === 'corridor' || area.kind === 'service') continue
       const local = scene.areas.find((a) => a.id === area.id)
       if (!local) continue
@@ -184,7 +185,7 @@ export function IndoorScene() {
     }
 
     for (const id of overlay.ids(FLOOR_LABELS)) if (!wanted.has(id)) overlay.remove(id)
-  }, [scene, active, gap, epoch])
+  }, [scene, active, gap, epoch, navigating])
 
   // Al desmontar (salir del mapa), la escena se va con él.
   useEffect(() => {

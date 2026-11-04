@@ -99,7 +99,7 @@ const PITCH_EPSILON = 0.01
 function setBuildingsVisible(map: maplibregl.Map, visible: boolean) {
   const style = map.getStyle()
   if (!style?.layers) return
-  const target = visible ? 'visible' : 'none'
+  const target = visible && !useUIStore.getState().indoorNavFacultyId ? 'visible' : 'none'
   for (const l of style.layers) {
     if (l.type !== 'fill-extrusion') continue
     // El interior en 3D (navegación, pisos separados) tiene su propio ciclo:
@@ -172,6 +172,7 @@ export function MapView({
   const activeFacultyId = useUIStore((s) => s.activeFacultyId)
   const activeFloor = useUIStore((s) => s.activeFloor)
   const interior3dFaculty = useUIStore(indoor3dFacultyId)
+  const indoorNavigating = useUIStore((s) => s.indoorNavFacultyId !== null)
 
   // Un evento que empieza a las 14:00 debe ponerse en vivo a las 14:00, no la
   // próxima vez que el usuario mueva el mapa.
@@ -451,6 +452,14 @@ export function MapView({
     }
   }, [viewMode])
 
+  // La cámara inclinada de navegación no necesita las cajas del mapa base.
+  // Al salir se recupera la visibilidad correspondiente al modo elegido.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || styleEpoch === 0) return
+    setBuildingsVisible(map, viewMode === '3d')
+  }, [indoorNavigating, styleEpoch, viewMode])
+
   // ── Admin: toggle de desbloqueo de mapa ──
   useEffect(() => {
     const map = mapRef.current
@@ -486,7 +495,8 @@ export function MapView({
     const map = mapRef.current
     if (!map) return
     const markers = markersRef.current
-    const nextIds = new Set(pins.map((p) => p.id))
+    const visiblePins = indoorNavigating ? [] : pins
+    const nextIds = new Set(visiblePins.map((p) => p.id))
 
     for (const [id, marker] of markers) {
       if (!nextIds.has(id)) {
@@ -495,7 +505,7 @@ export function MapView({
       }
     }
 
-    for (const pin of pins) {
+    for (const pin of visiblePins) {
       if (expiryState(pin.expires_at, pin.is_permanent).status === 'expired') continue
       // Con una planta activa solo se ven los de esa planta, en TODA la
       // facultad: el piso 2 del Vergara y el del Ejército a la vez. Sin este
@@ -577,7 +587,7 @@ export function MapView({
       el.classList.toggle('pin-marker--fixed', !isRoom && isFixedInfraCategory(pin.category_id))
       marker.setLngLat([pin.lng, pin.lat])
     }
-  }, [pins, selectedPinId, activeFacultyId, activeFloor])
+  }, [pins, selectedPinId, activeFacultyId, activeFloor, indoorNavigating])
 
   // ── Estado temporal del marcador (en vivo / por vencer) ──
   //

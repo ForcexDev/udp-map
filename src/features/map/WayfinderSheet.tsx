@@ -5,15 +5,30 @@ import type { Pin } from '@/shared/types/database'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useMapping } from '@/features/mapping/useMapping'
 import { floorName } from '@/features/mapping/areaStyles'
+import { CustomSelect } from '@/shared/ui/CustomSelect'
 
 interface WayfinderSheetProps {
   targetPin: Pin
   allPins: Pin[]
   durationSeconds?: number
   distanceMeters?: number
+  origin: string
+  onOriginChange: (value: string) => void
+  originOptions: { value: string; label: string }[]
+  onRetryLocation: () => void
+  hasRoute: boolean
 }
 
-export function WayfinderSheet({ targetPin, allPins, durationSeconds }: WayfinderSheetProps) {
+export function WayfinderSheet({
+  targetPin,
+  allPins,
+  durationSeconds,
+  origin,
+  onOriginChange,
+  originOptions,
+  onRetryLocation,
+  hasRoute,
+}: WayfinderSheetProps) {
   const { t } = useTranslation()
   const { mapping } = useMapping()
 
@@ -164,9 +179,11 @@ export function WayfinderSheet({ targetPin, allPins, durationSeconds }: Wayfinde
               <span className="truncate text-sm font-bold text-stone-900 dark:text-stone-100">
                 {t('wayfinder.routeTo', 'Ruta a {{title}}', { title: targetPin.title })}
               </span>
-              <span className="shrink-0 rounded-md border border-[#F2D0CE] bg-[#FBECEB] px-2 py-0.5 text-xs font-semibold tabular-nums text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300">
-                {minutes} min
-              </span>
+              {hasRoute && (
+                <span className="shrink-0 rounded-md border border-[#F2D0CE] bg-[#FBECEB] px-2 py-0.5 text-xs font-semibold tabular-nums text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300">
+                  {minutes} min
+                </span>
+              )}
             </div>
             <p className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">
               {[building?.short_name || building?.name, floorLabel].filter(Boolean).join(' · ')}
@@ -190,47 +207,78 @@ export function WayfinderSheet({ targetPin, allPins, durationSeconds }: Wayfinde
         </button>
       </div>
 
+      <div className="mt-3 flex items-center gap-2">
+        <span className="text-xs font-semibold text-stone-500">
+          {t('wayfinder.indoor.from', 'Desde')}
+        </span>
+        <CustomSelect
+          className="min-w-0 flex-1"
+          value={origin}
+          onChange={onOriginChange}
+          options={[
+            { value: 'gps', label: t('wayfinder.indoor.fromHere', 'Tu ubicación') },
+            ...originOptions,
+          ]}
+          searchable
+          searchPlaceholder={t('common.search', 'Buscar…')}
+        />
+      </div>
+      {!hasRoute && (
+        <p className="mt-2 text-xs text-stone-600 dark:text-stone-300">
+          {t('wayfinder.indoor.needLocation', 'Elige un punto de partida o activa tu ubicación.')}
+          {origin === 'gps' && (
+            <>
+              {' '}
+              <button type="button" className="font-semibold underline" onClick={onRetryLocation}>
+                {t('wayfinder.retryLocation', 'Reintentar ubicación')}
+              </button>
+            </>
+          )}
+        </p>
+      )}
+
       {/* Lista de 3 pasos interactivos */}
       <div className="mt-4 flex flex-col gap-2.5">
-        {steps.map((st) => {
-          const isAct = activeStep === st.num
-          return (
-            <button
-              key={st.num}
-              type="button"
-              onClick={st.onSelect}
-              className={`flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border p-3.5 text-left transition-all ${
-                isAct
-                  ? 'border-stone-900 bg-white shadow-xs dark:border-white/40 dark:bg-white/[0.08]'
-                  : 'border-[#E6E0D5] bg-white/80 opacity-85 hover:opacity-100 dark:border-white/[0.07] dark:bg-[#1E222D]'
-              }`}
-            >
-              <div className="flex min-w-0 items-center gap-3.5">
-                <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums ${
-                    isAct
-                      ? 'bg-stone-900 text-[#FAF8F5] dark:bg-stone-100 dark:text-stone-950'
-                      : 'bg-[#EFECE4] text-stone-700 dark:bg-white/[0.08] dark:text-stone-200'
-                  }`}
-                >
-                  {st.num}
-                </span>
-                <div className="min-w-0">
-                  <div className="truncate text-xs font-bold text-stone-900 dark:text-stone-100">
-                    {st.title}
-                  </div>
-                  <div className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">
-                    {st.subtitle}
+        {hasRoute &&
+          steps.map((st) => {
+            const isAct = activeStep === st.num
+            return (
+              <button
+                key={st.num}
+                type="button"
+                onClick={st.onSelect}
+                className={`flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                  isAct
+                    ? 'border-stone-900 bg-white shadow-xs dark:border-white/40 dark:bg-white/[0.08]'
+                    : 'border-[#E6E0D5] bg-white/80 opacity-85 hover:opacity-100 dark:border-white/[0.07] dark:bg-[#1E222D]'
+                }`}
+              >
+                <div className="flex min-w-0 items-center gap-3.5">
+                  <span
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums ${
+                      isAct
+                        ? 'bg-stone-900 text-[#FAF8F5] dark:bg-stone-100 dark:text-stone-950'
+                        : 'bg-[#EFECE4] text-stone-700 dark:bg-white/[0.08] dark:text-stone-200'
+                    }`}
+                  >
+                    {st.num}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-xs font-bold text-stone-900 dark:text-stone-100">
+                      {st.title}
+                    </div>
+                    <div className="mt-0.5 truncate text-xs text-stone-500 dark:text-stone-400">
+                      {st.subtitle}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <span className="shrink-0 rounded-lg bg-[#EFECE4] px-2.5 py-1 text-xs font-semibold tabular-nums text-stone-700 dark:bg-white/[0.08] dark:text-stone-200">
-                {st.badge}
-              </span>
-            </button>
-          )
-        })}
+                <span className="shrink-0 rounded-lg bg-[#EFECE4] px-2.5 py-1 text-xs font-semibold tabular-nums text-stone-700 dark:bg-white/[0.08] dark:text-stone-200">
+                  {st.badge}
+                </span>
+              </button>
+            )
+          })}
       </div>
 
       {/* Acción de cierre */}

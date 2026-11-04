@@ -153,6 +153,20 @@ consulta falla porque la migración no está aplicada, sigue `WayfinderSheet`.
 Nunca las dos. `MapPage` no pide ubicación ni ruta de calle hasta saber cuál
 corresponde: hacerlo y descartarlo gastaría cupo de ORS.
 
+La guía interior permite partir de puntos nombrados del grafo; la guía sin grafo
+permite elegir una facultad como origen de calle. Ambas ofrecen ubicación propia.
+Durante la navegación interior se ocultan las extrusiones de edificios del mapa;
+al salir se restaura la visibilidad según el modo 2D/3D.
+Los marcadores sociales y las etiquetas de áreas se apartan durante la navegación;
+las plantas superiores se ocultan para no tapar la ruta. La vista de conjunto
+aplica encuadre y elevación juntos para evitar que la altura cancele el zoom.
+La reproducción actualiza figura y cámara como máximo a 30 FPS y se pausa al
+ocultar la pestaña. El paso se explica en la hoja, sin un globo duplicado sobre
+la figura; la dirección detallada del destino queda desplegable.
+El buscador y los filtros del mapa se ocultan en esta sesión para dejar espacio
+al recorrido. La hoja observa su tamaño para mantener visible la figura al
+rotar la pantalla o desplegar detalles, sin un bucle de redibujado permanente.
+
 | Pieza                         | Responsabilidad                                                                                                                                                                          |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `shared/utils/indoor/`        | Lógica pura en metros (x = este, y = sur): proyección, grafo con costo en segundos, instrucciones, microdirección, línea de tiempo, pasillo generado, validación y el edificio de prueba |

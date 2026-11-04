@@ -31,7 +31,7 @@ describe('vista por plantas', () => {
 
   it('apaga más las plantas de arriba cuando se navega', () => {
     expect(floorOpacity(4, 4, true, false)).toBe(1)
-    expect(floorOpacity(5, 4, true, true)).toBe(0.05)
+    expect(floorOpacity(5, 4, true, true)).toBe(0)
     expect(floorOpacity(5, 4, false, true)).toBe(0.28)
     expect(floorOpacity(1, 4, true, false)).toBe(0.22)
     expect(floorOpacity(1, 4, false, true)).toBe(0.4)

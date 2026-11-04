@@ -253,7 +253,6 @@ export function MapPage() {
   const selectedPinId = useUIStore((s) => s.selectedPinId)
   const selectPin = useUIStore((s) => s.selectPin)
   const routeTargetPinId = useUIStore((s) => s.routeTargetPinId)
-  const setRouteTarget = useUIStore((s) => s.setRouteTarget)
   const accessibleRoute = useUIStore((s) => s.accessibleRoute)
 
   const campusId = useUIStore((s) => s.campusId)
@@ -279,6 +278,8 @@ export function MapPage() {
 
   const { loc: userLocation, heading: userHeading, isTracking, requestLocation } = useUserLocation()
   const [route, setRoute] = useState<WalkingRoute | null>(null)
+  const [routeOrigin, setRouteOrigin] = useState('gps')
+  const [locationAttempt, setLocationAttempt] = useState(0)
   // Ref to the initial origin used when the route was first calculated.
   // We do NOT recalculate on GPS updates (industry standard: route is shown
   // once and the user follows it; recalc only on explicit user action).
@@ -519,6 +520,7 @@ export function MapPage() {
 
     if (!routeTarget) {
       setRoute(null)
+      setRouteOrigin('gps')
       routeOriginRef.current = null
       return
     }
@@ -529,20 +531,20 @@ export function MapPage() {
     if (navLoading || indoorTargetId) return
 
     const calculate = async () => {
+      setRoute(null)
       let currentLoc: LatLng | null = null
-      try {
-        currentLoc = await requestLocation()
-      } catch (err) {
-        const error = err as Error
-        if (error.message === 'PERMISSION_DENIED') {
-          showToast(
-            t('map.locationDenied', 'Debes activar la ubicación en tu dispositivo o navegador.'),
-          )
-        } else {
-          showToast(t('map.locationFailed', 'No se pudo obtener tu ubicación.'))
+      if (routeOrigin === 'gps') {
+        try {
+          currentLoc = await requestLocation()
+        } catch {
+          if (!cancelled) showToast(t('map.locationFailed', 'No se pudo obtener tu ubicación.'))
+          return
         }
-        setRouteTarget(null)
-        return
+        if (!currentLoc) return
+      } else {
+        const faculty = faculties.find((f) => f.id === routeOrigin)
+        if (!faculty) return
+        currentLoc = { lat: faculty.lat, lng: faculty.lng }
       }
 
       if (cancelled) return
@@ -556,7 +558,6 @@ export function MapPage() {
           showToast(
             t('map.outOfBounds', 'Estás demasiado lejos del campus para trazar una ruta a pie.'),
           )
-          setRouteTarget(null)
           return
         }
         origin = currentLoc
@@ -588,7 +589,7 @@ export function MapPage() {
     // Do NOT include userLocation/requestLocation here — that would re-fire on
     // every GPS update and burn the ORS quota (the original bug).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeTarget?.id, accessibleRoute, navLoading, indoorTargetId])
+  }, [routeTarget?.id, accessibleRoute, navLoading, indoorTargetId, routeOrigin, locationAttempt])
 
   const movePin = useMutation({
     mutationFn: ({ lat, lng }: { lat: number; lng: number }) => {
@@ -659,7 +660,7 @@ export function MapPage() {
       />
 
       {/* ── TOP HUD ─────────────────────────────────────── */}
-      {!pickingLocation && !movingPinId && (
+      {!pickingLocation && !movingPinId && !indoorTargetId && (
         <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none px-3 pb-3 pt-safe-hud sm:px-5 sm:pb-5 flex flex-col gap-2.5">
           {/* Top Bar: Search (Left) + Bell & Sidebar (Right) */}
           <div className="flex items-start justify-between gap-2.5 w-full pointer-events-auto">
@@ -880,13 +881,17 @@ export function MapPage() {
           onStreetRoute={handleStreetRoute}
         />
       ) : (
-        route &&
         routeTarget && (
           <WayfinderSheet
             targetPin={routeTarget}
             allPins={pins}
-            durationSeconds={route.durationSeconds}
-            distanceMeters={route.distanceMeters}
+            durationSeconds={route?.durationSeconds}
+            distanceMeters={route?.distanceMeters}
+            origin={routeOrigin}
+            onOriginChange={setRouteOrigin}
+            originOptions={faculties.map((f) => ({ value: f.id, label: f.name }))}
+            onRetryLocation={() => setLocationAttempt((n) => n + 1)}
+            hasRoute={!!route}
           />
         )
       )}

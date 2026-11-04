@@ -13,6 +13,7 @@ export type PlaybackSpeed = 1 | 3 | 6
 export const PLAYBACK_SPEEDS: PlaybackSpeed[] = [1, 3, 6]
 
 const UI_INTERVAL_MS = 100
+const FRAME_INTERVAL_MS = 1000 / 30
 /** Un salto de pestaña no debe teletransportar la figura media ruta. */
 const MAX_FRAME_S = 0.25
 
@@ -32,11 +33,23 @@ export function usePlayback(
   })
 
   useEffect(() => {
+    const stopWhenHidden = () => {
+      if (document.hidden) setPlaying(false)
+    }
+    document.addEventListener('visibilitychange', stopWhenHidden)
+    return () => document.removeEventListener('visibilitychange', stopWhenHidden)
+  }, [])
+
+  useEffect(() => {
     if (!playing) return
     let raf = 0
     let last = performance.now()
     let lastUi = 0
     const loop = (now: number) => {
+      if (now - last < FRAME_INTERVAL_MS) {
+        raf = requestAnimationFrame(loop)
+        return
+      }
       const dt = Math.min(MAX_FRAME_S, (now - last) / 1000)
       last = now
       tRef.current = Math.min(duration, tRef.current + dt * speed)

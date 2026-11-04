@@ -1,4 +1,4 @@
-import type { EaseToOptions, Map as MapLibreMap, PaddingOptions } from 'maplibre-gl'
+import type { JumpToOptions, Map as MapLibreMap, PaddingOptions } from 'maplibre-gl'
 import { bearingOf, zMeters, type LocalPlane } from '@/shared/utils/indoor/projection'
 import type { Pose } from '@/shared/utils/indoor/track'
 
@@ -9,16 +9,16 @@ import type { Pose } from '@/shared/utils/indoor/track'
 //   · `centerClampedToGround` tiene que estar apagado mientras se navega: si no,
 //     la cámara se clava al suelo y no puede centrarse en un piso 5.
 //   · `easeTo` ignora `elevation`; solo `jumpTo` la respeta. Para volar suave a
-//     una planta alta, la altura se anima aparte.
+//     una planta alta, se aplican encuadre y altura juntos.
 //   · No usar `map.setPadding()` para la hoja: corta el `easeTo` en curso cada
 //     vez que la hoja cambia de alto. El padding va en cada llamada.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const WALK_ZOOM = 20
-const WALK_PITCH = 62
+const WALK_PITCH = 50
 /** En escalera y ascensor la cámara se aleja un poco para que se vea el núcleo. */
 const CORE_ZOOM = 19.2
-const CORE_PITCH = 55
+const CORE_PITCH = 45
 /** Cuánto se acerca el rumbo de la cámara al de la marcha por segundo. */
 const BEARING_RATE = 2.6
 const ZOOM_RATE = 2
@@ -27,7 +27,7 @@ const EYE_M = 0.8
 
 /** El hueco que deja la hoja: abajo en móvil, a la derecha en escritorio. */
 export function sheetPadding(sheet: HTMLElement | null): PaddingOptions {
-  const padding = { top: 90, bottom: 40, left: 40, right: 40 }
+  const padding = { top: 40, bottom: 40, left: 24, right: 24 }
   if (!sheet) return padding
   const rect = sheet.getBoundingClientRect()
   if (window.innerWidth >= 640) padding.right = Math.max(40, window.innerWidth - rect.left + 16)
@@ -35,22 +35,11 @@ export function sheetPadding(sheet: HTMLElement | null): PaddingOptions {
   return padding
 }
 
-/** `easeTo` con la altura del centro animada a mano, que es lo que no hace. */
-export function easeCamera(
-  map: MapLibreMap,
-  options: EaseToOptions,
-  elevation: number,
-  duration = 750,
-): void {
-  const from = map.getCenterElevation()
-  map.easeTo({ ...options, duration })
-  const start = performance.now()
-  const step = (now: number) => {
-    const f = Math.min(1, (now - start) / duration)
-    map.setCenterElevation(from + (elevation - from) * (f * f * (3 - 2 * f)))
-    if (f < 1) requestAnimationFrame(step)
-  }
-  requestAnimationFrame(step)
+/** Encuadra el interior con su elevación en una sola actualización. */
+export function easeCamera(map: MapLibreMap, options: JumpToOptions, elevation: number): void {
+  // Cambiar la elevación en cada frame cancela el easeTo de MapLibre.
+  // Primero encuadramos la ruta; la altura del centro se aplica en el mismo salto.
+  map.jumpTo({ ...options, elevation })
 }
 
 export interface FollowState {

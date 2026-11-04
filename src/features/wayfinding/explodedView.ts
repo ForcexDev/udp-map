@@ -139,7 +139,7 @@ export function buildFloorPrisms({ buildings, areas, graph, gap, dark }: SceneIn
           rings: [area.ring],
           base: z,
           height: z + 0.05,
-          color: mix(style.color, colors.base, dark ? 0.5 : 0.6),
+          color: mix(style.color, colors.base, dark ? 0.82 : 0.86),
           props,
         })
         if (OPEN_KINDS.has(area.kind)) continue
@@ -300,7 +300,7 @@ export function floorOpacity(
 ): number {
   if (level === active) return 1
   if (levelIndex(level) < levelIndex(active)) return navigating ? 0.22 : 0.4
-  if (navigating) return 0.05
+  if (navigating) return 0
   return separated ? 0.28 : 0.12
 }
 
@@ -313,6 +313,13 @@ export function setFloorOpacities(
 ) {
   for (const level of levels) {
     if (!map.getLayer(layerId(level))) continue
+    // Los pisos superiores transparentes aún pueden escribir profundidad y
+    // tapar la cinta. Retirarlos del render deja libre la planta recorrida.
+    map.setLayoutProperty(
+      layerId(level),
+      'visibility',
+      navigating && levelIndex(level) > levelIndex(active) ? 'none' : 'visible',
+    )
     map.setPaintProperty(
       layerId(level),
       'fill-extrusion-opacity',
