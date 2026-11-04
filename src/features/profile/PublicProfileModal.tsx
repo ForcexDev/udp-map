@@ -46,7 +46,11 @@ function PublicProfileModalContent({ userId, onClose }: { userId: string; onClos
   })
 
   const profile = profileQuery.data
-  const loading = profileQuery.isLoading || pinsQuery.isLoading || userBadgesQuery.isLoading || allBadgesQuery.isLoading
+  const loading =
+    profileQuery.isLoading ||
+    pinsQuery.isLoading ||
+    userBadgesQuery.isLoading ||
+    allBadgesQuery.isLoading
 
   const openOnMap = (pin: Pin) => {
     selectPin(pin.id)

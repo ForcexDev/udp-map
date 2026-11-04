@@ -17,7 +17,13 @@ import type { NotificationCategory, NotificationPreference } from '@/shared/type
 /** Las categorías que se pueden ajustar. `moderation` NO está: los avisos del
  *  equipo no son silenciables, y ofrecer un interruptor que la base ignora
  *  sería mentir en la interfaz. */
-export const TUNABLE_CATEGORIES: NotificationCategory[] = ['pins', 'forum', 'events', 'profile', 'system']
+export const TUNABLE_CATEGORIES: NotificationCategory[] = [
+  'pins',
+  'forum',
+  'events',
+  'profile',
+  'system',
+]
 
 const demoPreferences = new Map<string, NotificationPreference>()
 
@@ -25,11 +31,12 @@ export function preferenceFor(
   preferences: NotificationPreference[],
   category: NotificationCategory,
 ): NotificationPreference {
-  return preferences.find((p) => p.category === category)
-    ?? { category, in_app: true, push: true }
+  return preferences.find((p) => p.category === category) ?? { category, in_app: true, push: true }
 }
 
-export async function fetchNotificationPreferences(userId: string): Promise<NotificationPreference[]> {
+export async function fetchNotificationPreferences(
+  userId: string,
+): Promise<NotificationPreference[]> {
   if (!supabase) return [...demoPreferences.values()]
 
   const { data, error } = await supabase

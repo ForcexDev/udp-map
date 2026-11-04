@@ -11,9 +11,19 @@ interface FilterPillsProps<T extends string> {
  * lista que se filtra. Por eso son botones con `aria-pressed` dentro de un
  * `role="group"` y no @radix-ui/react-tabs.
  */
-export function FilterPills<T extends string>({ options, value, onChange, label, className = '' }: FilterPillsProps<T>) {
+export function FilterPills<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  className = '',
+}: FilterPillsProps<T>) {
   return (
-    <div role="group" aria-label={label} className={`flex gap-2 overflow-x-auto no-scrollbar ${className}`}>
+    <div
+      role="group"
+      aria-label={label}
+      className={`flex gap-2 overflow-x-auto no-scrollbar ${className}`}
+    >
       {options.map((option) => (
         <button
           key={option.value}

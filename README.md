@@ -12,13 +12,13 @@ La interfaz admite español e inglés, con traducciones aún incompletas.
 
 Usa Node.js 24, como CI:
 
-~~~bash
+```bash
 git clone https://github.com/ForcexDev/udp-map.git
 cd udp-map
 npm ci
 cp .env.example .env
 npm run dev
-~~~
+```
 
 En PowerShell, copia la plantilla con `Copy-Item .env.example .env`. El servidor
 usa `http://localhost:5173`.
@@ -50,10 +50,10 @@ El detalle está en el [índice documental](docs/README.md) y el
 Lee las [reglas](CLAUDE.md), la [referencia del código](docs/referencia/repositorio.md)
 y la [guía de validación](docs/guias/validacion.md). Antes de cerrar un cambio:
 
-~~~bash
+```bash
 npm run typecheck
 npx vitest run
 npx eslint src
-~~~
+```
 
 El software se distribuye bajo la [licencia MIT](LICENSE).

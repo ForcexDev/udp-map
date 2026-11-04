@@ -16,8 +16,8 @@ export function ProfileStatsLine({ postCount, karma, createdAt }: ProfileStatsLi
       <b className="font-bold text-stone-900 dark:text-stone-100 tabular-nums">{postCount}</b>{' '}
       {t('profile.posts', { count: postCount, defaultValue: 'publicaciones' })} ·{' '}
       <b className="font-bold text-amber-600 dark:text-amber-400 tabular-nums">{karma}</b>{' '}
-      {t('profile.karma', 'Karma').toLowerCase()} ·{' '}
-      {t('profile.memberSince', 'Miembro desde')} {sinceStr.toLowerCase()}
+      {t('profile.karma', 'Karma').toLowerCase()} · {t('profile.memberSince', 'Miembro desde')}{' '}
+      {sinceStr.toLowerCase()}
     </p>
   )
 }

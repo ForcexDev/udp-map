@@ -32,44 +32,49 @@ export function EventAttendeesDialog({ pinId, eventTitle, onClose }: EventAttend
 
   return (
     <>
-    <Dialog
-      open={pinId !== null}
-      onOpenChange={(open) => !open && onClose()}
-      title={t('events.attendeesTitle', 'Quién va')}
-      description={eventTitle}
-    >
-      {error ? (
-        <p className="text-sm font-medium text-red-500">
-          {isUserFacingDbError(error) ? dbErrorMessage(error) : t('common.error')}
-        </p>
-      ) : isPending ? (
-        <p className="text-sm text-stone-500 dark:text-stone-400">{t('common.loading', 'Cargando…')}</p>
-      ) : attendees.length === 0 ? (
-        <p className="text-sm text-stone-500 dark:text-stone-400">
-          {t('events.attendeesEmpty', 'Todavía no se ha apuntado nadie.')}
-        </p>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <Group
-            icon={<Check size={13} />}
-            label={t('events.attendeesGoing', { count: going.length, defaultValue: `${going.length} van` })}
-            people={going}
-            accent="text-[#C22B38] dark:text-[#D93846]"
-            onSelectPerson={setProfileId}
-          />
-          <Group
-            icon={<Star size={13} />}
-            label={t('events.attendeesInterested', {
-              count: interested.length,
-              defaultValue: `${interested.length} interesados`,
-            })}
-            people={interested}
-            accent="text-stone-500 dark:text-stone-400"
-            onSelectPerson={setProfileId}
-          />
-        </div>
-      )}
-    </Dialog>
+      <Dialog
+        open={pinId !== null}
+        onOpenChange={(open) => !open && onClose()}
+        title={t('events.attendeesTitle', 'Quién va')}
+        description={eventTitle}
+      >
+        {error ? (
+          <p className="text-sm font-medium text-red-500">
+            {isUserFacingDbError(error) ? dbErrorMessage(error) : t('common.error')}
+          </p>
+        ) : isPending ? (
+          <p className="text-sm text-stone-500 dark:text-stone-400">
+            {t('common.loading', 'Cargando…')}
+          </p>
+        ) : attendees.length === 0 ? (
+          <p className="text-sm text-stone-500 dark:text-stone-400">
+            {t('events.attendeesEmpty', 'Todavía no se ha apuntado nadie.')}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <Group
+              icon={<Check size={13} />}
+              label={t('events.attendeesGoing', {
+                count: going.length,
+                defaultValue: `${going.length} van`,
+              })}
+              people={going}
+              accent="text-[#C22B38] dark:text-[#D93846]"
+              onSelectPerson={setProfileId}
+            />
+            <Group
+              icon={<Star size={13} />}
+              label={t('events.attendeesInterested', {
+                count: interested.length,
+                defaultValue: `${interested.length} interesados`,
+              })}
+              people={interested}
+              accent="text-stone-500 dark:text-stone-400"
+              onSelectPerson={setProfileId}
+            />
+          </div>
+        )}
+      </Dialog>
 
       <PublicProfileModal userId={profileId} onClose={() => setProfileId(null)} />
     </>
@@ -105,20 +110,20 @@ function Group({ icon, label, people, accent, onSelectPerson }: GroupProps) {
               onClick={() => onSelectPerson(person.user_id)}
               className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-[#EFECE4] dark:hover:bg-white/[0.08]"
             >
-            {person.avatar_url ? (
-              <img
-                src={person.avatar_url}
-                alt=""
-                className="h-7 w-7 shrink-0 rounded-full object-cover"
-              />
-            ) : (
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#EFECE4] text-stone-500 dark:bg-white/[0.08] dark:text-stone-400">
-                <UserRound size={14} />
+              {person.avatar_url ? (
+                <img
+                  src={person.avatar_url}
+                  alt=""
+                  className="h-7 w-7 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#EFECE4] text-stone-500 dark:bg-white/[0.08] dark:text-stone-400">
+                  <UserRound size={14} />
+                </span>
+              )}
+              <span className="truncate text-xs font-semibold text-stone-800 dark:text-stone-200">
+                {person.name ?? t('common.noName', 'Sin nombre')}
               </span>
-            )}
-            <span className="truncate text-xs font-semibold text-stone-800 dark:text-stone-200">
-              {person.name ?? t('common.noName', 'Sin nombre')}
-            </span>
             </button>
           </li>
         ))}

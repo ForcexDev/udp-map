@@ -274,6 +274,8 @@ export function updateMappingData(
   areas: Area[],
   activeFacultyId: string | null,
   activeFloor: number | null,
+  /** Edificios cuyo interior se pinta en 3D: su planta en 2D, a ras de suelo, sobra. */
+  interior3d: ReadonlySet<string> = new Set(),
 ): void {
   const buildingsSource = map.getSource(BUILDINGS_SOURCE) as GeoJSONSource | undefined
   const areasSource = map.getSource(AREAS_SOURCE) as GeoJSONSource | undefined
@@ -292,8 +294,10 @@ export function updateMappingData(
   })
 
   const defaultFloorOf = new Map(buildings.map((b) => [b.id, b.default_floor]))
-  const visible = areas.filter((a) =>
-    areaVisibleOnFloor(a, activeFacultyId, activeFloor, (id) => defaultFloorOf.get(id)),
+  const visible = areas.filter(
+    (a) =>
+      !(a.building_id !== null && interior3d.has(a.building_id)) &&
+      areaVisibleOnFloor(a, activeFacultyId, activeFloor, (id) => defaultFloorOf.get(id)),
   )
 
   areasSource.setData({ type: 'FeatureCollection', features: visible.map(areaFeature) })

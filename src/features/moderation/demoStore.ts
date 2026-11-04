@@ -27,21 +27,32 @@ export function createDemoReport(
   reason: ModerationReason,
   details?: string,
 ): string {
-  const existing = demoModerationReports.find((report) =>
-    report.reporter_id === reporterId
-      && report.target_type === targetType
-      && report.target_id === targetId
-      && ['pending', 'reviewing'].includes(report.status),
+  const existing = demoModerationReports.find(
+    (report) =>
+      report.reporter_id === reporterId &&
+      report.target_type === targetType &&
+      report.target_id === targetId &&
+      ['pending', 'reviewing'].includes(report.status),
   )
   if (existing) return existing.id
 
   const id = crypto.randomUUID()
   demoModerationReports.unshift({
-    id, target_type: targetType, target_id: targetId, reporter_id: reporterId,
-    reporter_name: 'Estudiante Demo', reason, details: details || null,
-    snapshot: { content: 'Contenido reportado en modo demo.' }, status: 'pending',
-    assigned_to: null, resolution_action: null, resolution_note: null,
-    created_at: new Date().toISOString(), updated_at: new Date().toISOString(), resolved_at: null,
+    id,
+    target_type: targetType,
+    target_id: targetId,
+    reporter_id: reporterId,
+    reporter_name: 'Estudiante Demo',
+    reason,
+    details: details || null,
+    snapshot: { content: 'Contenido reportado en modo demo.' },
+    status: 'pending',
+    assigned_to: null,
+    resolution_action: null,
+    resolution_note: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    resolved_at: null,
   })
   return id
 }

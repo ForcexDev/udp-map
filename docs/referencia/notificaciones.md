@@ -13,17 +13,17 @@ y dispositivos.
 `create_notification` usa tipo, categoría, audiencia y dedupe por usuario.
 La categoría agrupa presentación y preferencias; no es el tipo del evento.
 
-| Tipo | Categoría / audiencia | Origen y destino |
-|---|---|---|
-| `forum_reply` | forum / personal | Respuesta al hilo o comentario padre; `/foro?thread=…` |
-| `achievement` | profile / personal | Insignia; `/perfil?tab=badges` |
-| `event_reminder` | events / personal | Evento marcado dentro de la ventana de 20 días; `/eventos?event=…` |
-| `moderation_report` | moderation / admin | Denuncia nueva; SQL guarda `/moderacion?report=…` y el router conserva el parámetro al redirigir |
-| `moderation_update` | profile / personal | Resolución del reporte propio; `/perfil` |
-| `announcement` | system / personal | Difusión o autotest; ruta elegida o `/` |
-| `pin_verified` | pins / personal | Verifican una publicación propia; `/mapa?pin=…` |
-| `pin_comment` | pins / personal | Comentan la publicación propia; `/mapa?pin=…` |
-| `event_official` | events / personal | Evento oficial de la facultad; `/eventos?event=…` |
+| Tipo                | Categoría / audiencia | Origen y destino                                                                                 |
+| ------------------- | --------------------- | ------------------------------------------------------------------------------------------------ |
+| `forum_reply`       | forum / personal      | Respuesta al hilo o comentario padre; `/foro?thread=…`                                           |
+| `achievement`       | profile / personal    | Insignia; `/perfil?tab=badges`                                                                   |
+| `event_reminder`    | events / personal     | Evento marcado dentro de la ventana de 20 días; `/eventos?event=…`                               |
+| `moderation_report` | moderation / admin    | Denuncia nueva; SQL guarda `/moderacion?report=…` y el router conserva el parámetro al redirigir |
+| `moderation_update` | profile / personal    | Resolución del reporte propio; `/perfil`                                                         |
+| `announcement`      | system / personal     | Difusión o autotest; ruta elegida o `/`                                                          |
+| `pin_verified`      | pins / personal       | Verifican una publicación propia; `/mapa?pin=…`                                                  |
+| `pin_comment`       | pins / personal       | Comentan la publicación propia; `/mapa?pin=…`                                                    |
+| `event_official`    | events / personal     | Evento oficial de la facultad; `/eventos?event=…`                                                |
 
 No se notifica la autorrespuesta. El recordatorio de quien marcó asistencia y
 el aviso de evento oficial a su facultad resuelven casos distintos: no hace
@@ -114,13 +114,13 @@ Errores de claim, cierre y eliminación quedan diferenciados en el resumen.
 La cola y sus estados se explican una sola vez en
 [reclamo y conservación](base-de-datos.md#reclamo-cierre-y-conservacion).
 
-| Resultado del servicio push | Tratamiento |
-|---|---|
-| Aceptado | `sent`: no prueba recepción visible |
-| 404/410 | `expired`, cerrar antes de borrar suscripción; expirar otros pendientes por trigger |
-| 400/413/401/403 | Fallo terminal; 401/403 orientan a revisar VAPID |
-| 429/5xx/red | Reintento, con `Retry-After` si existe |
-| Claves de suscripción inválidas o payload excesivo | Fallo terminal |
+| Resultado del servicio push                        | Tratamiento                                                                         |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Aceptado                                           | `sent`: no prueba recepción visible                                                 |
+| 404/410                                            | `expired`, cerrar antes de borrar suscripción; expirar otros pendientes por trigger |
+| 400/413/401/403                                    | Fallo terminal; 401/403 orientan a revisar VAPID                                    |
+| 429/5xx/red                                        | Reintento, con `Retry-After` si existe                                              |
+| Claves de suscripción inválidas o payload excesivo | Fallo terminal                                                                      |
 
 Hay como máximo 5 intentos; el retraso de `Retry-After` se acota a 1–60 minutos.
 Un endpoint que ya devolvió 410 no se reenvía dentro de la misma pasada una vez
@@ -130,14 +130,14 @@ conocido el resultado, aunque la concurrencia permita solicitudes ya en vuelo.
 
 `OPTIONS` responde al preflight. Para otras peticiones:
 
-| Código | Condición |
-|---|---|
-| 405 | Método distinto de POST |
-| 401 | No autorizado |
-| 400 | Admin proporcionó `notificationId` presente pero no UUID |
-| 500 | Fallo detectado de configuración VAPID; o fallo inicial de claim/excepción de la pasada síncrona |
-| 202 | Cron con `EdgeRuntime`: `{"accepted":true}` y trabajo en segundo plano |
-| 200 | Pasada terminada; admin espera el resumen. Sin `EdgeRuntime` el cron también espera en línea |
+| Código | Condición                                                                                        |
+| ------ | ------------------------------------------------------------------------------------------------ |
+| 405    | Método distinto de POST                                                                          |
+| 401    | No autorizado                                                                                    |
+| 400    | Admin proporcionó `notificationId` presente pero no UUID                                         |
+| 500    | Fallo detectado de configuración VAPID; o fallo inicial de claim/excepción de la pasada síncrona |
+| 202    | Cron con `EdgeRuntime`: `{"accepted":true}` y trabajo en segundo plano                           |
+| 200    | Pasada terminada; admin espera el resumen. Sin `EdgeRuntime` el cron también espera en línea     |
 
 La configuración VAPID se valida al cargar: base64url, tamaño y prefijo esperados.
 Un fallo **detectado** devuelve 500 sin consumir la cola; esto no certifica
@@ -223,6 +223,7 @@ el sender y el worker realizan controles adicionales. No describas la regex
 como garantía suficiente.
 
 <a id="moderacion"></a>
+
 ## Moderación
 
 `create_content_report` acepta contenido ajeno existente, genera snapshot

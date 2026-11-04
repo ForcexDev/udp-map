@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, Layers } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FoldVertical, Layers, UnfoldVertical } from 'lucide-react'
 import { useUIStore } from '@/shared/stores/uiStore'
-import { facultyLevels, useMapping } from '@/features/mapping/useMapping'
+import { facultyLevels, interiorBuildingIds, useMapping } from '@/features/mapping/useMapping'
 
 export function ContextLens() {
   const { t } = useTranslation()
@@ -14,6 +14,8 @@ export function ContextLens() {
   const setActiveFloor = useUIStore((s) => s.setActiveFloor)
   const placeFocus = useUIStore((s) => s.placeFocus)
   const setPlaceFocus = useUIStore((s) => s.setPlaceFocus)
+  const explodedFloors = useUIStore((s) => s.explodedFloors)
+  const setExplodedFloors = useUIStore((s) => s.setExplodedFloors)
 
   const facultyId = selectedFacultyId ?? activeFacultyId
   const levels = useMemo(
@@ -28,11 +30,19 @@ export function ContextLens() {
       .map((b) => ({ id: b.id, label: b.short_name || b.name }))
   }, [mapping.buildings, facultyId])
 
-  // Ordenamos de menor a mayor (-1, 1, 2, 3) para lectura izquierda → derecha natural
-  const sortedLevels = useMemo(
-    () => [...levels].sort((a, b) => a.level - b.level),
-    [levels],
+  // Separar pisos solo tiene sentido con interior dibujado y más de una planta,
+  // y en la facultad activa: es la que pinta la escena interior.
+  const canExplode = useMemo(
+    () =>
+      activeFacultyId !== null &&
+      facultyId === activeFacultyId &&
+      levels.length >= 2 &&
+      interiorBuildingIds(mapping, activeFacultyId).length > 0,
+    [activeFacultyId, facultyId, levels.length, mapping],
   )
+
+  // Ordenamos de menor a mayor (-1, 1, 2, 3) para lectura izquierda → derecha natural
+  const sortedLevels = useMemo(() => [...levels].sort((a, b) => a.level - b.level), [levels])
 
   const floorTrackRef = useRef<HTMLDivElement | null>(null)
   const floorBtnRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
@@ -113,9 +123,7 @@ export function ContextLens() {
             <button
               key={b.id}
               type="button"
-              onClick={() =>
-                setPlaceFocus(isSelected ? null : { kind: 'building', id: b.id })
-              }
+              onClick={() => setPlaceFocus(isSelected ? null : { kind: 'building', id: b.id })}
               className={`shrink-0 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                 isSelected
                   ? 'bg-stone-900 text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950'
@@ -180,6 +188,37 @@ export function ContextLens() {
               )
             })}
           </div>
+
+          {canExplode && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !explodedFloors
+                // La vista separada es 3D: en 2D el mapa no se inclina y los
+                // pisos se verían uno encima de otro desde arriba.
+                if (next) useUIStore.getState().setViewMode('3d')
+                setExplodedFloors(next)
+              }}
+              aria-pressed={explodedFloors}
+              aria-label={
+                explodedFloors
+                  ? t('indoor.joinFloors', 'Juntar pisos')
+                  : t('indoor.separateFloors', 'Separar pisos')
+              }
+              title={
+                explodedFloors
+                  ? t('indoor.joinFloors', 'Juntar pisos')
+                  : t('indoor.separateFloors', 'Separar pisos')
+              }
+              className={`order-last ml-0.5 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-xl transition-all ${
+                explodedFloors
+                  ? 'bg-stone-900 text-[#FAF8F5] dark:bg-stone-100 dark:text-stone-950'
+                  : 'text-stone-500 hover:bg-[#EFECE4] hover:text-stone-900 dark:text-stone-400 dark:hover:bg-white/10 dark:hover:text-stone-100'
+              }`}
+            >
+              {explodedFloors ? <FoldVertical size={15} /> : <UnfoldVertical size={15} />}
+            </button>
+          )}
 
           {isOverflowing && (
             <button

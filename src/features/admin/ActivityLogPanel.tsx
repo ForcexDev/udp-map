@@ -40,16 +40,66 @@ interface ActionLook {
 }
 
 const LOOKS: Record<ActivityAction, ActionLook> = {
-  pin_created: { label: 'Pin publicado', icon: MapPin, fg: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-  pin_deleted: { label: 'Pin eliminado', icon: Trash2, fg: 'text-neutral-500 dark:text-neutral-400', bg: 'bg-neutral-100 dark:bg-neutral-800' },
-  pin_verified: { label: 'Pin verificado', icon: ShieldCheck, fg: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-  pin_unverified: { label: 'Verificación retirada', icon: ShieldX, fg: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30' },
-  report_filed: { label: 'Denuncia', icon: ShieldAlert, fg: 'text-[#D41F2D] dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30' },
-  report_claimed: { label: 'Caso tomado', icon: ShieldAlert, fg: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
-  report_resolved: { label: 'Denuncia resuelta', icon: ShieldCheck, fg: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-  report_dismissed: { label: 'Denuncia descartada', icon: ShieldX, fg: 'text-neutral-500 dark:text-neutral-400', bg: 'bg-neutral-100 dark:bg-neutral-800' },
-  role_changed: { label: 'Cambio de rol', icon: UserCog, fg: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-950/30' },
-  broadcast_sent: { label: 'Difusión enviada', icon: Megaphone, fg: 'text-[#D41F2D] dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30' },
+  pin_created: {
+    label: 'Pin publicado',
+    icon: MapPin,
+    fg: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+  },
+  pin_deleted: {
+    label: 'Pin eliminado',
+    icon: Trash2,
+    fg: 'text-neutral-500 dark:text-neutral-400',
+    bg: 'bg-neutral-100 dark:bg-neutral-800',
+  },
+  pin_verified: {
+    label: 'Pin verificado',
+    icon: ShieldCheck,
+    fg: 'text-blue-600 dark:text-blue-400',
+    bg: 'bg-blue-50 dark:bg-blue-950/30',
+  },
+  pin_unverified: {
+    label: 'Verificación retirada',
+    icon: ShieldX,
+    fg: 'text-amber-600 dark:text-amber-400',
+    bg: 'bg-amber-50 dark:bg-amber-950/30',
+  },
+  report_filed: {
+    label: 'Denuncia',
+    icon: ShieldAlert,
+    fg: 'text-[#D41F2D] dark:text-red-400',
+    bg: 'bg-red-50 dark:bg-red-950/30',
+  },
+  report_claimed: {
+    label: 'Caso tomado',
+    icon: ShieldAlert,
+    fg: 'text-indigo-600 dark:text-indigo-400',
+    bg: 'bg-indigo-50 dark:bg-indigo-950/30',
+  },
+  report_resolved: {
+    label: 'Denuncia resuelta',
+    icon: ShieldCheck,
+    fg: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+  },
+  report_dismissed: {
+    label: 'Denuncia descartada',
+    icon: ShieldX,
+    fg: 'text-neutral-500 dark:text-neutral-400',
+    bg: 'bg-neutral-100 dark:bg-neutral-800',
+  },
+  role_changed: {
+    label: 'Cambio de rol',
+    icon: UserCog,
+    fg: 'text-purple-600 dark:text-purple-400',
+    bg: 'bg-purple-50 dark:bg-purple-950/30',
+  },
+  broadcast_sent: {
+    label: 'Difusión enviada',
+    icon: Megaphone,
+    fg: 'text-[#D41F2D] dark:text-red-400',
+    bg: 'bg-red-50 dark:bg-red-950/30',
+  },
 }
 
 const FALLBACK: ActionLook = {
@@ -67,7 +117,9 @@ function dayLabel(date: Date): string {
   const today = new Date()
   const yesterday = new Date(today.getTime() - 86_400_000)
   const sameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
 
   if (sameDay(date, today)) return i18n.t('admin.today')
   if (sameDay(date, yesterday)) return i18n.t('admin.yesterday')
@@ -114,7 +166,10 @@ export function ActivityLogPanel() {
             /* Sin esto la pantalla mentiría por omisión: enseñaría una lista
                plausible sin decir que le faltan los borrados y los autores. */
             <div className="flex items-start gap-3 rounded-3xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
-              <TriangleAlert size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <TriangleAlert
+                size={18}
+                className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
+              />
               <div className="min-w-0">
                 <p className="text-sm font-bold text-neutral-900 dark:text-white">
                   {t('admin.logInactive')}
@@ -128,7 +183,13 @@ export function ActivityLogPanel() {
 
           {groups.length === 0 ? (
             <AdminEmpty
-              icon={<History size={40} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />}
+              icon={
+                <History
+                  size={40}
+                  strokeWidth={1.5}
+                  className="text-neutral-300 dark:text-neutral-700"
+                />
+              }
               title={t('admin.nothingYet')}
               hint={t('admin.activityEmptyHint')}
             />
@@ -149,7 +210,9 @@ export function ActivityLogPanel() {
                       >
                         {/* Un icono y no un punto de color: el punto obligaba a
                             recordar qué significaba cada uno. */}
-                        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${look.bg} ${look.fg}`}>
+                        <span
+                          className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${look.bg} ${look.fg}`}
+                        >
                           <Icon size={16} />
                         </span>
                         <span className="min-w-0 flex-1">

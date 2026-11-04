@@ -83,7 +83,10 @@ export function MyEventsList({ events, loading, onViewOnMap }: MyEventsListProps
           {t('profile.noEvents', 'Todavía no marcaste ningún evento')}
         </p>
         <p className="max-w-[18rem] text-xs font-medium leading-relaxed text-stone-500 dark:text-stone-400">
-          {t('profile.noEventsHint', 'Cuando marques “Asistiré” o “Me interesa” en Eventos, aparecerán aquí.')}
+          {t(
+            'profile.noEventsHint',
+            'Cuando marques “Asistiré” o “Me interesa” en Eventos, aparecerán aquí.',
+          )}
         </p>
       </div>
     )
@@ -129,9 +132,7 @@ function Section({
 
   return (
     <section>
-      <h3 className="mb-2.5 text-xs font-bold text-stone-500 dark:text-stone-400">
-        {title}
-      </h3>
+      <h3 className="mb-2.5 text-xs font-bold text-stone-500 dark:text-stone-400">{title}</h3>
       <ul className={`m-0 flex list-none flex-col gap-2 p-0 ${faded ? 'opacity-60' : ''}`}>
         {events.map(({ pin, status }) => {
           const faculty = pin.faculty_id ? FACULTIES.find((f) => f.id === pin.faculty_id) : null

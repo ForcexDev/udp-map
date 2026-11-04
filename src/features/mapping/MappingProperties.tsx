@@ -226,7 +226,11 @@ export function MappingProperties({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildingForm, activePolygon, drawingBuilding, faculties, facultyId, selectedBuilding])
 
-  const vertices = draft ? draftVertices(draft).length : activePolygon ? activePolygon.coordinates[0].length - 1 : 0
+  const vertices = draft
+    ? draftVertices(draft).length
+    : activePolygon
+      ? activePolygon.coordinates[0].length - 1
+      : 0
   const canSplit = Boolean(draft && vertices === 4)
 
   // ── Facultad ──
@@ -303,8 +307,8 @@ export function MappingProperties({
 
         {facultyEdit === 'edit' && !draft && (
           <p className="text-[10px] leading-snug text-neutral-400">
-            Para redibujar el perímetro, elige la herramienta de polígono (P) y
-            traza el contorno nuevo. Reemplaza al actual al guardar.
+            Para redibujar el perímetro, elige la herramienta de polígono (P) y traza el contorno
+            nuevo. Reemplaza al actual al guardar.
           </p>
         )}
 
@@ -520,7 +524,9 @@ export function MappingProperties({
               min="2"
               max="30"
               value={splitCount}
-              onChange={(e) => setSplitCount(Math.max(2, Math.min(30, Number(e.target.value) || 2)))}
+              onChange={(e) =>
+                setSplitCount(Math.max(2, Math.min(30, Number(e.target.value) || 2)))
+              }
               className={`${INPUT} w-16`}
             />
             <button
@@ -570,7 +576,9 @@ function Panel({
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
       <div>
-        <h2 className="text-sm font-black tracking-tight text-neutral-900 dark:text-white">{title}</h2>
+        <h2 className="text-sm font-black tracking-tight text-neutral-900 dark:text-white">
+          {title}
+        </h2>
         <p className="text-[10px] font-medium text-neutral-400">
           {subtitle ??
             (selectedBuildingId === null

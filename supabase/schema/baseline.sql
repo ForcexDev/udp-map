@@ -66,6 +66,27 @@ begin
   end if;
 end $$;
 
+-- Grafo de navegación interior. Un nodo es un punto donde la persona puede
+-- estar o decidir; una arista, un tramo que se puede recorrer.
+
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'nav_node_kind') then
+    create type public.nav_node_kind as enum (
+      'walk',      -- punto de pasillo, hall o lobby
+      'door',      -- vano de puerta (de sala, de núcleo o interior)
+      'room',      -- dentro de una sala: es el destino de una ruta
+      'stairs',    -- descanso de escalera en una planta
+      'elevator',  -- cabina de ascensor en una planta
+      'entrance',  -- puerta de fachada: donde se empalma la ruta de calle
+      'outdoor'    -- punto exterior (patio, vereda)
+    );
+  end if;
+  if not exists (select 1 from pg_type where typname = 'nav_edge_kind') then
+    create type public.nav_edge_kind as enum ('walk', 'stairs', 'elevator');
+  end if;
+end $$;
+
 
 -- =============================================================================
 -- 3. TABLAS
@@ -162,6 +183,62 @@ create table if not exists public.areas (
 
   constraint areas_floor_fkey foreign key (building_id, floor)
     references public.building_floors(building_id, level) on delete cascade
+);
+
+-- ── Navegación interior: nodos y aristas ────────────────────────────────────
+-- Un grafo explícito, no deducido de los polígonos de `areas`: inferir pasillos
+-- de la geometría es frágil, y unas decenas de nodos por planta se rutean y se
+-- prueban sin esfuerzo. El editor de /admin/mapeo genera los nodos de pasillo a
+-- partir de su eje y de las puertas, y las aristas verticales uniendo los nodos
+-- que comparten `shaft` en plantas consecutivas.
+--
+-- El exterior sigue el modelo de `areas`: building_id y floor null a la vez.
+-- Las aristas no tienen sentido; nav_edges_pair_uniq impide repetirlas al revés.
+-- Migración 20261023000000.
+create table if not exists public.nav_nodes (
+  id           uuid         primary key default gen_random_uuid(),
+  faculty_id   text         not null references public.faculties(id) on delete cascade,
+  building_id  text         references public.buildings(id) on delete cascade,
+  floor        integer,
+  kind         public.nav_node_kind not null,
+  lng          double precision not null,
+  lat          double precision not null,
+  -- Lo que la persona ve en este punto, con su artículo ("los torniquetes").
+  landmark     text         check (landmark is null or char_length(landmark) <= 80),
+  -- Solo exterior: por dónde se camina hasta aquí ("la vereda de Vergara").
+  via          text         check (via is null or char_length(via) <= 80),
+  -- Sala a la que pertenece un nodo `room` o `door`.
+  area_id      uuid         references public.areas(id) on delete set null,
+  -- Llave con pins.room_code; se compara normalizado, se guarda como se escribió.
+  room_code    text         check (room_code is null or char_length(room_code) between 1 and 40),
+  -- Núcleo vertical ("ESC-A", "ASC-1") que agrupa sus nodos entre plantas.
+  shaft        text         check (shaft is null or char_length(shaft) <= 20),
+  -- Ancho del vano: dibuja la puerta y corta el muro en la vista 3D.
+  width_m      numeric      check (width_m is null or (width_m > 0 and width_m <= 10)),
+  created_at   timestamptz  not null default now(),
+  updated_at   timestamptz  not null default now(),
+
+  constraint nav_nodes_floor_coherent check (
+    (building_id is null and floor is null) or
+    (building_id is not null and floor is not null)
+  ),
+  constraint nav_nodes_floor_fkey foreign key (building_id, floor)
+    references public.building_floors(building_id, level) on delete cascade,
+  constraint nav_nodes_vertical_has_shaft check (
+    kind not in ('stairs', 'elevator') or shaft is not null
+  )
+);
+
+create table if not exists public.nav_edges (
+  id          uuid     primary key default gen_random_uuid(),
+  faculty_id  text     not null references public.faculties(id) on delete cascade,
+  a           uuid     not null references public.nav_nodes(id) on delete cascade,
+  b           uuid     not null references public.nav_nodes(id) on delete cascade,
+  kind        public.nav_edge_kind not null default 'walk',
+  -- false = no apta para silla de ruedas. Una escalera nunca lo es.
+  step_free   boolean  not null default true,
+  constraint nav_edges_not_loop check (a <> b),
+  constraint nav_edges_stairs_not_step_free check (kind <> 'stairs' or step_free = false)
 );
 
 -- ttl_hours: cuánto vive un reporte de esta categoría antes de expirar.
@@ -555,6 +632,18 @@ create unique index if not exists pin_creation_events_pin_uidx
 create index if not exists buildings_faculty_idx on public.buildings (faculty_id);
 create index if not exists areas_faculty_idx on public.areas (faculty_id);
 create index if not exists areas_building_floor_idx on public.areas (building_id, floor);
+
+-- El grafo se carga por facultad. room_code se busca en mayúsculas, como lo
+-- compara el cliente; area_id y b cubren las FK que borran en cascada.
+create unique index if not exists nav_edges_pair_uniq
+  on public.nav_edges (least(a, b), greatest(a, b));
+create index if not exists nav_nodes_faculty_idx on public.nav_nodes (faculty_id);
+create index if not exists nav_nodes_building_floor_idx on public.nav_nodes (building_id, floor);
+create index if not exists nav_nodes_room_code_idx
+  on public.nav_nodes (upper(room_code)) where room_code is not null;
+create index if not exists nav_nodes_area_idx on public.nav_nodes (area_id) where area_id is not null;
+create index if not exists nav_edges_faculty_idx on public.nav_edges (faculty_id);
+create index if not exists nav_edges_b_idx on public.nav_edges (b);
 
 create index if not exists idx_forum_threads_created  on public.forum_threads (created_at desc);
 create index if not exists idx_forum_threads_faculty  on public.forum_threads (faculty_id);
@@ -3609,6 +3698,11 @@ create trigger areas_updated_at
   before update on public.areas
   for each row execute function public.set_notification_updated_at();
 
+drop trigger if exists nav_nodes_updated_at on public.nav_nodes;
+create trigger nav_nodes_updated_at
+  before update on public.nav_nodes
+  for each row execute function public.set_notification_updated_at();
+
 drop trigger if exists push_subscriptions_updated_at on public.push_subscriptions;
 create trigger push_subscriptions_updated_at
   before update on public.push_subscriptions
@@ -3640,7 +3734,7 @@ create or replace view public.profiles_public
 -- =============================================================================
 -- 8. ROW LEVEL SECURITY
 -- =============================================================================
--- RLS activo en las 32 tablas. Tres de ellas quedan a propósito sin ninguna
+-- RLS activo en las 34 tablas. Tres de ellas quedan a propósito sin ninguna
 -- política (pin_creation_events, notification_push_deliveries y
 -- storage_cleanup_queue): son internas, solo las tocan funciones SECURITY
 -- DEFINER y service_role.
@@ -3655,6 +3749,8 @@ alter table public.careers                      enable row level security;
 alter table public.buildings                    enable row level security;
 alter table public.building_floors              enable row level security;
 alter table public.areas                        enable row level security;
+alter table public.nav_nodes                    enable row level security;
+alter table public.nav_edges                    enable row level security;
 alter table public.categories                   enable row level security;
 alter table public.badges                       enable row level security;
 alter table public.admin_emails                 enable row level security;
@@ -3748,6 +3844,24 @@ create policy areas_read on public.areas for select using (true);
 
 drop policy if exists areas_write on public.areas;
 create policy areas_write on public.areas
+  for all using (public.has_capability('mapping'))
+  with check (public.has_capability('mapping'));
+
+-- El grafo de navegación sigue la misma regla: sin lectura pública, un
+-- invitado no podría pedir "cómo llegar".
+drop policy if exists nav_nodes_read on public.nav_nodes;
+create policy nav_nodes_read on public.nav_nodes for select using (true);
+
+drop policy if exists nav_nodes_write on public.nav_nodes;
+create policy nav_nodes_write on public.nav_nodes
+  for all using (public.has_capability('mapping'))
+  with check (public.has_capability('mapping'));
+
+drop policy if exists nav_edges_read on public.nav_edges;
+create policy nav_edges_read on public.nav_edges for select using (true);
+
+drop policy if exists nav_edges_write on public.nav_edges;
+create policy nav_edges_write on public.nav_edges
   for all using (public.has_capability('mapping'))
   with check (public.has_capability('mapping'));
 
@@ -4048,6 +4162,8 @@ grant all on public.floor_plans   to anon, authenticated;
 grant all on public.buildings       to anon, authenticated;
 grant all on public.building_floors to anon, authenticated;
 grant all on public.areas           to anon, authenticated;
+grant all on public.nav_nodes       to anon, authenticated;
+grant all on public.nav_edges       to anon, authenticated;
 grant all on public.pins          to anon, authenticated;
 grant all on public.pin_photos    to anon, authenticated;
 grant all on public.place_photos  to anon, authenticated;

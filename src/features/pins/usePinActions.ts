@@ -37,14 +37,18 @@ export function usePinActions() {
       if (!result || !userId) return
       queryClient.setQueryData(['pin_vote', pinId, userId], result.userVote ?? 0)
       queryClient.setQueriesData<Pin[]>({ queryKey: ['pins'] }, (pins) =>
-        pins?.map((pin) => pin.id === pinId
-          ? { ...pin, votes_up: result.votesUp, votes_down: result.votesDown }
-          : pin),
+        pins?.map((pin) =>
+          pin.id === pinId
+            ? { ...pin, votes_up: result.votesUp, votes_down: result.votesDown }
+            : pin,
+        ),
       )
       queryClient.setQueriesData<Pin[]>({ queryKey: ['user-pins'] }, (pins) =>
-        pins?.map((pin) => pin.id === pinId
-          ? { ...pin, votes_up: result.votesUp, votes_down: result.votesDown }
-          : pin),
+        pins?.map((pin) =>
+          pin.id === pinId
+            ? { ...pin, votes_up: result.votesUp, votes_down: result.votesDown }
+            : pin,
+        ),
       )
     },
     onSettled: (_, __, { pinId }) => {
@@ -75,14 +79,17 @@ export function usePinActions() {
   })
 
   const unverify = useMutation({
-    mutationFn: ({ pinId, hours }: { pinId: string; hours?: number }) => unverifyPin(pinId, hours ?? 24),
-    onSuccess: () => showToast(t('pin.unverified', 'Verificación retirada; el pin vuelve a tener plazo')),
+    mutationFn: ({ pinId, hours }: { pinId: string; hours?: number }) =>
+      unverifyPin(pinId, hours ?? 24),
+    onSuccess: () =>
+      showToast(t('pin.unverified', 'Verificación retirada; el pin vuelve a tener plazo')),
     onSettled: () => void invalidatePins(),
     onError: (err) => showToast(messageOf(err, t('common.error'))),
   })
 
   const extendTTL = useMutation({
-    mutationFn: ({ pinId, hours }: { pinId: string; hours?: number }) => extendPinTTL(pinId, hours ?? 24),
+    mutationFn: ({ pinId, hours }: { pinId: string; hours?: number }) =>
+      extendPinTTL(pinId, hours ?? 24),
     onSuccess: () => showToast(t('pin.timeExtended', 'Tiempo extendido +24h')),
     onSettled: () => void invalidatePins(),
     onError: (err) => showToast(messageOf(err, t('common.error'))),

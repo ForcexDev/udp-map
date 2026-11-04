@@ -44,16 +44,23 @@ export function NotificationPreferences() {
     // que parezca que no responden.
     onMutate: async (preference) => {
       await queryClient.cancelQueries({ queryKey: ['notification-preferences', userId] })
-      const previous = queryClient.getQueryData<NotificationPreference[]>(['notification-preferences', userId])
-      queryClient.setQueryData<NotificationPreference[]>(['notification-preferences', userId], (list = []) => [
-        ...list.filter((p) => p.category !== preference.category),
-        preference.in_app ? preference : { ...preference, push: false },
+      const previous = queryClient.getQueryData<NotificationPreference[]>([
+        'notification-preferences',
+        userId,
       ])
+      queryClient.setQueryData<NotificationPreference[]>(
+        ['notification-preferences', userId],
+        (list = []) => [
+          ...list.filter((p) => p.category !== preference.category),
+          preference.in_app ? preference : { ...preference, push: false },
+        ],
+      )
       return previous
     },
     onError: (_e, _v, previous) =>
       queryClient.setQueryData(['notification-preferences', userId], previous),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['notification-preferences', userId] }),
+    onSettled: () =>
+      void queryClient.invalidateQueries({ queryKey: ['notification-preferences', userId] }),
   })
 
   const LABELS: Record<string, string> = {
@@ -101,7 +108,9 @@ export function NotificationPreferences() {
               const Icon = look.icon
               return (
                 <li key={category} className="flex items-center gap-2 px-3.5 py-2">
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ${look.bg} ${look.fg}`}>
+                  <span
+                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ${look.bg} ${look.fg}`}
+                  >
                     <Icon size={15} />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold text-stone-800 dark:text-stone-200">
@@ -110,7 +119,10 @@ export function NotificationPreferences() {
 
                   <Switch
                     checked={preference.in_app}
-                    label={t('notifications.channelAppFor', { category: LABELS[category], defaultValue: `${LABELS[category]} en la app` })}
+                    label={t('notifications.channelAppFor', {
+                      category: LABELS[category],
+                      defaultValue: `${LABELS[category]} en la app`,
+                    })}
                     onChange={(on) => save.mutate({ ...preference, in_app: on })}
                   />
                   <Switch
@@ -119,7 +131,10 @@ export function NotificationPreferences() {
                     // Se deshabilita en vez de dejar pulsar algo que la base va
                     // a rechazar.
                     disabled={!preference.in_app}
-                    label={t('notifications.channelPushFor', { category: LABELS[category], defaultValue: `${LABELS[category]} al teléfono` })}
+                    label={t('notifications.channelPushFor', {
+                      category: LABELS[category],
+                      defaultValue: `${LABELS[category]} al teléfono`,
+                    })}
                     onChange={(on) => save.mutate({ ...preference, push: on })}
                   />
                 </li>

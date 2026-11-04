@@ -45,7 +45,7 @@ export function CommentSection({ pinId }: { pinId: string }) {
       ) : comments.length === 0 ? (
         <p className="my-3 text-sm text-neutral-500">{t('comments.empty')}</p>
       ) : (
-        <ul 
+        <ul
           className="flex max-h-[260px] flex-col overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:hover:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-thumb]:rounded-full"
           onPointerDown={(e) => e.stopPropagation()}
         >
@@ -53,15 +53,18 @@ export function CommentSection({ pinId }: { pinId: string }) {
             const rel = relativeTime(c.created_at)
             const isMe = user && user.id === c.author_id
             const canDelete = isMe || can(role, 'pin.moderate')
-            
+
             return (
-              <li key={c.id} className="group relative flex gap-3 border-b border-neutral-100 py-3 last:border-0 dark:border-neutral-800">
+              <li
+                key={c.id}
+                className="group relative flex gap-3 border-b border-neutral-100 py-3 last:border-0 dark:border-neutral-800"
+              >
                 <UserAvatar
                   name={c.author_name}
                   src={c.author_avatar_url || (isMe ? user?.avatarUrl : null)}
                   className="mt-0.5 h-10 w-10 text-4xl"
                 />
-                
+
                 <div className="flex flex-1 flex-col relative">
                   <button
                     onClick={() => c.author_id && setProfileId(c.author_id)}
@@ -69,22 +72,34 @@ export function CommentSection({ pinId }: { pinId: string }) {
                   >
                     {c.author_name ?? t('auth.guest')}
                   </button>
-                  
+
                   <LinkedText
                     text={c.body}
                     className="pr-6 text-[14px] leading-snug text-neutral-800 dark:text-neutral-200"
                   />
-                  
+
                   <span className="mt-0.5 text-[11.5px] text-neutral-500">
                     {t(`time.${AGO_KEY[rel.unit]}`, { n: rel.value })}
                   </span>
 
                   <div className="absolute right-0 top-0 flex items-center gap-0.5">
                     {user && !isMe && role !== 'guest' && (
-                      <button onClick={() => setReportTarget({ type: 'pin_comment', id: c.id })} className="p-1 -mt-1 text-neutral-400 transition-colors hover:text-[#D41F2D]" aria-label="Reportar comentario"><Flag size={14} /></button>
+                      <button
+                        onClick={() => setReportTarget({ type: 'pin_comment', id: c.id })}
+                        className="p-1 -mt-1 text-neutral-400 transition-colors hover:text-[#D41F2D]"
+                        aria-label="Reportar comentario"
+                      >
+                        <Flag size={14} />
+                      </button>
                     )}
                     {canDelete && (
-                      <button onClick={() => setCommentToDelete(c.id)} className="p-1 -mr-1 -mt-1 text-[#9d2235]/70 transition-colors hover:text-[#9d2235]" aria-label={t('common.delete', 'Eliminar')}><Trash2 size={15} /></button>
+                      <button
+                        onClick={() => setCommentToDelete(c.id)}
+                        className="p-1 -mr-1 -mt-1 text-[#9d2235]/70 transition-colors hover:text-[#9d2235]"
+                        aria-label={t('common.delete', 'Eliminar')}
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     )}
                   </div>
                 </div>

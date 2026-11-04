@@ -46,9 +46,7 @@ const mockMapInstance = {
     getNorth: () => -33.4,
   })),
   getStyle: vi.fn(() => ({
-    layers: [
-      { id: 'building-3d', type: 'fill-extrusion' }
-    ]
+    layers: [{ id: 'building-3d', type: 'fill-extrusion' }],
   })),
   getLayoutProperty: vi.fn(() => 'none'),
   setLayoutProperty: vi.fn(),
@@ -67,7 +65,7 @@ const mockMapInstance = {
   touchPitch: {
     enable: vi.fn(),
     disable: vi.fn(),
-  }
+  },
 }
 
 vi.mock('maplibre-gl', () => {
@@ -88,7 +86,7 @@ vi.mock('maplibre-gl', () => {
         }
         return marker
       }),
-    }
+    },
   }
 })
 
@@ -143,7 +141,7 @@ describe('MapView', () => {
 
   it('renders the map container correctly', () => {
     renderMap()
-    
+
     // El mapa debe mostrarse
     const mapElement = screen.getByLabelText('Mapa del campus')
     expect(mapElement).toBeInTheDocument()
@@ -151,7 +149,7 @@ describe('MapView', () => {
 
   it('initially hides the compass when map is aligned to North', () => {
     renderMap()
-    
+
     const compassButton = screen.getByLabelText('Restaurar orientación al Norte')
     expect(compassButton).toHaveClass('opacity-0')
     expect(compassButton).toHaveClass('pointer-events-none')
@@ -166,7 +164,7 @@ describe('MapView', () => {
 
     const rotateHandlers = mockMapEvents.get('rotate') ?? []
     act(() => {
-      rotateHandlers.forEach(cb => cb())
+      rotateHandlers.forEach((cb) => cb())
     })
 
     const compassButton = screen.getByLabelText('Restaurar orientación al Norte')
@@ -181,11 +179,11 @@ describe('MapView', () => {
     mockMapInstance.getBearing.mockReturnValue(45)
     const rotateHandlers = mockMapEvents.get('rotate') ?? []
     act(() => {
-      rotateHandlers.forEach(cb => cb())
+      rotateHandlers.forEach((cb) => cb())
     })
 
     const compassButton = screen.getByLabelText('Restaurar orientación al Norte')
-    
+
     // Clic en la brújula
     fireEvent.click(compassButton)
 
@@ -193,7 +191,7 @@ describe('MapView', () => {
     expect(mockMapInstance.easeTo).toHaveBeenCalledWith({
       bearing: 0,
       pitch: 0,
-      duration: 800
+      duration: 800,
     })
   })
 
@@ -234,7 +232,11 @@ describe('MapView', () => {
       },
       {
         layer: 'mapping-buildings-fill',
-        properties: { id: 'ingenieria-e441', facultyId: 'ingenieria', name: 'Edificio Ejército 441' },
+        properties: {
+          id: 'ingenieria-e441',
+          facultyId: 'ingenieria',
+          name: 'Edificio Ejército 441',
+        },
       },
       { layer: 'faculty-perimeter-fill', properties: { faculty_id: 'ingenieria' } },
     ])
@@ -251,7 +253,11 @@ describe('MapView', () => {
     clickMapOver([
       {
         layer: 'mapping-buildings-fill',
-        properties: { id: 'ingenieria-e441', facultyId: 'ingenieria', name: 'Edificio Ejército 441' },
+        properties: {
+          id: 'ingenieria-e441',
+          facultyId: 'ingenieria',
+          name: 'Edificio Ejército 441',
+        },
       },
       { layer: 'faculty-perimeter-fill', properties: { faculty_id: 'ingenieria' } },
     ])

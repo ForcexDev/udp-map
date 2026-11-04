@@ -59,7 +59,12 @@ export const BOUNDARY_MAX_BOUNDS: LngLatBoundsLike = [
 ]
 
 export function isLocationOutOfBounds(lat: number, lng: number): boolean {
-  return lat < BOUNDARY_RECT.south || lat > BOUNDARY_RECT.north || lng < BOUNDARY_RECT.west || lng > BOUNDARY_RECT.east
+  return (
+    lat < BOUNDARY_RECT.south ||
+    lat > BOUNDARY_RECT.north ||
+    lng < BOUNDARY_RECT.west ||
+    lng > BOUNDARY_RECT.east
+  )
 }
 
 /**

@@ -135,10 +135,18 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
       </div>
 
       <div className="mt-6 flex gap-2 pt-3 border-t border-[#E6E0D5] dark:border-white/[0.07]">
-        <Button variant="secondary" onClick={() => onOpenChange(false)} className="flex-1 rounded-2xl">
+        <Button
+          variant="secondary"
+          onClick={() => onOpenChange(false)}
+          className="flex-1 rounded-2xl"
+        >
           {t('common.cancel')}
         </Button>
-        <Button onClick={handleSave} disabled={!canSave || loading} className="flex-1 bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] dark:hover:bg-[#c22b38] text-white rounded-2xl">
+        <Button
+          onClick={handleSave}
+          disabled={!canSave || loading}
+          className="flex-1 bg-[#C22B38] hover:bg-[#a8242f] dark:bg-[#D93846] dark:hover:bg-[#c22b38] text-white rounded-2xl"
+        >
           {loading ? t('common.saving', 'Guardando...') : t('common.save', 'Guardar')}
         </Button>
       </div>

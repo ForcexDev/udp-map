@@ -18,10 +18,7 @@ export async function fetchUserRSVPs(userId: string): Promise<EventRsvp[]> {
     return list
   }
 
-  const { data, error } = await supabase
-    .from('event_rsvps')
-    .select('*')
-    .eq('user_id', userId)
+  const { data, error } = await supabase.from('event_rsvps').select('*').eq('user_id', userId)
 
   if (error) {
     console.error('Error fetching user RSVPs:', error)
@@ -154,10 +151,7 @@ export async function fetchEventsByIds(pinIds: string[]): Promise<Pin[]> {
     return demoDb.pins.filter((p) => pinIds.includes(p.id))
   }
 
-  const { data, error } = await supabase
-    .from('pins')
-    .select('*, pin_photos(*)')
-    .in('id', pinIds)
+  const { data, error } = await supabase.from('pins').select('*, pin_photos(*)').in('id', pinIds)
   if (error) throw error
   return (data ?? []) as Pin[]
 }

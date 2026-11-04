@@ -21,14 +21,27 @@ describe('dbErrorMessage', () => {
 
 describe('isUserFacingDbError', () => {
   it('acepta P0001, que es el que produce raise exception en plpgsql', () => {
-    expect(isUserFacingDbError({ code: 'P0001', message: 'No puedes cambiar la categoría de un pin verificado.' }))
-      .toBe(true)
+    expect(
+      isUserFacingDbError({
+        code: 'P0001',
+        message: 'No puedes cambiar la categoría de un pin verificado.',
+      }),
+    ).toBe(true)
   })
 
   it('rechaza los fallos técnicos que no deben salir de los logs', () => {
-    expect(isUserFacingDbError({ code: '23505', message: 'duplicate key value violates unique constraint' })).toBe(false)
-    expect(isUserFacingDbError({ code: '42501', message: 'permission denied for table profiles' })).toBe(false)
-    expect(isUserFacingDbError({ code: '23503', message: 'violates foreign key constraint' })).toBe(false)
+    expect(
+      isUserFacingDbError({
+        code: '23505',
+        message: 'duplicate key value violates unique constraint',
+      }),
+    ).toBe(false)
+    expect(
+      isUserFacingDbError({ code: '42501', message: 'permission denied for table profiles' }),
+    ).toBe(false)
+    expect(isUserFacingDbError({ code: '23503', message: 'violates foreign key constraint' })).toBe(
+      false,
+    )
   })
 
   it('rechaza lo que no traiga código, como un Error de red o del modo demo', () => {

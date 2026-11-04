@@ -24,9 +24,14 @@ beforeEach(() => {
 describe('sendSelfPushTest cuando la RPC falla', () => {
   it('cuenta el error de la base tal cual', async () => {
     rpc.mockResolvedValue({
-      error: { code: '42501', message: 'Solo los administradores pueden lanzar una prueba de push.' },
+      error: {
+        code: '42501',
+        message: 'Solo los administradores pueden lanzar una prueba de push.',
+      },
     })
-    await expect(sendSelfPushTest()).rejects.toThrow('Solo los administradores pueden lanzar una prueba de push.')
+    await expect(sendSelfPushTest()).rejects.toThrow(
+      'Solo los administradores pueden lanzar una prueba de push.',
+    )
   })
 
   it('sin sesión no llega a llamar a la RPC', async () => {

@@ -4,7 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { X, Share2, Clock, Plus, MapPin, Layers, ArrowUpDown } from 'lucide-react'
 import type { Pin } from '@/shared/types/database'
 import { useUIStore } from '@/shared/stores/uiStore'
-import { CAMPUSES, FACULTIES, categoryById, EVENT_COLOR, PLACE_COLOR } from '@/shared/data/campusData'
+import {
+  CAMPUSES,
+  FACULTIES,
+  categoryById,
+  EVENT_COLOR,
+  PLACE_COLOR,
+} from '@/shared/data/campusData'
 import { expiryState } from '@/shared/utils/expiry'
 import { eventPhase } from '@/shared/utils/eventState'
 import { pinVisibleOnFloor } from '@/shared/utils/floorVisibility'
@@ -80,7 +86,13 @@ type SortMode = 'recent' | 'confirmed'
  * come justo el sitio de lo que se vino a leer, y el nombre de la facultad ya
  * está en la cabecera de abajo, así que no se pierde nada.
  */
-function FacultyHero({ owner, fallbackImage }: { owner: PlaceOwner; fallbackImage: string | null }) {
+function FacultyHero({
+  owner,
+  fallbackImage,
+}: {
+  owner: PlaceOwner
+  fallbackImage: string | null
+}) {
   const { isExpanded, isDesktop } = useSheetState()
   // En ESCRITORIO no se pliega nunca. La hoja abre ya expandida ahí, así que
   // plegar al expandir dejaba la portada en cero desde el primer momento: la
@@ -224,16 +236,12 @@ export function FacultyDetail() {
 
   const floorLabel =
     activeFloor !== null && activeFacultyId === selectedFacultyId
-      ? floorName(
-          activeFloor,
-          mapping.floors.find((f) => f.level === activeFloor)?.label ?? null,
-        )
+      ? floorName(activeFloor, mapping.floors.find((f) => f.level === activeFloor)?.label ?? null)
       : null
 
   const campus = CAMPUSES.find((c) => c.id === faculty.campus_id)?.name
   const subtitleParts = [campus, place?.name, floorLabel].filter(Boolean)
-  const contextualSubtitle =
-    subtitleParts.length > 0 ? subtitleParts.join(' · ') : 'Campus UDP'
+  const contextualSubtitle = subtitleParts.length > 0 ? subtitleParts.join(' · ') : 'Campus UDP'
 
   /** `Edificio · Piso 2`, para saber de un vistazo dónde cae cada post. */
   const whereOf = (pin: Pin): string => {
@@ -383,10 +391,10 @@ export function FacultyDetail() {
       <div key={key} className="pt-4 first:pt-0">
         <div className="mb-2.5 flex items-center gap-2">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
-          <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
-            {label}
+          <span className="text-xs font-bold text-stone-900 dark:text-stone-100">{label}</span>
+          <span className="truncate text-xs font-medium text-stone-500 dark:text-stone-400">
+            · {hint}
           </span>
-          <span className="truncate text-xs font-medium text-stone-500 dark:text-stone-400">· {hint}</span>
           {trailing}
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{items.map(renderCard)}</div>

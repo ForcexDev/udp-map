@@ -46,7 +46,10 @@ const ROLE_TONE: Record<Role, string> = {
 
 export function UsersPanel() {
   const { t } = useTranslation()
-  const roleOptions = ROLE_OPTION_VALUES.map((value) => ({ value, label: t(ROLE_OPTION_KEYS[value]) }))
+  const roleOptions = ROLE_OPTION_VALUES.map((value) => ({
+    value,
+    label: t(ROLE_OPTION_KEYS[value]),
+  }))
   const assignable = ASSIGNABLE_VALUES.map((value) => ({ value, label: t(ROLE_KEY[value]) }))
   const queryClient = useQueryClient()
   const showToast = useUIStore((s) => s.showToast)
@@ -71,13 +74,13 @@ export function UsersPanel() {
   })
 
   return (
-    <AdminScreen
-      title={t('admin.sections.users')}
-      description={t('admin.sections.usersHint')}
-    >
+    <AdminScreen title={t('admin.sections.users')} description={t('admin.sections.usersHint')}>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:w-80">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400"
+          />
           <input
             type="search"
             value={search}
@@ -98,7 +101,13 @@ export function UsersPanel() {
         <AdminLoading />
       ) : users.length === 0 ? (
         <AdminEmpty
-          icon={<UserRound size={40} strokeWidth={1.5} className="text-neutral-300 dark:text-neutral-700" />}
+          icon={
+            <UserRound
+              size={40}
+              strokeWidth={1.5}
+              className="text-neutral-300 dark:text-neutral-700"
+            />
+          }
           title={t('admin.noMatch')}
           hint={t('admin.noMatchHint')}
         />
@@ -139,7 +148,8 @@ export function UsersPanel() {
                   <span className="capitalize">{u.faculty_id || 'Sin facultad'}</span>
                   <span className="text-neutral-300 dark:text-neutral-700">·</span>
                   <span>
-                    <strong className="font-bold text-amber-500">{u.karma}</strong> {t('admin.karmaOf')}
+                    <strong className="font-bold text-amber-500">{u.karma}</strong>{' '}
+                    {t('admin.karmaOf')}
                   </span>
                 </div>
 
@@ -147,9 +157,7 @@ export function UsersPanel() {
                   <CustomSelect
                     options={assignable}
                     value={u.role}
-                    onChange={(next) =>
-                      setPendingChange({ user: u, nextRole: next as Role })
-                    }
+                    onChange={(next) => setPendingChange({ user: u, nextRole: next as Role })}
                   />
                   {/* Solo a un moderador: al admin no hay nada que concederle y
                       a un estudiante la base lo rechaza. */}
@@ -176,52 +184,54 @@ export function UsersPanel() {
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {users.map((u) => (
                   <Fragment key={u.id}>
-                  <tr
-                    className="transition-colors hover:bg-neutral-50/60 dark:hover:bg-neutral-800/30"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <UserAvatar name={u.name} src={u.avatar_url} className="h-7 w-7 text-[28px]" />
-                        <span className="font-bold text-neutral-900 dark:text-white">
-                          {u.name || t('admin.noName')}
+                    <tr className="transition-colors hover:bg-neutral-50/60 dark:hover:bg-neutral-800/30">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <UserAvatar
+                            name={u.name}
+                            src={u.avatar_url}
+                            className="h-7 w-7 text-[28px]"
+                          />
+                          <span className="font-bold text-neutral-900 dark:text-white">
+                            {u.name || t('admin.noName')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">
+                        {u.email}
+                      </td>
+                      <td className="px-4 py-3 capitalize text-neutral-600 dark:text-neutral-300">
+                        {u.faculty_id || '—'}
+                      </td>
+                      <td className="px-4 py-3 font-bold text-amber-500">{u.karma}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${ROLE_TONE[u.role]}`}
+                        >
+                          {t(ROLE_KEY[u.role])}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-neutral-500 dark:text-neutral-400">
-                      {u.email}
-                    </td>
-                    <td className="px-4 py-3 capitalize text-neutral-600 dark:text-neutral-300">
-                      {u.faculty_id || '—'}
-                    </td>
-                    <td className="px-4 py-3 font-bold text-amber-500">{u.karma}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${ROLE_TONE[u.role]}`}
-                      >
-                        {t(ROLE_KEY[u.role])}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="ml-auto w-40">
-                        <CustomSelect
-                          options={assignable}
-                          value={u.role}
-                          onChange={(next) =>
-                            setPendingChange({ user: u, nextRole: next as Role })
-                          }
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                  {u.role === 'moderator' && (
-                    /* Fila propia y no una celda más: las piezas son cinco y no
-                       caben en la columna del rol sin partirse. */
-                    <tr>
-                      <td colSpan={4} className="px-4 pb-3">
-                        <CapabilitiesEditor userId={u.id} name={u.name} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="ml-auto w-40">
+                          <CustomSelect
+                            options={assignable}
+                            value={u.role}
+                            onChange={(next) =>
+                              setPendingChange({ user: u, nextRole: next as Role })
+                            }
+                          />
+                        </div>
                       </td>
                     </tr>
-                  )}
+                    {u.role === 'moderator' && (
+                      /* Fila propia y no una celda más: las piezas son cinco y no
+                       caben en la columna del rol sin partirse. */
+                      <tr>
+                        <td colSpan={4} className="px-4 pb-3">
+                          <CapabilitiesEditor userId={u.id} name={u.name} />
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 ))}
               </tbody>

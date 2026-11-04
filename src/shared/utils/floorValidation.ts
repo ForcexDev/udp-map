@@ -15,10 +15,7 @@ import type { Building, BuildingFloor } from '@/shared/types/database'
 
 /** `null` significa que la planta vale. El resto son los mismos códigos que
  *  levanta la base, para que el toast sea uno solo en los dos caminos. */
-export type FloorRejection =
-  | 'FLOOR_ZERO'
-  | 'INVALID_FLOOR_FOR_BUILDING'
-  | 'FLOOR_NOT_IN_FACULTY'
+export type FloorRejection = 'FLOOR_ZERO' | 'INVALID_FLOOR_FOR_BUILDING' | 'FLOOR_NOT_IN_FACULTY'
 
 interface FloorContext {
   buildings: Building[]
@@ -51,8 +48,8 @@ export function validatePinFloor(
     // como "no existe" rechazaría ediciones perfectamente válidas hechas antes
     // de que cargue el mapeo. Quien manda es el servidor; esto solo evita el
     // viaje cuando la respuesta ya se conoce.
-    const known = buildings.some((b) => b.id === buildingId)
-      || floors.some((f) => f.building_id === buildingId)
+    const known =
+      buildings.some((b) => b.id === buildingId) || floors.some((f) => f.building_id === buildingId)
     if (!known) return null
 
     const exists = floors.some((f) => f.building_id === buildingId && f.level === floor)
@@ -64,9 +61,7 @@ export function validatePinFloor(
   // chips pintar. Una planta sin chip es un pin que no se puede ver nunca.
   if (facultyId === null) return null
 
-  const ofFaculty = new Set(
-    buildings.filter((b) => b.faculty_id === facultyId).map((b) => b.id),
-  )
+  const ofFaculty = new Set(buildings.filter((b) => b.faculty_id === facultyId).map((b) => b.id))
   // Facultad sin edificios mapeados: no hay contra qué comprobar y no se
   // rechaza. Exigir mapeo para poder decir "piso 2" apagaría la planta en todo
   // el campus que aún no se ha trazado, que es casi todo.
@@ -89,6 +84,7 @@ export function validatePinFloor(
 export function floorRejectionKey(message: string): string | null {
   if (message.includes('INVALID_FLOOR_FOR_BUILDING')) return 'pin.invalidFloorForBuilding'
   if (message.includes('FLOOR_NOT_IN_FACULTY')) return 'pin.floorNotInFaculty'
-  if (message.includes('FLOOR_ZERO') || message.includes('La planta 0 no existe')) return 'pin.floorZero'
+  if (message.includes('FLOOR_ZERO') || message.includes('La planta 0 no existe'))
+    return 'pin.floorZero'
   return null
 }

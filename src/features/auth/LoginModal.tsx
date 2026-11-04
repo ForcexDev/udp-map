@@ -42,7 +42,9 @@ export function LoginModal() {
           </div>
         ) : (
           <>
-            <p className="text-xs font-medium text-stone-500 dark:text-stone-400">{t('auth.demoMode')}</p>
+            <p className="text-xs font-medium text-stone-500 dark:text-stone-400">
+              {t('auth.demoMode')}
+            </p>
             <Button
               className="rounded-2xl bg-[#C22B38] hover:bg-[#A82430] dark:bg-[#D93846] dark:hover:bg-[#C22B38] text-white font-semibold shadow-xs"
               onClick={() => {
@@ -66,7 +68,9 @@ export function LoginModal() {
             </Button>
           </>
         )}
-        <p className="mt-1 text-center text-xs text-stone-500 dark:text-stone-400">{t('auth.onlyUdp')}</p>
+        <p className="mt-1 text-center text-xs text-stone-500 dark:text-stone-400">
+          {t('auth.onlyUdp')}
+        </p>
       </div>
     </Dialog>
   )

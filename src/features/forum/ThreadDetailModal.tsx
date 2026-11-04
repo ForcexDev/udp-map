@@ -1,7 +1,17 @@
 import { localizedName } from '@/shared/utils/localized'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BadgeCheck, ChevronDown, Pin as PinIcon, Trash2, Reply, ThumbsUp, ThumbsDown, Send, Flag } from 'lucide-react'
+import {
+  BadgeCheck,
+  ChevronDown,
+  Pin as PinIcon,
+  Trash2,
+  Reply,
+  ThumbsUp,
+  ThumbsDown,
+  Send,
+  Flag,
+} from 'lucide-react'
 import { Dialog } from '@/shared/ui/Dialog'
 import { PublicProfileModal } from '@/features/profile/PublicProfileModal'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -68,25 +78,29 @@ function CommentItem({
   const avatarSize = depth > 0 ? 'h-7 w-7' : 'h-9 w-9'
 
   return (
-    <div className={`relative flex gap-3 ${depth > 0 ? 'mt-2.5' : 'border-b border-[#E5DEC9] pb-3.5 last:border-0 dark:border-white/10'}`}>
+    <div
+      className={`relative flex gap-3 ${depth > 0 ? 'mt-2.5' : 'border-b border-[#E5DEC9] pb-3.5 last:border-0 dark:border-white/10'}`}
+    >
       <UserAvatar
         name={node.author_name}
         src={node.author_avatar_url || (isCommentOwner ? user?.avatarUrl : null)}
         className={`mt-0.5 ${avatarSize} text-2xl shrink-0`}
       />
-      
+
       <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Author + Timestamp */}
         <div className="flex items-center justify-between gap-2 pr-1">
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={() => node.author_id && onUserClick(node.author_id)}
               className="text-left text-[13.5px] font-bold leading-tight text-stone-900 hover:underline dark:text-stone-100 cursor-pointer"
             >
               {node.author_name || 'Estudiante UDP'}
             </button>
             <span className="shrink-0 text-[11px] font-medium text-stone-400 dark:text-stone-500">
-              {relTime.value === 0 ? 'Ahora' : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`}
+              {relTime.value === 0
+                ? 'Ahora'
+                : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`}
             </span>
           </div>
 
@@ -145,7 +159,7 @@ function CommentItem({
               className="w-full resize-none rounded-xl border border-[#E6E0D5] bg-white px-3 py-2 text-xs font-medium text-stone-900 outline-none transition-all focus:border-[#C22B38] dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-100 dark:focus:border-[#D93846]"
             />
             <div className="flex justify-end gap-2">
-              <button 
+              <button
                 onClick={() => setReplyingToId(null)}
                 className="cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold text-stone-500 transition-colors hover:bg-[#EFECE4] dark:hover:bg-white/[0.08]"
               >
@@ -164,7 +178,9 @@ function CommentItem({
 
         {/* Nested Replies Tree (Left Aligned starting near root avatar - Red Line Alignment) */}
         {node.replies.length > 0 && (
-          <div className={`mt-2 flex flex-col ${depth === 0 ? '-ml-7 space-y-2 pl-2 sm:-ml-8' : ''}`}>
+          <div
+            className={`mt-2 flex flex-col ${depth === 0 ? '-ml-7 space-y-2 pl-2 sm:-ml-8' : ''}`}
+          >
             {depth === 0 && (
               <button
                 type="button"
@@ -174,7 +190,10 @@ function CommentItem({
               >
                 {showAllReplies
                   ? t('forum.hideReplies', 'Ocultar respuestas')
-                  : t('forum.replyCount', { count: replyCount, defaultValue: '{{count}} respuestas' })}
+                  : t('forum.replyCount', {
+                      count: replyCount,
+                      defaultValue: '{{count}} respuestas',
+                    })}
                 <ChevronDown
                   size={13}
                   strokeWidth={2.5}
@@ -183,9 +202,9 @@ function CommentItem({
               </button>
             )}
             {visibleReplies.map((reply) => (
-              <CommentItem 
-                key={reply.id} 
-                node={reply} 
+              <CommentItem
+                key={reply.id}
+                node={reply}
                 depth={1}
                 replyingToId={replyingToId}
                 setReplyingToId={setReplyingToId}
@@ -252,16 +271,20 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
           showToast(
             thread.is_pinned
               ? t('forum.threadUnpinned', 'Hilo desfijado')
-              : t('forum.threadPinned', 'Hilo fijado al inicio')
+              : t('forum.threadPinned', 'Hilo fijado al inicio'),
           )
         },
-      }
+      },
     )
   }
 
   const handleDeleteThread = () => {
     if (!thread) return
-    if (window.confirm(t('forum.confirmDeleteThread', '¿Estás seguro de que quieres eliminar este hilo?'))) {
+    if (
+      window.confirm(
+        t('forum.confirmDeleteThread', '¿Estás seguro de que quieres eliminar este hilo?'),
+      )
+    ) {
       deleteThreadMutation.mutate(thread.id, {
         onSuccess: () => {
           showToast(t('forum.threadDeleted', 'Hilo eliminado correctamente'))
@@ -292,7 +315,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
         onSuccess: () => {
           setNewCommentText('')
         },
-      }
+      },
     )
   }
 
@@ -317,7 +340,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
           setReplyText('')
           setReplyingToId(null)
         },
-      }
+      },
     )
   }
 
@@ -350,7 +373,10 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                 <div className="flex min-w-0 items-center gap-3">
                   <UserAvatar
                     name={thread.author_name}
-                    src={thread.author_avatar_url || (user && user.id === thread.author_id ? user.avatarUrl : null)}
+                    src={
+                      thread.author_avatar_url ||
+                      (user && user.id === thread.author_id ? user.avatarUrl : null)
+                    }
                     className="h-10 w-10 shrink-0 cursor-pointer text-3xl"
                     onClick={() => thread.author_id && setProfileId(thread.author_id)}
                   />
@@ -361,16 +387,31 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                     >
                       <span className="flex items-center gap-1.5">
                         {thread.is_official
-                          ? (thread.official_entity_name || t('pin.officialEntityDefault', 'Administración UDP'))
-                          : (thread.author_name || 'Estudiante UDP')}
-                        {thread.is_official && <BadgeCheck size={15} className="text-blue-500" aria-label={t('forum.official', 'Oficial')} />}
+                          ? thread.official_entity_name ||
+                            t('pin.officialEntityDefault', 'Administración UDP')
+                          : thread.author_name || 'Estudiante UDP'}
+                        {thread.is_official && (
+                          <BadgeCheck
+                            size={15}
+                            className="text-blue-500"
+                            aria-label={t('forum.official', 'Oficial')}
+                          />
+                        )}
                       </span>
                     </button>
                     <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-stone-400 dark:text-stone-500">
-                      <span>{relTime ? (relTime.value === 0 ? 'Ahora' : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`) : ''}</span>
+                      <span>
+                        {relTime
+                          ? relTime.value === 0
+                            ? 'Ahora'
+                            : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`
+                          : ''}
+                      </span>
                       <span>•</span>
                       <span className="font-bold text-[#C22B38] dark:text-[#D93846]">
-                        {faculty ? localizedName(faculty, i18n.language) : t('forum.general', 'General')}
+                        {faculty
+                          ? localizedName(faculty, i18n.language)
+                          : t('forum.general', 'General')}
                       </span>
                     </div>
                   </div>
@@ -401,7 +442,9 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
                           ? 'border-amber-400 bg-amber-50 text-amber-600 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400'
                           : 'border-[#E6E0D5] text-stone-500 hover:text-amber-600 dark:border-white/[0.07] dark:text-stone-400'
                       }`}
-                      title={thread.is_pinned ? t('forum.unpin', 'Desfijar') : t('forum.pin', 'Fijar')}
+                      title={
+                        thread.is_pinned ? t('forum.unpin', 'Desfijar') : t('forum.pin', 'Fijar')
+                      }
                     >
                       <PinIcon size={15} />
                     </button>
@@ -489,22 +532,29 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
               {/* Comments Section Header (Matching PinDetail) */}
               <div className="mt-4 flex items-center justify-between border-t border-[#E5DEC9] pt-4 dark:border-white/10">
                 <h3 className="text-[16px] font-bold text-stone-900 sm:text-[17px] dark:text-stone-100">
-                  {t('forum.repliesCount', { defaultValue: 'Comentarios ({{count}})', count: comments.length })}
+                  {t('forum.repliesCount', {
+                    defaultValue: 'Comentarios ({{count}})',
+                    count: comments.length,
+                  })}
                 </h3>
               </div>
 
               {/* Comments List */}
               {isLoadingComments ? (
-                <div className="py-6 text-center text-xs font-semibold text-stone-400">{t('common.loading')}</div>
+                <div className="py-6 text-center text-xs font-semibold text-stone-400">
+                  {t('common.loading')}
+                </div>
               ) : commentTree.length === 0 ? (
-                <p className="py-6 text-center text-xs italic text-stone-400">{t('forum.noComments', 'Sé el primero en comentar...')}</p>
+                <p className="py-6 text-center text-xs italic text-stone-400">
+                  {t('forum.noComments', 'Sé el primero en comentar...')}
+                </p>
               ) : (
                 <div className="flex flex-col gap-3">
                   {commentTree.map((node) => (
-                    <CommentItem 
-                      key={node.id} 
-                      node={node} 
-                      depth={0} 
+                    <CommentItem
+                      key={node.id}
+                      node={node}
+                      depth={0}
                       replyingToId={replyingToId}
                       setReplyingToId={setReplyingToId}
                       replyText={replyText}
@@ -521,8 +571,8 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
             </div>
 
             {/* Fixed Bottom Reply Input Bar (Matching CommentSection.tsx rectangular style) */}
-            <form 
-              onSubmit={handleAddComment} 
+            <form
+              onSubmit={handleAddComment}
               className="-mx-6 -mb-6 mt-auto flex shrink-0 items-center gap-2 overflow-hidden rounded-b-[32px] border-t border-[#E5DEC9] bg-white px-6 pt-3.5 pb-4 sm:rounded-b-3xl dark:border-white/10 dark:bg-[#1E222D]"
             >
               <input
@@ -543,7 +593,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
           </div>
         )
       )}
-      
+
       {/* Public Profile Modal */}
       <PublicProfileModal userId={profileId} onClose={() => setProfileId(null)} />
       <ReportContentDialog target={reportTarget} onClose={() => setReportTarget(null)} />

@@ -52,7 +52,10 @@ describe('registerPushSubscription', () => {
     await registerPushSubscription(fakeSubscription(), OLD)
 
     expect(supa.rpc).toHaveBeenCalledTimes(1)
-    expect(supa.rpc).toHaveBeenCalledWith('register_push_subscription', { ...BASE_PARAMS, p_old_endpoint: OLD })
+    expect(supa.rpc).toHaveBeenCalledWith('register_push_subscription', {
+      ...BASE_PARAMS,
+      p_old_endpoint: OLD,
+    })
   })
 
   it('si el anterior es el mismo que el actual, no hay nada que mover', async () => {
@@ -64,14 +67,24 @@ describe('registerPushSubscription', () => {
   it.each([
     ['PGRST202', { code: 'PGRST202', message: 'no existe' }],
     ['42883', { code: '42883', message: 'function does not exist' }],
-    ['el mensaje de PostgREST', { code: 'PGRST999', message: 'Could not find the function public.register_push_subscription(...) in the schema cache' }],
+    [
+      'el mensaje de PostgREST',
+      {
+        code: 'PGRST999',
+        message:
+          'Could not find the function public.register_push_subscription(...) in the schema cache',
+      },
+    ],
   ])('con la base sin migrar (%s) reintenta sin p_old_endpoint', async (_caso, error) => {
     supa.rpc.mockResolvedValueOnce({ error })
 
     await expect(registerPushSubscription(fakeSubscription(), OLD)).resolves.toBeUndefined()
 
     expect(supa.rpc).toHaveBeenCalledTimes(2)
-    expect(supa.rpc).toHaveBeenNthCalledWith(1, 'register_push_subscription', { ...BASE_PARAMS, p_old_endpoint: OLD })
+    expect(supa.rpc).toHaveBeenNthCalledWith(1, 'register_push_subscription', {
+      ...BASE_PARAMS,
+      p_old_endpoint: OLD,
+    })
     expect(supa.rpc).toHaveBeenNthCalledWith(2, 'register_push_subscription', BASE_PARAMS)
   })
 
@@ -93,7 +106,10 @@ describe('registerPushSubscription', () => {
   })
 
   it('una suscripción incompleta no llega a la base', async () => {
-    const incompleta = { endpoint: CURRENT, toJSON: () => ({ endpoint: CURRENT }) } as unknown as PushSubscription
+    const incompleta = {
+      endpoint: CURRENT,
+      toJSON: () => ({ endpoint: CURRENT }),
+    } as unknown as PushSubscription
 
     await expect(registerPushSubscription(incompleta)).rejects.toThrow()
     expect(supa.rpc).not.toHaveBeenCalled()

@@ -13,11 +13,14 @@ sql += `-- ⚠️ Sincronizado automáticamente desde campusData.ts\n`
 sql += `-- ═══════════════════════════════════════════════════════════════\n\n`
 
 sql += `insert into campuses (id, name, lat, lng) values\n`
-sql += CAMPUSES.map(c => `  ('${c.id}', '${c.name}', ${c.lat}, ${c.lng})`).join(',\n')
+sql += CAMPUSES.map((c) => `  ('${c.id}', '${c.name}', ${c.lat}, ${c.lng})`).join(',\n')
 sql += `\non conflict (id) do nothing;\n\n`
 
 sql += `insert into faculties (id, name, name_en, campus_id, lat, lng, image) values\n`
-sql += FACULTIES.map(f => `  ('${f.id}', '${f.name}', '${f.name_en}', '${f.campus_id}', ${f.lat}, ${f.lng}, ${f.image ? `'${f.image}'` : 'null'})`).join(',\n')
+sql += FACULTIES.map(
+  (f) =>
+    `  ('${f.id}', '${f.name}', '${f.name_en}', '${f.campus_id}', ${f.lat}, ${f.lng}, ${f.image ? `'${f.image}'` : 'null'})`,
+).join(',\n')
 sql += `\non conflict (id) do nothing;\n\n`
 
 // Los perímetros NO se siembran. Viven solo en \`faculties.polygon\` y se
@@ -27,11 +30,14 @@ sql += `\non conflict (id) do nothing;\n\n`
 // trazan desde el editor, que es de donde salen ahora.
 
 sql += `insert into careers (faculty_id, name, name_en) values\n`
-sql += CAREERS.map(c => `  ('${c.faculty_id}', '${c.name}', '${c.name_en}')`).join(',\n')
+sql += CAREERS.map((c) => `  ('${c.faculty_id}', '${c.name}', '${c.name_en}')`).join(',\n')
 sql += `;\n\n`
 
 sql += `insert into categories (id, kind, name, name_en, color, svg_path, ttl_hours) values\n`
-sql += CATEGORIES.map(c => `  ('${c.id}', '${c.kind}', '${c.name}', '${c.name_en}', '${c.color}', '${c.svgPath}', ${c.ttl_hours === null ? 'null' : c.ttl_hours})`).join(',\n')
+sql += CATEGORIES.map(
+  (c) =>
+    `  ('${c.id}', '${c.kind}', '${c.name}', '${c.name_en}', '${c.color}', '${c.svgPath}', ${c.ttl_hours === null ? 'null' : c.ttl_hours})`,
+).join(',\n')
 sql += `\non conflict (id) do nothing;\n\n`
 
 sql += `-- ── Facultades como pines \`place\` permanentes ──\n`

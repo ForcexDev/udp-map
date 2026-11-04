@@ -39,7 +39,7 @@ export function Layout() {
   }, [])
 
   return (
-    <div className="app-shell relative h-full w-full flex flex-col overflow-hidden">
+    <div className="app-shell w-full flex flex-col overflow-hidden">
       <NotificationBanner />
 
       {/* Main content — full height */}

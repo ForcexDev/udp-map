@@ -28,16 +28,30 @@ interface AuthState {
 
 const DEMO_KEY = 'udpmap.demoRole'
 
-async function fetchProfile(userId: string): Promise<{ role: Role; name: string | null; faculty_id: string | null; career: string | null; created_at: string | null }> {
-  if (!supabase) return { role: 'guest', name: null, faculty_id: null, career: null, created_at: null }
-  const { data } = await supabase.from('profiles').select('role, name, faculty_id, career, created_at').eq('id', userId).single()
-  
+async function fetchProfile(userId: string): Promise<{
+  role: Role
+  name: string | null
+  faculty_id: string | null
+  career: string | null
+  created_at: string | null
+}> {
+  if (!supabase)
+    return { role: 'guest', name: null, faculty_id: null, career: null, created_at: null }
+  const { data } = await supabase
+    .from('profiles')
+    .select('role, name, faculty_id, career, created_at')
+    .eq('id', userId)
+    .single()
+
   const role = (data?.role as Role | undefined) ?? 'student'
   let name = data?.name as string | undefined
 
   // Auto-format full uppercase names (like Google Auth defaults)
   if (name && name === name.toUpperCase()) {
-    const words = name.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    const words = name
+      .trim()
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     // If it has 3+ words (e.g. EZEQUIEL LEANDRO MORALES HERRERA), pick 1st and 3rd.
     const shortName = words.length >= 3 ? `${words[0]} ${words[2]}` : words.join(' ')
     if (shortName !== name) {
@@ -46,9 +60,9 @@ async function fetchProfile(userId: string): Promise<{ role: Role; name: string 
     }
   }
 
-  const faculty_id = data?.faculty_id as string | undefined ?? null
-  const career = data?.career as string | undefined ?? null
-  const created_at = data?.created_at as string | undefined ?? null
+  const faculty_id = (data?.faculty_id as string | undefined) ?? null
+  const career = (data?.career as string | undefined) ?? null
+  const created_at = (data?.created_at as string | undefined) ?? null
 
   return { role, name: name ?? null, faculty_id, career, created_at }
 }
@@ -127,7 +141,15 @@ export const useAuthStore = create<AuthState>((set) => ({
         .then(({ role, name, faculty_id, career, created_at }) => {
           set((state) => ({
             role,
-            user: state.user ? { ...state.user, name: name || state.user.name, faculty_id, career, createdAt: created_at } : null
+            user: state.user
+              ? {
+                  ...state.user,
+                  name: name || state.user.name,
+                  faculty_id,
+                  career,
+                  createdAt: created_at,
+                }
+              : null,
           }))
         })
         .catch((cause: unknown) => {
@@ -208,7 +230,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set((state) => ({
       user: state.user
         ? { ...state.user, faculty_id: facultyId, career, name: trimmedName || state.user.name }
-        : null
+        : null,
     }))
   },
 }))

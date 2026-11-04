@@ -59,7 +59,11 @@ describe('proyección local', () => {
 
 describe('anillos', () => {
   it('closeRing repite el primer punto y openRing lo quita', () => {
-    const abierto: Position[] = [[0, 0], [1, 0], [1, 1]]
+    const abierto: Position[] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+    ]
     const cerrado = closeRing(abierto)
     expect(cerrado).toHaveLength(4)
     expect(cerrado[3]).toEqual(cerrado[0])
@@ -67,7 +71,12 @@ describe('anillos', () => {
   })
 
   it('closeRing no vuelve a cerrar un anillo ya cerrado', () => {
-    const cerrado: Position[] = [[0, 0], [1, 0], [1, 1], [0, 0]]
+    const cerrado: Position[] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 0],
+    ]
     expect(closeRing(cerrado)).toHaveLength(4)
   })
 })

@@ -14,13 +14,13 @@ un formato reconocible.
 El esquema posicional es `EDIFICIO.PISO.SALA`. Se separa por **los dos primeros
 puntos**: la sala puede contener puntos y espacios.
 
-| Entrada | Edificio informativo | Planta | Sala conservada |
-|---|---|---|---|
-| `E441.4.S401` | `E441` | 4 | `S401` |
-| `V432.-1.SIM` | `V432` | −1 | `SIM` |
-| `E441.4.L.D` | `E441` | 4 | `L.D` |
-| `E441.5. LAB INF` | `E441` | 5 | ` LAB INF`, con espacio inicial |
-| `E278B.4.S402` | `E278B` | 4 | `S402` |
+| Entrada           | Edificio informativo | Planta | Sala conservada                 |
+| ----------------- | -------------------- | ------ | ------------------------------- |
+| `E441.4.S401`     | `E441`               | 4      | `S401`                          |
+| `V432.-1.SIM`     | `V432`               | −1     | `SIM`                           |
+| `E441.4.L.D`      | `E441`               | 4      | `L.D`                           |
+| `E441.5. LAB INF` | `E441`               | 5      | ` LAB INF`, con espacio inicial |
+| `E278B.4.S402`    | `E278B`              | 4      | `S402`                          |
 
 `parseRoomCode` recorta los extremos del código completo, convierte el prefijo
 informativo a mayúsculas y conserva el identificador de sala. Admite letras

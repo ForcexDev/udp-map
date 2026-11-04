@@ -21,11 +21,7 @@ import type { Pin } from '@/shared/types/database'
 
 /** Sin tildes, en minúscula y sin espacios. Los puntos se conservan: separan. */
 export function normalizeRoomQuery(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, '')
+  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, '')
 }
 
 /** La parte de sala de un código posicional: `E441.1.S106` → `s106`. */
@@ -47,10 +43,10 @@ function rank(pin: Pin, query: string): number | null {
   const room = pin.room_code ? roomPart(pin.room_code) : ''
   const title = normalizeRoomQuery(pin.title)
 
-  if (code && code === query) return 0                    // el código exacto
-  if (room && room === query) return 1                    // "s106" para S106
-  if (room && room.replace(/^[a-z]+/, '') === query) return 2  // "106" para S106
-  if (code && code.startsWith(query)) return 3            // "e441" o "e441.1"
+  if (code && code === query) return 0 // el código exacto
+  if (room && room === query) return 1 // "s106" para S106
+  if (room && room.replace(/^[a-z]+/, '') === query) return 2 // "106" para S106
+  if (code && code.startsWith(query)) return 3 // "e441" o "e441.1"
   if (code && code.includes(query)) return 4
   if (title === query) return 5
   if (title.includes(query)) return 6

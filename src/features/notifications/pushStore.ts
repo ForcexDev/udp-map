@@ -87,16 +87,21 @@ function safe<T>(fn: () => T, fallback: T): T {
 }
 
 const readLastKnown = () => safe(() => localStorage.getItem(LAST_KNOWN_KEY) === 'true', false)
-const writeLastKnown = (subscribed: boolean) => safe(() => localStorage.setItem(LAST_KNOWN_KEY, String(subscribed)), undefined)
+const writeLastKnown = (subscribed: boolean) =>
+  safe(() => localStorage.setItem(LAST_KNOWN_KEY, String(subscribed)), undefined)
 const readConfirmedEndpoint = () => safe(() => localStorage.getItem(CONFIRMED_ENDPOINT_KEY), null)
-const writeConfirmedEndpoint = (endpoint: string) => safe(() => localStorage.setItem(CONFIRMED_ENDPOINT_KEY, endpoint), undefined)
-const clearConfirmedEndpoint = () => safe(() => localStorage.removeItem(CONFIRMED_ENDPOINT_KEY), undefined)
+const writeConfirmedEndpoint = (endpoint: string) =>
+  safe(() => localStorage.setItem(CONFIRMED_ENDPOINT_KEY, endpoint), undefined)
+const clearConfirmedEndpoint = () =>
+  safe(() => localStorage.removeItem(CONFIRMED_ENDPOINT_KEY), undefined)
 
 export function pushApiSupported(): boolean {
-  return typeof window !== 'undefined'
-    && 'serviceWorker' in navigator
-    && 'PushManager' in window
-    && 'Notification' in window
+  return (
+    typeof window !== 'undefined' &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window
+  )
 }
 
 /**
@@ -146,10 +151,11 @@ export function pushErrorMessage(cause: unknown, operation: PushOperation = 'sub
   const errorName = cause instanceof DOMException ? cause.name : ''
 
   // Una función y no una cadena del módulo: el idioma puede cambiar en marcha.
-  const serviceWorkerMessage = () => tr(
-    'notifications.push.errors.serviceWorker',
-    'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.',
-  )
+  const serviceWorkerMessage = () =>
+    tr(
+      'notifications.push.errors.serviceWorker',
+      'No se pudo preparar el servicio que recibe las notificaciones en segundo plano. Recarga la página y vuelve a intentar.',
+    )
   const swFailed = /service worker/i.test(technicalMessage)
 
   // Al DESACTIVAR, «bloqueadas» o «no se pudo activar» no vienen a cuento: el
@@ -172,8 +178,10 @@ export function pushErrorMessage(cause: unknown, operation: PushOperation = 'sub
   }
 
   if (
-    errorName === 'AbortError'
-    || /registration failed|push service error|push service|service unavailable/i.test(technicalMessage)
+    errorName === 'AbortError' ||
+    /registration failed|push service error|push service|service unavailable/i.test(
+      technicalMessage,
+    )
   ) {
     return tr(
       'notifications.push.errors.unreachable',
@@ -220,9 +228,11 @@ export const usePushStore = create<PushStore>((set) => ({
   operation: null,
   setState: (state, error = null) => {
     if (state === 'subscribed' || state === 'idle') writeLastKnown(state === 'subscribed')
-    set(state === 'loading' || state === 'error'
-      ? { state, error }
-      : { state, error, operation: null })
+    set(
+      state === 'loading' || state === 'error'
+        ? { state, error }
+        : { state, error, operation: null },
+    )
   },
 }))
 
@@ -269,7 +279,7 @@ async function readyRegistration(): Promise<ServiceWorkerRegistration> {
 }
 
 function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
-  const padding = '='.repeat((4 - value.length % 4) % 4)
+  const padding = '='.repeat((4 - (value.length % 4)) % 4)
   const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/')
   const raw = window.atob(base64)
   const output = new Uint8Array(new ArrayBuffer(raw.length))
@@ -283,10 +293,12 @@ function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
 let lastRegistration: { userId: string; endpoint: string; at: number } | null = null
 
 function registeredRecently(userId: string, endpoint: string): boolean {
-  return lastRegistration !== null
-    && lastRegistration.userId === userId
-    && lastRegistration.endpoint === endpoint
-    && Date.now() - lastRegistration.at < REGISTRATION_TTL_MS
+  return (
+    lastRegistration !== null &&
+    lastRegistration.userId === userId &&
+    lastRegistration.endpoint === endpoint &&
+    Date.now() - lastRegistration.at < REGISTRATION_TTL_MS
+  )
 }
 
 /**
@@ -439,7 +451,10 @@ export async function subscribeToPush(): Promise<void> {
     usePushStore.setState({ operation: 'subscribe' })
     return store.setState(
       'error',
-      tr('notifications.push.errors.missingKey', 'Falta configurar VITE_VAPID_PUBLIC_KEY en el servidor de la aplicación.'),
+      tr(
+        'notifications.push.errors.missingKey',
+        'Falta configurar VITE_VAPID_PUBLIC_KEY en el servidor de la aplicación.',
+      ),
     )
   }
 
@@ -455,10 +470,12 @@ export async function subscribeToPush(): Promise<void> {
 
     const registration = await readyRegistration()
     const current = await registration.pushManager.getSubscription()
-    const subscription = current ?? await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
-    })
+    const subscription =
+      current ??
+      (await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      }))
 
     // Aquí sí se espera al servidor: si el registro falla, el dispositivo está
     // suscrito en el navegador pero el servidor no lo sabe, y decir "activadas"
@@ -494,7 +511,9 @@ export async function subscribeToPush(): Promise<void> {
  * cuenta: no hay quién autorice el borrado, y la fila caduca sola con el primer
  * 404/410.
  */
-export async function disablePushOnThisDevice({ server = true }: { server?: boolean } = {}): Promise<void> {
+export async function disablePushOnThisDevice({
+  server = true,
+}: { server?: boolean } = {}): Promise<void> {
   // Los endpoints a dar de baja en el servidor: el del navegador y también el
   // último que el servidor confirmó, por si rotó y la fila vieja sigue allí.
   const endpoints = new Set<string>()

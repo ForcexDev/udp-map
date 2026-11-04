@@ -73,7 +73,9 @@ export async function applyUpdate() {
       const waiting = await waitForWaitingWorker(registration, WAIT_FOR_WORKER_MS)
       if (waiting) {
         const controllerChanged = new Promise<void>((resolve) => {
-          navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), { once: true })
+          navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), {
+            once: true,
+          })
         })
         waiting.postMessage({ type: 'SKIP_WAITING' })
         await Promise.race([

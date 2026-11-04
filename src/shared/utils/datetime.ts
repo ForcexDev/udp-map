@@ -22,7 +22,10 @@ export function relativeTimeKey({ direction, unit, value }: RelativeTime): strin
 }
 
 /** Descompone una diferencia de tiempo para traducirla en la UI (time.* en i18n). */
-export function relativeTime(target: string | number | Date, now: number = Date.now()): RelativeTime {
+export function relativeTime(
+  target: string | number | Date,
+  now: number = Date.now(),
+): RelativeTime {
   const t = new Date(target).getTime()
   const diff = t - now
   const abs = Math.abs(diff)

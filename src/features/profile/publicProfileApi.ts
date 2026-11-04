@@ -3,7 +3,8 @@ import type { Profile, Pin, UserBadge, Badge } from '@/shared/types/database'
 import { demoDb } from '../pins/demoStore'
 
 // Perfil público — solo campos seguros, sin email
-const PROFILE_PUBLIC_FIELDS = 'id, name, role, faculty_id, career, year, karma, avatar_url, created_at'
+const PROFILE_PUBLIC_FIELDS =
+  'id, name, role, faculty_id, career, year, karma, avatar_url, created_at'
 // Leaderboard — mínimo necesario: identidad + karma + facultad para filtro
 const LEADERBOARD_FIELDS = 'id, name, avatar_url, faculty_id, karma'
 
@@ -19,7 +20,7 @@ export async function fetchPublicProfile(userId: string): Promise<Profile | null
       year: 2024,
       karma: 42,
       avatar_url: null,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     }
   }
 
@@ -28,7 +29,7 @@ export async function fetchPublicProfile(userId: string): Promise<Profile | null
     .select(PROFILE_PUBLIC_FIELDS)
     .eq('id', userId)
     .single()
-  
+
   if (error || !data) {
     console.error('Error fetching public profile:', error)
     return null
@@ -83,10 +84,7 @@ export async function fetchPinCommentCounts(pinIds: string[]): Promise<Record<st
     return Object.fromEntries(pinIds.map((id) => [id, demoDb.comments.get(id)?.length ?? 0]))
   }
 
-  const { data, error } = await supabase
-    .from('pin_comments')
-    .select('pin_id')
-    .in('pin_id', pinIds)
+  const { data, error } = await supabase.from('pin_comments').select('pin_id').in('pin_id', pinIds)
 
   if (error || !data) {
     console.error('Error fetching pin comment counts:', error)
@@ -102,7 +100,18 @@ export async function fetchPinCommentCounts(pinIds: string[]): Promise<Record<st
 export async function fetchUserBadges(userId: string): Promise<UserBadge[]> {
   if (!supabase) {
     return [
-      { user_id: userId, badge_id: 'explorer', awarded_at: new Date().toISOString(), badge: { id: 'explorer', name: 'Explorador', name_en: 'Explorer', description: 'Crea 5 o más pines en el mapa', description_en: 'Create 5 or more pins on the map' } }
+      {
+        user_id: userId,
+        badge_id: 'explorer',
+        awarded_at: new Date().toISOString(),
+        badge: {
+          id: 'explorer',
+          name: 'Explorador',
+          name_en: 'Explorer',
+          description: 'Crea 5 o más pines en el mapa',
+          description_en: 'Create 5 or more pins on the map',
+        },
+      },
     ]
   }
 
@@ -121,18 +130,45 @@ export async function fetchUserBadges(userId: string): Promise<UserBadge[]> {
 export async function fetchBadges(): Promise<Badge[]> {
   if (!supabase) {
     return [
-      { id: 'explorer',     name: 'Explorador', name_en: 'Explorer',     description: 'Crea 5 o más pines en el mapa',     description_en: 'Create 5 or more pins on the map' },
-      { id: 'photographer', name: 'Fotógrafo',  name_en: 'Photographer', description: 'Sube 3 o más fotos a tus pines',    description_en: 'Upload 3 or more photos to your pins' },
-      { id: 'host',         name: 'Anfitrión',  name_en: 'Host',         description: 'Organiza 2 o más eventos',          description_en: 'Host 2 or more events' },
-      { id: 'guardian',     name: 'Guardián',   name_en: 'Guardian',     description: 'Vota en 10 o más publicaciones',    description_en: 'Vote 10 or more times on posts' },
-      { id: 'pioneer',      name: 'Pionero',    name_en: 'Pioneer',      description: 'Alcanza 100 o más puntos de Karma', description_en: 'Reach 100 or more Karma points' },
+      {
+        id: 'explorer',
+        name: 'Explorador',
+        name_en: 'Explorer',
+        description: 'Crea 5 o más pines en el mapa',
+        description_en: 'Create 5 or more pins on the map',
+      },
+      {
+        id: 'photographer',
+        name: 'Fotógrafo',
+        name_en: 'Photographer',
+        description: 'Sube 3 o más fotos a tus pines',
+        description_en: 'Upload 3 or more photos to your pins',
+      },
+      {
+        id: 'host',
+        name: 'Anfitrión',
+        name_en: 'Host',
+        description: 'Organiza 2 o más eventos',
+        description_en: 'Host 2 or more events',
+      },
+      {
+        id: 'guardian',
+        name: 'Guardián',
+        name_en: 'Guardian',
+        description: 'Vota en 10 o más publicaciones',
+        description_en: 'Vote 10 or more times on posts',
+      },
+      {
+        id: 'pioneer',
+        name: 'Pionero',
+        name_en: 'Pioneer',
+        description: 'Alcanza 100 o más puntos de Karma',
+        description_en: 'Reach 100 or more Karma points',
+      },
     ]
   }
 
-  const { data, error } = await supabase
-    .from('badges')
-    .select('*')
-    .order('id')
+  const { data, error } = await supabase.from('badges').select('*').order('id')
 
   if (error || !data) {
     console.error('Error fetching all badges:', error)
@@ -146,18 +182,64 @@ export async function fetchLeaderboard(facultyId?: string): Promise<Profile[]> {
   if (!supabase) {
     // Modo demo — datos de muestra (sin email)
     const mockList: Profile[] = [
-      { id: 'demo-2',       email: '', name: 'Sofía Valdés',         role: 'student', faculty_id: 'ingenieria', career: 'Ingeniería Civil Informática',   year: 2022, karma: 120, avatar_url: null, created_at: new Date().toISOString() },
-      { id: 'demo-3',       email: '', name: 'Martín Silva',         role: 'student', faculty_id: 'medicina',   career: 'Medicina',                      year: 2021, karma: 95,  avatar_url: null, created_at: new Date().toISOString() },
-      { id: 'demo-student', email: '', name: 'Estudiante Demo',      role: 'student', faculty_id: 'ingenieria', career: 'Ingeniería Civil Informática',   year: 2024, karma: 42,  avatar_url: null, created_at: new Date().toISOString() },
-      { id: 'demo-4',       email: '', name: 'Clara Soto',           role: 'student', faculty_id: 'psicologia', career: 'Psicología',                    year: 2023, karma: 15,  avatar_url: null, created_at: new Date().toISOString() },
+      {
+        id: 'demo-2',
+        email: '',
+        name: 'Sofía Valdés',
+        role: 'student',
+        faculty_id: 'ingenieria',
+        career: 'Ingeniería Civil Informática',
+        year: 2022,
+        karma: 120,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-3',
+        email: '',
+        name: 'Martín Silva',
+        role: 'student',
+        faculty_id: 'medicina',
+        career: 'Medicina',
+        year: 2021,
+        karma: 95,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-student',
+        email: '',
+        name: 'Estudiante Demo',
+        role: 'student',
+        faculty_id: 'ingenieria',
+        career: 'Ingeniería Civil Informática',
+        year: 2024,
+        karma: 42,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'demo-4',
+        email: '',
+        name: 'Clara Soto',
+        role: 'student',
+        faculty_id: 'psicologia',
+        career: 'Psicología',
+        year: 2023,
+        karma: 15,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+      },
     ]
-    const filtered = facultyId ? mockList.filter(u => u.faculty_id === facultyId) : mockList
+    const filtered = facultyId ? mockList.filter((u) => u.faculty_id === facultyId) : mockList
     return filtered.sort((a, b) => b.karma - a.karma)
   }
 
   // Requiere usuario autenticado — la política RLS lo garantiza en el servidor,
   // pero también verificamos en cliente para no hacer requests innecesarios.
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
   if (!session) return []
 
   let query = supabase

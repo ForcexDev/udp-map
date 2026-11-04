@@ -1,5 +1,15 @@
 ### Novedades en esta versión (v0.8.0)
 
+- Navegación interior más sencilla: colores suaves, controles estables y reproducción limitada a 30 FPS que se pausa al ocultar la pestaña
+- Cámara interior corregida y vista despejada de marcadores y plantas superiores durante el recorrido
+- La navegación interior oculta los edificios del mapa que tapaban la vista 3D
+- Elige un punto de partida para navegar aunque no tengas ubicación activada
+- Ajuste de la altura de la aplicación al abrirla en iOS para evitar espacio vacío bajo la navegación
+- "Cómo llegar" giro a giro hasta la puerta de la sala en los edificios con interior mapeado (beta)
+- Una figura recorre la ruta, la cámara la sigue y el selector cambia solo de piso al subir
+- Ruta sin escaleras real por ascensor, y microdirección de la sala en su ficha
+- Botón para separar los pisos de un edificio en 3D
+
 - Rediseño integral de la interfaz con estética cálida, bordes suaves y mejor legibilidad
 - Nueva Lente Contextual sobre el mapa para filtrar edificio y planta sin tapar la vista
 - Selector de pisos adaptable con controles de carrusel cuando desborda el ancho

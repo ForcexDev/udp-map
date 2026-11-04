@@ -48,12 +48,20 @@ describe('ocupación de coordenadas de pines', () => {
 
   it('el exterior no choca con la planta baja', () => {
     // floor null es "al aire libre", y no es lo mismo que el piso 1.
-    expect(isPinLocationOccupied([location({ floor: null })], LAT, LNG, 1, undefined, NOW)).toBe(false)
-    expect(isPinLocationOccupied([location({ floor: 1 })], LAT, LNG, null, undefined, NOW)).toBe(false)
+    expect(isPinLocationOccupied([location({ floor: null })], LAT, LNG, 1, undefined, NOW)).toBe(
+      false,
+    )
+    expect(isPinLocationOccupied([location({ floor: 1 })], LAT, LNG, null, undefined, NOW)).toBe(
+      false,
+    )
   })
 
   it('un subterráneo no choca con el piso del mismo número positivo', () => {
-    expect(isPinLocationOccupied([location({ floor: -1 })], LAT, LNG, 1, undefined, NOW)).toBe(false)
-    expect(isPinLocationOccupied([location({ floor: -1 })], LAT, LNG, -1, undefined, NOW)).toBe(true)
+    expect(isPinLocationOccupied([location({ floor: -1 })], LAT, LNG, 1, undefined, NOW)).toBe(
+      false,
+    )
+    expect(isPinLocationOccupied([location({ floor: -1 })], LAT, LNG, -1, undefined, NOW)).toBe(
+      true,
+    )
   })
 })

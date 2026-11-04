@@ -3,7 +3,7 @@ import type { Pin } from '@/shared/types/database'
 import { searchRooms, normalizeRoomQuery } from './roomSearch'
 
 const room = (code: string | null, title = code ?? 'Sin código') =>
-  ({ id: code ?? title, title, room_code: code } as unknown as Pin)
+  ({ id: code ?? title, title, room_code: code }) as unknown as Pin
 
 const campus: Pin[] = [
   room('E441.1.S101'),

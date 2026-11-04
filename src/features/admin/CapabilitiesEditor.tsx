@@ -30,8 +30,10 @@ export function CapabilitiesEditor({ userId, name }: { userId: string; name: str
   const toggle = useMutation({
     mutationFn: ({ capability, on }: { capability: ModeratorCapability; on: boolean }) =>
       setUserCapability(userId, capability, on),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['admin', 'capabilities', userId] }),
-    onError: (err) => showToast(err instanceof Error ? err.message : 'No se pudo cambiar el permiso.'),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'capabilities', userId] }),
+    onError: (err) =>
+      showToast(err instanceof Error ? err.message : 'No se pudo cambiar el permiso.'),
   })
 
   if (isLoading) return null

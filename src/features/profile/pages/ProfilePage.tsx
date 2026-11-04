@@ -14,7 +14,13 @@ import { LeaderboardTable } from '../components/LeaderboardTable'
 
 import { EditProfileModal } from '../EditProfileModal'
 import { PublicProfileModal } from '../PublicProfileModal'
-import { fetchPublicProfile, fetchUserPins, fetchUserBadges, fetchBadges, fetchLeaderboard } from '../publicProfileApi'
+import {
+  fetchPublicProfile,
+  fetchUserPins,
+  fetchUserBadges,
+  fetchBadges,
+  fetchLeaderboard,
+} from '../publicProfileApi'
 
 export function ProfilePage() {
   const { t } = useTranslation()
@@ -27,7 +33,13 @@ export function ProfilePage() {
 
   const [editOpen, setEditOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'reports' | 'badges' | 'events' | 'leaderboard'>(() =>
-    searchParams.get('tab') === 'badges' ? 'badges' : searchParams.get('tab') === 'events' ? 'events' : searchParams.get('tab') === 'leaderboard' ? 'leaderboard' : 'reports',
+    searchParams.get('tab') === 'badges'
+      ? 'badges'
+      : searchParams.get('tab') === 'events'
+        ? 'events'
+        : searchParams.get('tab') === 'leaderboard'
+          ? 'leaderboard'
+          : 'reports',
   )
   const [leaderboardFaculty, setLeaderboardFaculty] = useState<string>('all')
   const myEvents = useMyEvents()
@@ -35,7 +47,7 @@ export function ProfilePage() {
 
   const profileQuery = useQuery({
     queryKey: ['profile', user?.id],
-    queryFn: () => user ? fetchPublicProfile(user.id) : null,
+    queryFn: () => (user ? fetchPublicProfile(user.id) : null),
     enabled: Boolean(user),
   })
 
@@ -47,7 +59,7 @@ export function ProfilePage() {
 
   const badgesQuery = useQuery({
     queryKey: ['user-badges', user?.id],
-    queryFn: () => user ? fetchUserBadges(user.id) : [],
+    queryFn: () => (user ? fetchUserBadges(user.id) : []),
     enabled: Boolean(user),
   })
 
@@ -70,7 +82,8 @@ export function ProfilePage() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'badges' || tab === 'leaderboard' || tab === 'reports' || tab === 'events') setActiveTab(tab as 'reports' | 'badges' | 'events' | 'leaderboard')
+    if (tab === 'badges' || tab === 'leaderboard' || tab === 'reports' || tab === 'events')
+      setActiveTab(tab as 'reports' | 'badges' | 'events' | 'leaderboard')
   }, [searchParams])
 
   const handleTabChange = (val: string) => {
@@ -90,7 +103,6 @@ export function ProfilePage() {
   return (
     <div className="h-full w-full max-w-full overflow-x-hidden overflow-y-auto overscroll-x-none bg-[#FAF8F5] touch-pan-y dark:bg-[#151820]">
       <div className="mx-auto min-h-full w-full max-w-2xl overflow-x-hidden pt-safe pb-16">
-
         {/* Topbar */}
         <div className="flex items-center justify-between px-5 py-3.5">
           <h1 className="m-0 text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
@@ -141,7 +153,6 @@ export function ProfilePage() {
             />
           }
         />
-
       </div>
 
       <EditProfileModal open={editOpen} onOpenChange={setEditOpen} />

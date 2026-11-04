@@ -19,7 +19,11 @@ import { AdminError, AdminLoading, AdminScreen } from './AdminScreen'
 
 export function DashboardPanel() {
   const { t } = useTranslation()
-  const { data: stats, isLoading, error } = useQuery({
+  const {
+    data: stats,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: fetchDashboardStats,
   })
@@ -133,10 +137,26 @@ export function DashboardPanel() {
               {t('admin.roles')}
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <RoleBox label={t('admin.students')} value={stats.roleCounts.student} tone="text-blue-600 dark:text-blue-400" />
-              <RoleBox label={t('admin.moderators')} value={stats.roleCounts.moderator} tone="text-amber-600 dark:text-amber-500" />
-              <RoleBox label={t('admin.admins')} value={stats.roleCounts.admin} tone="text-[#D41F2D] dark:text-red-400" />
-              <RoleBox label={t('admin.guests')} value={stats.roleCounts.guest} tone="text-neutral-500" />
+              <RoleBox
+                label={t('admin.students')}
+                value={stats.roleCounts.student}
+                tone="text-blue-600 dark:text-blue-400"
+              />
+              <RoleBox
+                label={t('admin.moderators')}
+                value={stats.roleCounts.moderator}
+                tone="text-amber-600 dark:text-amber-500"
+              />
+              <RoleBox
+                label={t('admin.admins')}
+                value={stats.roleCounts.admin}
+                tone="text-[#D41F2D] dark:text-red-400"
+              />
+              <RoleBox
+                label={t('admin.guests')}
+                value={stats.roleCounts.guest}
+                tone="text-neutral-500"
+              />
             </div>
           </section>
 
@@ -189,7 +209,9 @@ function StatCard({ label, value, sub, icon: Icon, tone, bg, to }: StatCardProps
         <span className="block text-2xl font-black tracking-tight text-neutral-900 dark:text-white">
           {value}
         </span>
-        {sub && <span className="mt-0.5 block text-[10px] font-medium text-neutral-400">{sub}</span>}
+        {sub && (
+          <span className="mt-0.5 block text-[10px] font-medium text-neutral-400">{sub}</span>
+        )}
       </span>
     </>
   )

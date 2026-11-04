@@ -5,24 +5,25 @@ antecedentes. La referencia describe el código y SQL versionados; no certifica
 lo desplegado ni el resultado en dispositivos reales.
 
 <a id="que-leer"></a>
+
 ## Qué leer
 
-| Necesidad | Documento principal |
-|---|---|
-| Entender el proyecto y arrancarlo | [README raíz](../README.md) |
-| Reglas de un cambio | [CLAUDE.md](../CLAUDE.md) |
-| Pendientes, prioridades y decisiones abiertas | [ROADMAP](ROADMAP.md) |
-| Preparar el entorno y contribuir | [Desarrollo](guias/desarrollo.md) |
-| Configurar, reconstruir, desplegar y volver atrás | [Despliegue](guias/despliegue.md) |
-| Comprobaciones locales y pruebas manuales | [Validación](guias/validacion.md) |
-| Rutas, dominios, fuentes y consumidores | [Repositorio](referencia/repositorio.md) |
-| Modelo, permisos, RPC, triggers y discrepancias SQL | [Base de datos](referencia/base-de-datos.md) |
-| Códigos, catálogo e importación de salas | [Salas](referencia/salas.md) |
-| Avisos, push, sesiones y moderación | [Notificaciones](referencia/notificaciones.md) |
-| Detección y aplicación de actualizaciones | [PWA](referencia/pwa.md) |
-| Motivos arquitectónicos y consecuencias | [Arquitectura](decisiones/arquitectura.md) |
-| Alternativas y límites del rework push | [Decisiones de push](decisiones/notificaciones-push.md) |
-| Novedades que muestra la aplicación | [CHANGELOG](CHANGELOG.md) |
+| Necesidad                                           | Documento principal                                     |
+| --------------------------------------------------- | ------------------------------------------------------- |
+| Entender el proyecto y arrancarlo                   | [README raíz](../README.md)                             |
+| Reglas de un cambio                                 | [CLAUDE.md](../CLAUDE.md)                               |
+| Pendientes, prioridades y decisiones abiertas       | [ROADMAP](ROADMAP.md)                                   |
+| Preparar el entorno y contribuir                    | [Desarrollo](guias/desarrollo.md)                       |
+| Configurar, reconstruir, desplegar y volver atrás   | [Despliegue](guias/despliegue.md)                       |
+| Comprobaciones locales y pruebas manuales           | [Validación](guias/validacion.md)                       |
+| Rutas, dominios, fuentes y consumidores             | [Repositorio](referencia/repositorio.md)                |
+| Modelo, permisos, RPC, triggers y discrepancias SQL | [Base de datos](referencia/base-de-datos.md)            |
+| Códigos, catálogo e importación de salas            | [Salas](referencia/salas.md)                            |
+| Avisos, push, sesiones y moderación                 | [Notificaciones](referencia/notificaciones.md)          |
+| Detección y aplicación de actualizaciones           | [PWA](referencia/pwa.md)                                |
+| Motivos arquitectónicos y consecuencias             | [Arquitectura](decisiones/arquitectura.md)              |
+| Alternativas y límites del rework push              | [Decisiones de push](decisiones/notificaciones-push.md) |
+| Novedades que muestra la aplicación                 | [CHANGELOG](CHANGELOG.md)                               |
 
 `CHANGELOG.md` conserva su ruta y formato porque Vite lo convierte en el aviso
 de actualización. No acumules allí auditorías ni listas auxiliares.

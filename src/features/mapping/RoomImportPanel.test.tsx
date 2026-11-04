@@ -136,9 +136,7 @@ describe('RoomImportPanel', () => {
   it('avisa en vez de ofrecer una sala cuya planta nadie declaró', () => {
     // Colocarla fallaría contra `trg_validate_pin_floor`, y un botón que falla
     // siempre es peor que no tener botón.
-    render(
-      <RoomImportPanel mapping={mappingWith([floor(1)])} pins={[]} building={building()} />,
-    )
+    render(<RoomImportPanel mapping={mappingWith([floor(1)])} pins={[]} building={building()} />)
 
     expect(screen.getByText('Falta la planta')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Colocar' })).toHaveLength(2)

@@ -16,7 +16,9 @@ interface EventCalendarDialogProps {
 const WEEKDAYS = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
 
 const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate()
 
 /**
  * El calendario dejó de ser la vista principal de Eventos y pasó a ser lo que
@@ -62,7 +64,9 @@ export function EventCalendarDialog({
       contentClassName="!bg-white dark:!bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] sm:max-w-sm rounded-3xl"
     >
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="m-0 text-base font-bold capitalize text-stone-900 dark:text-stone-100">{monthName}</h3>
+        <h3 className="m-0 text-base font-bold capitalize text-stone-900 dark:text-stone-100">
+          {monthName}
+        </h3>
         <div className="flex gap-1">
           <button
             onClick={() => setCursor(new Date(year, month - 1, 1))}

@@ -5,7 +5,13 @@ import { useUIStore } from '@/shared/stores/uiStore'
 import { facultyIdAt } from '@/shared/data/facultyStore'
 import { floorFromRoomCode } from '@/shared/utils/roomCode'
 import { floorName } from '@/features/mapping/areaStyles'
-import { areaAt, buildingAt, facultyLevels, floorsOf, useMapping } from '@/features/mapping/useMapping'
+import {
+  areaAt,
+  buildingAt,
+  facultyLevels,
+  floorsOf,
+  useMapping,
+} from '@/features/mapping/useMapping'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Planta, código de sala y confirmación de dónde va a quedar el pin.
@@ -41,7 +47,8 @@ const CHIP_BASE =
   'shrink-0 snap-center cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold tabular-nums transition-all'
 const CHIP_OFF =
   'border border-[#E6E0D5] bg-white text-stone-600 hover:text-stone-900 dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-400 dark:hover:text-stone-100'
-const CHIP_EXTERIOR_ON = 'bg-stone-900 text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950'
+const CHIP_EXTERIOR_ON =
+  'bg-stone-900 text-[#FAF8F5] shadow-xs dark:bg-stone-100 dark:text-stone-950'
 const CHIP_FLOOR_ON =
   'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
 

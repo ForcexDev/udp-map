@@ -22,7 +22,9 @@ type Range = 'today' | 'week' | 'month' | 'all'
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate()
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 
@@ -109,7 +111,11 @@ export function EventsPage() {
     const today = new Date(now)
     const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
     const limit =
-      range === 'today' ? start + DAY_MS : range === 'week' ? start + 7 * DAY_MS : start + 30 * DAY_MS
+      range === 'today'
+        ? start + DAY_MS
+        : range === 'week'
+          ? start + 7 * DAY_MS
+          : start + 30 * DAY_MS
 
     return upcoming.filter((e) => {
       if (!e.starts_at) return false
@@ -199,7 +205,10 @@ export function EventsPage() {
                 repetía tantas veces como eventos hubiera y dejaba de leerse. */}
             {userId && (
               <p className="mb-4 rounded-2xl bg-[#EFECE4] px-4 py-2.5 text-xs font-medium leading-snug text-stone-600 dark:bg-white/[0.08] dark:text-stone-300">
-                {t('events.rsvpVisibility', 'Al marcar “Asistiré” o “Me interesa”, quien organiza el evento verá tu nombre.')}
+                {t(
+                  'events.rsvpVisibility',
+                  'Al marcar “Asistiré” o “Me interesa”, quien organiza el evento verá tu nombre.',
+                )}
               </p>
             )}
 
@@ -279,7 +288,11 @@ export function EventsPage() {
             {/* Agenda */}
             {groups.length === 0 ? (
               <div className="mx-auto mt-8 flex max-w-md flex-col items-center gap-2 rounded-3xl border border-[#E6E0D5] bg-white p-12 text-center shadow-xs dark:border-white/[0.07] dark:bg-[#1E222D]">
-                <CalendarX2 size={40} strokeWidth={1.5} className="text-stone-400 dark:text-stone-600" />
+                <CalendarX2
+                  size={40}
+                  strokeWidth={1.5}
+                  className="text-stone-400 dark:text-stone-600"
+                />
                 <h3 className="mt-2 text-base font-bold text-stone-800 dark:text-stone-200">
                   {t('events.noEventsTitle', 'No hay eventos por aquí')}
                 </h3>

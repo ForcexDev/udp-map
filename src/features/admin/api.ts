@@ -1,7 +1,13 @@
 import { supabase } from '@/shared/lib/supabase'
 import { isMissingFunction } from '@/shared/utils/rpcErrors'
 import type { Profile, Pin, Role, ModeratorCapability } from '@/shared/types/database'
-import type { DashboardStats, ActivityEntry, ActivityFeed, AdminUserFilter, AdminPinFilter } from './types'
+import type {
+  DashboardStats,
+  ActivityEntry,
+  ActivityFeed,
+  AdminUserFilter,
+  AdminPinFilter,
+} from './types'
 import { demoDb } from '@/features/pins/demoStore'
 import { REASON_LABELS } from '@/features/moderation/labels'
 import type { ContentReport } from '@/shared/types/database'
@@ -14,10 +20,54 @@ function sanitizePostgrestSearch(input?: string): string {
 
 // Datos Mock para Modo Demo
 const MOCK_PROFILES: Profile[] = [
-  { id: 'demo-admin', email: 'admin@mail.udp.cl', name: 'Admin Demo', role: 'admin', faculty_id: 'ingenieria', career: 'Ingeniería Civil Informática', year: 2021, karma: 250, avatar_url: null, created_at: new Date(Date.now() - 30 * 86400000).toISOString() },
-  { id: 'demo-mod', email: 'mod@mail.udp.cl', name: 'Moderador Demo', role: 'moderator', faculty_id: 'derecho', career: 'Derecho', year: 2022, karma: 180, avatar_url: null, created_at: new Date(Date.now() - 20 * 86400000).toISOString() },
-  { id: 'demo-student', email: 'estudiante@mail.udp.cl', name: 'Estudiante Demo', role: 'student', faculty_id: 'medicina', career: 'Medicina', year: 2024, karma: 42, avatar_url: null, created_at: new Date(Date.now() - 10 * 86400000).toISOString() },
-  { id: 'demo-4', email: 'sofia.valdes@mail.udp.cl', name: 'Sofía Valdés', role: 'student', faculty_id: 'psicologia', career: 'Psicología', year: 2023, karma: 95, avatar_url: null, created_at: new Date(Date.now() - 5 * 86400000).toISOString() },
+  {
+    id: 'demo-admin',
+    email: 'admin@mail.udp.cl',
+    name: 'Admin Demo',
+    role: 'admin',
+    faculty_id: 'ingenieria',
+    career: 'Ingeniería Civil Informática',
+    year: 2021,
+    karma: 250,
+    avatar_url: null,
+    created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+  },
+  {
+    id: 'demo-mod',
+    email: 'mod@mail.udp.cl',
+    name: 'Moderador Demo',
+    role: 'moderator',
+    faculty_id: 'derecho',
+    career: 'Derecho',
+    year: 2022,
+    karma: 180,
+    avatar_url: null,
+    created_at: new Date(Date.now() - 20 * 86400000).toISOString(),
+  },
+  {
+    id: 'demo-student',
+    email: 'estudiante@mail.udp.cl',
+    name: 'Estudiante Demo',
+    role: 'student',
+    faculty_id: 'medicina',
+    career: 'Medicina',
+    year: 2024,
+    karma: 42,
+    avatar_url: null,
+    created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
+  },
+  {
+    id: 'demo-4',
+    email: 'sofia.valdes@mail.udp.cl',
+    name: 'Sofía Valdés',
+    role: 'student',
+    faculty_id: 'psicologia',
+    career: 'Psicología',
+    year: 2023,
+    karma: 95,
+    avatar_url: null,
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+  },
 ]
 
 export async function fetchDashboardStats(): Promise<DashboardStats> {
@@ -26,9 +76,10 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       totalUsers: MOCK_PROFILES.length,
       roleCounts: { admin: 1, moderator: 1, student: 2, guest: 0 },
       totalPins: demoDb.pins.length,
-      activePins: demoDb.pins.filter(p => !p.expires_at || new Date(p.expires_at) > new Date()).length,
+      activePins: demoDb.pins.filter((p) => !p.expires_at || new Date(p.expires_at) > new Date())
+        .length,
       pinsToday: 2,
-      upcomingEvents: demoDb.pins.filter(p => p.type === 'event').length,
+      upcomingEvents: demoDb.pins.filter((p) => p.type === 'event').length,
       pendingReports: 1,
       totalKarma: 567,
       pushSubscribers: 3,
@@ -62,10 +113,12 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     totalUsers: profiles.length,
     roleCounts,
     totalPins: pins.length,
-    activePins: pins.filter(p => !p.expires_at || new Date(p.expires_at) > now).length,
-    pinsToday: pins.filter(p => p.created_at?.startsWith(todayStr)).length,
-    upcomingEvents: pins.filter(p => p.type === 'event' && p.starts_at && new Date(p.starts_at) >= now).length,
-    pendingReports: reports.filter(r => r.status === 'pending').length,
+    activePins: pins.filter((p) => !p.expires_at || new Date(p.expires_at) > now).length,
+    pinsToday: pins.filter((p) => p.created_at?.startsWith(todayStr)).length,
+    upcomingEvents: pins.filter(
+      (p) => p.type === 'event' && p.starts_at && new Date(p.starts_at) >= now,
+    ).length,
+    pendingReports: reports.filter((r) => r.status === 'pending').length,
     totalKarma,
     pushSubscribers: pushSubscribersCount,
   }
@@ -76,10 +129,12 @@ export async function fetchAdminUsers(filter?: AdminUserFilter): Promise<Profile
 
   if (!supabase) {
     let list = [...MOCK_PROFILES]
-    if (filter?.role && filter.role !== 'all') list = list.filter(u => u.role === filter.role)
+    if (filter?.role && filter.role !== 'all') list = list.filter((u) => u.role === filter.role)
     if (safeSearch) {
       const q = safeSearch.toLowerCase()
-      list = list.filter(u => u.name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+      list = list.filter(
+        (u) => u.name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+      )
     }
     return list
   }
@@ -95,7 +150,7 @@ export async function fetchAdminUsers(filter?: AdminUserFilter): Promise<Profile
 
 export async function adminSetUserRole(targetUserId: string, newRole: Role): Promise<void> {
   if (!supabase) {
-    const target = MOCK_PROFILES.find(u => u.id === targetUserId)
+    const target = MOCK_PROFILES.find((u) => u.id === targetUserId)
     if (target) target.role = newRole
     return
   }
@@ -112,15 +167,20 @@ export async function fetchAdminPins(filter?: AdminPinFilter): Promise<Pin[]> {
 
   if (!supabase) {
     let list = [...demoDb.pins]
-    if (filter?.type && filter.type !== 'all') list = list.filter(p => p.type === filter.type)
+    if (filter?.type && filter.type !== 'all') list = list.filter((p) => p.type === filter.type)
     if (safeSearch) {
       const q = safeSearch.toLowerCase()
-      list = list.filter(p => p.title.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q))
+      list = list.filter(
+        (p) => p.title.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q),
+      )
     }
     return list
   }
 
-  let query = supabase.from('pins').select('*, pin_photos(*)').order('created_at', { ascending: false })
+  let query = supabase
+    .from('pins')
+    .select('*, pin_photos(*)')
+    .order('created_at', { ascending: false })
   if (filter?.type && filter.type !== 'all') query = query.eq('type', filter.type)
   if (safeSearch) query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`)
 
@@ -161,7 +221,7 @@ export async function adminSetPinFloors(
 
 export async function adminDeletePin(pinId: string): Promise<void> {
   if (!supabase) {
-    demoDb.pins = demoDb.pins.filter(p => p.id !== pinId)
+    demoDb.pins = demoDb.pins.filter((p) => p.id !== pinId)
     return
   }
   const { error } = await supabase.from('pins').delete().eq('id', pinId)
@@ -197,24 +257,53 @@ export interface PushSubscriber {
 export async function fetchPushSubscribers(): Promise<PushSubscriber[]> {
   if (!supabase) {
     return [
-      { userId: 'demo-admin', endpoint: 'https://push.example/demo-1', name: 'Admin Demo', role: 'admin', userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/141', createdAt: new Date(Date.now() - 4 * 86400000).toISOString() },
-      { userId: 'demo-mod', endpoint: 'https://push.example/demo-2', name: 'Moderador Demo', role: 'moderator', userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2) Safari', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
-      { userId: 'demo-student', endpoint: 'https://push.example/demo-3', name: 'Estudiante Demo', role: 'student', userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/141', createdAt: new Date(Date.now() - 3600000).toISOString() },
+      {
+        userId: 'demo-admin',
+        endpoint: 'https://push.example/demo-1',
+        name: 'Admin Demo',
+        role: 'admin',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/141',
+        createdAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+      },
+      {
+        userId: 'demo-mod',
+        endpoint: 'https://push.example/demo-2',
+        name: 'Moderador Demo',
+        role: 'moderator',
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2) Safari',
+        createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+      },
+      {
+        userId: 'demo-student',
+        endpoint: 'https://push.example/demo-3',
+        name: 'Estudiante Demo',
+        role: 'student',
+        userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/141',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+      },
     ]
   }
 
   const { data, error } = await supabase.rpc('admin_push_subscribers')
   if (error) throw error
 
-  return ((data ?? []) as Array<{ user_id: string; endpoint: string; name: string | null; role: string | null; user_agent: string | null; created_at: string }>)
-    .map((row) => ({
-      userId: row.user_id,
-      endpoint: row.endpoint,
-      name: row.name,
-      role: row.role,
-      userAgent: row.user_agent,
-      createdAt: row.created_at,
-    }))
+  return (
+    (data ?? []) as Array<{
+      user_id: string
+      endpoint: string
+      name: string | null
+      role: string | null
+      user_agent: string | null
+      created_at: string
+    }>
+  ).map((row) => ({
+    userId: row.user_id,
+    endpoint: row.endpoint,
+    name: row.name,
+    role: row.role,
+    userAgent: row.user_agent,
+    createdAt: row.created_at,
+  }))
 }
 
 /**
@@ -271,7 +360,9 @@ export async function setUserCapability(
   })
   if (error) {
     if (isMissingFunction(error)) {
-      throw new Error('Repartir permisos necesita la migración 20260831000200 aplicada en Supabase.')
+      throw new Error(
+        'Repartir permisos necesita la migración 20260831000200 aplicada en Supabase.',
+      )
     }
     throw new Error(error.message || 'No se pudo cambiar el permiso.')
   }
@@ -300,10 +391,34 @@ export async function fetchRecentActivity(): Promise<ActivityFeed> {
     return {
       fromLog: true,
       entries: [
-        { id: '1', action: 'pin_created', actorName: 'Estudiante Demo', summary: 'Sala libre en la FIC', timestamp: new Date(Date.now() - 5 * 60000).toISOString() },
-        { id: '2', action: 'report_filed', actorName: 'Sofía Valdés', summary: `Denuncia por ${REASON_LABELS.inappropriate}`, timestamp: new Date(Date.now() - 25 * 60000).toISOString() },
-        { id: '3', action: 'pin_verified', actorName: 'Moderador Demo', summary: 'Microondas del casino', timestamp: new Date(Date.now() - 90 * 60000).toISOString() },
-        { id: '4', action: 'role_changed', actorName: 'Admin Demo', summary: 'Sofía Valdés: student → moderator', timestamp: new Date(Date.now() - 26 * 3600000).toISOString() },
+        {
+          id: '1',
+          action: 'pin_created',
+          actorName: 'Estudiante Demo',
+          summary: 'Sala libre en la FIC',
+          timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
+        },
+        {
+          id: '2',
+          action: 'report_filed',
+          actorName: 'Sofía Valdés',
+          summary: `Denuncia por ${REASON_LABELS.inappropriate}`,
+          timestamp: new Date(Date.now() - 25 * 60000).toISOString(),
+        },
+        {
+          id: '3',
+          action: 'pin_verified',
+          actorName: 'Moderador Demo',
+          summary: 'Microondas del casino',
+          timestamp: new Date(Date.now() - 90 * 60000).toISOString(),
+        },
+        {
+          id: '4',
+          action: 'role_changed',
+          actorName: 'Admin Demo',
+          summary: 'Sofía Valdés: student → moderator',
+          timestamp: new Date(Date.now() - 26 * 3600000).toISOString(),
+        },
       ],
     }
   }
@@ -324,9 +439,10 @@ export async function fetchRecentActivity(): Promise<ActivityFeed> {
   }
 
   // Cualquier error que no sea "la función no existe" sí es un problema.
-  const faltaLaMigracion = error.code === 'PGRST202'
-    || error.code === '42883'
-    || /could not find the function|does not exist/i.test(error.message ?? '')
+  const faltaLaMigracion =
+    error.code === 'PGRST202' ||
+    error.code === '42883' ||
+    /could not find the function|does not exist/i.test(error.message ?? '')
   if (!faltaLaMigracion) throw error
 
   return { fromLog: false, entries: await fetchLegacyActivity() }
@@ -337,8 +453,16 @@ async function fetchLegacyActivity(): Promise<ActivityEntry[]> {
   if (!supabase) return []
 
   const [pinsRes, reportsRes] = await Promise.all([
-    supabase.from('pins').select('id, title, created_at').order('created_at', { ascending: false }).limit(15),
-    supabase.from('content_reports').select('id, reason, created_at').order('created_at', { ascending: false }).limit(15),
+    supabase
+      .from('pins')
+      .select('id, title, created_at')
+      .order('created_at', { ascending: false })
+      .limit(15),
+    supabase
+      .from('content_reports')
+      .select('id, reason, created_at')
+      .order('created_at', { ascending: false })
+      .limit(15),
   ])
 
   const entries: ActivityEntry[] = [
@@ -399,7 +523,10 @@ export interface PushRunResult {
  * entregas. Sin él la petición va exactamente como siempre, sin cuerpo: la
  * difusión crea un aviso por destinatario y no hay un id que dar.
  */
-async function drainPushQueue(accessToken: string, notificationId?: string): Promise<PushRunResult> {
+async function drainPushQueue(
+  accessToken: string,
+  notificationId?: string,
+): Promise<PushRunResult> {
   const baseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
   const res = await fetch(`${baseUrl}/functions/v1/send-push`, {
     method: 'POST',
@@ -451,7 +578,9 @@ export async function sendSelfPushTest(): Promise<SelfPushTestResult> {
     }
   }
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
   if (!session) throw new Error('No hay sesión activa de administrador.')
 
   const { data, error } = await supabase.rpc('admin_send_test_push_to_self')
@@ -494,23 +623,30 @@ const countOf = (value: unknown): number =>
  */
 export function describeSelfPushTest(result: SelfPushTestResult): PushMessagePart[] {
   if (!result.notificationCreated) {
-    return [{
-      key: 'admin.push.test.notCreated',
-      fallback: 'No se creó el aviso de prueba: tus preferencias de notificación silencian los avisos del sistema.',
-    }]
+    return [
+      {
+        key: 'admin.push.test.notCreated',
+        fallback:
+          'No se creó el aviso de prueba: tus preferencias de notificación silencian los avisos del sistema.',
+      },
+    ]
   }
 
   const info = result.notification
   if (!info || info.error || !info.deliveries) {
     return result.sent > 0
-      ? [{
-          key: 'admin.push.test.legacySent',
-          fallback: 'Prueba enviada. Debería aparecer en tu pantalla en unos segundos.',
-        }]
-      : [{
-          key: 'admin.push.test.legacyNone',
-          fallback: 'La prueba se encoló pero no salió a ningún dispositivo.',
-        }]
+      ? [
+          {
+            key: 'admin.push.test.legacySent',
+            fallback: 'Prueba enviada. Debería aparecer en tu pantalla en unos segundos.',
+          },
+        ]
+      : [
+          {
+            key: 'admin.push.test.legacyNone',
+            fallback: 'La prueba se encoló pero no salió a ningún dispositivo.',
+          },
+        ]
   }
 
   const sent = countOf(info.deliveries.sent)
@@ -519,10 +655,13 @@ export function describeSelfPushTest(result: SelfPushTestResult): PushMessagePar
   const expired = countOf(info.deliveries.expired)
 
   if (sent + pending + failed + expired === 0) {
-    return [{
-      key: 'admin.push.test.noDeliveries',
-      fallback: 'El aviso se creó, pero no generó ninguna entrega: tu cuenta no tiene dispositivos con push, o tus preferencias de push silencian los avisos del sistema.',
-    }]
+    return [
+      {
+        key: 'admin.push.test.noDeliveries',
+        fallback:
+          'El aviso se creó, pero no generó ninguna entrega: tu cuenta no tiene dispositivos con push, o tus preferencias de push silencian los avisos del sistema.',
+      },
+    ]
   }
 
   const parts: PushMessagePart[] = []
@@ -537,9 +676,10 @@ export function describeSelfPushTest(result: SelfPushTestResult): PushMessagePar
     parts.push({
       key: 'admin.push.test.pending',
       count: pending,
-      fallback: pending === 1
-        ? '1 entrega pendiente: el envío automático ya la está procesando.'
-        : `${pending} entregas pendientes: el envío automático ya las está procesando.`,
+      fallback:
+        pending === 1
+          ? '1 entrega pendiente: el envío automático ya la está procesando.'
+          : `${pending} entregas pendientes: el envío automático ya las está procesando.`,
     })
   }
   if (failed > 0) {
@@ -553,9 +693,10 @@ export function describeSelfPushTest(result: SelfPushTestResult): PushMessagePar
     parts.push({
       key: 'admin.push.test.expired',
       count: expired,
-      fallback: expired === 1
-        ? '1 entrega caducada: la suscripción de ese dispositivo ya no existe.'
-        : `${expired} entregas caducadas: esas suscripciones ya no existen.`,
+      fallback:
+        expired === 1
+          ? '1 entrega caducada: la suscripción de ese dispositivo ya no existe.'
+          : `${expired} entregas caducadas: esas suscripciones ya no existen.`,
     })
   }
 
@@ -605,13 +746,39 @@ export interface PushServiceStat {
  * deshace): la tarjeta lo dice en vez de enseñar una lista vacía que parecería
  * "no hay entregas".
  */
-export async function fetchPushDeliveryStats(days = PUSH_STATS_DAYS): Promise<PushServiceStat[] | null> {
+export async function fetchPushDeliveryStats(
+  days = PUSH_STATS_DAYS,
+): Promise<PushServiceStat[] | null> {
   if (!supabase) {
     const ago = (minutes: number) => new Date(Date.now() - minutes * 60000).toISOString()
     return [
-      { host: 'web.push.apple.com', sent: 412, failed: 3, expired: 0, pending: 2, lastAt: ago(1), lastError: 'HTTP 403: BadJwtToken' },
-      { host: 'fcm.googleapis.com', sent: 880, failed: 0, expired: 12, pending: 0, lastAt: ago(4), lastError: 'HTTP 410: la suscripción ya no existe' },
-      { host: 'updates.push.services.mozilla.com', sent: 37, failed: 0, expired: 0, pending: 0, lastAt: ago(60), lastError: null },
+      {
+        host: 'web.push.apple.com',
+        sent: 412,
+        failed: 3,
+        expired: 0,
+        pending: 2,
+        lastAt: ago(1),
+        lastError: 'HTTP 403: BadJwtToken',
+      },
+      {
+        host: 'fcm.googleapis.com',
+        sent: 880,
+        failed: 0,
+        expired: 12,
+        pending: 0,
+        lastAt: ago(4),
+        lastError: 'HTTP 410: la suscripción ya no existe',
+      },
+      {
+        host: 'updates.push.services.mozilla.com',
+        sent: 37,
+        failed: 0,
+        expired: 0,
+        pending: 0,
+        lastAt: ago(60),
+        lastError: null,
+      },
     ]
   }
 
@@ -621,8 +788,18 @@ export async function fetchPushDeliveryStats(days = PUSH_STATS_DAYS): Promise<Pu
     throw error
   }
 
-  return ((data ?? []) as Array<Omit<PushServiceStat, 'lastAt' | 'lastError'> & { last_at: string | null; last_error: string | null }>)
-    .map(({ last_at, last_error, ...counts }) => ({ ...counts, lastAt: last_at, lastError: last_error }))
+  return (
+    (data ?? []) as Array<
+      Omit<PushServiceStat, 'lastAt' | 'lastError'> & {
+        last_at: string | null
+        last_error: string | null
+      }
+    >
+  ).map(({ last_at, last_error, ...counts }) => ({
+    ...counts,
+    lastAt: last_at,
+    lastError: last_error,
+  }))
 }
 
 /**
@@ -640,7 +817,9 @@ export async function triggerServerPushTest(
   if (!supabase) {
     return { processed: 1, sent: 1, failed: 0 }
   }
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
   if (!session) throw new Error('No hay sesión activa de administrador.')
 
   const finalTitle = title || 'Notificación de prueba UDP Map'
@@ -654,7 +833,9 @@ export async function triggerServerPushTest(
   })
 
   if (rpcError) {
-    throw new Error(rpcError.message || rpcError.details || 'Error al ejecutar broadcast de notificaciones')
+    throw new Error(
+      rpcError.message || rpcError.details || 'Error al ejecutar broadcast de notificaciones',
+    )
   }
 
   // 2. Vaciar la cola ya, sin esperar al cron del minuto.

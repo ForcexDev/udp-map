@@ -38,11 +38,7 @@ export interface IndoorLocation {
  * la planta cualquiera de las dos "contiene" el punto. Con `floor` null se
  * buscan solo las áreas exteriores, que es lo correcto para un pin de patio.
  */
-export function indoorLocationAt(
-  lat: number,
-  lng: number,
-  floor: number | null,
-): IndoorLocation {
+export function indoorLocationAt(lat: number, lng: number, floor: number | null): IndoorLocation {
   const { buildings, areas } = cache
 
   const building = smallestContaining(

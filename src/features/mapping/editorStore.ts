@@ -22,7 +22,7 @@ import type { CatalogRoom } from '@/shared/utils/roomCatalog'
 // sincronía tras una edición libre no tiene una respuesta correcta.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type Tool = 'select' | 'rect' | 'polygon' | 'trace' | 'room'
+export type Tool = 'select' | 'rect' | 'polygon' | 'trace' | 'room' | 'nav'
 
 // La herramienta 'room' es la del importador de salas: no dibuja nada, solo
 // espera un clic para colocar el pin de la sala que se eligió en la lista.
@@ -251,11 +251,28 @@ export const useMappingEditor = create<MappingEditorState>((set, get) => {
 
     selectBuilding: (buildingId) => {
       clearDraft()
-      set({ selectedBuildingId: buildingId, selectedFloor: null, selectedAreaId: null, facultyEdit: null, tool: 'select', previewHeightM: null })
+      set({
+        selectedBuildingId: buildingId,
+        selectedFloor: null,
+        selectedAreaId: null,
+        facultyEdit: null,
+        tool: 'select',
+        previewHeightM: null,
+      })
     },
     selectFloor: (buildingId, level) => {
       clearDraft()
-      set({ selectedBuildingId: buildingId, selectedFloor: level, selectedAreaId: null, facultyEdit: null, tool: 'select', previewHeightM: null })
+      // El grafo de navegación se edita planta a planta: cambiar de planta no
+      // debe sacar de la herramienta.
+      const tool = get().tool === 'nav' ? 'nav' : 'select'
+      set({
+        selectedBuildingId: buildingId,
+        selectedFloor: level,
+        selectedAreaId: null,
+        facultyEdit: null,
+        tool,
+        previewHeightM: null,
+      })
     },
     selectArea: (areaId) => {
       clearDraft()
@@ -263,7 +280,14 @@ export const useMappingEditor = create<MappingEditorState>((set, get) => {
     },
     selectOutdoor: () => {
       clearDraft()
-      set({ selectedBuildingId: null, selectedFloor: null, selectedAreaId: null, facultyEdit: null, tool: 'select', previewHeightM: null })
+      set({
+        selectedBuildingId: null,
+        selectedFloor: null,
+        selectedAreaId: null,
+        facultyEdit: null,
+        tool: 'select',
+        previewHeightM: null,
+      })
     },
 
     tool: 'select',

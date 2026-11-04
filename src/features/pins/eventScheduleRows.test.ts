@@ -37,7 +37,9 @@ describe('draftsFromRows', () => {
 describe('validateRows', () => {
   it('un programa vacío es válido: es opcional', () => {
     expect(validateRows([], eventStart, eventEnd)).toBeNull()
-    expect(validateRows([row({ title: '', start: '', subtitle: '' })], eventStart, eventEnd)).toBeNull()
+    expect(
+      validateRows([row({ title: '', start: '', subtitle: '' })], eventStart, eventEnd),
+    ).toBeNull()
   })
 
   it('exige título y hora en una fila empezada', () => {
@@ -52,7 +54,9 @@ describe('validateRows', () => {
   })
 
   it('rechaza un bloque fuera del horario del evento', () => {
-    expect(validateRows([row({ start: '23:00' })], eventStart, eventEnd)).toContain('fuera del horario')
+    expect(validateRows([row({ start: '23:00' })], eventStart, eventEnd)).toContain(
+      'fuera del horario',
+    )
   })
 
   it('acepta un bloque dentro del rango', () => {

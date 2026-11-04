@@ -345,12 +345,7 @@ export function splitQuadIntoN(polygon: Polygon, n: number): Polygon[] {
     const t0 = i / n
     const t1 = (i + 1) / n
     slices.push(
-      polygonFromRing([
-        lerp(a0, a1, t0),
-        lerp(a0, a1, t1),
-        lerp(b0, b1, t1),
-        lerp(b0, b1, t0),
-      ]),
+      polygonFromRing([lerp(a0, a1, t0), lerp(a0, a1, t1), lerp(b0, b1, t1), lerp(b0, b1, t0)]),
     )
   }
   return slices

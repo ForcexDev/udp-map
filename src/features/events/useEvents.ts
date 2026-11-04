@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/features/auth/authStore'
-import { fetchEventAttendees, fetchEventRsvpCounts, fetchEventsByIds, fetchUserRSVPs, setRSVP } from './api'
+import {
+  fetchEventAttendees,
+  fetchEventRsvpCounts,
+  fetchEventsByIds,
+  fetchUserRSVPs,
+  setRSVP,
+} from './api'
 
 export function useUserRSVPs() {
   const userId = useAuthStore((s) => s.user?.id)

@@ -26,39 +26,49 @@ import { floorRejectionKey } from '@/shared/utils/floorValidation'
 
 const MAX_DESCRIPTION = 1500
 
-const pinSchema = z.object({
-  type: z.enum(['report', 'place', 'event']),
-  title: z.string().trim().min(3).max(80),
-  // 1500 y no 500: la descripción admite enlaces y una URL de correo o de Drive
-  // mide 300 caracteres sola. Tiene que coincidir con el check de la base
-  // (pins_description_check), o el formulario deja pasar algo que la base rechaza.
-  description: z.string().trim().max(MAX_DESCRIPTION).optional().or(z.literal('')),
-  categoryId: z.string().nullable(),
-  facultyId: z.string().nullable(),
-  // La planta la elige la persona: no se puede deducir del punto, porque desde
-  // arriba el piso 1 y el 3 son el mismo sitio.
-  floor: z.number().nullable().optional(),
-  roomCode: z.string().max(40).optional(),
-  isOfficial: z.boolean().optional(),
-  startsAt: z.string().optional().or(z.literal('')),
-  endsAt: z.string().optional().or(z.literal('')),
-}).superRefine((data, ctx) => {
-  if (data.type === 'event') {
-    if (!data.startsAt) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'STARTS_AT_REQUIRED', path: ['startsAt'] })
-    }
-    if (!data.endsAt) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'ENDS_AT_REQUIRED', path: ['endsAt'] })
-    }
-    if (data.startsAt && data.endsAt) {
-      const s = new Date(data.startsAt).getTime()
-      const e = new Date(data.endsAt).getTime()
-      if (e <= s) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'ENDS_BEFORE_STARTS', path: ['endsAt'] })
+const pinSchema = z
+  .object({
+    type: z.enum(['report', 'place', 'event']),
+    title: z.string().trim().min(3).max(80),
+    // 1500 y no 500: la descripción admite enlaces y una URL de correo o de Drive
+    // mide 300 caracteres sola. Tiene que coincidir con el check de la base
+    // (pins_description_check), o el formulario deja pasar algo que la base rechaza.
+    description: z.string().trim().max(MAX_DESCRIPTION).optional().or(z.literal('')),
+    categoryId: z.string().nullable(),
+    facultyId: z.string().nullable(),
+    // La planta la elige la persona: no se puede deducir del punto, porque desde
+    // arriba el piso 1 y el 3 son el mismo sitio.
+    floor: z.number().nullable().optional(),
+    roomCode: z.string().max(40).optional(),
+    isOfficial: z.boolean().optional(),
+    startsAt: z.string().optional().or(z.literal('')),
+    endsAt: z.string().optional().or(z.literal('')),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === 'event') {
+      if (!data.startsAt) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'STARTS_AT_REQUIRED',
+          path: ['startsAt'],
+        })
+      }
+      if (!data.endsAt) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'ENDS_AT_REQUIRED', path: ['endsAt'] })
+      }
+      if (data.startsAt && data.endsAt) {
+        const s = new Date(data.startsAt).getTime()
+        const e = new Date(data.endsAt).getTime()
+        if (e <= s) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'ENDS_BEFORE_STARTS',
+            path: ['endsAt'],
+          })
+        }
       }
     }
-  }
-})
+  })
 
 type PinFormValues = z.infer<typeof pinSchema>
 
@@ -89,7 +99,9 @@ export function CreatePinModal() {
 
   const pinToEdit = useUIStore((s) => s.pinToEdit)
   const pinsData = queryClient.getQueriesData<Pin[]>({ queryKey: ['pins'] })
-  const editingPin = pinToEdit ? pinsData.flatMap(d => d[1] ?? []).find(p => p.id === pinToEdit) : null
+  const editingPin = pinToEdit
+    ? pinsData.flatMap((d) => d[1] ?? []).find((p) => p.id === pinToEdit)
+    : null
 
   // Al editar un evento hay que traer su programa para poder modificarlo.
   const editingSchedule = useQuery({
@@ -101,12 +113,9 @@ export function CreatePinModal() {
   const isModerator = can(role, 'pin.moderate')
   const reportCategories = useMemo(
     () => CATEGORIES.filter((c) => c.kind === 'report' && !(c.id === 'entrada' && !isModerator)),
-    [isModerator]
+    [isModerator],
   )
-  const eventCategories = useMemo(
-    () => CATEGORIES.filter((c) => c.kind === 'event'),
-    []
-  )
+  const eventCategories = useMemo(() => CATEGORIES.filter((c) => c.kind === 'event'), [])
   const canCreatePlace = can(role, 'pin.create.place')
   const isVerifiedLocked = !!editingPin?.is_permanent && !isModerator
 
@@ -123,7 +132,7 @@ export function CreatePinModal() {
       endsAt: '',
     },
   })
-  
+
   const type = form.watch('type')
   const title = form.watch('title')
   const description = form.watch('description')
@@ -156,7 +165,10 @@ export function CreatePinModal() {
         form.setValue('categoryId', editingPin.category_id)
         form.setValue('facultyId', editingPin.faculty_id)
         form.setValue('isOfficial', editingPin.is_official)
-        form.setValue('startsAt', editingPin.starts_at ? toLocalDatetimeString(editingPin.starts_at) : '')
+        form.setValue(
+          'startsAt',
+          editingPin.starts_at ? toLocalDatetimeString(editingPin.starts_at) : '',
+        )
         form.setValue('endsAt', editingPin.ends_at ? toLocalDatetimeString(editingPin.ends_at) : '')
         form.setValue('floor', editingPin.floor)
         form.setValue('roomCode', editingPin.room_code ?? '')
@@ -229,11 +241,15 @@ export function CreatePinModal() {
 
   const create = useMutation({
     mutationFn: async (values: PinFormValues) => {
-      const startsAtIso = values.type === 'event' && values.startsAt ? new Date(values.startsAt).toISOString() : null
-      const endsAtIso = values.type === 'event' && values.endsAt ? new Date(values.endsAt).toISOString() : null
+      const startsAtIso =
+        values.type === 'event' && values.startsAt ? new Date(values.startsAt).toISOString() : null
+      const endsAtIso =
+        values.type === 'event' && values.endsAt ? new Date(values.endsAt).toISOString() : null
 
       const officialEntityName = values.isOfficial
-        ? (role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP')
+        ? role === 'moderator'
+          ? 'Centro de Alumnos FIC'
+          : 'Administración UDP'
         : null
 
       // El programa solo existe para eventos. Si el pin deja de serlo, se envía
@@ -243,7 +259,7 @@ export function CreatePinModal() {
 
       if (editingPin) {
         await updatePin(
-          editingPin.id, 
+          editingPin.id,
           {
             title: values.title,
             description: values.description ? values.description : null,
@@ -264,11 +280,11 @@ export function CreatePinModal() {
             // Solo se toca el programa si el pin es (o era) un evento: para un
             // reporte no hay nada que reemplazar y sobra la consulta.
             ...(isEvent || editingPin.type === 'event' ? { schedule: scheduleDrafts } : {}),
-          }
+          },
         )
         return
       }
-      
+
       if (!user || !draftLocation) throw new Error('missing user or location')
       return createPin(
         {
@@ -299,7 +315,9 @@ export function CreatePinModal() {
       if (result?.photosFailed) {
         showToast(t('pin.createdWithoutPhotos', 'Pin creado, pero las fotos no se pudieron subir'))
       } else if (result?.scheduleFailed) {
-        showToast(t('pin.createdWithoutSchedule', 'Evento creado, pero su programa no se pudo guardar'))
+        showToast(
+          t('pin.createdWithoutSchedule', 'Evento creado, pero su programa no se pudo guardar'),
+        )
       } else {
         showToast(editingPin ? t('pin.updated', 'Pin actualizado') : t('pin.created'))
       }
@@ -320,10 +338,12 @@ export function CreatePinModal() {
           minute: '2-digit',
           timeZoneName: 'short',
         }).format(nextDailyPinReset())
-        showToast(t('pin.dailyLimitReached', {
-          name: user?.name || t('profile.user', 'usuario'),
-          resetAt,
-        }))
+        showToast(
+          t('pin.dailyLimitReached', {
+            name: user?.name || t('profile.user', 'usuario'),
+            resetAt,
+          }),
+        )
         return
       }
       if (message.includes('PIN_LOCATION_OCCUPIED')) {
@@ -362,16 +382,18 @@ export function CreatePinModal() {
 
   // El punto sobre el que se resuelven edificio, área y planta: el que se está
   // eligiendo al crear, o el que el pin ya tiene al editar.
-  const indoorPoint = editingPin
-    ? { lat: editingPin.lat, lng: editingPin.lng }
-    : draftLocation
+  const indoorPoint = editingPin ? { lat: editingPin.lat, lng: editingPin.lng } : draftLocation
 
   const availableTypes: ('report' | 'place' | 'event')[] = ['report', 'event']
   if (canCreatePlace) {
     availableTypes.push('place')
   }
-  const detectedFac = FACULTIES.find(f => f.id === form.watch('facultyId'))
-  const facultyName = detectedFac ? (i18n.language === 'en' ? detectedFac.name_en : detectedFac.name) : t('pin.facultyNone')
+  const detectedFac = FACULTIES.find((f) => f.id === form.watch('facultyId'))
+  const facultyName = detectedFac
+    ? i18n.language === 'en'
+      ? detectedFac.name_en
+      : detectedFac.name
+    : t('pin.facultyNone')
 
   return (
     <RadixDialog.Root open={open} onOpenChange={(o) => !o && close()}>
@@ -411,7 +433,10 @@ export function CreatePinModal() {
           >
             {/* Type selector (Capsule Tabs con acabado cálido) */}
             {availableTypes.length > 1 && (!editingPin || can(role, 'pin.moderate')) && (
-              <div className="p-1 bg-[#EFECE4] dark:bg-white/[0.08] rounded-2xl flex gap-1" role="radiogroup">
+              <div
+                className="p-1 bg-[#EFECE4] dark:bg-white/[0.08] rounded-2xl flex gap-1"
+                role="radiogroup"
+              >
                 {availableTypes.map((v) => (
                   <label
                     key={v}
@@ -422,7 +447,11 @@ export function CreatePinModal() {
                     }`}
                   >
                     <input type="radio" value={v} className="sr-only" {...form.register('type')} />
-                    {v === 'report' ? t('pin.typeReport') : v === 'place' ? t('pin.typePlace') : t('pin.typeEvent')}
+                    {v === 'report'
+                      ? t('pin.typeReport')
+                      : v === 'place'
+                        ? t('pin.typePlace')
+                        : t('pin.typeEvent')}
                   </label>
                 ))}
               </div>
@@ -431,8 +460,14 @@ export function CreatePinModal() {
             {/* Title */}
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
-                <Sparkles size={15} className="text-[#C22B38] dark:text-[#D93846]" strokeWidth={2.2} />
-                <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.title')}</label>
+                <Sparkles
+                  size={15}
+                  className="text-[#C22B38] dark:text-[#D93846]"
+                  strokeWidth={2.2}
+                />
+                <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                  {t('pin.title')}
+                </label>
               </div>
               <div className="space-y-1.5">
                 <input
@@ -448,7 +483,9 @@ export function CreatePinModal() {
                   autoComplete="off"
                 />
                 <div className="h-1 w-full bg-[#E5DEC9] dark:bg-white/10 rounded-full overflow-hidden">
-                  <div className={`h-full bg-[#C22B38] dark:bg-[#D93846] transition-all duration-700 ease-out ${title?.length > 0 ? 'w-full' : 'w-0'}`} />
+                  <div
+                    className={`h-full bg-[#C22B38] dark:bg-[#D93846] transition-all duration-700 ease-out ${title?.length > 0 ? 'w-full' : 'w-0'}`}
+                  />
                 </div>
                 {form.formState.errors.title && (
                   <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846]">
@@ -462,7 +499,9 @@ export function CreatePinModal() {
 
             {/* Description */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.description')}</label>
+              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                {t('pin.description')}
+              </label>
               <textarea
                 rows={3}
                 {...form.register('description')}
@@ -482,7 +521,9 @@ export function CreatePinModal() {
 
             {/* Photos */}
             {(() => {
-              const existingPhotos = (editingPin?.pin_photos ?? []).filter((p) => !deletedPhotoIds.includes(p.id))
+              const existingPhotos = (editingPin?.pin_photos ?? []).filter(
+                (p) => !deletedPhotoIds.includes(p.id),
+              )
               const totalCount = existingPhotos.length + photos.length
 
               return (
@@ -498,10 +539,16 @@ export function CreatePinModal() {
                           <div
                             key={ph.id}
                             className={`relative shrink-0 snap-center rounded-2xl overflow-hidden shadow-xs border border-[#E6E0D5] dark:border-white/[0.07] transition-all ${
-                              totalCount === 1 ? 'w-full aspect-[4/3] sm:aspect-video' : 'w-[75%] sm:w-[60%] aspect-square sm:aspect-[4/3]'
+                              totalCount === 1
+                                ? 'w-full aspect-[4/3] sm:aspect-video'
+                                : 'w-[75%] sm:w-[60%] aspect-square sm:aspect-[4/3]'
                             }`}
                           >
-                            <img src={ph.url} alt="Preview" className="w-full h-full object-cover" />
+                            <img
+                              src={ph.url}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                            />
                             <button
                               type="button"
                               onClick={() => setDeletedPhotoIds((prev) => [...prev, ph.id])}
@@ -518,13 +565,21 @@ export function CreatePinModal() {
                           <div
                             key={`new-${i}`}
                             className={`relative shrink-0 snap-center rounded-2xl overflow-hidden shadow-xs border border-[#E6E0D5] dark:border-white/[0.07] transition-all ${
-                              totalCount === 1 ? 'w-full aspect-[4/3] sm:aspect-video' : 'w-[75%] sm:w-[60%] aspect-square sm:aspect-[4/3]'
+                              totalCount === 1
+                                ? 'w-full aspect-[4/3] sm:aspect-video'
+                                : 'w-[75%] sm:w-[60%] aspect-square sm:aspect-[4/3]'
                             }`}
                           >
-                            <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                            />
                             <button
                               type="button"
-                              onClick={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                              onClick={() =>
+                                setPhotos((prev) => prev.filter((_, idx) => idx !== i))
+                              }
                               className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/50 backdrop-blur-md rounded-xl flex items-center justify-center hover:bg-red-500 hover:scale-105 transition-all shadow-md cursor-pointer"
                               title={t('pin.removePhoto', 'Eliminar foto')}
                             >
@@ -562,27 +617,39 @@ export function CreatePinModal() {
 
             {/* Faculty */}
             <div className="space-y-2 relative">
-              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.faculty')}</label>
+              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                {t('pin.faculty')}
+              </label>
               <button
                 type="button"
                 disabled={isVerifiedLocked}
                 onClick={() => setFacultyDropdownOpen(!facultyDropdownOpen)}
                 className={`w-full border border-[#E6E0D5] dark:border-white/[0.07] rounded-2xl px-5 py-3.5 text-sm font-semibold text-stone-800 dark:text-stone-200 outline-none transition-all shadow-xs flex items-center justify-between cursor-pointer ${
-                  isVerifiedLocked ? 'bg-stone-100 dark:bg-stone-800/80 cursor-not-allowed opacity-70' : 'bg-white dark:bg-[#1E222D]'
+                  isVerifiedLocked
+                    ? 'bg-stone-100 dark:bg-stone-800/80 cursor-not-allowed opacity-70'
+                    : 'bg-white dark:bg-[#1E222D]'
                 }`}
               >
                 <span className="truncate">
                   {form.watch('facultyId')
-                    ? localizedName(FACULTIES.find(f => f.id === form.watch('facultyId')), i18n.language) || t('pin.facultyNone')
+                    ? localizedName(
+                        FACULTIES.find((f) => f.id === form.watch('facultyId')),
+                        i18n.language,
+                      ) || t('pin.facultyNone')
                     : t('pin.facultyNone')}
                 </span>
-                <svg 
-                  className={`w-5 h-5 ml-2 transition-transform text-stone-400 ${facultyDropdownOpen ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
+                <svg
+                  className={`w-5 h-5 ml-2 transition-transform text-stone-400 ${facultyDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </button>
 
@@ -597,7 +664,7 @@ export function CreatePinModal() {
                       }}
                       className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                         !form.watch('facultyId')
-                          ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300' 
+                          ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
                           : 'text-stone-700 dark:text-stone-300 hover:bg-[#F4F0E8] dark:hover:bg-white/[0.08]'
                       }`}
                     >
@@ -613,7 +680,7 @@ export function CreatePinModal() {
                         }}
                         className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                           form.watch('facultyId') === f.id
-                            ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300' 
+                            ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
                             : 'text-stone-700 dark:text-stone-300 hover:bg-[#F4F0E8] dark:hover:bg-white/[0.08]'
                         }`}
                       >
@@ -627,7 +694,9 @@ export function CreatePinModal() {
 
             {/* Categories */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.category')}</label>
+              <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                {t('pin.category')}
+              </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 <Controller
                   name="categoryId"
@@ -640,7 +709,7 @@ export function CreatePinModal() {
                     })
                     return (
                       <>
-                        {activeCategories.map(c => {
+                        {activeCategories.map((c) => {
                           const isSelected = field.value === c.id
                           return (
                             <button
@@ -653,28 +722,40 @@ export function CreatePinModal() {
                                   ? 'shadow-xs border-current bg-white dark:bg-[#1E222D]'
                                   : 'bg-white dark:bg-[#1E222D] border-[#E6E0D5] dark:border-white/[0.07] hover:border-stone-400'
                               } ${isVerifiedLocked && !isSelected ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
-                              style={isSelected ? { 
-                                borderColor: c.color, 
-                                backgroundColor: `color-mix(in srgb, ${c.color} 8%, transparent)` 
-                              } : {}}
+                              style={
+                                isSelected
+                                  ? {
+                                      borderColor: c.color,
+                                      backgroundColor: `color-mix(in srgb, ${c.color} 8%, transparent)`,
+                                    }
+                                  : {}
+                              }
                             >
                               <div
                                 className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                                  isSelected 
-                                    ? 'text-white shadow-xs' 
+                                  isSelected
+                                    ? 'text-white shadow-xs'
                                     : 'bg-[#EFECE4] dark:bg-white/[0.08] text-stone-500 dark:text-stone-400'
                                 }`}
                                 style={isSelected ? { backgroundColor: c.color } : {}}
                               >
                                 {c.svgPath ? (
-                                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    width="18"
+                                    height="18"
+                                    fill="currentColor"
+                                  >
                                     <path d={c.svgPath} />
                                   </svg>
                                 ) : (
-                                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                                  <div
+                                    className="w-2.5 h-2.5 rounded-full"
+                                    style={{ backgroundColor: c.color }}
+                                  />
                                 )}
                               </div>
-                              <span 
+                              <span
                                 className={`text-xs font-semibold text-center leading-tight ${
                                   !isSelected && 'text-stone-700 dark:text-stone-300'
                                 }`}
@@ -696,7 +777,9 @@ export function CreatePinModal() {
             {type === 'event' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">Fecha de Inicio</label>
+                  <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                    Fecha de Inicio
+                  </label>
                   <Controller
                     name="startsAt"
                     control={form.control}
@@ -711,11 +794,15 @@ export function CreatePinModal() {
                     )}
                   />
                   {form.formState.errors.startsAt && (
-                    <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846] mt-1">{form.formState.errors.startsAt.message}</p>
+                    <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846] mt-1">
+                      {form.formState.errors.startsAt.message}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">Fecha de Término</label>
+                  <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                    Fecha de Término
+                  </label>
                   <Controller
                     name="endsAt"
                     control={form.control}
@@ -730,7 +817,9 @@ export function CreatePinModal() {
                     )}
                   />
                   {form.formState.errors.endsAt && (
-                    <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846] mt-1">{form.formState.errors.endsAt.message}</p>
+                    <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846] mt-1">
+                      {form.formState.errors.endsAt.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -767,7 +856,9 @@ export function CreatePinModal() {
             {/* Coordinates */}
             {!editingPin && draftLocation && (
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">{t('pin.coordinates', 'Coordenadas')}</label>
+                <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                  {t('pin.coordinates', 'Coordenadas')}
+                </label>
                 <div className="w-full bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] rounded-2xl px-5 py-3 flex items-center gap-2.5 shadow-xs">
                   <MapPin size={16} className="text-stone-400 shrink-0" />
                   <span className="text-xs font-mono font-semibold tabular-nums text-stone-600 dark:text-stone-400">
@@ -783,26 +874,42 @@ export function CreatePinModal() {
                 <div className="flex items-center justify-between gap-4 bg-sky-500/10 dark:bg-sky-500/15 border border-sky-500/20 dark:border-sky-500/30 rounded-2xl p-4 shadow-xs transition-all">
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
-                      <BadgeCheck size={18} className="text-sky-600 dark:text-sky-400 shrink-0" strokeWidth={2.2} />
-                      <label htmlFor="pin-official" className="text-xs font-semibold text-sky-700 dark:text-sky-300 cursor-pointer">
+                      <BadgeCheck
+                        size={18}
+                        className="text-sky-600 dark:text-sky-400 shrink-0"
+                        strokeWidth={2.2}
+                      />
+                      <label
+                        htmlFor="pin-official"
+                        className="text-xs font-semibold text-sky-700 dark:text-sky-300 cursor-pointer"
+                      >
                         {t('pin.officialToggle', 'Publicar como Oficial')}
                       </label>
                     </div>
                     <p className="text-xs text-stone-600 dark:text-stone-400 font-normal leading-snug pl-6">
-                      El autor se mostrará como <span className="font-semibold text-[#C22B38] dark:text-[#D93846]">{role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP'}</span>.
+                      El autor se mostrará como{' '}
+                      <span className="font-semibold text-[#C22B38] dark:text-[#D93846]">
+                        {role === 'moderator' ? 'Centro de Alumnos FIC' : 'Administración UDP'}
+                      </span>
+                      .
                     </p>
                   </div>
                   <Controller
                     name="isOfficial"
                     control={form.control}
                     render={({ field }) => (
-                      <Switch id="pin-official" checked={field.value ?? false} onChange={field.onChange} tone="sky" />
+                      <Switch
+                        id="pin-official"
+                        checked={field.value ?? false}
+                        onChange={field.onChange}
+                        tone="sky"
+                      />
                     )}
                   />
                 </div>
               </div>
             )}
-            
+
             {/* Submit Button (Desktop inside scroll area) */}
             <div className="hidden sm:block pt-2 pb-2">
               <button
@@ -810,7 +917,13 @@ export function CreatePinModal() {
                 disabled={!title?.trim() || create.isPending || (!editingPin && !draftLocation)}
                 className="w-full h-11 bg-[#C22B38] hover:bg-[#9E1F2A] dark:bg-[#D93846] dark:hover:bg-[#B82532] text-white rounded-2xl font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale cursor-pointer"
               >
-                {create.isPending ? <Loader2 size={16} className="animate-spin" /> : editingPin ? t('pin.update', 'Guardar') : t('pin.submit')}
+                {create.isPending ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : editingPin ? (
+                  t('pin.update', 'Guardar')
+                ) : (
+                  t('pin.submit')
+                )}
                 {!create.isPending && <ArrowRight size={16} strokeWidth={2.5} />}
               </button>
             </div>
@@ -823,7 +936,13 @@ export function CreatePinModal() {
               disabled={!title?.trim() || create.isPending || (!editingPin && !draftLocation)}
               className="w-full h-11 bg-[#C22B38] hover:bg-[#9E1F2A] dark:bg-[#D93846] dark:hover:bg-[#B82532] text-white rounded-2xl font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale cursor-pointer"
             >
-              {create.isPending ? <Loader2 size={16} className="animate-spin" /> : editingPin ? t('pin.update', 'Guardar') : t('pin.submit')}
+              {create.isPending ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : editingPin ? (
+                t('pin.update', 'Guardar')
+              ) : (
+                t('pin.submit')
+              )}
               {!create.isPending && <ArrowRight size={16} strokeWidth={2.5} />}
             </button>
           </div>

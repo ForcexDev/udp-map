@@ -17,7 +17,7 @@ function useNotificationsQuery<T = AppNotification[]>(select?: (list: AppNotific
   const role = useAuthStore((state) => state.role)
   return useQuery({
     queryKey: ['notifications', userId, role],
-    queryFn: () => userId ? fetchNotifications(userId, role) : [],
+    queryFn: () => (userId ? fetchNotifications(userId, role) : []),
     enabled: Boolean(userId),
     staleTime: 30_000,
     select,
@@ -38,7 +38,9 @@ export function useUnreadCount(): number {
   return useNotificationsQuery(countUnreadPersonal).data ?? 0
 }
 
-export function useNotificationRealtime(onNewNotification: (notification: AppNotification) => void) {
+export function useNotificationRealtime(
+  onNewNotification: (notification: AppNotification) => void,
+) {
   const userId = useAuthStore((state) => state.user?.id)
   const queryClient = useQueryClient()
   useEffect(() => {
@@ -57,7 +59,9 @@ export function useNotificationRealtime(onNewNotification: (notification: AppNot
         },
       )
       .subscribe()
-    return () => { void client.removeChannel(channel) }
+    return () => {
+      void client.removeChannel(channel)
+    }
   }, [queryClient, userId, onNewNotification])
 }
 
@@ -82,9 +86,8 @@ async function patchCache(
 ): Promise<Snapshot> {
   await queryClient.cancelQueries({ queryKey: ['notifications'] })
   const snapshot = queryClient.getQueriesData<AppNotification[]>({ queryKey: ['notifications'] })
-  queryClient.setQueriesData<AppNotification[]>(
-    { queryKey: ['notifications'] },
-    (list) => (list ? update(list) : list),
+  queryClient.setQueriesData<AppNotification[]>({ queryKey: ['notifications'] }, (list) =>
+    list ? update(list) : list,
   )
   return snapshot as Snapshot
 }
@@ -103,7 +106,8 @@ function useInboxMutation<V>(
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (vars: V) => (enabled ? run(vars) : Promise.resolve()),
-    onMutate: (vars: V) => (enabled ? patchCache(queryClient, (list) => patch(list, vars)) : Promise.resolve(undefined)),
+    onMutate: (vars: V) =>
+      enabled ? patchCache(queryClient, (list) => patch(list, vars)) : Promise.resolve(undefined),
     onError: (_error, _vars, snapshot) => {
       for (const [key, value] of snapshot ?? []) queryClient.setQueryData(key, value)
     },
@@ -114,9 +118,10 @@ function useInboxMutation<V>(
 export function useSetNotificationRead() {
   return useInboxMutation(
     ({ id, read }: { id: string; read: boolean }) => setNotificationRead(id, read),
-    (list, { id, read }) => list.map((n) => (n.id === id
-      ? { ...n, read_at: read ? n.read_at ?? new Date().toISOString() : null }
-      : n)),
+    (list, { id, read }) =>
+      list.map((n) =>
+        n.id === id ? { ...n, read_at: read ? (n.read_at ?? new Date().toISOString()) : null } : n,
+      ),
   )
 }
 

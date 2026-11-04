@@ -24,6 +24,7 @@ import {
   type Draft,
 } from './editorStore'
 import type { FacultyMapping } from './api'
+import { useNavEditor } from './navEditorStore'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El lienzo del editor.
@@ -50,6 +51,7 @@ interface MappingCanvasProps {
 }
 
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] }
+const NAV_NODES_LAYER = 'nav-nodes'
 
 function areaFeature(area: Area): Feature<Polygon> {
   return {
@@ -274,7 +276,12 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
         id: 'ghost-line',
         type: 'line',
         source: 'ghost',
-        paint: { 'line-color': '#71717a', 'line-width': 1, 'line-dasharray': [2, 2], 'line-opacity': 0.7 },
+        paint: {
+          'line-color': '#71717a',
+          'line-width': 1,
+          'line-dasharray': [2, 2],
+          'line-opacity': 0.7,
+        },
       })
 
       map.addLayer({
@@ -299,7 +306,11 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
         id: 'areas-label',
         type: 'symbol',
         source: 'areas',
-        layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-font': ['Noto Sans Regular'] },
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-size': 11,
+          'text-font': ['Noto Sans Regular'],
+        },
         paint: { 'text-color': '#27272a', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
       })
 
@@ -363,6 +374,36 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
         },
       })
 
+      // Grafo de navegación de la planta: lo calcula NavEditorPanel y aquí solo
+      // se pinta. Va encima de todo para poder elegir nodos con el ratón.
+      map.addSource('nav-overlay', { type: 'geojson', data: useNavEditor.getState().overlay })
+      map.addLayer({
+        id: 'nav-edges',
+        type: 'line',
+        source: 'nav-overlay',
+        filter: ['==', ['get', 'part'], 'edge'],
+        paint: { 'line-color': ['get', 'color'], 'line-width': 2.5 },
+      })
+      map.addLayer({
+        id: 'nav-axis',
+        type: 'line',
+        source: 'nav-overlay',
+        filter: ['==', ['get', 'part'], 'axis'],
+        paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-dasharray': [2, 1] },
+      })
+      map.addLayer({
+        id: NAV_NODES_LAYER,
+        type: 'circle',
+        source: 'nav-overlay',
+        filter: ['==', ['get', 'part'], 'node'],
+        paint: {
+          'circle-radius': ['case', ['==', ['get', 'selected'], 1], 8, 5],
+          'circle-color': ['get', 'color'],
+          'circle-stroke-color': '#fff',
+          'circle-stroke-width': 2,
+        },
+      })
+
       readyRef.current = true
       redrawAll()
     })
@@ -370,6 +411,20 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
     // ── Clic: selecciona o construye el borrador según la herramienta ──
     map.on('click', (e) => {
       const state = useMappingEditor.getState()
+
+      // La herramienta de navegación no dibuja polígonos: entrega el clic, con
+      // el nodo que haya debajo, al panel que sabe qué hacer en cada modo.
+      if (state.tool === 'nav') {
+        const hits = map.getLayer(NAV_NODES_LAYER)
+          ? map.queryRenderedFeatures(e.point, { layers: [NAV_NODES_LAYER] })
+          : []
+        useNavEditor.getState().onClick?.({
+          lng: e.lngLat.lng,
+          lat: e.lngLat.lat,
+          nodeId: hits.length > 0 ? String(hits[0].properties?.id) : null,
+        })
+        return
+      }
 
       if (state.tool === 'select') {
         const hits = map.queryRenderedFeatures(e.point, { layers: ['areas-fill'] })
@@ -434,8 +489,13 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
     })
 
     // Doble clic cierra el polígono sin tener que apuntar al primer vértice.
-    map.on('dblclick', () => {
+    map.on('dblclick', (e) => {
       const state = useMappingEditor.getState()
+      if (state.tool === 'nav') {
+        e.preventDefault()
+        if (useNavEditor.getState().mode === 'corridor') useNavEditor.getState().onFinish?.()
+        return
+      }
       if (state.tool !== 'polygon') return
       const current = state.draft
       if (current?.kind !== 'ring' || current.ring.length < 3) return
@@ -489,9 +549,11 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
       // Las teselas vectoriales llegan recortadas al borde del tile, así que un
       // edificio que cruza ese borde se calca partido. Es limitación del
       // formato, no un fallo: por eso se avisa en vez de fingir precisión.
-      useUIStore.getState().showToast(
-        'Huella calcada de OpenStreetMap. Revisa el contorno: si el edificio cruza el borde de una tesela, puede llegar recortado.',
-      )
+      useUIStore
+        .getState()
+        .showToast(
+          'Huella calcada de OpenStreetMap. Revisa el contorno: si el edificio cruza el borde de una tesela, puede llegar recortado.',
+        )
       onDraftReadyRef.current()
     }
 
@@ -628,6 +690,20 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
   // cambia decenas de veces por segundo, y rehacer todas las fuentes en cada
   // píxel sobra. Lo único que le importa al repintado es si hay borrador o no.
   const hasDraft = draft !== null
+
+  // El grafo de navegación se repinta por su cuenta: cambia con cada clic de la
+  // herramienta, sin tocar áreas ni edificios.
+  useEffect(
+    () =>
+      useNavEditor.subscribe((state, previous) => {
+        if (state.overlay === previous.overlay) return
+        const source = mapRef.current?.getSource('nav-overlay') as
+          maplibregl.GeoJSONSource | undefined
+        source?.setData(state.overlay)
+      }),
+    [],
+  )
+
   useEffect(() => {
     redrawAll()
   }, [
@@ -741,10 +817,7 @@ export function MappingCanvas({ mapping, pins, onDraftReady, onRoomPlaced }: Map
     if (draft.kind === 'rect' && polygon) {
       const ring = openRing(polygon.coordinates[0])
       // A media altura del lado que sale del ancla: es el que marca el giro.
-      const handleAt: Position = [
-        (ring[1][0] + ring[2][0]) / 2,
-        (ring[1][1] + ring[2][1]) / 2,
-      ]
+      const handleAt: Position = [(ring[1][0] + ring[2][0]) / 2, (ring[1][1] + ring[2][1]) / 2]
       const el = document.createElement('div')
       el.className = 'mapping-rotate-handle'
       el.title = 'Arrastra para girar'

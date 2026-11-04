@@ -21,9 +21,7 @@ import { FACULTIES } from '@/shared/data/campusData'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type PlaceOwner =
-  | { kind: 'faculty'; id: string }
-  | { kind: 'building'; id: string }
-  | { kind: 'area'; id: string }
+  { kind: 'faculty'; id: string } | { kind: 'building'; id: string } | { kind: 'area'; id: string }
 
 export function ownerKey(owner: PlaceOwner): string {
   return `${owner.kind}:${owner.id}`

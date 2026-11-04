@@ -3,7 +3,8 @@
 // Debe coincidir con VITE_VAPID_PUBLIC_KEY (clave pública, no es secreta).
 // Si se rota el par VAPID, actualizar acá también. Ya solo es el RESPALDO de
 // `pushsubscriptionchange`: lo normal es leer la clave de la suscripción perdida.
-const VAPID_PUBLIC_KEY = 'BMsTXlUoAaxx9brDhqgGzaboSa-kzRSaUYHpXZAenxCWA6-rwTNes_iRUtr7wQtZsC_AIuMUSvXrYsNOFFjQuZQ'
+const VAPID_PUBLIC_KEY =
+  'BMsTXlUoAaxx9brDhqgGzaboSa-kzRSaUYHpXZAenxCWA6-rwTNes_iRUtr7wQtZsC_AIuMUSvXrYsNOFFjQuZQ'
 
 function urlBase64ToUint8Array(value) {
   const padding = '='.repeat((4 - (value.length % 4)) % 4)
@@ -29,14 +30,18 @@ self.addEventListener('pushsubscriptionchange', (event) => {
   // La clave con la que se firmó la suscripción perdida, antes que la constante:
   // así no hay una copia de la clave pública que se pueda quedar vieja. Sin
   // `oldSubscription` (hay navegadores que no la traen) se cae a la constante.
-  const applicationServerKey = event.oldSubscription?.options?.applicationServerKey
-    || urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+  const applicationServerKey =
+    event.oldSubscription?.options?.applicationServerKey || urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
 
   event.waitUntil(
-    self.registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey,
-    }).catch((err) => console.error('[push-sw] No se pudo re-suscribir tras pushsubscriptionchange:', err))
+    self.registration.pushManager
+      .subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      })
+      .catch((err) =>
+        console.error('[push-sw] No se pudo re-suscribir tras pushsubscriptionchange:', err),
+      ),
   )
 })
 
@@ -108,27 +113,31 @@ self.addEventListener('notificationclick', (event) => {
   const notificationId = event.notification.data?.notificationId
   if (notificationId) target.searchParams.set('notification', notificationId)
 
-  event.waitUntil((async () => {
-    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    const existingWindow = windows.find((client) => new URL(client.url).origin === self.location.origin)
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const existingWindow = windows.find(
+        (client) => new URL(client.url).origin === self.location.origin,
+      )
 
-    // Enfocar primero y navegar después. `navigate()` lanza cuando el cliente
-    // no lo está controlando —pasa en la PWA instalada de iOS—, y como antes
-    // iba delante del `focus()`, esa excepción se llevaba por delante también
-    // el enfoque: el toque en la notificación no hacía absolutamente nada.
-    if (existingWindow) {
-      try {
-        await existingWindow.focus()
-      } catch (err) {
-        console.error('[push-sw] No se pudo enfocar la ventana existente:', err)
+      // Enfocar primero y navegar después. `navigate()` lanza cuando el cliente
+      // no lo está controlando —pasa en la PWA instalada de iOS—, y como antes
+      // iba delante del `focus()`, esa excepción se llevaba por delante también
+      // el enfoque: el toque en la notificación no hacía absolutamente nada.
+      if (existingWindow) {
+        try {
+          await existingWindow.focus()
+        } catch (err) {
+          console.error('[push-sw] No se pudo enfocar la ventana existente:', err)
+        }
+        try {
+          await existingWindow.navigate(target.href)
+          return
+        } catch (err) {
+          console.error('[push-sw] navigate() no disponible, se abre ventana nueva:', err)
+        }
       }
-      try {
-        await existingWindow.navigate(target.href)
-        return
-      } catch (err) {
-        console.error('[push-sw] navigate() no disponible, se abre ventana nueva:', err)
-      }
-    }
-    return self.clients.openWindow(target.href)
-  })())
+      return self.clients.openWindow(target.href)
+    })(),
+  )
 })

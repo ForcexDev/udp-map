@@ -2,9 +2,27 @@ import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Bell, BellOff, BellRing, ChevronDown, ChevronRight, Loader2, MapPin, Search, Send, TriangleAlert, X } from 'lucide-react'
+import {
+  Bell,
+  BellOff,
+  BellRing,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  MapPin,
+  Search,
+  Send,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 import { usePushSubscription } from '@/features/notifications/usePushSubscription'
-import { triggerServerPushTest, fetchPushSubscriberCount, fetchAdminPins, fetchPushSubscribers, deletePushSubscriberDevice } from './api'
+import {
+  triggerServerPushTest,
+  fetchPushSubscriberCount,
+  fetchAdminPins,
+  fetchPushSubscribers,
+  deletePushSubscriberDevice,
+} from './api'
 import { deviceName } from './deviceName'
 import type { PushSubscriber } from './api'
 import { pinContext } from './pinContext'
@@ -108,7 +126,8 @@ export function BroadcastPanel() {
             })
           : t('admin.push.broadcast.sent', {
               count: res.sent,
-              defaultValue: res.sent === 1 ? 'Enviado a 1 dispositivo.' : `Enviado a ${res.sent} dispositivos.`,
+              defaultValue:
+                res.sent === 1 ? 'Enviado a 1 dispositivo.' : `Enviado a ${res.sent} dispositivos.`,
             }),
       )
       setTitle('')
@@ -118,7 +137,11 @@ export function BroadcastPanel() {
     } catch (err) {
       // El mensaje de la base llega tal cual: si rechaza un título o un cuerpo
       // largos, lo dice en español y con el límite, y repetirlo aquí sobraría.
-      showToast(err instanceof Error ? err.message : t('admin.push.broadcast.failed', 'No se pudo enviar el aviso.'))
+      showToast(
+        err instanceof Error
+          ? err.message
+          : t('admin.push.broadcast.failed', 'No se pudo enviar el aviso.'),
+      )
     } finally {
       setSending(false)
       setConfirming(false)
@@ -164,7 +187,10 @@ export function BroadcastPanel() {
           {showSubscribers && subscribers && (
             <ul className="m-0 list-none divide-y divide-neutral-100 border-t border-neutral-100 p-0 dark:divide-neutral-800 dark:border-neutral-800">
               {subscribers.map((sub) => (
-                <li key={sub.endpoint}className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5">
+                <li
+                  key={sub.endpoint}
+                  className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5"
+                >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
                       {sub.name ?? 'Sin nombre'}
@@ -238,7 +264,8 @@ export function BroadcastPanel() {
               ningún pin, y obligar a elegir uno inventaría un destino. */}
           <div>
             <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wider text-neutral-400">
-              Lleva a un pin <span className="normal-case tracking-normal text-neutral-400">(opcional)</span>
+              Lleva a un pin{' '}
+              <span className="normal-case tracking-normal text-neutral-400">(opcional)</span>
             </span>
 
             {linkedPin ? (
@@ -256,7 +283,10 @@ export function BroadcastPanel() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => { setLinkedPin(null); setPinSearch('') }}
+                  onClick={() => {
+                    setLinkedPin(null)
+                    setPinSearch('')
+                  }}
                   aria-label={t('admin.removeLinkedPin')}
                   className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-xl text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-700"
                 >
@@ -271,7 +301,10 @@ export function BroadcastPanel() {
                     contenedor crecía y el icono se deslizaba hasta la mitad,
                     aterrizando encima del primer resultado. */}
                 <div className="relative">
-                  <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                  <Search
+                    size={15}
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400"
+                  />
                   <input
                     type="text"
                     value={pinSearch}
@@ -374,7 +407,7 @@ export function BroadcastPanel() {
           <span
             className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${
               subscribed
-                ?'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
+                ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
                 : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'
             }`}
           >
@@ -401,11 +434,15 @@ export function BroadcastPanel() {
         open={unsubscribing !== null}
         onOpenChange={(open) => !open && setUnsubscribing(null)}
         title={t('admin.unsubscribeDevice')}
-        description={unsubscribing
-          ? `${unsubscribing.name ?? 'Esta persona'} dejará de recibir avisos en ${deviceName(unsubscribing.userAgent)}. Puede volver a activarlos desde su aplicación.`
-          : ''}
+        description={
+          unsubscribing
+            ? `${unsubscribing.name ?? 'Esta persona'} dejará de recibir avisos en ${deviceName(unsubscribing.userAgent)}. Puede volver a activarlos desde su aplicación.`
+            : ''
+        }
         confirmText="Dar de baja"
-        onConfirm={() => { if (unsubscribing) void removeDevice(unsubscribing) }}
+        onConfirm={() => {
+          if (unsubscribing) void removeDevice(unsubscribing)
+        }}
       />
 
       <ConfirmDialog

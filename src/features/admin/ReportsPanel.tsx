@@ -154,10 +154,7 @@ export function ReportsPanel() {
   }
 
   return (
-    <AdminScreen
-      title={t('admin.sections.reports')}
-      description={t('admin.sections.reportsHint')}
-    >
+    <AdminScreen title={t('admin.sections.reports')} description={t('admin.sections.reportsHint')}>
       <TeamInbox />
 
       <div className="mb-5 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -192,7 +189,11 @@ export function ReportsPanel() {
       ) : reports.length === 0 ? (
         <AdminEmpty
           icon={
-            <CheckCircle2 size={40} strokeWidth={1.5} className="text-emerald-300 dark:text-emerald-800" />
+            <CheckCircle2
+              size={40}
+              strokeWidth={1.5}
+              className="text-emerald-300 dark:text-emerald-800"
+            />
           }
           title={t('admin.allClear')}
           hint={t('admin.noReportsHere')}
@@ -343,7 +344,9 @@ export function ReportsPanel() {
       <Dialog
         open={Boolean(resolution)}
         onOpenChange={(open) => !open && setResolution(null)}
-        title={resolution?.action === 'delete' ? 'Eliminar contenido reportado' : 'Descartar reporte'}
+        title={
+          resolution?.action === 'delete' ? 'Eliminar contenido reportado' : 'Descartar reporte'
+        }
         description={
           resolution?.action === 'delete'
             ? 'Elimina el contenido original de la plataforma. No se puede deshacer.'

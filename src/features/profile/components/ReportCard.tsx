@@ -24,9 +24,11 @@ export interface ReportCardProps {
 // control.
 const VOTE_SEGMENT =
   'px-3 flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer'
-const VOTE_INACTIVE = 'text-stone-500 hover:bg-[#EFECE4] dark:text-stone-400 dark:hover:bg-white/[0.08]'
+const VOTE_INACTIVE =
+  'text-stone-500 hover:bg-[#EFECE4] dark:text-stone-400 dark:hover:bg-white/[0.08]'
 const LIKE_ACTIVE = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-const DISLIKE_ACTIVE = 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
+const DISLIKE_ACTIVE =
+  'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
 
 export function ReportCard({
   title,
@@ -58,7 +60,9 @@ export function ReportCard({
           />
           <span className="truncate">{categoryLabel}</span>
         </span>
-        <span className="shrink-0 text-xs font-medium text-stone-400 dark:text-stone-500">{timeAgo}</span>
+        <span className="shrink-0 text-xs font-medium text-stone-400 dark:text-stone-500">
+          {timeAgo}
+        </span>
       </div>
 
       {/* Cuerpo */}

@@ -71,7 +71,10 @@ export function validateArea(
     })
   }
 
-  if (context.container && !polygonWithinPolygon(polygon, context.container, CONTAINMENT_TOLERANCE_M)) {
+  if (
+    context.container &&
+    !polygonWithinPolygon(polygon, context.container, CONTAINMENT_TOLERANCE_M)
+  ) {
     issues.push({
       level: 'error',
       field: 'shape',
@@ -117,7 +120,10 @@ export function validateBuilding(
 
   // Aviso y no error: hay edificios que asoman del perímetro trazado, y no es
   // motivo para impedir guardarlos.
-  if (context.perimeter && !polygonWithinPolygon(polygon, context.perimeter, CONTAINMENT_TOLERANCE_M)) {
+  if (
+    context.perimeter &&
+    !polygonWithinPolygon(polygon, context.perimeter, CONTAINMENT_TOLERANCE_M)
+  ) {
     issues.push({
       level: 'warning',
       field: 'shape',

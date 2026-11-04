@@ -2,7 +2,21 @@ import { localizedName } from '@/shared/utils/localized'
 import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BadgeCheck, MessagesSquare, Plus, Pin, MessageSquare, ThumbsUp, ThumbsDown, SlidersHorizontal, ChevronRight, ChevronDown, Megaphone, GraduationCap, Search } from 'lucide-react'
+import {
+  BadgeCheck,
+  MessagesSquare,
+  Plus,
+  Pin,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  SlidersHorizontal,
+  ChevronRight,
+  ChevronDown,
+  Megaphone,
+  GraduationCap,
+  Search,
+} from 'lucide-react'
 import { useFaculties } from '@/shared/data/facultyStore'
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useAuthStore } from '@/features/auth/authStore'
@@ -23,7 +37,7 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const showToast = useUIStore((s) => s.showToast)
-  
+
   const voteMutation = useVoteThread()
   const { data: userVote = null } = useUserVoteOnThread(thread.id)
 
@@ -51,20 +65,32 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
           <UserAvatar
             name={thread.author_name}
-            src={thread.author_avatar_url || (user && user.id === thread.author_id ? user.avatarUrl : null)}
+            src={
+              thread.author_avatar_url ||
+              (user && user.id === thread.author_id ? user.avatarUrl : null)
+            }
             className="h-8.5 w-8.5 text-2xl shrink-0"
           />
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="text-[13.5px] font-bold leading-tight text-stone-900 dark:text-stone-100">
               <span className="flex items-center gap-1.5 truncate">
                 {thread.is_official
-                  ? (thread.official_entity_name || t('pin.officialEntityDefault', 'Administración UDP'))
-                  : (thread.author_name || 'Estudiante UDP')}
-                {thread.is_official && <BadgeCheck size={14} className="text-blue-500 shrink-0" aria-label={t('forum.official', 'Oficial')} />}
+                  ? thread.official_entity_name ||
+                    t('pin.officialEntityDefault', 'Administración UDP')
+                  : thread.author_name || 'Estudiante UDP'}
+                {thread.is_official && (
+                  <BadgeCheck
+                    size={14}
+                    className="text-blue-500 shrink-0"
+                    aria-label={t('forum.official', 'Oficial')}
+                  />
+                )}
               </span>
             </span>
             <span className="mt-0.5 text-[11px] font-medium leading-none text-stone-400 dark:text-stone-500">
-              {relTime.value === 0 ? 'Ahora' : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`}
+              {relTime.value === 0
+                ? 'Ahora'
+                : `hace ${relTime.value} ${relTime.unit === 'day' ? 'd' : relTime.unit === 'hour' ? 'h' : 'min'}`}
             </span>
           </div>
         </div>
@@ -77,7 +103,9 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
             </span>
           )}
           <span className="rounded-xl bg-[#EFECE4] px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap text-stone-700 dark:bg-white/[0.08] dark:text-stone-300">
-            {faculty ? localizedName(faculty, i18n.language).replace(/^Facultad de |^Faculty of /, '') : t('forum.general', 'General')}
+            {faculty
+              ? localizedName(faculty, i18n.language).replace(/^Facultad de |^Faculty of /, '')
+              : t('forum.general', 'General')}
           </span>
         </div>
       </div>
@@ -150,7 +178,9 @@ function ThreadCard({ thread, onSelect }: { thread: ForumThread; onSelect: (id: 
         <div className="flex items-center gap-1.5 rounded-xl bg-[#EFECE4] px-3 py-1 text-xs font-semibold text-stone-700 dark:bg-white/[0.08] dark:text-stone-300">
           <MessageSquare size={13} className="text-stone-400 dark:text-stone-500" />
           <span className="tabular-nums">{thread.comment_count ?? 0}</span>
-          <span className="ml-0.5 hidden text-[11px] font-medium text-stone-500 sm:inline dark:text-stone-400">respuestas</span>
+          <span className="ml-0.5 hidden text-[11px] font-medium text-stone-500 sm:inline dark:text-stone-400">
+            respuestas
+          </span>
         </div>
       </div>
     </div>
@@ -169,7 +199,9 @@ export function ForumPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [channelDrawerOpen, setChannelDrawerOpen] = useState(false)
   const [channelSearch, setChannelSearch] = useState('')
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(() => searchParams.get('thread'))
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(() =>
+    searchParams.get('thread'),
+  )
 
   const [lastVisitedMap, setLastVisitedMap] = useState<Record<string, string>>(() => {
     try {
@@ -224,7 +256,10 @@ export function ForumPage() {
 
     allRecentThreads.forEach((t) => {
       const key = t.faculty_id || 'general'
-      if (!latestThreadByChannel[key] || new Date(t.created_at) > new Date(latestThreadByChannel[key])) {
+      if (
+        !latestThreadByChannel[key] ||
+        new Date(t.created_at) > new Date(latestThreadByChannel[key])
+      ) {
         latestThreadByChannel[key] = t.created_at
       }
     })
@@ -262,7 +297,6 @@ export function ForumPage() {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-[#FAF8F5] pt-safe lg:flex-row dark:bg-[#151820]">
-      
       {/* ── BARRA LATERAL (PC Deskop) ── */}
       <div className="hidden w-72 shrink-0 flex-col overflow-y-auto border-r border-[#E5DEC9] bg-white lg:flex dark:border-white/10 dark:bg-[#1E222D]/60">
         <div className="border-b border-[#E5DEC9] p-4 dark:border-white/10">
@@ -280,10 +314,13 @@ export function ForumPage() {
             }`}
           >
             <span className="flex items-center gap-2 truncate">
-              <Megaphone size={15} /> 
+              <Megaphone size={15} />
               {t('forum.generalTab', 'Tablón General')}
               {recentActivityMap['general'] && activeFacultyId !== null && (
-                <span className="h-2 w-2 shrink-0 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]" title="Publicaciones recientes" />
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]"
+                  title="Publicaciones recientes"
+                />
               )}
             </span>
             <ChevronRight size={14} className="opacity-50" />
@@ -300,10 +337,13 @@ export function ForumPage() {
               }`}
             >
               <span className="flex items-center gap-2 truncate">
-                <GraduationCap size={15} className="shrink-0" /> 
+                <GraduationCap size={15} className="shrink-0" />
                 {localizedName(f, i18n.language)}
                 {recentActivityMap[f.id] && activeFacultyId !== f.id && (
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]" title="Publicaciones recientes" />
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]"
+                    title="Publicaciones recientes"
+                  />
                 )}
               </span>
               <ChevronRight size={14} className="opacity-50" />
@@ -326,7 +366,10 @@ export function ForumPage() {
             )}
             <span className="truncate text-[13px]">{activeChannelName}</span>
             {recentActivityMap[activeFacultyId || 'general'] && (
-              <span className="h-2 w-2 shrink-0 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]" title="Hilo nuevo reciente" />
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]"
+                title="Hilo nuevo reciente"
+              />
             )}
           </div>
           <div className="ml-2 flex shrink-0 items-center gap-1.5 text-xs font-semibold text-stone-500 dark:text-stone-400">
@@ -349,13 +392,21 @@ export function ForumPage() {
               {t('forum.desc', 'Foro comunitario para debatir, informar y consultar.')}
             </p>
           </div>
-          
+
           <div className="flex w-full items-center justify-between gap-2.5 lg:w-auto lg:justify-end">
             {/* Sort Dropdown (CustomSelect Capsule Button) */}
             <CustomSelect
               options={[
-                { value: 'recent', label: t('forum.sortByRecent', 'Más Recientes'), icon: <SlidersHorizontal size={13} className="text-stone-400" /> },
-                { value: 'top', label: t('forum.sortByTop', 'Más Votados'), icon: <SlidersHorizontal size={13} className="text-stone-400" /> },
+                {
+                  value: 'recent',
+                  label: t('forum.sortByRecent', 'Más Recientes'),
+                  icon: <SlidersHorizontal size={13} className="text-stone-400" />,
+                },
+                {
+                  value: 'top',
+                  label: t('forum.sortByTop', 'Más Votados'),
+                  icon: <SlidersHorizontal size={13} className="text-stone-400" />,
+                },
               ]}
               value={sortBy}
               onChange={(val) => setSortBy(val as 'recent' | 'top')}
@@ -385,12 +436,19 @@ export function ForumPage() {
             </div>
           ) : threads.length === 0 ? (
             <div className="mx-auto mt-12 flex max-w-md flex-col items-center gap-2 rounded-3xl border border-[#E6E0D5] bg-white p-12 text-center text-stone-400 shadow-xs dark:border-white/[0.07] dark:bg-[#1E222D] dark:text-stone-500">
-              <MessagesSquare size={40} strokeWidth={1.5} className="text-stone-300 dark:text-stone-600" />
+              <MessagesSquare
+                size={40}
+                strokeWidth={1.5}
+                className="text-stone-300 dark:text-stone-600"
+              />
               <h3 className="mt-2 font-bold text-stone-700 dark:text-stone-300">
                 {t('forum.noThreadsTitle', 'No hay hilos aún')}
               </h3>
               <p className="text-xs">
-                {t('forum.noThreadsDesc', '¡Sé el primero en iniciar la conversación publicando una pregunta o anuncio!')}
+                {t(
+                  'forum.noThreadsDesc',
+                  '¡Sé el primero en iniciar la conversación publicando una pregunta o anuncio!',
+                )}
               </p>
             </div>
           ) : (
@@ -419,12 +477,7 @@ export function ForumPage() {
           showToast(`Hilo publicado exitosamente en ${targetName}`)
         }}
       />
-      {selectedThreadId && (
-        <ThreadDetailModal
-          threadId={selectedThreadId}
-          onClose={closeThread}
-        />
-      )}
+      {selectedThreadId && <ThreadDetailModal threadId={selectedThreadId} onClose={closeThread} />}
 
       {/* ── MODAL SELECTOR DE CANALES EN MÓVIL ── */}
       <Dialog
@@ -464,7 +517,10 @@ export function ForumPage() {
                 <Megaphone size={16} /> Tablón General
               </span>
               {recentActivityMap['general'] && activeFacultyId !== null && (
-                <span className="h-2.5 w-2.5 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]" title="Hilo nuevo" />
+                <span
+                  className="h-2.5 w-2.5 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]"
+                  title="Hilo nuevo"
+                />
               )}
             </button>
 
@@ -486,10 +542,14 @@ export function ForumPage() {
                   }`}
                 >
                   <span className="flex items-center gap-2 truncate font-semibold text-[12.5px]">
-                    <GraduationCap size={16} className="shrink-0" /> {localizedName(f, i18n.language)}
+                    <GraduationCap size={16} className="shrink-0" />{' '}
+                    {localizedName(f, i18n.language)}
                   </span>
                   {hasNew && !isActive && (
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]" title="Hilo nuevo" />
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#C22B38] animate-pulse dark:bg-[#D93846]"
+                      title="Hilo nuevo"
+                    />
                   )}
                 </button>
               )

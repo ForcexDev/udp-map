@@ -1,6 +1,9 @@
 import { supabase } from '@/shared/lib/supabase'
 import type {
-  ContentReport, ModerationReason, ModerationStatus, ModerationTargetType,
+  ContentReport,
+  ModerationReason,
+  ModerationStatus,
+  ModerationTargetType,
 } from '@/shared/types/database'
 import { createDemoReport, demoModerationReports } from './demoStore'
 
@@ -12,7 +15,13 @@ export async function createContentReport(input: {
   details?: string
 }): Promise<string> {
   if (!supabase) {
-    return createDemoReport(input.reporterId, input.targetType, input.targetId, input.reason, input.details)
+    return createDemoReport(
+      input.reporterId,
+      input.targetType,
+      input.targetId,
+      input.reason,
+      input.details,
+    )
   }
   const { data, error } = await supabase.rpc('create_content_report', {
     p_target_type: input.targetType,

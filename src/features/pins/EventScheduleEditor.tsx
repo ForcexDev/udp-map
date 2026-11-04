@@ -17,7 +17,13 @@ interface EventScheduleEditorProps {
   error?: string | null
 }
 
-export function EventScheduleEditor({ rows, onChange, eventStartsAt, eventEndsAt, error }: EventScheduleEditorProps) {
+export function EventScheduleEditor({
+  rows,
+  onChange,
+  eventStartsAt,
+  eventEndsAt,
+  error,
+}: EventScheduleEditorProps) {
   const { t, i18n } = useTranslation()
 
   const days = useMemo(() => daysBetween(eventStartsAt, eventEndsAt), [eventStartsAt, eventEndsAt])
@@ -121,7 +127,10 @@ export function EventScheduleEditor({ rows, onChange, eventStartsAt, eventEndsAt
                 value={row.subtitle}
                 maxLength={160}
                 onChange={(e) => update(row.key, { subtitle: e.target.value })}
-                placeholder={t('pin.scheduleSubtitlePlaceholder', 'Quién lo hace o dónde (opcional)')}
+                placeholder={t(
+                  'pin.scheduleSubtitlePlaceholder',
+                  'Quién lo hace o dónde (opcional)',
+                )}
                 className={FIELD}
               />
             </div>

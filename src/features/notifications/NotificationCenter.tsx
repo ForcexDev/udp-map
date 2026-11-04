@@ -72,7 +72,9 @@ function NotificationRow({
           : 'bg-[#FBECEB]/60 dark:bg-[#D93846]/10'
       }`}
     >
-      <span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full ${look.bg} ${look.fg}`}>
+      <span
+        className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full ${look.bg} ${look.fg}`}
+      >
         <Icon size={18} strokeWidth={2.2} />
       </span>
 
@@ -102,17 +104,23 @@ function NotificationRow({
         <button
           type="button"
           onClick={() => onToggleRead(notification.id, notification.read_at)}
-          title={isRead
-            ? t('notifications.markUnread', 'Marcar como no leída')
-            : t('notifications.markRead', 'Marcar como leída')}
-          aria-label={isRead
-            ? t('notifications.markUnread', 'Marcar como no leída')
-            : t('notifications.markRead', 'Marcar como leída')}
+          title={
+            isRead
+              ? t('notifications.markUnread', 'Marcar como no leída')
+              : t('notifications.markRead', 'Marcar como leída')
+          }
+          aria-label={
+            isRead
+              ? t('notifications.markUnread', 'Marcar como no leída')
+              : t('notifications.markRead', 'Marcar como leída')
+          }
           className="grid h-11 w-9 cursor-pointer place-items-center text-stone-300 transition-colors hover:text-stone-500 dark:text-stone-600 dark:hover:text-stone-400"
         >
-          {isRead
-            ? <Circle size={13} />
-            : <span className="block h-2.5 w-2.5 rounded-full bg-[#C22B38] dark:bg-[#D93846] shadow-[0_0_8px_rgba(194,43,56,0.5)]" />}
+          {isRead ? (
+            <Circle size={13} />
+          ) : (
+            <span className="block h-2.5 w-2.5 rounded-full bg-[#C22B38] dark:bg-[#D93846] shadow-[0_0_8px_rgba(194,43,56,0.5)]" />
+          )}
         </button>
 
         <button
@@ -213,7 +221,10 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
             {t('notifications.loadFailed', 'No se pudieron cargar tus avisos')}
           </p>
           <p className="mx-auto mt-1 max-w-[16rem] text-xs font-medium leading-relaxed text-stone-400 dark:text-stone-500">
-            {t('notifications.loadFailedHint', 'Revisa tu conexión. Si acabas de volver, puede que tu sesión haya caducado.')}
+            {t(
+              'notifications.loadFailedHint',
+              'Revisa tu conexión. Si acabas de volver, puede que tu sesión haya caducado.',
+            )}
           </p>
           <button
             type="button"
@@ -256,9 +267,10 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
             <div role="group" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 no-scrollbar">
               {FILTERS.map((option) => {
                 const active = filter === option.value
-                const count = option.value === 'all'
-                  ? unreadCount
-                  : personal.filter((n) => n.category === option.value && !n.read_at).length
+                const count =
+                  option.value === 'all'
+                    ? unreadCount
+                    : personal.filter((n) => n.category === option.value && !n.read_at).length
                 return (
                   <button
                     key={option.value}
@@ -314,7 +326,11 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
             </div>
           ) : (
             <div className="rounded-3xl border border-dashed border-[#E6E0D5] py-12 text-center dark:border-white/[0.08]">
-              <BellRing size={30} strokeWidth={1.5} className="mx-auto text-stone-300 dark:text-stone-600" />
+              <BellRing
+                size={30}
+                strokeWidth={1.5}
+                className="mx-auto text-stone-300 dark:text-stone-600"
+              />
               <p className="mt-3 text-sm font-semibold text-stone-600 dark:text-stone-300">
                 {personal.length === 0
                   ? t('notifications.empty', 'No tienes avisos')
@@ -322,7 +338,10 @@ export function NotificationCenter({ onNavigate }: { onNavigate: () => void }) {
               </p>
               {personal.length === 0 && (
                 <p className="mx-auto mt-1 max-w-[15rem] text-xs font-medium leading-relaxed text-stone-400 dark:text-stone-500">
-                  {t('notifications.emptyHint', 'Aquí llegarán las respuestas del foro, los recordatorios de eventos y tus logros.')}
+                  {t(
+                    'notifications.emptyHint',
+                    'Aquí llegarán las respuestas del foro, los recordatorios de eventos y tus logros.',
+                  )}
                 </p>
               )}
             </div>
