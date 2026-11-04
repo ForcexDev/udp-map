@@ -52,7 +52,6 @@ body,
 #root {
   width: 100%;
   height: 100%;
-  height: var(--app-height, 100dvh);
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -599,9 +598,11 @@ body {
 }
 
 .app-shell {
+  /* Anclar al viewport evita conservar una altura de arranque obsoleta en iOS. */
+  position: fixed;
+  inset: 0;
   width: 100%;
-  height: 100%;
-  height: var(--app-height, 100dvh);
+  height: auto;
   overflow: hidden;
   overscroll-behavior: none;
 }

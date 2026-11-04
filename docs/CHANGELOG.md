@@ -1,5 +1,6 @@
 ### Novedades en esta versión (v0.8.0)
 
+- Ajuste de la altura de la aplicación al abrirla en iOS para evitar espacio vacío bajo la navegación
 - "Cómo llegar" giro a giro hasta la puerta de la sala en los edificios con interior mapeado (beta)
 - Una figura recorre la ruta, la cámara la sigue y el selector cambia solo de piso al subir
 - Ruta sin escaleras real por ascensor, y microdirección de la sala en su ficha
