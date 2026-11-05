@@ -66,6 +66,23 @@ discrepancias de esta referencia antes de llamarla uniforme.
 | Registro de actividad                                     | Administración                                                                                 |
 | Cola push y limpieza Storage                              | Tablas internas, sin acceso ordinario del cliente                                              |
 
+La protección de perfiles usa dos barreras: el cliente autenticado solo tiene
+`UPDATE` de `name`, `avatar_url`, `faculty_id`, `career` y `year`; la RLS sigue
+limitando las filas. `protect_profile_privileged_fields` es `SECURITY INVOKER`,
+por lo que comprueba el rol que ejecuta el UPDATE y no el dueño del trigger.
+Las RPC `admin_set_user_role` y `adjust_karma` conservan su ejecución DEFINER;
+la primera comprueba administrador y la segunda no es invocable por el cliente.
+La excepción de mantenimiento privilegiado se mantiene para SQL de confianza.
+La migración `20261105000000_protect_profile_role_karma` se aplicó mediante
+SQL Editor en producción (`udpmap`) el 5 de noviembre de 2026. Se comprobó allí
+el trigger habilitado como INVOKER y los privilegios efectivos de anon,
+authenticated y service_role. Con identidades reales simuladas en una transacción
+revertida se probaron la edición propia, el rechazo de edición directa de rol y
+karma, la RPC de rol (rechazo al estudiante y éxito al admin) y `adjust_karma`.
+No se probó el panel en el navegador ni una acción completa que conceda karma.
+Otros entornos requieren aplicación y comprobación propias, incluida la herencia
+de roles.
+
 `moderator_capabilities` permite `mapping`, `reports`, `verify`,
 `content` y `official`. `has_capability` da true a admin sin exigir una fila;
 solo moderadores reciben capacidades mediante `admin_set_capability`.
@@ -425,12 +442,12 @@ reorganización. Lo externo requiere comprobación separada.
 - **Correo de perfiles.** `profiles_read_public USING (true)` y SELECT de email
   para authenticated permiten leer correos ajenos en el SQL versionado. La vista
   pública no revoca ese acceso inferior.
-- **Campos privilegiados de perfil.** `protect_profile_privileged_fields` es
-  DEFINER y exime `current_user` privilegiado. Con dueño postgres, esa condición
-  puede saltarse la protección pretendida, junto con UPDATE general y RLS de
-  fila propia. La garantía de modificar rol/karma solo por RPC no está demostrada.
-  Hay que comprobar dueño y efectividad; no se afirma explotación en producción.
-  El mantenimiento SQL privilegiado tampoco se describe como rechazado siempre.
+- **Campos privilegiados de perfil.** El baseline y la migración
+  `20261105000000_protect_profile_role_karma` corrigen la excepción del dueño
+  del trigger y restringen UPDATE por columnas. En producción se aplicó y se
+  comprobaron trigger, privilegios y flujos SQL en una transacción revertida el
+  5 de noviembre de 2026; faltan pruebas completas de interfaz y comprobar los
+  demás entornos.
 - **Reportes.** Lectura por capacidad, resolución admin, asignación no exigida al
   resolver y nota legible en fila propia difieren de la garantía anterior.
 - **Votos.** El documento previo registró grants restaurados en producción; el

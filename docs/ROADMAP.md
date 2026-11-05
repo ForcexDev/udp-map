@@ -26,6 +26,9 @@ compatibilidad de rollback. Este orden expresa dependencias, no plazos nuevos.
       correo de perfiles, protección de role/karma con owner privilegiado, escritura
       directa de votos, privacidad de nota y resolución de reportes asignados.
       Verificar dueño, grants, políticas y llamadas reales antes de cerrar.
+      Role/karma se aplicó en producción el 5 de noviembre de 2026 y se
+      verificaron trigger, privilegios y flujos SQL con rollback; faltan pruebas
+      completas de interfaz y comprobación en los demás entornos.
 - [ ] Completar el alcance de capacidades: mapping/reports no representan todo
       lo que prometen verify/content/official ni el acceso del panel. Definir y
       comprobar interfaz, RLS y RPC por separado.

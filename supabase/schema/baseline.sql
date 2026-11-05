@@ -990,10 +990,11 @@ begin
 end;
 $fn$;
 
+-- INVOKER conserva el rol que ejecuta el UPDATE, también dentro de una RPC DEFINER.
 create or replace function public.protect_profile_privileged_fields()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public
 as $fn$
 begin
@@ -4196,7 +4197,20 @@ grant all on public.forum_votes to anon, authenticated;
 -- 9.3 Perfiles: sin SELECT de tabla. La lectura va por columnas, de modo que
 -- el correo solo lo ve un usuario autenticado y nunca un anónimo.
 revoke select on public.profiles from anon, authenticated;
-grant insert, update, delete, truncate, references, trigger on public.profiles to anon, authenticated;
+grant insert, delete, truncate, references, trigger on public.profiles to anon, authenticated;
+-- Un permiso de tabla o de columna previo anularía la restricción por columnas.
+revoke update on public.profiles from public, anon, authenticated;
+do $profile_update_acl$
+declare
+  v_columns text;
+begin
+  select string_agg(quote_ident(attname), ', ' order by attnum) into v_columns
+  from pg_attribute
+  where attrelid = 'public.profiles'::regclass and attnum > 0 and not attisdropped;
+  execute format('revoke update (%s) on public.profiles from public, anon, authenticated', v_columns);
+end;
+$profile_update_acl$;
+grant update (name, avatar_url, faculty_id, career, year) on public.profiles to authenticated;
 grant select (id, name, avatar_url, role, karma, faculty_id, career, year, created_at, email)
   on public.profiles to authenticated;
 grant select (id, name, avatar_url, role, karma, faculty_id, career, year, created_at)
