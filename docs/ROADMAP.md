@@ -40,7 +40,8 @@ compatibilidad de rollback. Este orden expresa dependencias, no plazos nuevos.
       la facultad del moderador, sin inventar nombres si falta el dato.
       Quitar los respaldos contradictorios de FIC/UDP requiere tocar cliente, demo
       y SQL; no basta corregir un texto del panel.
-- [ ] Revisar paridad INVOKER/DEFINER de `prevent_occupied_pin_location` y
+- [ ] Aplicar y comprobar `20261105000100_pin_location_definer` en los demás
+      entornos: producción ya usa DEFINER con dueño postgres. Revisar también
       otros endurecimientos de RLS/funciones, índices FK y privilegios señalados.
       No sustituir esa revisión por un GRANT masivo.
 - [ ] Comprobar en el entorno las filas interiores inválidas anteriores al

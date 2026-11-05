@@ -1076,6 +1076,7 @@ $fn$;
 create or replace function public.prevent_occupied_pin_location()
 returns trigger
 language plpgsql
+security definer
 set search_path = public, pg_temp
 as $fn$
 begin

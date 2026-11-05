@@ -125,7 +125,13 @@ incluidos sala (720 horas) y sala-libre (6 horas).
 `prevent_occupied_pin_location` serializa altas con advisory lock y compara
 `lat`, `lng` y `floor` con igualdad que trata NULL como NULL. Un pin vencido
 no reserva el lugar y distintas plantas pueden compartir el punto. El helper
-cliente anticipa el rechazo; no sustituye el control SQL.
+cliente anticipa el rechazo; no sustituye el control SQL. El trigger ejecuta
+como DEFINER para comprobar también pines que una RLS futura oculte al actor;
+su dueño debe poder leerlos pese a RLS. En producción se confirmó el 5 de
+noviembre de 2026 que es DEFINER y pertenece a `postgres`. El baseline y la
+migración `20261105000100_pin_location_definer` fijan esa misma propiedad;
+esta última debe aplicarse y comprobarse en otros entornos. El control de quién
+puede mover sigue en `authorize_pin_move`, que se ejecuta antes.
 
 `extend_pin_ttl` y `unverify_pin` comprueban rol y estado y explican los rechazos.
 `verify_and_make_permanent` hace permanente, registra verificador y premia
@@ -454,9 +460,10 @@ reorganización. Lo externo requiere comprobación separada.
   baseline conserva permisos que permiten revisar escritura directa frente a
   RPC/contadores. Hay que contrastar ACL y políticas reales antes de cerrar el
   pendiente; no se repite como inspección actual.
-- **Paridad baseline/migración.** `prevent_occupied_pin_location` aparece sin
-  DEFINER en el baseline y con DEFINER en la última migración que lo define.
-  Los cuerpos coinciden, pero no son la misma propiedad de ejecución.
+- **Paridad baseline/migración.** El baseline y
+  `20261105000100_pin_location_definer` fijan DEFINER, como la definición
+  histórica y producción. Falta aplicar y verificar en los demás entornos,
+  incluido el dueño efectivo y su acceso a los pines.
 - **Alcance de moderador.** No se acota por facultad; varias capacidades no
   sustituyen todavía el rol en políticas/RPC y no abren el panel.
 - **Campos y coste heredados.** `pins.reports` no tiene productor/lector activo;
