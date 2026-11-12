@@ -398,10 +398,10 @@ export function CreatePinModal() {
   return (
     <RadixDialog.Root open={open} onOpenChange={(o) => !o && close()}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-[3000] bg-black/40 backdrop-blur-md animate-fade-in" />
+        <RadixDialog.Overlay className="viewport-fixed-cover fixed inset-0 z-[3000] bg-black/40 backdrop-blur-md animate-fade-in" />
         <RadixDialog.Content
           aria-describedby={undefined}
-          className="fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-[3001] w-full sm:w-[520px] h-[100dvh] sm:h-[85dvh] sm:max-h-[85dvh] bg-[#FAF8F5] dark:bg-[#151820] sm:rounded-[28px] border border-[#E5DEC9] dark:border-white/10 flex flex-col shadow-2xl animate-slide-in-bottom sm:animate-scale-in overflow-hidden"
+          className="fullscreen-sheet-mobile fixed inset-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-[3001] w-full sm:w-[520px] h-[100dvh] sm:h-[85dvh] sm:max-h-[85dvh] bg-[#FAF8F5] dark:bg-[#151820] sm:rounded-[28px] border border-[#E5DEC9] dark:border-white/10 flex flex-col shadow-2xl animate-slide-in-bottom sm:animate-scale-in overflow-hidden"
         >
           {/* Header */}
           <div className="px-5 sm:px-7 pt-4 sm:pt-6 pb-4 border-b border-[#E5DEC9] dark:border-white/10 flex items-center justify-between shrink-0">

@@ -70,10 +70,10 @@ function PublicProfileModalContent({ userId, onClose }: { userId: string; onClos
             los z-40/z-50 que tenía, abrirlo desde la lista de asistentes lo
             dejaba pintado detrás: existía, respondía al teclado, y solo se veía
             borroso al fondo. */}
-        <RadixDialog.Overlay className="fixed inset-0 z-[4600] bg-black/60 backdrop-blur-sm" />
+        <RadixDialog.Overlay className="viewport-fixed-cover fixed inset-0 z-[4600] bg-black/60 backdrop-blur-sm" />
         <RadixDialog.Content
           aria-describedby={undefined}
-          className="fixed inset-0 z-[4610] flex flex-col overflow-hidden premium-shadow
+          className="fullscreen-sheet-mobile fixed inset-0 z-[4610] flex flex-col overflow-hidden premium-shadow
                      bg-[#FAF8F5] dark:bg-[#151820] border-[#E6E0D5] dark:border-white/[0.07]
                      sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
                      sm:h-auto sm:max-h-[85dvh] sm:w-[calc(100vw-4rem)] sm:max-w-xl

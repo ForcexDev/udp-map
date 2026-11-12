@@ -628,9 +628,9 @@ body {
   flex-shrink: 0;
   min-height: 56px;
   margin-bottom: 0;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: max(0.375rem, env(safe-area-inset-bottom, 0px));
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
   /* Bleed the nav's own background below its box so any viewport-rounding
      gap on iOS/Android PWA shells is covered by the nav's color instead of
      the page background showing through. box-shadow doesn't affect layout. */
@@ -653,6 +653,38 @@ body {
 @media (min-width: 640px) {
   .update-prompt-anchor {
     padding-bottom: 1rem;
+  }
+}
+
+/* En PWA standalone de iOS con status bar traslúcida, WebKit puede recortar el
+   viewport fijo (inset: 0 / 100dvh) a screenHeight - safeAreaTop mientras el
+   lienzo pinta hasta abajo. viewport.ts activa este atributo solo cuando mide
+   ese déficit para llevar el shell y las capas fijas hasta el borde real. */
+:root[data-ios-viewport-fix='true'] .app-shell,
+:root[data-ios-viewport-fix='true'] .update-prompt-anchor,
+:root[data-ios-viewport-fix='true'] .viewport-fixed-cover {
+  bottom: auto;
+  height: var(--app-height);
+}
+
+:root[data-ios-viewport-fix='true'] .sidebar-root {
+  bottom: auto;
+  height: var(--app-height);
+  min-height: var(--app-height);
+}
+
+@media (max-width: 639px) {
+  :root[data-ios-viewport-fix='true'] .fullscreen-sheet-mobile {
+    bottom: auto;
+    height: var(--app-height);
+    max-height: var(--app-height);
+  }
+
+  :root[data-ios-viewport-fix='true'] .bottom-sheet-mobile {
+    top: calc(var(--app-height) * 0.1);
+    bottom: auto;
+    height: calc(var(--app-height) * 0.9);
+    max-height: calc(var(--app-height) * 0.9);
   }
 }
 

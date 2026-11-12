@@ -925,7 +925,7 @@ export function MapPage() {
                 <>
                   {/* Backdrop to close when clicking outside */}
                   <div
-                    className="fixed inset-0 z-40"
+                    className="viewport-fixed-cover fixed inset-0 z-40"
                     onClick={() => setCampusDropdownOpen(false)}
                   />
 
