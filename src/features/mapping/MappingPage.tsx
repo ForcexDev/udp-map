@@ -1137,7 +1137,7 @@ function CopyFloorMenu({ levels, onCopy }: { levels: number[]; onCopy: (level: n
       </button>
       {open && (
         <>
-          <div className="viewport-fixed-cover fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full z-50 mt-1 flex w-40 flex-col gap-0.5 rounded-xl border border-neutral-200 bg-white p-1 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
             <p className="px-2 py-1 text-[9px] font-black uppercase tracking-wider text-neutral-400">
               Copiar a

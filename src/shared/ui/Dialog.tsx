@@ -42,7 +42,7 @@ export function Dialog({
 
             Por encima de todo salvo el Toast (z-99999), que tiene que poder
             avisar de algo aunque haya un modal abierto. */}
-        <RadixDialog.Overlay className="viewport-fixed-cover fixed inset-0 z-[4500] bg-black/50 backdrop-blur-sm" />
+        <RadixDialog.Overlay className="fixed inset-0 z-[4500] bg-black/50 backdrop-blur-sm" />
         <RadixDialog.Content
           className={`fixed left-1/2 top-1/2 z-[4510] max-h-[90dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto hide-scrollbar rounded-3xl border border-[#E5DEC9] bg-[#FAF8F5] p-6 premium-shadow animate-scale-in dark:border-white/10 dark:bg-[#151820] ${contentClassName || ''}`}
           aria-describedby={description ? undefined : ''}

@@ -21,6 +21,31 @@
       rel="stylesheet"
     />
     <title>UDP Map</title>
+    <script>
+      // Solo PWA de iOS a pantalla completa: su viewport mide la pantalla menos
+      // el área segura superior y no se pinta nada bajo el documento, por eso
+      // html/body/#root toman esta altura (ver index.css). La pantalla no cambia
+      // con el teclado, así que es estable; con ventana partida (iPad) se deja
+      // el valor CSS.
+      ;(function () {
+        if (navigator.standalone !== true) return
+        function setAppHeight() {
+          var landscape = window.matchMedia('(orientation: landscape)').matches
+          var long = Math.max(screen.width, screen.height)
+          var short = Math.min(screen.width, screen.height)
+          var root = document.documentElement.style
+          if (Math.abs(window.innerWidth - (landscape ? long : short)) > 1) {
+            root.removeProperty('--app-height')
+            return
+          }
+          var h = Math.max(landscape ? short : long, window.innerHeight)
+          root.setProperty('--app-height', h + 'px')
+        }
+        setAppHeight()
+        window.addEventListener('resize', setAppHeight)
+        window.addEventListener('orientationchange', setAppHeight)
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

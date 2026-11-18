@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './Layout'
 import { MapPage } from '@/features/map/MapPage'
@@ -21,12 +20,8 @@ import { UpdatePrompt } from '@/shared/ui/UpdatePrompt'
 import { useFacultiesSync } from '@/shared/data/useFaculties'
 import { usePushForegroundSync } from '@/features/notifications/usePushSubscription'
 import { useAuthStore } from '@/features/auth/authStore'
-import { initIosViewportFix } from '@/shared/utils/viewport'
 
 export function App() {
-  // Sincroniza el alto real del viewport en PWA standalone de iOS cuando WebKit
-  // recorta el containing block fijo por `safe-area-inset-top`.
-  useEffect(() => initIosViewportFix(), [])
   // El catálogo de facultades se rehidrata desde la base una sola vez, aquí
   // arriba: lo necesitan tanto las rutas públicas como el editor de /admin.
   useFacultiesSync()

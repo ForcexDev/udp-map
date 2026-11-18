@@ -8,12 +8,9 @@ contrato SQL en [base de datos](base-de-datos.md) y los motivos en
 ## Arranque y rutas
 
 [`src/app/main.tsx`](../../src/app/main.tsx) prepara React, router, QueryClient,
-Google, autenticación y la sincronización inicial de `shared/utils/viewport.ts`
-(que corrige `--app-height` cuando la PWA de iOS recorta el viewport fijo por
-`safe-area-inset-top`). `App` mantiene esa observación del viewport, la
-sincronización del catálogo y del dispositivo push por encima de las rutas;
-`Layout` organiza navegación pública y modales. `UpdatePrompt` vive fuera de las
-pantallas.
+Google y autenticación. `App` monta sincronización del catálogo y del dispositivo
+push por encima de las rutas; `Layout` organiza navegación pública y modales.
+`UpdatePrompt` vive fuera de las pantallas.
 
 | Ruta                | Responsable y acceso de interfaz                           |
 | ------------------- | ---------------------------------------------------------- |

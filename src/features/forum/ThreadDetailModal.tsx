@@ -357,7 +357,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
       open={true}
       onOpenChange={(o) => !o && onClose()}
       title={t('forum.threadDetail', 'Hilo de Foro')}
-      contentClassName="bottom-sheet-mobile !bg-white dark:!bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] sm:max-w-xl flex flex-col !overflow-hidden h-[90dvh] max-h-[90dvh] sm:h-[650px] sm:max-h-[85dvh] !rounded-t-[32px] sm:!rounded-3xl max-sm:fixed max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:top-auto max-sm:w-full"
+      contentClassName="!bg-white dark:!bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] sm:max-w-xl flex flex-col !overflow-hidden h-[90dvh] max-h-[90dvh] sm:h-[650px] sm:max-h-[85dvh] !rounded-t-[32px] sm:!rounded-3xl max-sm:fixed max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0 max-sm:top-auto max-sm:w-full"
     >
       {isLoadingThread && !thread ? (
         <div className="flex h-48 items-center justify-center text-sm font-semibold text-stone-500">
@@ -573,7 +573,7 @@ export function ThreadDetailModal({ threadId, onClose }: ThreadDetailModalProps)
             {/* Fixed Bottom Reply Input Bar (Matching CommentSection.tsx rectangular style) */}
             <form
               onSubmit={handleAddComment}
-              className="-mx-6 -mb-6 mt-auto flex shrink-0 items-center gap-2 overflow-hidden rounded-b-[32px] border-t border-[#E5DEC9] bg-white px-6 pt-3.5 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:pb-4 sm:rounded-b-3xl dark:border-white/10 dark:bg-[#1E222D]"
+              className="-mx-6 -mb-6 mt-auto flex shrink-0 items-center gap-2 overflow-hidden rounded-b-[32px] border-t border-[#E5DEC9] bg-white px-6 pt-3.5 pb-4 sm:rounded-b-3xl dark:border-white/10 dark:bg-[#1E222D]"
             >
               <input
                 type="text"

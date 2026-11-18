@@ -6,12 +6,9 @@ import { queryClient } from '@/shared/lib/queryClient'
 import '@/shared/lib/i18n'
 import '@/styles/index.css'
 import { useAuthStore } from '@/features/auth/authStore'
-import { syncIosViewportFix } from '@/shared/utils/viewport'
 import { App } from './App'
 
 import { GoogleOAuthProvider } from '@react-oauth/google'
-
-syncIosViewportFix()
 
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => {

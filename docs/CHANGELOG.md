@@ -4,7 +4,7 @@
 - Cámara interior corregida y vista despejada de marcadores y plantas superiores durante el recorrido
 - La navegación interior oculta los edificios del mapa que tapaban la vista 3D
 - Elige un punto de partida para navegar aunque no tengas ubicación activada
-- Corrección de altura en la PWA de iOS para evitar el espacio vacío bajo la barra de navegación inferior
+- Ajuste de la altura de la aplicación en iOS: la barra de navegación inferior ya no queda cortada ni deja espacio vacío debajo
 - "Cómo llegar" giro a giro hasta la puerta de la sala en los edificios con interior mapeado (beta)
 - Una figura recorre la ruta, la cámara la sigue y el selector cambia solo de piso al subir
 - Ruta sin escaleras real por ascensor, y microdirección de la sala en su ficha

@@ -131,7 +131,7 @@ export function PhotoCarousel({
       {zoomed &&
         createPortal(
           <div
-            className="viewport-fixed-cover fixed inset-0 z-[4000] flex items-center justify-center bg-black/90 p-4"
+            className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/90 p-4"
             onClick={() => setZoomed(null)}
             role="dialog"
             aria-modal="true"
