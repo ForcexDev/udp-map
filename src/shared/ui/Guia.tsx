@@ -77,9 +77,27 @@ interface Medida {
   /** Índice del objetivo encontrado, o -1. */
   indice: number
   caja: Caja | null
+  /**
+   * Parte visible de la pantalla. Con el teclado abierto en el teléfono es
+   * más baja que `innerHeight` y puede empezar más abajo: la tarjeta tiene
+   * que caer ahí, no detrás del teclado.
+   */
+  vista: { top: number; height: number }
 }
 
-const MEDIDA_VACIA: Medida = { oculta: false, indice: -1, caja: null }
+function vistaActual(): Medida['vista'] {
+  const vv = window.visualViewport
+  return vv
+    ? { top: Math.round(vv.offsetTop), height: Math.round(vv.height) }
+    : { top: 0, height: window.innerHeight }
+}
+
+const MEDIDA_VACIA: Medida = {
+  oculta: false,
+  indice: -1,
+  caja: null,
+  vista: { top: 0, height: typeof window === 'undefined' ? 0 : window.innerHeight },
+}
 
 /** ¿Algún ancestro se desplaza de verdad (auto/scroll y con contenido de sobra)? */
 function tieneScroll(el: Element): boolean {
@@ -192,12 +210,15 @@ export function Guia({
             height: Math.round(rect.height + AIRE * 2),
           }
         : null
-      const firma = caja
-        ? `${oculta}|${encontrado}|${caja.top}|${caja.left}|${caja.width}|${caja.height}`
-        : `${oculta}|-1`
+      const vista = vistaActual()
+      const firma =
+        `${vista.top}|${vista.height}|` +
+        (caja
+          ? `${oculta}|${encontrado}|${caja.top}|${caja.left}|${caja.width}|${caja.height}`
+          : `${oculta}|-1`)
       if (firma !== ultima) {
         ultima = firma
-        setMedida({ oculta, indice: encontrado, caja })
+        setMedida({ oculta, indice: encontrado, caja, vista })
       }
       frame = requestAnimationFrame(medir)
     }
@@ -271,10 +292,11 @@ export function Guia({
   // ninguno de los dos (un objetivo alto), al lado con más espacio.
   const alto = altoTarjeta || 180
   let posicion: 'arriba' | 'abajo' | 'centro' = 'centro'
+  const { vista } = medida
   if (caja) {
     const necesita = alto + MARGEN * 2
-    const espacioArriba = caja.top
-    const espacioAbajo = window.innerHeight - (caja.top + caja.height)
+    const espacioArriba = caja.top - vista.top
+    const espacioAbajo = vista.top + vista.height - (caja.top + caja.height)
     if (espacioArriba >= necesita) posicion = 'arriba'
     else if (espacioAbajo >= necesita) posicion = 'abajo'
     else posicion = espacioArriba >= espacioAbajo ? 'arriba' : 'abajo'
@@ -383,11 +405,14 @@ export function Guia({
         className="fixed inset-x-3 mx-auto max-w-md rounded-[24px] border border-[#E5DEC9] bg-[#FAF8F5] p-4 shadow-2xl dark:border-white/10 dark:bg-[#151820]"
         style={{
           pointerEvents: 'auto',
-          ...(posicion === 'arriba'
-            ? { top: `calc(env(safe-area-inset-top, 0px) + ${MARGEN}px)` }
-            : posicion === 'abajo'
-              ? { bottom: `calc(env(safe-area-inset-bottom, 0px) + ${MARGEN}px)` }
-              : { top: '50%', marginTop: -alto / 2 }),
+          // Todo en `top` y relativo a la vista visible: con `bottom` la
+          // tarjeta quedaba anclada al borde del layout, debajo del teclado.
+          top:
+            posicion === 'arriba'
+              ? `calc(${vista.top + MARGEN}px + env(safe-area-inset-top, 0px))`
+              : posicion === 'abajo'
+                ? `calc(${vista.top + vista.height - alto - MARGEN}px - env(safe-area-inset-bottom, 0px))`
+                : vista.top + Math.max(MARGEN, (vista.height - alto) / 2),
         }}
       >
         <div className="flex items-center gap-3">

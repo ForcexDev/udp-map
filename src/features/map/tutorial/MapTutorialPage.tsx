@@ -70,6 +70,17 @@ export function MapTutorialPage() {
     marcarVisto(userId)
   }, [userId])
 
+  // El mismo candado de scroll que `Layout`, que esta ruta no monta. Con
+  // `overflow: hidden` el documento igual se desplaza por programa (foco de un
+  // campo, scrollIntoView), y entonces lo fijo y lo medido dejan de coincidir.
+  useEffect(() => {
+    const fijar = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0)
+    }
+    window.addEventListener('scroll', fijar, { passive: true })
+    return () => window.removeEventListener('scroll', fijar)
+  }, [])
+
   const nombre = (id: string) => localizedName(categoryById(id), i18n.language) || id
   const facultad = faculties.find((f) => f.id === FACULTAD_PRACTICA)
   const nombreFacultad = facultad ? localizedName(facultad, i18n.language) : FACULTAD_PRACTICA
@@ -213,8 +224,15 @@ export function MapTutorialPage() {
                       className="text-stone-400 dark:text-stone-500 flex-shrink-0"
                       strokeWidth={2}
                     />
+                    {/* Sin teclado en la práctica: en el teléfono el teclado
+                        encoge el viewport y el navegador desplaza la página
+                        para mostrar el campo, y el hueco y la tarjeta quedaban
+                        midiendo una pantalla que ya no era la visible. Para
+                        practicar basta con tocar el resultado. */}
                     <input
                       type="text"
+                      readOnly
+                      inputMode="none"
                       value={busqueda}
                       onChange={(ev) => {
                         setBusqueda(ev.target.value)
