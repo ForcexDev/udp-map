@@ -66,7 +66,9 @@ segunda fuente activa.
 ## Mapa, selección y plantas
 
 `MapPage` orquesta búsqueda, ubicación, orientación, colocación y ficha.
-`MapView` mantiene MapLibre, marcadores DOM, ruta y capas. `mapConfig` define
+`MapView` mantiene MapLibre, marcadores DOM, ruta y capas. `mapConfig` reduce
+las etiquetas del estilo base (`shrinkBaseMapLabels`, partiendo siempre del
+tamaño original) y define
 la apariencia; `campusBoundary` limita el área y publica límites. Desbloquearla
 es una herramienta de administrador, no un permiso de escritura sobre datos.
 
@@ -350,6 +352,9 @@ mostraron el coste de sincronizar dos fuentes. La deuda está en
 | `.claude/settings.json`            | Aviso de documentación DB y generación de instrucciones                              |
 
 `public/push-sw.js` se mantiene como fuente; `sw.js` se genera.
+`public/fonts/allo/` sirve la tipografía de la interfaz (Allo, OFL 1.1, con su
+licencia al lado): `index.html` la precarga e `index.css` declara el
+`@font-face`. Google Fonts queda solo para Space Grotesk y JetBrains Mono.
 Los scripts de iconos pueden sobrescribir assets. `bundle.mjs`, `geocode.js` y
 `engineering_polygon.json` son restos o herramientas fuera del arranque normal;
 no son fuentes del catálogo vivo ni una razón para restaurar perímetros estáticos.

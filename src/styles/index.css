@@ -1,6 +1,18 @@
-/* Las webfonts (Inter, Space Grotesk, JetBrains Mono) se cargan con un <link>
-   en index.html: un @import aquí bloquea y serializa la petición. */
+/* Space Grotesk y JetBrains Mono se cargan con un <link> en index.html: un
+   @import aquí bloquea y serializa la petición. Allo se sirve desde /fonts
+   (OFL 1.1) y index.html la precarga para no esperar a este CSS. */
 @import 'tailwindcss';
+
+/* Variante «Friendly»: un solo archivo variable con todos los pesos y la mitad
+   de peso que la completa. Sin oblicuas: la interfaz casi no usa cursiva y el
+   navegador la sintetiza. */
+@font-face {
+  font-family: 'Allo';
+  src: url('/fonts/allo/AlloVariableFriendly.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -21,6 +33,13 @@
   /* El perfil no tiene paleta propia: usa la escala neutral + el rojo UDP,
      igual que Mapa, Eventos y Foro. */
 
+  --font-sans: 'Allo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Allo es más densa que Inter a igual peso: al ser variable, cada clase
+     baja unos 50 sin cambiar la jerarquía entre ellas. */
+  --font-weight-medium: 450;
+  --font-weight-semibold: 550;
+  --font-weight-bold: 650;
+  --font-weight-extrabold: 750;
   --font-display: 'Space Grotesk', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
@@ -65,13 +84,7 @@ body,
 
 body {
   @apply bg-[#FAF8F5] text-stone-900 antialiased dark:bg-[#151820] dark:text-stone-100 font-medium;
-  font-family:
-    'Inter',
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

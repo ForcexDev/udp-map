@@ -92,6 +92,63 @@ const RAIL_LAYERS = [
   'tunnel_transit_rail_hatching',
 ] as const
 
+/** Escala de las etiquetas del estilo base: un toque más pequeñas que Liberty. */
+export const BASE_LABEL_SCALE = 0.92
+
+/**
+ * Escala un `text-size` de MapLibre. Un `interpolate`/`step` por zoom tiene que
+ * quedar en la raíz de la expresión, así que se escalan sus salidas en vez de
+ * envolverlo en `['*', …]`, que el validador rechaza.
+ */
+export function scaleTextSize(value: unknown, factor: number): unknown {
+  const round = (n: number) => Math.round(n * factor * 100) / 100
+  if (typeof value === 'number') return round(value)
+  if (!Array.isArray(value)) return value
+  const [op] = value
+  if (op === 'interpolate') {
+    // ['interpolate', tipo, entrada, z0, v0, z1, v1, …]
+    return value.map((v, i) => (i >= 4 && i % 2 === 0 && typeof v === 'number' ? round(v) : v))
+  }
+  if (op === 'step') {
+    // ['step', entrada, v0, z1, v1, …]
+    return value.map((v, i) => (i >= 2 && i % 2 === 0 && typeof v === 'number' ? round(v) : v))
+  }
+  return value
+}
+
+// Tamaño original por mapa y capa: style.load se repite al cambiar el estilo y
+// escalar sobre lo ya escalado encogería las etiquetas en cada recarga.
+const originalLabelSizes = new WeakMap<MapLibreMap, Map<string, unknown>>()
+
+/** Reduce un poco las etiquetas del estilo base (calles, POI, lugares). */
+export function shrinkBaseMapLabels(map: MapLibreMap, factor = BASE_LABEL_SCALE): void {
+  if (
+    typeof map.getStyle !== 'function' ||
+    typeof map.getLayoutProperty !== 'function' ||
+    typeof map.setLayoutProperty !== 'function'
+  ) {
+    return
+  }
+  let originals = originalLabelSizes.get(map)
+  if (!originals) {
+    originals = new Map()
+    originalLabelSizes.set(map, originals)
+  }
+  for (const layer of map.getStyle()?.layers ?? []) {
+    if (layer.type !== 'symbol' || layer.source !== 'openmaptiles') continue
+    if (!originals.has(layer.id)) {
+      const size = map.getLayoutProperty(layer.id, 'text-size')
+      if (size === undefined) continue
+      originals.set(layer.id, size)
+    }
+    try {
+      map.setLayoutProperty(layer.id, 'text-size', scaleTextSize(originals.get(layer.id), factor))
+    } catch {
+      // Una expresión no prevista conserva el tamaño del estilo.
+    }
+  }
+}
+
 function safeSetPaint(map: MapLibreMap, layerId: string, prop: string, value: unknown) {
   try {
     if (map.getLayer(layerId)) {

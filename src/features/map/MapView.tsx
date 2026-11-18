@@ -19,7 +19,13 @@ import { useNowTick } from '@/shared/lib/useNowTick'
 import i18n from '@/shared/lib/i18n'
 import { pinScaleForZoom } from '@/shared/utils/pinScale'
 import { publishBounds } from '@/features/pins/usePins'
-import { MAP_STYLE_LIGHT, MAP_STYLE_DARK, DEFAULT_ZOOM, applyMapThemePalette } from './mapConfig'
+import {
+  MAP_STYLE_LIGHT,
+  MAP_STYLE_DARK,
+  DEFAULT_ZOOM,
+  applyMapThemePalette,
+  shrinkBaseMapLabels,
+} from './mapConfig'
 import {
   addFacultyLayers,
   PERIMETER_FILL_LAYER,
@@ -270,6 +276,7 @@ export function MapView({
           typeof document !== 'undefined' &&
           document.documentElement.classList.contains('dark'))
       applyMapThemePalette(map, isDark)
+      shrinkBaseMapLabels(map)
       addFacultyLayers(map)
       addMappingLayers(map, isDark)
       addBoundaryMask(map, isDark)
@@ -1067,7 +1074,9 @@ export function MapView({
           }
         }}
         aria-label={i18n.t('map.centerOnMe', 'Centrar en mi ubicación')}
-        className="absolute right-3 top-[80px] sm:right-5 sm:top-[88px] z-30 w-11 h-11 rounded-2xl glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 cursor-pointer"
+        // Igual que la cabecera (.pt-safe-hud), baja con el área segura superior:
+        // con un top fijo, en la PWA de iOS quedaba tapado por la búsqueda.
+        className="absolute right-3 top-[calc(80px+env(safe-area-inset-top,0px))] sm:right-5 sm:top-[calc(88px+env(safe-area-inset-top,0px))] z-30 w-11 h-11 rounded-2xl glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 cursor-pointer"
       >
         {isTrackingLocation ? (
           <LocateFixed size={20} className="text-[#C22B38]" />
@@ -1080,7 +1089,7 @@ export function MapView({
       <button
         onClick={handleResetOrientation}
         aria-label="Restaurar orientación al Norte"
-        className={`absolute right-3 top-[120px] sm:right-5 sm:top-[128px] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 ${
+        className={`absolute right-3 top-[calc(132px+env(safe-area-inset-top,0px))] sm:right-5 sm:top-[calc(140px+env(safe-area-inset-top,0px))] z-30 w-10 h-10 rounded-full glass-hud premium-shadow flex items-center justify-center transition-all duration-300 pointer-events-auto hover:scale-105 active:scale-95 ${
           isDefaultOrientation ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
