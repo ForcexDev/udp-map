@@ -57,9 +57,11 @@ frente a MUI/Bootstrap como búsqueda de control visual con primitivas de foco,
 teclado y ARIA. Usar esas primitivas no demuestra accesibilidad integral de
 cada pantalla ni del recorrido físico.
 
-RHF/Zod se usan de forma acotada en CreatePinModal; la observación anterior
-sobre coste de bundle no tiene una medida actual reproducida. Se conserva en
-el histórico, no como cifra para justificar retirar una dependencia hoy.
+CreatePinModal valida con estado de React y una función propia
+(`validatePinForm`); RHF y Zod se retiraron porque era su único uso. Las hojas
+arrastrables usan eventos de puntero y transiciones CSS en lugar de Framer
+Motion. Ambas retiradas reducen dependencias, no responden a una medida de
+bundle reproducida.
 
 La caché de teselas CacheFirst y su retención están configuradas en Vite.
 La mala conectividad del campus fue un motivo inferido por aquella auditoría,

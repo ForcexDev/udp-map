@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReducedMotion } from 'framer-motion'
+import { useReducedMotion } from '@/shared/lib/useReducedMotion'
 import {
   Accessibility,
   ArrowDownToLine,
@@ -114,7 +114,7 @@ export function IndoorRouteSheet({
   onStreetRoute,
 }: IndoorRouteSheetProps) {
   const { t, i18n } = useTranslation()
-  const reduceMotion = useReducedMotion() ?? false
+  const reduceMotion = useReducedMotion()
   const accessibleRoute = useUIStore((s) => s.accessibleRoute)
   const setAccessibleRoute = useUIStore((s) => s.setAccessibleRoute)
   const setRouteTarget = useUIStore((s) => s.setRouteTarget)

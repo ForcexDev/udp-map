@@ -1,8 +1,5 @@
 import { localizedName } from '@/shared/utils/localized'
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useForm, Controller } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import * as RadixDialog from '@radix-ui/react-dialog'
@@ -26,51 +23,67 @@ import { floorRejectionKey } from '@/shared/utils/floorValidation'
 
 const MAX_DESCRIPTION = 1500
 
-const pinSchema = z
-  .object({
-    type: z.enum(['report', 'place', 'event']),
-    title: z.string().trim().min(3).max(80),
-    // 1500 y no 500: la descripción admite enlaces y una URL de correo o de Drive
-    // mide 300 caracteres sola. Tiene que coincidir con el check de la base
-    // (pins_description_check), o el formulario deja pasar algo que la base rechaza.
-    description: z.string().trim().max(MAX_DESCRIPTION).optional().or(z.literal('')),
-    categoryId: z.string().nullable(),
-    facultyId: z.string().nullable(),
-    // La planta la elige la persona: no se puede deducir del punto, porque desde
-    // arriba el piso 1 y el 3 son el mismo sitio.
-    floor: z.number().nullable().optional(),
-    roomCode: z.string().max(40).optional(),
-    isOfficial: z.boolean().optional(),
-    startsAt: z.string().optional().or(z.literal('')),
-    endsAt: z.string().optional().or(z.literal('')),
-  })
-  .superRefine((data, ctx) => {
-    if (data.type === 'event') {
-      if (!data.startsAt) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'STARTS_AT_REQUIRED',
-          path: ['startsAt'],
-        })
-      }
-      if (!data.endsAt) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'ENDS_AT_REQUIRED', path: ['endsAt'] })
-      }
-      if (data.startsAt && data.endsAt) {
-        const s = new Date(data.startsAt).getTime()
-        const e = new Date(data.endsAt).getTime()
-        if (e <= s) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'ENDS_BEFORE_STARTS',
-            path: ['endsAt'],
-          })
-        }
-      }
-    }
-  })
+type PinFormType = 'report' | 'place' | 'event'
 
-type PinFormValues = z.infer<typeof pinSchema>
+interface PinFormValues {
+  type: PinFormType
+  title: string
+  // 1500 y no 500: la descripción admite enlaces y una URL de correo o de Drive
+  // mide 300 caracteres sola. Tiene que coincidir con el check de la base
+  // (pins_description_check), o el formulario deja pasar algo que la base rechaza.
+  description: string
+  categoryId: string | null
+  facultyId: string | null
+  // La planta la elige la persona: no se puede deducir del punto, porque desde
+  // arriba el piso 1 y el 3 son el mismo sitio.
+  floor: number | null
+  roomCode: string
+  isOfficial: boolean
+  startsAt: string
+  endsAt: string
+}
+
+interface PinFormErrors {
+  title?: 'too_small' | 'too_big'
+  description?: true
+  startsAt?: 'STARTS_AT_REQUIRED'
+  endsAt?: 'ENDS_AT_REQUIRED' | 'ENDS_BEFORE_STARTS'
+}
+
+const MAX_TITLE = 80
+const MAX_ROOM_CODE = 40
+
+const emptyValues = (categoryId: string | null): PinFormValues => ({
+  type: 'report',
+  title: '',
+  description: '',
+  categoryId,
+  facultyId: null,
+  floor: null,
+  roomCode: '',
+  isOfficial: false,
+  startsAt: '',
+  endsAt: '',
+})
+
+function validatePinForm(values: PinFormValues): PinFormErrors {
+  const errors: PinFormErrors = {}
+  const title = values.title.trim()
+  if (title.length < 3) errors.title = 'too_small'
+  else if (title.length > MAX_TITLE) errors.title = 'too_big'
+  if (values.description.trim().length > MAX_DESCRIPTION) errors.description = true
+  if (values.type === 'event') {
+    if (!values.startsAt) errors.startsAt = 'STARTS_AT_REQUIRED'
+    if (!values.endsAt) errors.endsAt = 'ENDS_AT_REQUIRED'
+    else if (
+      values.startsAt &&
+      new Date(values.endsAt).getTime() <= new Date(values.startsAt).getTime()
+    ) {
+      errors.endsAt = 'ENDS_BEFORE_STARTS'
+    }
+  }
+  return errors
+}
 
 function toLocalDatetimeString(iso: string): string {
   const d = new Date(iso)
@@ -119,36 +132,27 @@ export function CreatePinModal() {
   const canCreatePlace = can(role, 'pin.create.place')
   const isVerifiedLocked = !!editingPin?.is_permanent && !isModerator
 
-  const form = useForm<PinFormValues>({
-    resolver: zodResolver(pinSchema),
-    defaultValues: {
-      type: 'report',
-      title: '',
-      description: '',
-      categoryId: reportCategories[0]?.id ?? null,
-      facultyId: null,
-      isOfficial: false,
-      startsAt: '',
-      endsAt: '',
-    },
-  })
+  const [values, setValues] = useState<PinFormValues>(() =>
+    emptyValues(reportCategories[0]?.id ?? null),
+  )
+  // Los errores aparecen tras el primer intento de envío y desde ahí se
+  // recalculan con cada cambio, para que se vayan al corregir el campo.
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+  const errors = submitAttempted ? validatePinForm(values) : {}
+  const setField = <K extends keyof PinFormValues>(key: K, value: PinFormValues[K]) =>
+    setValues((prev) => ({ ...prev, [key]: value }))
 
-  const type = form.watch('type')
-  const title = form.watch('title')
-  const description = form.watch('description')
+  const { type, title, description } = values
 
   // Switch category list and defaults when type changes
   useEffect(() => {
-    const currentCategory = CATEGORIES.find((c) => c.id === form.getValues('categoryId'))
-    if (type === 'event') {
-      if (!currentCategory || currentCategory.kind !== 'event') {
-        form.setValue('categoryId', eventCategories[0]?.id ?? null)
-      }
-    } else if (type === 'report' || type === 'place') {
-      if (!currentCategory || currentCategory.kind !== 'report') {
-        form.setValue('categoryId', reportCategories[0]?.id ?? null)
-      }
-    }
+    setValues((prev) => {
+      const currentCategory = CATEGORIES.find((c) => c.id === prev.categoryId)
+      const kind = type === 'event' ? 'event' : 'report'
+      if (currentCategory?.kind === kind) return prev
+      const fallback = (kind === 'event' ? eventCategories : reportCategories)[0]?.id ?? null
+      return { ...prev, categoryId: fallback }
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
 
@@ -158,40 +162,31 @@ export function CreatePinModal() {
       setDeletedPhotoIds([])
       setScheduleRows([])
       setScheduleError(null)
+      setSubmitAttempted(false)
       if (editingPin) {
-        form.setValue('type', editingPin.type as 'report' | 'place' | 'event')
-        form.setValue('title', editingPin.title)
-        form.setValue('description', editingPin.description ?? '')
-        form.setValue('categoryId', editingPin.category_id)
-        form.setValue('facultyId', editingPin.faculty_id)
-        form.setValue('isOfficial', editingPin.is_official)
-        form.setValue(
-          'startsAt',
-          editingPin.starts_at ? toLocalDatetimeString(editingPin.starts_at) : '',
-        )
-        form.setValue('endsAt', editingPin.ends_at ? toLocalDatetimeString(editingPin.ends_at) : '')
-        form.setValue('floor', editingPin.floor)
-        form.setValue('roomCode', editingPin.room_code ?? '')
+        setValues({
+          type: editingPin.type as PinFormType,
+          title: editingPin.title,
+          description: editingPin.description ?? '',
+          categoryId: editingPin.category_id,
+          facultyId: editingPin.faculty_id,
+          isOfficial: editingPin.is_official,
+          startsAt: editingPin.starts_at ? toLocalDatetimeString(editingPin.starts_at) : '',
+          endsAt: editingPin.ends_at ? toLocalDatetimeString(editingPin.ends_at) : '',
+          floor: editingPin.floor,
+          roomCode: editingPin.room_code ?? '',
+        })
       } else {
         const initialType = draftPinType === 'event' ? 'event' : 'report'
-        form.setValue('type', initialType)
-        form.setValue('title', '')
-        form.setValue('description', '')
-        form.setValue('isOfficial', false)
-        form.setValue('startsAt', '')
-        form.setValue('endsAt', '')
-        // Sin esto, la planta y el código del pin anterior quedaban pegados en
-        // el formulario: `form.reset()` solo corre tras un guardado con éxito.
-        form.setValue('floor', null)
-        form.setValue('roomCode', '')
-        if (initialType === 'event') {
-          form.setValue('categoryId', eventCategories[0]?.id ?? null)
-        } else {
-          form.setValue('categoryId', reportCategories[0]?.id ?? null)
-        }
-        if (draftLocation) {
-          form.setValue('facultyId', facultyIdAt(draftLocation.lat, draftLocation.lng))
-        }
+        // Se reinicia todo, también planta y código: antes quedaban pegados los
+        // del pin anterior porque el reset solo corría tras un guardado.
+        setValues({
+          ...emptyValues(
+            (initialType === 'event' ? eventCategories : reportCategories)[0]?.id ?? null,
+          ),
+          type: initialType,
+          facultyId: draftLocation ? facultyIdAt(draftLocation.lat, draftLocation.lng) : null,
+        })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -323,7 +318,8 @@ export function CreatePinModal() {
       }
       void queryClient.invalidateQueries({ queryKey: ['pin-schedule'] })
       void queryClient.invalidateQueries({ queryKey: ['schedule-counts'] })
-      form.reset()
+      setValues(emptyValues(reportCategories[0]?.id ?? null))
+      setSubmitAttempted(false)
       setPhotos([])
       setScheduleRows([])
       setScheduleError(null)
@@ -362,11 +358,13 @@ export function CreatePinModal() {
   })
 
   /**
-   * El programa se valida aquí y no en el schema de zod porque depende de dos
-   * campos del formulario (las fechas del evento) y de un estado que vive
-   * fuera de react-hook-form. Corta el envío antes de tocar la base.
+   * El programa se valida aparte de los campos porque depende de las fechas
+   * del evento y de un estado propio. Corta el envío antes de tocar la base.
    */
-  const submit = form.handleSubmit((values) => {
+  const submit = (e?: React.SyntheticEvent) => {
+    e?.preventDefault()
+    setSubmitAttempted(true)
+    if (Object.keys(validatePinForm(values)).length > 0) return
     if (values.type === 'event') {
       const startIso = values.startsAt ? new Date(values.startsAt).toISOString() : null
       const endIso = values.endsAt ? new Date(values.endsAt).toISOString() : null
@@ -377,8 +375,13 @@ export function CreatePinModal() {
       }
     }
     setScheduleError(null)
-    create.mutate(values)
-  })
+    create.mutate({
+      ...values,
+      title: values.title.trim(),
+      description: values.description.trim(),
+      roomCode: values.roomCode.slice(0, MAX_ROOM_CODE),
+    })
+  }
 
   // El punto sobre el que se resuelven edificio, área y planta: el que se está
   // eligiendo al crear, o el que el pin ya tiene al editar.
@@ -388,7 +391,7 @@ export function CreatePinModal() {
   if (canCreatePlace) {
     availableTypes.push('place')
   }
-  const detectedFac = FACULTIES.find((f) => f.id === form.watch('facultyId'))
+  const detectedFac = FACULTIES.find((f) => f.id === values.facultyId)
   const facultyName = detectedFac
     ? i18n.language === 'en'
       ? detectedFac.name_en
@@ -446,7 +449,14 @@ export function CreatePinModal() {
                         : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
                     }`}
                   >
-                    <input type="radio" value={v} className="sr-only" {...form.register('type')} />
+                    <input
+                      type="radio"
+                      name="type"
+                      value={v}
+                      checked={type === v}
+                      onChange={() => setField('type', v)}
+                      className="sr-only"
+                    />
                     {v === 'report'
                       ? t('pin.typeReport')
                       : v === 'place'
@@ -471,7 +481,8 @@ export function CreatePinModal() {
               </div>
               <div className="space-y-1.5">
                 <input
-                  {...form.register('title')}
+                  value={title}
+                  onChange={(e) => setField('title', e.target.value)}
                   placeholder={
                     type === 'event'
                       ? t('pin.titlePlaceholderEvent', 'Ej: Feria de Ciencias, Charla FIC...')
@@ -484,14 +495,14 @@ export function CreatePinModal() {
                 />
                 <div className="h-1 w-full bg-[#E5DEC9] dark:bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className={`h-full bg-[#C22B38] dark:bg-[#D93846] transition-all duration-700 ease-out ${title?.length > 0 ? 'w-full' : 'w-0'}`}
+                    className={`h-full bg-[#C22B38] dark:bg-[#D93846] transition-all duration-700 ease-out ${title.length > 0 ? 'w-full' : 'w-0'}`}
                   />
                 </div>
-                {form.formState.errors.title && (
+                {errors.title && (
                   <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846]">
-                    {form.formState.errors.title.type === 'too_small'
+                    {errors.title === 'too_small'
                       ? t('common.minChars', { n: 3 })
-                      : t('common.maxChars', { n: 80 })}
+                      : t('common.maxChars', { n: MAX_TITLE })}
                   </p>
                 )}
               </div>
@@ -504,17 +515,18 @@ export function CreatePinModal() {
               </label>
               <textarea
                 rows={3}
-                {...form.register('description')}
+                value={description}
+                onChange={(e) => setField('description', e.target.value)}
                 placeholder={t('pin.descriptionPlaceholder', '¿Qué está pasando? (opcional)')}
                 className="w-full min-h-[84px] bg-white dark:bg-[#1E222D] border border-[#E6E0D5] dark:border-white/[0.07] rounded-2xl px-4 py-3 text-sm font-medium leading-relaxed text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 outline-none focus:border-[#C22B38] dark:focus:border-[#D93846] transition-all resize-y shadow-xs"
               />
-              {form.formState.errors.description ? (
+              {errors.description ? (
                 <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846]">
                   {t('common.maxChars', { n: MAX_DESCRIPTION })}
                 </p>
-              ) : (description?.length ?? 0) > MAX_DESCRIPTION * 0.8 ? (
+              ) : description.length > MAX_DESCRIPTION * 0.8 ? (
                 <p className="text-xs font-medium text-stone-400 dark:text-stone-500">
-                  {description?.length ?? 0} / {MAX_DESCRIPTION}
+                  {description.length} / {MAX_DESCRIPTION}
                 </p>
               ) : null}
             </div>
@@ -631,9 +643,9 @@ export function CreatePinModal() {
                 }`}
               >
                 <span className="truncate">
-                  {form.watch('facultyId')
+                  {values.facultyId
                     ? localizedName(
-                        FACULTIES.find((f) => f.id === form.watch('facultyId')),
+                        FACULTIES.find((f) => f.id === values.facultyId),
                         i18n.language,
                       ) || t('pin.facultyNone')
                     : t('pin.facultyNone')}
@@ -659,11 +671,11 @@ export function CreatePinModal() {
                     <button
                       type="button"
                       onClick={() => {
-                        form.setValue('facultyId', null, { shouldValidate: true })
+                        setField('facultyId', null)
                         setFacultyDropdownOpen(false)
                       }}
                       className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                        !form.watch('facultyId')
+                        !values.facultyId
                           ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
                           : 'text-stone-700 dark:text-stone-300 hover:bg-[#F4F0E8] dark:hover:bg-white/[0.08]'
                       }`}
@@ -675,11 +687,11 @@ export function CreatePinModal() {
                         key={f.id}
                         type="button"
                         onClick={() => {
-                          form.setValue('facultyId', f.id, { shouldValidate: true })
+                          setField('facultyId', f.id)
                           setFacultyDropdownOpen(false)
                         }}
                         className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                          form.watch('facultyId') === f.id
+                          values.facultyId === f.id
                             ? 'border border-[#F2D0CE] bg-[#FBECEB] text-[#B02330] dark:border-[#D93846]/30 dark:bg-[#D93846]/15 dark:text-rose-300'
                             : 'text-stone-700 dark:text-stone-300 hover:bg-[#F4F0E8] dark:hover:bg-white/[0.08]'
                         }`}
@@ -698,78 +710,69 @@ export function CreatePinModal() {
                 {t('pin.category')}
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                <Controller
-                  name="categoryId"
-                  control={form.control}
-                  render={({ field }) => {
-                    const activeCategories = CATEGORIES.filter((c) => {
-                      if (c.kind !== (type === 'event' ? 'event' : 'report')) return false
-                      if (c.id === 'entrada' && !isModerator) return false
-                      return true
-                    })
-                    return (
-                      <>
-                        {activeCategories.map((c) => {
-                          const isSelected = field.value === c.id
-                          return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              disabled={isVerifiedLocked && !isSelected}
-                              onClick={() => field.onChange(c.id)}
-                              className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all cursor-pointer ${
+                {(() => {
+                  const activeCategories = CATEGORIES.filter((c) => {
+                    if (c.kind !== (type === 'event' ? 'event' : 'report')) return false
+                    if (c.id === 'entrada' && !isModerator) return false
+                    return true
+                  })
+                  return (
+                    <>
+                      {activeCategories.map((c) => {
+                        const isSelected = values.categoryId === c.id
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            disabled={isVerifiedLocked && !isSelected}
+                            onClick={() => setField('categoryId', c.id)}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'shadow-xs border-current bg-white dark:bg-[#1E222D]'
+                                : 'bg-white dark:bg-[#1E222D] border-[#E6E0D5] dark:border-white/[0.07] hover:border-stone-400'
+                            } ${isVerifiedLocked && !isSelected ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
+                            style={
+                              isSelected
+                                ? {
+                                    borderColor: c.color,
+                                    backgroundColor: `color-mix(in srgb, ${c.color} 8%, transparent)`,
+                                  }
+                                : {}
+                            }
+                          >
+                            <div
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                                 isSelected
-                                  ? 'shadow-xs border-current bg-white dark:bg-[#1E222D]'
-                                  : 'bg-white dark:bg-[#1E222D] border-[#E6E0D5] dark:border-white/[0.07] hover:border-stone-400'
-                              } ${isVerifiedLocked && !isSelected ? 'opacity-30 cursor-not-allowed grayscale' : ''}`}
-                              style={
-                                isSelected
-                                  ? {
-                                      borderColor: c.color,
-                                      backgroundColor: `color-mix(in srgb, ${c.color} 8%, transparent)`,
-                                    }
-                                  : {}
-                              }
+                                  ? 'text-white shadow-xs'
+                                  : 'bg-[#EFECE4] dark:bg-white/[0.08] text-stone-500 dark:text-stone-400'
+                              }`}
+                              style={isSelected ? { backgroundColor: c.color } : {}}
                             >
-                              <div
-                                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                                  isSelected
-                                    ? 'text-white shadow-xs'
-                                    : 'bg-[#EFECE4] dark:bg-white/[0.08] text-stone-500 dark:text-stone-400'
-                                }`}
-                                style={isSelected ? { backgroundColor: c.color } : {}}
-                              >
-                                {c.svgPath ? (
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    width="18"
-                                    height="18"
-                                    fill="currentColor"
-                                  >
-                                    <path d={c.svgPath} />
-                                  </svg>
-                                ) : (
-                                  <div
-                                    className="w-2.5 h-2.5 rounded-full"
-                                    style={{ backgroundColor: c.color }}
-                                  />
-                                )}
-                              </div>
-                              <span
-                                className={`text-xs font-semibold text-center leading-tight ${
-                                  !isSelected && 'text-stone-700 dark:text-stone-300'
-                                }`}
-                                style={isSelected ? { color: c.color } : {}}
-                              >
-                                {localizedName(c, i18n.language)}
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </>
-                    )
-                  }}
-                />
+                              {c.svgPath ? (
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                  <path d={c.svgPath} />
+                                </svg>
+                              ) : (
+                                <div
+                                  className="w-2.5 h-2.5 rounded-full"
+                                  style={{ backgroundColor: c.color }}
+                                />
+                              )}
+                            </div>
+                            <span
+                              className={`text-xs font-semibold text-center leading-tight ${
+                                !isSelected && 'text-stone-700 dark:text-stone-300'
+                              }`}
+                              style={isSelected ? { color: c.color } : {}}
+                            >
+                              {localizedName(c, i18n.language)}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </>
+                  )
+                })()}
               </div>
             </div>
 
@@ -780,22 +783,16 @@ export function CreatePinModal() {
                   <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
                     Fecha de Inicio
                   </label>
-                  <Controller
-                    name="startsAt"
-                    control={form.control}
-                    render={({ field }) => (
-                      <CustomDateTimePicker
-                        value={field.value ?? ''}
-                        onChange={field.onChange}
-                        placeholder="Seleccionar inicio..."
-                        error={!!form.formState.errors.startsAt}
-                        align="left"
-                      />
-                    )}
+                  <CustomDateTimePicker
+                    value={values.startsAt}
+                    onChange={(v) => setField('startsAt', v)}
+                    placeholder="Seleccionar inicio..."
+                    error={!!errors.startsAt}
+                    align="left"
                   />
-                  {form.formState.errors.startsAt && (
+                  {errors.startsAt && (
                     <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846] mt-1">
-                      {form.formState.errors.startsAt.message}
+                      {errors.startsAt}
                     </p>
                   )}
                 </div>
@@ -803,22 +800,16 @@ export function CreatePinModal() {
                   <label className="text-xs font-semibold text-stone-500 dark:text-stone-400">
                     Fecha de Término
                   </label>
-                  <Controller
-                    name="endsAt"
-                    control={form.control}
-                    render={({ field }) => (
-                      <CustomDateTimePicker
-                        value={field.value ?? ''}
-                        onChange={field.onChange}
-                        placeholder="Seleccionar término..."
-                        error={!!form.formState.errors.endsAt}
-                        align="right"
-                      />
-                    )}
+                  <CustomDateTimePicker
+                    value={values.endsAt}
+                    onChange={(v) => setField('endsAt', v)}
+                    placeholder="Seleccionar término..."
+                    error={!!errors.endsAt}
+                    align="right"
                   />
-                  {form.formState.errors.endsAt && (
+                  {errors.endsAt && (
                     <p className="text-xs font-semibold text-[#C22B38] dark:text-[#D93846] mt-1">
-                      {form.formState.errors.endsAt.message}
+                      {errors.endsAt}
                     </p>
                   )}
                 </div>
@@ -833,8 +824,8 @@ export function CreatePinModal() {
                   setScheduleRows(rows)
                   if (scheduleError) setScheduleError(null)
                 }}
-                eventStartsAt={form.watch('startsAt') ?? ''}
-                eventEndsAt={form.watch('endsAt') ?? ''}
+                eventStartsAt={values.startsAt}
+                eventEndsAt={values.endsAt}
                 error={scheduleError}
               />
             )}
@@ -844,12 +835,12 @@ export function CreatePinModal() {
               <IndoorFields
                 lat={indoorPoint.lat}
                 lng={indoorPoint.lng}
-                floor={form.watch('floor') ?? null}
-                roomCode={form.watch('roomCode') ?? ''}
-                isRoom={form.watch('categoryId') === 'sala'}
+                floor={values.floor}
+                roomCode={values.roomCode}
+                isRoom={values.categoryId === 'sala'}
                 autoSelectFloor={!editingPin}
-                onFloorChange={(value) => form.setValue('floor', value)}
-                onRoomCodeChange={(value) => form.setValue('roomCode', value)}
+                onFloorChange={(value) => setField('floor', value)}
+                onRoomCodeChange={(value) => setField('roomCode', value)}
               />
             )}
 
@@ -894,17 +885,11 @@ export function CreatePinModal() {
                       .
                     </p>
                   </div>
-                  <Controller
-                    name="isOfficial"
-                    control={form.control}
-                    render={({ field }) => (
-                      <Switch
-                        id="pin-official"
-                        checked={field.value ?? false}
-                        onChange={field.onChange}
-                        tone="sky"
-                      />
-                    )}
+                  <Switch
+                    id="pin-official"
+                    checked={values.isOfficial}
+                    onChange={(v) => setField('isOfficial', v)}
+                    tone="sky"
                   />
                 </div>
               </div>
@@ -914,7 +899,7 @@ export function CreatePinModal() {
             <div className="hidden sm:block pt-2 pb-2">
               <button
                 type="submit"
-                disabled={!title?.trim() || create.isPending || (!editingPin && !draftLocation)}
+                disabled={!title.trim() || create.isPending || (!editingPin && !draftLocation)}
                 className="w-full h-11 bg-[#C22B38] hover:bg-[#9E1F2A] dark:bg-[#D93846] dark:hover:bg-[#B82532] text-white rounded-2xl font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale cursor-pointer"
               >
                 {create.isPending ? (
@@ -933,7 +918,7 @@ export function CreatePinModal() {
           <div className="sm:hidden px-5 pt-3 pb-[max(1.2rem,env(safe-area-inset-bottom))] bg-[#FAF8F5] dark:bg-[#151820] border-t border-[#E5DEC9] dark:border-white/10 shrink-0">
             <button
               onClick={submit}
-              disabled={!title?.trim() || create.isPending || (!editingPin && !draftLocation)}
+              disabled={!title.trim() || create.isPending || (!editingPin && !draftLocation)}
               className="w-full h-11 bg-[#C22B38] hover:bg-[#9E1F2A] dark:bg-[#D93846] dark:hover:bg-[#B82532] text-white rounded-2xl font-semibold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale cursor-pointer"
             >
               {create.isPending ? (

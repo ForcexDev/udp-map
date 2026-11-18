@@ -44,6 +44,8 @@ su entrada en `App`. Mapeo se presenta como herramienta de escritorio.
 | `shared/lib/supabase.ts`                           | Cliente o `null` según URL y clave pública                   |
 | `shared/lib/queryClient.ts`                        | Caché remota compartida                                      |
 | `shared/lib/i18n.ts` y `shared/utils/localized.ts` | Catálogos ES/EN y elección de textos                         |
+| `shared/lib/useReducedMotion.ts`                   | Preferencia reactiva de reducir movimiento                   |
+| `shared/lib/useLingeringValue.ts`                  | Mantiene montada una ficha mientras anima su salida          |
 | `shared/stores/uiStore.ts`                         | Selección, modales, planta, orientación y rutas              |
 | `filterStore`                                      | Filtros de contenido; no es autorización                     |
 | `sidebarStore`                                     | Apertura y sección de la barra lateral                       |

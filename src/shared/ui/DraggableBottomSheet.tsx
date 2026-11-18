@@ -1,5 +1,3 @@
-import { motion, useDragControls } from 'framer-motion'
-import type { PanInfo } from 'framer-motion'
 import { useEffect, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { SheetStateContext } from './sheetState'
@@ -32,7 +30,13 @@ export function DraggableBottomSheet({
 }: DraggableBottomSheetProps) {
   const isDesktop = typeof window !== 'undefined' ? window.innerWidth >= 640 : false
   const [stop, setStop] = useState<SheetStop>(isDesktop ? 'expanded' : 'compact')
-  const dragControls = useDragControls()
+  // Desplazamiento del dedo mientras arrastra; `null` cuando no hay arrastre.
+  // Durante el arrastre la transición CSS se apaga para que la hoja siga al dedo.
+  const [dragOffset, setDragOffset] = useState<number | null>(null)
+  const dragRef = useRef<{ startY: number; samples: { y: number; t: number }[] } | null>(null)
+  // La hoja monta escondida y sube al siguiente frame: sin ese frame intermedio
+  // el navegador no ve el cambio de posición y no anima la entrada.
+  const [entered, setEntered] = useState(false)
 
   // Get the parent container's height instead of window to avoid bottom nav bar overlap,
   // but use window.innerHeight as an initial fallback to prevent full-screen flash on first render.
@@ -84,6 +88,11 @@ export function DraggableBottomSheet({
     return () => sheetObserver.disconnect()
   }, [])
 
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setEntered(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
   const expandedY = 0
   const measured = sheetHeight || maxSheetHeight
   const compactY = Math.max(0, measured - compactSheetHeight)
@@ -104,13 +113,37 @@ export function DraggableBottomSheet({
     setStop(stops[Math.min(next, stops.length - 1)])
   }
 
-  const handleDragEnd = (_event: unknown, info: PanInfo) => {
-    const velocityThreshold = 200
-    const offsetThreshold = 80
+  const VELOCITY_THRESHOLD = 200 // px/s
+  const OFFSET_THRESHOLD = 80 // px
 
-    if (info.velocity.y > velocityThreshold || info.offset.y > offsetThreshold) {
+  const handleDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { startY: e.clientY, samples: [{ y: e.clientY, t: e.timeStamp }] }
+    setDragOffset(0)
+  }
+
+  const handleDragMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    drag.samples.push({ y: e.clientY, t: e.timeStamp })
+    // Solo los últimos ~100 ms cuentan para la velocidad del gesto.
+    while (drag.samples.length > 2 && e.timeStamp - drag.samples[0].t > 100) drag.samples.shift()
+    setDragOffset(e.clientY - drag.startY)
+  }
+
+  const handleDragEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    dragRef.current = null
+    setDragOffset(null)
+    const offset = e.clientY - drag.startY
+    const first = drag.samples[0]
+    const dt = (e.timeStamp - first.t) / 1000
+    const velocity = dt > 0 ? (e.clientY - first.y) / dt : 0
+
+    if (velocity > VELOCITY_THRESHOLD || offset > OFFSET_THRESHOLD) {
       step(-1)
-    } else if (info.velocity.y < -velocityThreshold || info.offset.y < -offsetThreshold) {
+    } else if (velocity < -VELOCITY_THRESHOLD || offset < -OFFSET_THRESHOLD) {
       step(1)
     }
     // Un arrastre que no llega al umbral no cambia de punto: la hoja vuelve
@@ -118,34 +151,26 @@ export function DraggableBottomSheet({
     // un roce de dos píxeles al scrollear la plegaba.
   }
 
-  if (!isOpen) return null
-
-  const lowestY = yOf[stops[0]]
+  const hiddenY = measured + 100
+  const fallbackY: Record<SheetStop, number> = { peek: 600, compact: 500, expanded: 0 }
+  const restY = !isOpen || !entered ? hiddenY : yOf[stop] || fallbackY[stop]
+  let y = restY
+  if (dragOffset !== null) {
+    y = restY + dragOffset
+    // Por encima del expandido cede poco, como un tope elástico.
+    if (y < expandedY) y = expandedY + (y - expandedY) * 0.15
+  }
 
   return (
-    <motion.aside
+    <aside
       ref={containerRef}
       aria-label={ariaLabel}
+      aria-hidden={!isOpen || undefined}
       className={`pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[400px] ${className}`}
-      initial="hidden"
-      animate={stop}
-      exit="hidden"
-      variants={{
-        hidden: { y: measured + 100 },
-        peek: { y: peekY || 600 },
-        compact: { y: compactY || 500 },
-        expanded: { y: expandedY },
-      }}
-      transition={{ type: 'tween', ease: [0.25, 1, 0.5, 1], duration: 0.4 }}
-      drag="y"
-      dragControls={dragControls}
-      dragListener={false}
-      dragConstraints={{ top: expandedY, bottom: lowestY > 0 ? lowestY + 800 : 800 }}
-      dragElastic={0.15}
-      dragMomentum={false}
-      onDragEnd={handleDragEnd}
       style={{
         height: 'auto',
+        transform: `translateY(${y}px)`,
+        transition: dragOffset === null ? 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
         maxHeight: maxSheetHeight || '100%',
         // `pan-x` y no `none`. Con `none` el navegador desactiva TODO gesto
         // táctil dentro de la hoja, y eso se llevaba por delante el
@@ -166,7 +191,10 @@ export function DraggableBottomSheet({
         {/* Drag Handle */}
         <div
           className="w-full flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
-          onPointerDown={(e) => dragControls.start(e)}
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onPointerCancel={handleDragEnd}
         >
           <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700 pointer-events-none" />
         </div>
@@ -186,6 +214,6 @@ export function DraggableBottomSheet({
           </SheetStateContext.Provider>
         </div>
       </div>
-    </motion.aside>
+    </aside>
   )
 }

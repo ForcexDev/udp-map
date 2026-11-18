@@ -46,6 +46,8 @@ interface PinDetailProps {
   pin: Pin
   isFavorite: boolean
   userLocation?: { lat: number; lng: number } | null
+  /** `false` mientras la ficha anima su salida tras deseleccionar el pin. */
+  isOpen?: boolean
 }
 
 // Grupo unido para útil / no útil (un solo control dividido, no dos píldoras
@@ -79,7 +81,7 @@ function formatEventDate(startsAt: string, endsAt: string) {
   }
 }
 
-export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
+export function PinDetail({ pin, isFavorite, userLocation, isOpen = true }: PinDetailProps) {
   const { t, i18n } = useTranslation()
   const guard = useGuard()
   const user = useAuthStore((s) => s.user)
@@ -193,7 +195,7 @@ export function PinDetail({ pin, isFavorite, userLocation }: PinDetailProps) {
 
   return (
     <>
-      <DraggableBottomSheet isOpen={true} onClose={() => selectPin(null)} ariaLabel={pin.title}>
+      <DraggableBottomSheet isOpen={isOpen} onClose={() => selectPin(null)} ariaLabel={pin.title}>
         <div className="flex flex-col px-5 pb-6 pt-4">
           <div className="mb-3 flex items-start justify-between gap-3">
             <h2 className="text-xl font-bold leading-snug tracking-tight text-stone-900 sm:text-2xl dark:text-stone-100">

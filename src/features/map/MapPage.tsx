@@ -16,7 +16,6 @@ import {
 import { useUIStore } from '@/shared/stores/uiStore'
 import { useSidebarStore } from '@/shared/stores/sidebarStore'
 import { useUnreadCount } from '@/features/notifications/useNotifications'
-import { AnimatePresence } from 'framer-motion'
 import { usePins } from '@/features/pins/usePins'
 import { searchRooms } from '@/shared/utils/roomSearch'
 import { roomSubtitle } from '@/features/map/roomSubtitle'
@@ -47,6 +46,7 @@ import { IndoorRouteSheet, type StreetRoute } from '@/features/wayfinding/Indoor
 import { IndoorScene } from '@/features/wayfinding/IndoorScene'
 import { resolveTarget } from '@/features/wayfinding/resolveTarget'
 import { useNavGraph } from '@/features/wayfinding/useNavGraph'
+import { useLingeringValue } from '@/shared/lib/useLingeringValue'
 
 function SearchRow({
   icon,
@@ -292,6 +292,8 @@ export function MapPage() {
   const searchRef = useRef<HTMLDivElement>(null)
 
   const selectedPin = pins.find((p) => p.id === selectedPinId) ?? null
+  // La ficha sigue montada lo que dura su animación de salida (0,4 s en la hoja).
+  const shownPin = useLingeringValue(selectedPin, 400)
   const routeTarget = pins.find((p) => p.id === routeTargetPinId) ?? null
 
   // Con grafo interior, "cómo llegar" es giro a giro hasta la puerta; sin él,
@@ -990,19 +992,16 @@ export function MapPage() {
         </>
       )}
 
-      <AnimatePresence>
-        {selectedPin && (
-          <PinDetail
-            key="pin-detail"
-            pin={selectedPin}
-            isFavorite={favoriteIds.has(selectedPin.id)}
-            userLocation={userLocation}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        <FacultyDetail key="faculty-detail" />
-      </AnimatePresence>
+      {shownPin && (
+        <PinDetail
+          key="pin-detail"
+          pin={shownPin}
+          isFavorite={favoriteIds.has(shownPin.id)}
+          userLocation={userLocation}
+          isOpen={selectedPin !== null}
+        />
+      )}
+      <FacultyDetail key="faculty-detail" />
       <CreatePinModal />
       <TutorialModal />
     </div>
