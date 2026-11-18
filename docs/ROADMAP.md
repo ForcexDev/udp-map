@@ -180,9 +180,6 @@ a giro con animación y cámara, edificio en 3D con pisos separables, editor
       Valorar diagnóstico con evidencia de uso y coste, no por una cifra de líneas.
 - [ ] Medir CPU/volumen de difusión y la relación concurrencia/lease/cierre.
       Los presupuestos de código no son throughput medido.
-- [ ] Inspeccionar el conteo de versión en el hosting real y elegir una solución
-      que no dependa de un historial truncado si el problema persiste.
-      No se da por activada una variable de deep clone por estar anotada.
 - [ ] Revisar la espera sin timeout propio de `registration.update()` y su
       comportamiento real ante red/instalación fallida. Recargar no acredita relevo.
 - [ ] Optimizar `fic.png` y comprobar impacto del build antes de decidir volver

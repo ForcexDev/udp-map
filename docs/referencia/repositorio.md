@@ -340,7 +340,8 @@ mostraron el coste de sincronizar dos fuentes. La deuda está en
 | Fuente                             | Consumidor o propósito                                                               |
 | ---------------------------------- | ------------------------------------------------------------------------------------ |
 | `vite.config.ts`                   | Versiones, PWA, `update-info.json`, alias y Vitest                                   |
-| `docs/CHANGELOG.md`                | Entrada literal de `updateInfoJson`; todas las líneas con guion llegan al aviso      |
+| `docs/CHANGELOG.md`                | Solo la sección `## <versión de package.json>` llega al aviso de actualización       |
+| `package.json` (`version`)         | Única fuente SemVer; `shared/utils/appVersion.ts` la valida y le añade el commit     |
 | `CLAUDE.md`                        | Origen de instrucciones; `scripts/gen_agents.mjs` produce los derivados              |
 | `docs/referencia/base-de-datos.md` | Ruta que comprueba el hook de esquema                                                |
 | `scripts/gen_seed_full.ts`         | Seed público; no provisiona admins, perímetros ni interior                           |

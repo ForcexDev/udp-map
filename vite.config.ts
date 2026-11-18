@@ -6,76 +6,79 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
+import { changelogSection, formatAppVersion, isSemver } from './src/shared/utils/appVersion'
 
 // ---------------------------------------------------------------------------
-// Versión: MAJOR.MINOR+COMMITS (p. ej. 0.6+180), de package.json más el número
-// de commits.
-//
-// Antes el número del medio salía de buscar en SPRINTS_STATUS.md el sprint
-// marcado "En progreso". Eso ataba el build a un documento de seguimiento, y
-// para cuando se retiró ese documento ya llevaba tiempo sin funcionar: ningún
-// sprint estaba marcado en progreso, la expresión regular no casaba y todos los
-// builds salían como "0.0+N".
-//
-// Si git no está disponible (una exportación en zip), se cae a la versión de
-// package.json a secas.
+// Versión: SemVer de package.json (1.0.0-alpha.1) más el commit del build como
+// metadato (+a1b2c3d). Contrato y flujo de publicación en
+// docs/guias/despliegue.md#publicar-una-version; funciones puras en
+// src/shared/utils/appVersion.ts.
 // ---------------------------------------------------------------------------
-// TODO: Arreglar el versionado automático en Vercel. Como Vercel construye desde
-// un clon superficial (--depth=10) por defecto, `git rev-list --count HEAD`
-// devuelve siempre 10 (ej. 0.8+10) a menos que se active VERCEL_DEEP_CLONE=true
-// o se reemplace el cálculo por un identificador real en build time.
-function computeAppVersion(): string {
-  const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'))
-  const [major, minor] = (pkg.version as string).split('.')
+const PKG_VERSION: string = JSON.parse(
+  readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'),
+).version
+
+if (!isSemver(PKG_VERSION)) {
+  throw new Error(`package.json: "${PKG_VERSION}" no es SemVer (p. ej. 1.0.0-alpha.1)`)
+}
+
+function git(command: string): string | null {
   try {
-    const commits = execSync('git rev-list --count HEAD', { stdio: ['pipe', 'pipe', 'ignore'] })
+    return execSync(`git ${command}`, { stdio: ['pipe', 'pipe', 'ignore'] })
       .toString()
       .trim()
-    return `${major}.${minor}+${commits}`
   } catch {
-    return pkg.version as string
+    return null
   }
 }
 
-function updateInfoJson(version: string): string {
-  const changelog = readFileSync(path.resolve(__dirname, 'docs/CHANGELOG.md'), 'utf8')
-  const improvements = changelog
-    .split('\n')
-    .filter((line) => line.trim().startsWith('-'))
-    .map((line) => line.replace(/^\s*-\s*/, '').trim())
+// Vercel entrega el SHA aunque clone sin historial; en local se pregunta a git y
+// un árbol con cambios sin commitear se marca, para no confundirlo con el commit.
+// Sin git (exportación en zip) la versión queda sin metadato.
+const FULL_SHA = process.env.VERCEL_GIT_COMMIT_SHA ?? git('rev-parse HEAD')
+const DIRTY = !process.env.VERCEL_GIT_COMMIT_SHA && Boolean(git('status --porcelain'))
+const COMMIT = FULL_SHA ? `${FULL_SHA.slice(0, 7)}${DIRTY ? '.dirty' : ''}` : null
+const APP_VERSION = formatAppVersion(PKG_VERSION, COMMIT)
 
-  return JSON.stringify({ version, buildId: BUILD_ID, improvements })
+// Identidad del despliegue para el aviso de actualización. En local vale 'dev'
+// a propósito: el servidor y el bundle comparten id y el aviso no salta.
+// Probarlo exige dos builds con id distinto —`VERCEL_GIT_COMMIT_SHA=a npm run
+// build`, servirlo y reconstruir con `=b`—.
+const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev'
+
+function readChangelog(): string {
+  return readFileSync(path.resolve(__dirname, 'docs/CHANGELOG.md'), 'utf8')
 }
 
-function updateInfoPlugin(version: string): Plugin {
+function updateInfoJson(improvements: string[]): string {
+  return JSON.stringify({ version: APP_VERSION, buildId: BUILD_ID, improvements })
+}
+
+function updateInfoPlugin(): Plugin {
   return {
     name: 'udp-map-update-info',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!req.url?.startsWith('/update-info.json')) return next()
         res.setHeader('Content-Type', 'application/json')
-        res.end(updateInfoJson(version))
+        res.end(updateInfoJson(changelogSection(readChangelog(), PKG_VERSION) ?? []))
       })
     },
     generateBundle() {
+      // Publicar una versión sin sus novedades dejaría el aviso vacío: el build
+      // falla en vez de desplegarla así.
+      const improvements = changelogSection(readChangelog(), PKG_VERSION)
+      if (!improvements?.length) {
+        this.error(`docs/CHANGELOG.md no tiene puntos en la sección "## ${PKG_VERSION}"`)
+      }
       this.emitFile({
         type: 'asset',
         fileName: 'update-info.json',
-        source: updateInfoJson(version),
+        source: updateInfoJson(improvements),
       })
     },
   }
 }
-
-const APP_VERSION = computeAppVersion()
-
-// Identifies the deployment. The version string can repeat across deploys
-// (Vercel builds from a shallow clone, so the commit count is not the real one),
-// so update detection uses this instead.
-// ponytail: local builds share the literal 'dev', so the banner never fires
-// outside Vercel. Techo: probar en local exige dos builds con id distinto —
-// `VERCEL_GIT_COMMIT_SHA=a npm run build`, servirlo, y reconstruir con `=b`.
-const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev'
 
 export default defineConfig({
   // El puerto por defecto sigue siendo 5173, y no es una preferencia: es el
@@ -90,14 +93,14 @@ export default defineConfig({
     port: Number(process.env.PORT) || 5173,
   },
   define: {
-    // Injected at build-time; available globally as __APP_VERSION__ / __BUILD_ID__
+    // Globales del bundle; tipos en src/vite-env.d.ts.
     __APP_VERSION__: JSON.stringify(APP_VERSION),
     __BUILD_ID__: JSON.stringify(BUILD_ID),
   },
   plugins: [
     react(),
     tailwindcss(),
-    updateInfoPlugin(APP_VERSION),
+    updateInfoPlugin(),
     VitePWA({
       registerType: 'prompt',
       manifest: {

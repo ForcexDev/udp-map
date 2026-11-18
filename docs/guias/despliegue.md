@@ -284,6 +284,47 @@ error deliberado. No elimines la excepción dejando un ensayo que consuma intent
 La prueba completa requiere además lease vencido, competencia de dos sesiones,
 fallos y permisos con roles reales; este bloque no los sustituye.
 
+<a id="publicar-una-version"></a>
+
+## Publicar una versión
+
+La versión es [SemVer](https://semver.org/lang/es/) y su única fuente es
+`package.json`. El build le añade el commit como metadato: `1.0.0-alpha.1+a1b2c3d`
+(`.dirty` si se construyó con cambios sin commitear). Es lo que muestra «Acerca
+de» y el aviso de actualización. El SHA identifica el build aunque Vercel clone
+sin historial, que era lo que dejaba el antiguo contador de commits en `+10`.
+
+Fases antes de 1.0.0, en este orden; cada una reinicia el número:
+
+| Fase    | Ejemplo         | Significado                                    |
+| ------- | --------------- | ---------------------------------------------- |
+| `alpha` | `1.0.0-alpha.1` | Pre-release en desarrollo; puede cambiar mucho |
+| `beta`  | `1.0.0-beta.1`  | Funciones completas, se corrigen fallos        |
+| `rc`    | `1.0.0-rc.1`    | Candidata: se publica si no aparece nada       |
+| final   | `1.0.0`         | Lanzamiento                                    |
+
+Después de 1.0.0: `patch` para correcciones, `minor` para novedades y `major`
+para cambios que rompen datos o flujos existentes.
+
+Pasos:
+
+1. Escribe arriba de `docs/CHANGELOG.md` la sección `## <versión> — <fecha>` con
+   los puntos para quien usa la app. Solo esa sección llega al aviso.
+2. Sube la versión, que hace el commit y el tag `v<versión>`:
+
+   ```bash
+   npm version prerelease --preid=alpha   # 1.0.0-alpha.1 → 1.0.0-alpha.2
+   npm version 1.0.0-beta.1               # cambio de fase, explícito
+   npm version patch                      # tras 1.0.0
+   ```
+
+3. Publica commit y tag: `git push --follow-tags`.
+
+Un test de `appVersion.test.ts` (en CI) y el propio build fallan si la versión no
+es SemVer o le falta su sección en el CHANGELOG. Los commits entre versiones se
+despliegan igual y se distinguen por el SHA; el aviso de actualización depende de
+`buildId`, no del número ([PWA](../referencia/pwa.md)).
+
 <a id="vuelta-atras"></a>
 
 ## Vuelta atrás

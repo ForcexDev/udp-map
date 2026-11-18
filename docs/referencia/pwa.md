@@ -8,7 +8,10 @@ la configuración de hosting, en [despliegue](../guias/despliegue.md).
 
 Vite define `__BUILD_ID__` y emite `/update-info.json` con el mismo `buildId`:
 `VERCEL_GIT_COMMIT_SHA` o `dev` si falta. `UpdatePrompt` compara el ID del bundle
-con el del servidor; `shouldShowUpdate` centraliza la decisión.
+con el del servidor; `shouldShowUpdate` centraliza la decisión. El JSON también
+lleva `version` (SemVer más commit) y los puntos de la sección del CHANGELOG de
+esa versión; ninguno de los dos decide si se avisa
+([publicar una versión](../guias/despliegue.md#publicar-una-version)).
 
 Comprueba al montar con página visible y al volver a hacerla visible. El fetch
 usa `cache: 'no-store'` y los patrones de precache no incluyen JSON. Si cambia
@@ -61,16 +64,15 @@ convierten en una base offline por instalar la PWA.
 
 ## Versión visible y notas
 
-`computeAppVersion` toma `MAJOR.MINOR` de `package.json` y añade los commits
-accesibles a Git. Sin Git usa la versión del paquete. Es una etiqueta visible,
-no identidad fiable de despliegue.
+La versión es SemVer de `package.json` más el commit del build como metadato
+(`1.0.0-alpha.1+a1b2c3d`, `.dirty` con cambios sin commitear). El commit sale de
+`VERCEL_GIT_COMMIT_SHA` o de `git rev-parse`, así que no depende del historial
+que clone el hosting; el antiguo `MAJOR.MINOR+COMMITS` salía siempre `+10` en
+Vercel. Sin Git queda la versión sola. Funciones puras en
+`shared/utils/appVersion.ts`; flujo en
+[publicar una versión](../guias/despliegue.md#publicar-una-version).
 
-Hay un registro de conteos repetidos en clones superficiales de Vercel.
-El TODO no acredita la configuración remota actual. CI sí pide historial
-completo. No reconstruyas el antiguo vínculo con `SPRINTS_STATUS.md`:
-el build ya no depende de planificación.
-
-`updateInfoJson` lee [`docs/CHANGELOG.md`](../CHANGELOG.md) y convierte **todas**
-las líneas cuyo texto recortado empieza por guion en mejoras. Conserva la ruta
-y evita listas auxiliares, auditorías o un histórico acumulativo que termine
-mostrándose entero como novedad de una versión.
+`updateInfoJson` lee solo la sección `## <versión>` de
+[`docs/CHANGELOG.md`](../CHANGELOG.md). El build falla si esa sección no existe o
+está vacía, y `appVersion.test.ts` lo comprueba antes en CI. Las secciones
+antiguas quedan como histórico y no vuelven al aviso.

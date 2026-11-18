@@ -19,7 +19,7 @@ Los tres deben pasar. `npm run build` añade construcción y worker generado.
 `npm run format:check` verifica el formateo con Prettier (`npm run format` para aplicar).
 
 CI usa Node 24, instala con `npm ci` y ejecuta lint, typecheck, tests y build.
-Pide historial completo para calcular versión. No aplica SQL, despliega funciones
+No aplica SQL, despliega funciones
 ni comprueba automáticamente `check:i18n` o los derivados de instrucciones.
 
 Según el cambio:

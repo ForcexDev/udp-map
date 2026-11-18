@@ -25,8 +25,10 @@ lo desplegado ni el resultado en dispositivos reales.
 | Alternativas y límites del rework push              | [Decisiones de push](decisiones/notificaciones-push.md) |
 | Novedades que muestra la aplicación                 | [CHANGELOG](CHANGELOG.md)                               |
 
-`CHANGELOG.md` conserva su ruta y formato porque Vite lo convierte en el aviso
-de actualización. No acumules allí auditorías ni listas auxiliares.
+`CHANGELOG.md` conserva su ruta y su formato de secciones `## <versión>` porque
+Vite convierte la de la versión actual en el aviso de actualización. No acumules
+allí auditorías ni listas auxiliares. Cómo subir de versión:
+[publicar una versión](guias/despliegue.md#publicar-una-version).
 
 ## Cómo interpretar la evidencia
 
