@@ -16,6 +16,7 @@ push por encima de las rutas; `Layout` organiza navegación pública y modales.
 | ------------------- | ---------------------------------------------------------- |
 | `/`, desconocidas   | Redirigen a `/mapa`                                        |
 | `/mapa`             | `MapPage` y `MapView`                                      |
+| `/mapa/tutorial`    | `MapTutorialPage`: práctica guiada, fuera de `Layout`      |
 | `/eventos`          | `EventsPage`, agenda y RSVP                                |
 | `/foro`             | `ForumPage` e hilos                                        |
 | `/perfil`           | `profile/pages/ProfilePage`                                |
@@ -132,6 +133,28 @@ handlers independientes ya abrió dos fichas con el mismo toque.
 su ficha y, al resolver un destino, limpia la query con `replaceState`.
 Con `?pin=` y una lista no vacía de pines, la rama del pin tiene prioridad;
 no hay un fallback general a facultad si ese pin no se encuentra.
+
+### Tutorial del mapa
+
+`map/tutorial/` contiene la oferta de primer uso y la práctica guiada.
+`TutorialOfferSheet` aparece en `/mapa` cuando el mapa está libre (sin
+bienvenida, perfil pendiente, pin, facultad, ruta ni modo ubicar) y guarda
+«ver», «más tarde» (4 h) o «nunca» en `localStorage` con el id de usuario
+(`tutorialOffer`). Ajustes repite el tutorial desde el Sidebar.
+
+`/mapa/tutorial` es práctica: pines de `practiceData` y estado local. No llama
+a Supabase ni escribe en `uiStore`, `filterStore` o el almacén demo; por eso
+buscador, ficha, formulario y filtros son versiones de práctica con las clases
+reales, y `PracticeMap` comparte con `MapView` estilo, capas y `pinMarker`
+pero no su instancia. La etapa y los objetivos se derivan del estado en
+`etapas.ts`, función pura con pruebas; no hay botón «Siguiente».
+
+`shared/ui/Guia` es la capa de foco genérica: portal a `body` con z-index 5000,
+hueco que sigue al objetivo con `requestAnimationFrame`, bloqueadores alrededor
+y tarjeta. Destaca el primer `[data-guia]` visible de la lista y se oculta
+mientras exista un `[data-guia-real]` (`UpdatePrompt`, `NotificationBanner`).
+Solo hace `scrollIntoView` si un ancestro se desplaza de verdad: con
+`overflow: hidden` el navegador corría el contenedor del mapa.
 
 ## Rutas y orientación
 
@@ -382,7 +405,8 @@ archivos indicados; no se presentan como discrepancias corregidas por mover docs
 
 | Cambio                       | Leer y tocar primero                                                                |
 | ---------------------------- | ----------------------------------------------------------------------------------- |
-| Marcador, planta, selección  | `MapView`, `floorVisibility` y `mappingLayers`                                      |
+| Marcador, planta, selección  | `MapView`, `pinMarker`, `floorVisibility` y `mappingLayers`                         |
+| Tutorial o práctica guiada   | `map/tutorial/etapas`, `MapTutorialPage` y `shared/ui/Guia`                         |
 | Código o importación de sala | [Salas](salas.md), `roomCode`, `roomCatalog`, `RoomImportPanel`                     |
 | Crear/editar/mover pin       | `pins/api`, formulario y contrato SQL; también demo                                 |
 | Geometría de facultades      | `facultyStore`, `facultiesApi`, editor; no duplicar perímetros                      |

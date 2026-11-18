@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './Layout'
 import { MapPage } from '@/features/map/MapPage'
+import { MapTutorialPage } from '@/features/map/tutorial/MapTutorialPage'
 import { EventsPage } from '@/features/events/EventsPage'
 import { ForumPage } from '@/features/forum/ForumPage'
 import { ProfilePage } from '@/features/profile/pages/ProfilePage'
@@ -49,6 +50,10 @@ export function App() {
           <Route path="/foro" element={<ForumPage />} />
           <Route path="/perfil" element={<ProfilePage />} />
         </Route>
+
+        {/* Práctica del tutorial del mapa: fuera de Layout para no montar el
+            Sidebar, los avisos ni el + real (ver MapTutorialPage). */}
+        <Route path="/mapa/tutorial" element={<MapTutorialPage />} />
 
         {/* La cola de denuncias vivía aquí, fuera de /admin y con la barra de
             navegación pública. Se mudó al panel, pero la ruta vieja tiene que

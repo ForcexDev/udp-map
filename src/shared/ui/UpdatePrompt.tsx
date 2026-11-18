@@ -84,7 +84,10 @@ export function UpdatePrompt() {
     // como una cajita perdida en la esquina de una pantalla ancha. El relleno
     // inferior que esquiva la barra vive en .update-prompt-anchor, que lo anula
     // a partir de 640px.
-    <div className="update-prompt-anchor fixed inset-0 z-[999] flex justify-center items-end sm:items-center p-4 pointer-events-none">
+    <div
+      data-guia-real
+      className="update-prompt-anchor fixed inset-0 z-[999] flex justify-center items-end sm:items-center p-4 pointer-events-none"
+    >
       {/* animate-fade-in es la de la casa (index.css). Antes había aquí
           `animate-in slide-in-from-bottom-4`, de tailwindcss-animate, que este
           proyecto no usa: eran clases muertas y el aviso aparecía de golpe. */}

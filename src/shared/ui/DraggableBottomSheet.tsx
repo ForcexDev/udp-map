@@ -153,7 +153,11 @@ export function DraggableBottomSheet({
 
   const hiddenY = measured + 100
   const fallbackY: Record<SheetStop, number> = { peek: 600, compact: 500, expanded: 0 }
-  const restY = !isOpen || !entered ? hiddenY : yOf[stop] || fallbackY[stop]
+  // El respaldo es solo para antes de medir. Con `yOf[stop] || fallback`, una
+  // hoja más baja que el punto compacto (compactY = 0, cabe entera) caía en el
+  // respaldo y quedaba 500 px por debajo, fuera de la pantalla.
+  const restY =
+    !isOpen || !entered ? hiddenY : yOf[stop] || sheetHeight ? yOf[stop] : fallbackY[stop]
   let y = restY
   if (dragOffset !== null) {
     y = restY + dragOffset

@@ -142,7 +142,10 @@ a giro con animación y cámara, edificio en 3D con pisos separables, editor
 - [ ] Orquestador general, slides y coach marks/tours en momentos distintos,
       mapa y facultad con acceso posterior desde Sidebar. El tutorial actual ya
       se difiere ante setup de perfil; no reabrir ese caso como carencia total.
-      Wayfinder no es el tour propuesto.
+      Wayfinder no es el tour propuesto. El mapa ya tiene tour práctico
+      (`/mapa/tutorial`, oferta al entrar y botón en Ajustes) sobre la capa
+      genérica `shared/ui/Guia`; falta facultad, el orquestador entre tours y
+      decidir si la bienvenida (`TutorialModal`) se funde con la oferta.
 - [ ] Explicar plazos/caducidad, beneficios de verificar y causas de restricciones
       durante creación/edición; conservar Exterior y permisos reales al concretar
       qué campos serán obligatorios.

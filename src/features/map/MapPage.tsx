@@ -22,6 +22,7 @@ import { roomSubtitle } from '@/features/map/roomSubtitle'
 import { PinDetail } from '@/features/pins/PinDetail'
 import { CreatePinModal } from '@/features/pins/CreatePinModal'
 import { TutorialModal } from './TutorialModal'
+import { TutorialOfferSheet } from './tutorial/TutorialOfferSheet'
 import { updatePinLocation } from '@/features/pins/api'
 import { useAuthStore } from '@/features/auth/authStore'
 import type { Faculty, Pin } from '@/shared/types/database'
@@ -254,6 +255,8 @@ export function MapPage() {
   const selectPin = useUIStore((s) => s.selectPin)
   const routeTargetPinId = useUIStore((s) => s.routeTargetPinId)
   const accessibleRoute = useUIStore((s) => s.accessibleRoute)
+  const tutorialOpen = useUIStore((s) => s.tutorialOpen)
+  const needsProfileSetup = useAuthStore((s) => !!s.user && s.user.faculty_id === null)
 
   const campusId = useUIStore((s) => s.campusId)
   const setCampusId = useUIStore((s) => s.setCampusId)
@@ -1004,6 +1007,18 @@ export function MapPage() {
       <FacultyDetail key="faculty-detail" />
       <CreatePinModal />
       <TutorialModal />
+      {/* La bienvenida va primero; la oferta espera a que el mapa quede libre. */}
+      <TutorialOfferSheet
+        blocked={
+          tutorialOpen ||
+          needsProfileSetup ||
+          pickingLocation ||
+          !!movingPinId ||
+          !!selectedPin ||
+          !!selectedFacultyId ||
+          !!routeTarget
+        }
+      />
     </div>
   )
 }

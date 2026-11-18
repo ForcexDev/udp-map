@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Globe,
   HelpCircle,
+  GraduationCap,
   MapPin,
   Bell,
   Settings,
@@ -263,7 +264,34 @@ export function Sidebar() {
                   <ThemeSwitcher />
                 </section>
 
-                {/* Help / Tutorial */}
+                {/* Tutorial: la práctica guiada del mapa, repetible cuando se quiera. */}
+                <section className="space-y-4">
+                  <h4 className="text-xs font-bold text-stone-900 dark:text-stone-200 uppercase tracking-wider">
+                    {t('sidebar.tutorial', 'Tutorial')}
+                  </h4>
+                  <div className="w-full p-4 rounded-2xl bg-white dark:bg-[#1E222D] border border-[#E5DEC9] dark:border-white/10 flex items-center gap-3">
+                    <GraduationCap
+                      size={18}
+                      className="shrink-0 text-stone-700 dark:text-stone-300"
+                    />
+                    <span className="flex-1 text-sm font-semibold text-stone-700 dark:text-stone-300 leading-snug">
+                      {t('sidebar.tutorialRow', 'Practica cómo usar el mapa')}
+                    </span>
+                    <button
+                      type="button"
+                      data-sidebar-tutorial
+                      onClick={() => {
+                        close()
+                        navigate('/mapa/tutorial')
+                      }}
+                      className="shrink-0 h-9 px-3.5 rounded-xl bg-[#C22B38] dark:bg-[#D93846] text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer"
+                    >
+                      {t('sidebar.showTutorial', 'Ver tutorial')}
+                    </button>
+                  </div>
+                </section>
+
+                {/* Help */}
                 <section className="space-y-4">
                   <h4 className="text-xs font-bold text-stone-900 dark:text-stone-200 uppercase tracking-wider">
                     {t('sidebar.help', 'Ayuda')}
@@ -276,7 +304,9 @@ export function Sidebar() {
                     className="w-full p-4 rounded-2xl bg-white dark:bg-[#1E222D] border border-[#E5DEC9] dark:border-white/10 flex items-center gap-3 font-semibold text-stone-700 dark:text-stone-300 hover:bg-[#FAF8F5] dark:hover:bg-[#252A37] active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <HelpCircle size={18} />
-                    <span className="text-sm">{t('sidebar.showTutorial', 'Ver tutorial')}</span>
+                    <span className="text-sm">
+                      {t('sidebar.showWelcome', 'Bienvenida e instalación')}
+                    </span>
                   </button>
                   <button
                     onClick={() => {

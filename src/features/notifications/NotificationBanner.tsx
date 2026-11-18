@@ -44,6 +44,7 @@ export function NotificationBanner() {
 
   return (
     <div
+      data-guia-real
       className="fixed left-3 right-3 z-[3500] pointer-events-auto sm:left-auto sm:right-4 sm:w-96 animate-fade-up"
       style={{ top: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
     >
